@@ -25,14 +25,7 @@ object SettingsUpdater {
             if (property != null) {
                 val stateFlow = property.get(serverConfig)
 
-                val maybeConvertedValue =
-                    SettingsRegistry
-                        .get(name)
-                        ?.typeInfo
-                        ?.convertToInternalType
-                        ?.invoke(value) ?: value
-
-                val validationError = SettingsValidator.validate(name, maybeConvertedValue)
+                val validationError = SettingsValidator.validate(name, value)
                 val isValid = validationError == null
 
                 if (!isValid) {
@@ -40,6 +33,13 @@ object SettingsUpdater {
 
                     return
                 }
+
+                val maybeConvertedValue =
+                    SettingsRegistry
+                        .get(name)
+                        ?.typeInfo
+                        ?.convertToInternalType
+                        ?.invoke(value) ?: value
 
                 // Normal update - MigratedConfigValue handles deprecated mappings automatically
                 @Suppress("UNCHECKED_CAST")
