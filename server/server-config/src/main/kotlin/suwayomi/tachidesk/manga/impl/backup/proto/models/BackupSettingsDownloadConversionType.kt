@@ -12,10 +12,10 @@ import kotlin.time.Duration
 class BackupSettingsDownloadConversionType(
     @ProtoNumber(1) override val mimeType: String,
     @ProtoNumber(2) override val target: String,
-    @ProtoNumber(3) override val compressionLevel: Double?,
-    @ProtoNumber(4) override val callTimeout: Duration?,
-    @ProtoNumber(5) override val connectTimeout: Duration?,
-    @ProtoNumber(6) override val headers: List<BackupSettingsDownloadConversionHeaderType>?
+    @ProtoNumber(3) override val compressionLevel: Double? = null,
+    @ProtoNumber(4) override val callTimeout: Duration? = null,
+    @ProtoNumber(5) override val connectTimeout: Duration? = null,
+    @ProtoNumber(6) override val headers: List<BackupSettingsDownloadConversionHeaderType>? = null
 ) : SettingsDownloadConversion
 
 @OptIn(ExperimentalSerializationApi::class)
