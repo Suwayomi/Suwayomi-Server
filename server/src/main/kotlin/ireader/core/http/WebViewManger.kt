@@ -1,24 +1,37 @@
 package ireader.core.http
 
-import org.jsoup.Jsoup
+import com.fleeksoft.ksoup.nodes.Document
 
 /**
- * Stub implementation of WebViewManager for JVM
- * WebView functionality is not supported on server
+ * Desktop implementation of WebViewManager
+ * Currently a stub - could be enhanced with JavaFX WebView or JCEF
  */
-class WebViewManger {
-    var isInit: Boolean = false
-    var userAgent: String = ireader.core.http.DEFAULT_USER_AGENT
-    var selector: String? = null
-    var html: org.jsoup.nodes.Document = Jsoup.parse("")
-    var webUrl: String? = null
-    var inProgress: Boolean = false
+ class WebViewManger {
+     var isInit: Boolean = false
+     var userAgent: String = DEFAULT_USER_AGENT
+     var selector: String? = null
+     var html: Document? = null
+     var webUrl: String? = null
+     var inProgress: Boolean = false
 
-    fun init(): Any = throw UnsupportedOperationException("WebView is not supported on server")
-
-    fun update(): Unit = throw UnsupportedOperationException("WebView is not supported on server")
-
-    fun destroy() {
-        // Nothing to destroy in stub implementation
+     fun init(): Any {
+        return 0
     }
+
+     fun update() {
+        // No-op on desktop
+    }
+
+     fun destroy() {
+        // No-op on desktop
+    }
+    
+     fun loadInBackground(url: String, selector: String?, onReady: (String) -> Unit) {
+        // Not supported on desktop
+        onReady("")
+    }
+    
+     fun isProcessingInBackground(): Boolean = false
+    
+     fun isAvailable(): Boolean = false
 }

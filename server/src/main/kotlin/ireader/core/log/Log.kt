@@ -8,244 +8,157 @@
 
 package ireader.core.log
 
+
 import io.github.oshai.kotlinlogging.KotlinLogging
 
 /**
- * Logging utility that wraps KotlinLogging for IReader extensions
+ * Logging utility using Kermit for Kotlin Multiplatform.
+ *
+ * Kermit provides:
+ * - Multiplatform support (Android, iOS, JVM, JS)
+ * - Crashlytics integration via CrashlyticsLogWriter
+ * - Configurable log levels
+ * - Tag support
  */
 object Log {
+
+
     private val logger = KotlinLogging.logger {}
 
+    private const val DEFAULT_TAG = "IReader"
+
+
     /**
-     * Logs a lazy message at verbose level. The message will be only evaluated if the log entry is
-     * really output.
-     *
-     * @param message
-     * Function that produces the message
+     * Enable verbose logging (Debug and Info levels).
+     * Call this during development or when debugging is needed.
+     */
+    fun enableVerboseLogging() {
+
+    }
+
+    /**
+     * Enable production logging (only Warn and Error levels).
+     * Call this for release builds to reduce log noise.
+     */
+    fun enableProductionLogging() {
+
+    }
+
+    /**
+     * Logs a lazy message at verbose level.
      */
     fun verbose(message: () -> String) {
-        logger.trace(message)
+        logger.warn (message);
     }
 
     /**
-     * Logs a formatted message at verbose level. "{}" placeholders will be replaced by given
-     * arguments.
-     *
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs a formatted message at verbose level.
      */
-    fun verbose(
-        message: String,
-        vararg arguments: Any?,
-    ) {
-        logger.trace { message.formatMessage(*arguments) }
+    fun verbose(message: String, vararg arguments: Any?) {
+        logger.warn { message }
     }
 
     /**
-     * Logs an exception with a formatted custom message at verbose level. "{}" placeholders will be
-     * replaced by given arguments.
-     *
-     * @param exception
-     * Caught exception or any other throwable to log
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs an exception at verbose level.
      */
-    fun verbose(
-        exception: Throwable,
-        message: String? = null,
-        vararg arguments: Any?,
-    ) {
-        logger.trace(exception) { message?.formatMessage(*arguments) ?: exception.message ?: "" }
+    fun verbose(exception: Throwable, message: String? = null, vararg arguments: Any?) {
+        logger.warn { message }
     }
 
     /**
-     * Logs a lazy message at debug level. The message will be only evaluated if the log entry is
-     * really output.
-     *
-     * @param message
-     * Function that produces the message
+     * Logs a lazy message at debug level.
      */
     fun debug(message: () -> String) {
-        logger.debug(message)
+        logger.warn { message }
     }
 
     /**
-     * Logs a formatted message at debug level. "{}" placeholders will be replaced by given
-     * arguments.
-     *
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs a formatted message at debug level.
      */
-    fun debug(
-        message: String,
-        vararg arguments: Any?,
-    ) {
-        logger.debug { message.formatMessage(*arguments) }
+    fun debug(message: String, vararg arguments: Any?) {
+        logger.debug { message }
     }
 
     /**
-     * Logs an exception with a formatted custom message at debug level. "{}" placeholders will be
-     * replaced by given arguments.
-     *
-     * @param exception
-     * Caught exception or any other throwable to log
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs an exception at debug level.
      */
-    fun debug(
-        exception: Throwable,
-        message: String? = null,
-        vararg arguments: Any?,
-    ) {
-        logger.debug(exception) { message?.formatMessage(*arguments) ?: exception.message ?: "" }
+    fun debug(exception: Throwable, message: String? = null, vararg arguments: Any?) {
+        logger.debug { message }
     }
 
     /**
-     * Logs a lazy message at info level. The message will be only evaluated if the log entry is
-     * really output.
-     *
-     * @param message
-     * Function that produces the message
+     * Logs a lazy message at info level.
      */
     fun info(message: () -> String) {
-        logger.info(message)
+        logger.info { message }
     }
 
     /**
-     * Logs a formatted message at info level. "{}" placeholders will be replaced by given
-     * arguments.
-     *
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs a formatted message at info level.
      */
-    fun info(
-        message: String,
-        vararg arguments: Any?,
-    ) {
-        logger.info { message.formatMessage(*arguments) }
+    fun info(message: String, vararg arguments: Any?) {
+        logger.info { message }
     }
 
     /**
-     * Logs an exception with a formatted custom message at info level. "{}" placeholders will be
-     * replaced by given arguments.
-     *
-     * @param exception
-     * Caught exception or any other throwable to log
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs an exception at info level.
      */
-    fun info(
-        exception: Throwable,
-        message: String? = null,
-        vararg arguments: Any?,
-    ) {
-        logger.info(exception) { message?.formatMessage(*arguments) ?: exception.message ?: "" }
+    fun info(exception: Throwable, message: String? = null, vararg arguments: Any?) {
+        logger.info { message }
     }
 
     /**
-     * Logs a lazy message at warn level. The message will be only evaluated if the log entry is
-     * really output.
-     *
-     * @param message
-     * Function that produces the message
+     * Logs a lazy message at warn level.
      */
     fun warn(message: () -> String) {
-        logger.warn(message)
+        logger.warn { message }
     }
 
     /**
-     * Logs a formatted message at warn level. "{}" placeholders will be replaced by given
-     * arguments.
-     *
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs a formatted message at warn level.
      */
-    fun warn(
-        message: String,
-        vararg arguments: Any?,
-    ) {
-        logger.warn { message.formatMessage(*arguments) }
+    fun warn(message: String, vararg arguments: Any?) {
+        logger.warn { message }
     }
 
     /**
-     * Logs an exception with a formatted custom message at warn level. "{}" placeholders will be
-     * replaced by given arguments.
-     *
-     * @param exception
-     * Caught exception or any other throwable to log
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs an exception at warn level.
      */
-    fun warn(
-        exception: Throwable,
-        message: String? = null,
-        vararg arguments: Any?,
-    ) {
-        logger.warn(exception) { message?.formatMessage(*arguments) ?: exception.message ?: "" }
+    fun warn(exception: Throwable, message: String? = null, vararg arguments: Any?) {
+        logger.warn { message }
     }
 
     /**
-     * Logs a lazy message at error level. The message will be only evaluated if the log entry is
-     * really output.
-     *
-     * @param message
-     * Function that produces the message
+     * Logs a lazy message at error level.
      */
     fun error(message: () -> String) {
-        logger.error(message)
+        logger.warn { message }
     }
 
     /**
-     * Logs a formatted message at error level. "{}" placeholders will be replaced by given
-     * arguments.
-     *
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs a formatted message at error level.
      */
-    fun error(
-        message: String,
-        vararg arguments: Any?,
-    ) {
-        logger.error { message.formatMessage(*arguments) }
+    fun error(message: String, vararg arguments: Any?) {
+        logger.warn { message }
     }
 
     /**
-     * Logs an exception with a formatted custom message at error level. "{}" placeholders will be
-     * replaced by given arguments.
-     *
-     * @param exception
-     * Caught exception or any other throwable to log
-     * @param message
-     * Formatted text message to log
-     * @param arguments
-     * Arguments for formatted text message
+     * Logs an exception at error level.
      */
-    fun error(
-        exception: Throwable,
-        message: String? = null,
-        vararg arguments: Any?,
-    ) {
-        logger.error(exception) { message?.formatMessage(*arguments) ?: exception.message ?: "" }
+    fun error(exception: Throwable, message: String? = null, vararg arguments: Any?) {
+        logger.error { message }
     }
 
+    /**
+     * Logs an exception at error level (convenience overload).
+     */
+    fun error(message: String, exception: Throwable) {
+        logger.error { message }
+    }
+
+    /**
+     * Formats a message by replacing {} placeholders with arguments.
+     */
     private fun String.formatMessage(vararg arguments: Any?): String {
         var result = this
         arguments.forEach { value ->

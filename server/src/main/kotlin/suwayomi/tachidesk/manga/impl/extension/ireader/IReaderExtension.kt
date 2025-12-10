@@ -11,6 +11,7 @@ import android.net.Uri
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import ireader.core.prefs.PreferenceStoreFactory
 import ireader.core.source.Source
 import ireader.core.source.SourceFactory
 import okhttp3.CacheControl
@@ -23,9 +24,10 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.manga.impl.extension.ExtensionInstaller
 import suwayomi.tachidesk.manga.impl.extension.ireader.IReaderExtensionsList.extensionTableAsDataClass
+import suwayomi.tachidesk.manga.impl.util.BytecodeEditor
 import suwayomi.tachidesk.manga.impl.util.PackageTools
+import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
@@ -54,8 +56,8 @@ object IReaderExtension {
     private const val METADATA_NSFW = "source.nsfw"
     private const val METADATA_DESCRIPTION = "source.description"
     private const val METADATA_ICON = "source.icon"
-    private const val LIB_VERSION_MIN = 1
-    private const val LIB_VERSION_MAX = 1
+    private const val LIB_VERSION_MIN = 2
+    private const val LIB_VERSION_MAX = 2
 
     suspend fun installExtension(pkgName: String): Int {
         logger.debug { "Installing IReader extension $pkgName" }
@@ -96,12 +98,17 @@ object IReaderExtension {
         fetcher: suspend () -> String,
     ): Int {
         val apkFilePath = fetcher()
-        val paths = ExtensionInstaller.prepareInstallationPaths(apkFilePath, "ireader")
+        val apkName = File(apkFilePath).name
 
         val isInstalled =
             transaction {
-                IReaderExtensionTable.selectAll().where { IReaderExtensionTable.apkName eq paths.apkName }.firstOrNull()
+                IReaderExtensionTable.selectAll().where { IReaderExtensionTable.apkName eq apkName }.firstOrNull()
             }?.get(IReaderExtensionTable.isInstalled) ?: false
+
+        val fileNameWithoutType = apkName.substringBefore(".apk")
+        val dirPathWithoutType = "${applicationDirs.extensionsRoot}/ireader/$fileNameWithoutType"
+        val jarFilePath = "$dirPathWithoutType.jar"
+        val dexFilePath = "$dirPathWithoutType.dex"
 
         val packageInfo = getPackageInfo(apkFilePath)
         val pkgName = packageInfo.packageName
@@ -111,37 +118,142 @@ object IReaderExtension {
         }
 
         if (!isInstalled || forceReinstall) {
-            // Validate extension feature
-            ExtensionInstaller.validateExtensionFeature(packageInfo, EXTENSION_FEATURE, "IReader")
+            // Check for IReader extension feature
+            val hasIReaderFeature =
+                packageInfo.reqFeatures.orEmpty().any {
+                    it.name == EXTENSION_FEATURE || it.name.contains("ireader", ignoreCase = true)
+                }
 
-            // Validate lib version
-            ExtensionInstaller.validateLibVersion(
-                packageInfo.versionName,
-                LIB_VERSION_MIN,
-                LIB_VERSION_MAX,
-                parseAsInt = true,
-            )
+            // Log available features for debugging
+            logger.debug { "Package features: ${packageInfo.reqFeatures?.map { it.name }}" }
+            logger.debug { "Package metadata: ${packageInfo.applicationInfo.metaData}" }
 
-            // Log metadata for debugging
-            ExtensionInstaller.logMetadata(packageInfo, "IReader")
+            if (!hasIReaderFeature) {
+                logger.warn {
+                    "APK does not have IReader extension feature. Available features: ${packageInfo.reqFeatures?.map { it.name }}"
+                }
+                // For now, continue anyway to see what happens
+                // throw Exception("This apk is not an IReader extension")
+            }
 
-            // Extract metadata
-            val isNsfw = ExtensionInstaller.extractNsfwFlag(packageInfo.applicationInfo.metaData, METADATA_NSFW)
-            val className = ExtensionInstaller.extractClassName(packageInfo, METADATA_SOURCE_CLASS)
+            val libVersion = packageInfo.versionName.substringBefore('.').toInt()
+            if (libVersion < LIB_VERSION_MIN || libVersion > LIB_VERSION_MAX) {
+                throw Exception(
+                    "Lib version is $libVersion, while only versions $LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed",
+                )
+            }
+
+            // Log all metadata for debugging
+            val metaData = packageInfo.applicationInfo.metaData
+            if (metaData != null) {
+                logger.debug { "APK Metadata keys: ${metaData.keySet()}" }
+                metaData.keySet().forEach { key ->
+                    val value =
+                        try {
+                            when {
+                                key.contains("nsfw", ignoreCase = true) -> {
+                                    // Try Int first, fallback to String
+                                    try {
+                                        metaData.getString(key, "false")
+                                    } catch (e: ClassCastException) {
+                                        metaData.getString(key)
+                                    }
+                                }
+                                else -> metaData.getString(key)
+                            }
+                        } catch (e: Exception) {
+                            "error: ${e.message}"
+                        }
+                    logger.debug { "  $key = $value" }
+                }
+            } else {
+                logger.warn { "No metadata found in APK" }
+            }
+
+            // NSFW can be stored as either String or Int in metadata
+            val isNsfw =
+                try {
+                    metaData?.getString(METADATA_NSFW, "false") == "true"
+                } catch (e: ClassCastException) {
+                    metaData?.getString(METADATA_NSFW) == "true"
+                }
+            val sourceClassName = metaData?.getString(METADATA_SOURCE_CLASS)?.trim()
+
+            if (sourceClassName == null) {
+                throw Exception("Failed to load extension, the package $pkgName didn't define source class")
+            }
+
+            // Handle relative class names (starting with .)
+            val className =
+                if (sourceClassName.startsWith(".")) {
+                    packageInfo.packageName + sourceClassName
+                } else {
+                    sourceClassName
+                }
 
             logger.info { "IReader extension class: $className" }
+
             logger.debug { "Main class for IReader extension is $className" }
 
-            // Clean up existing JAR if it exists
-            ExtensionInstaller.cleanupExistingJar(paths.jarFilePath)
+            // Delete existing JAR file if it exists to avoid file locking issues
+            val jarFile = File(jarFilePath)
+            if (jarFile.exists()) {
+                logger.debug { "Deleting existing JAR file: $jarFilePath" }
 
-            // Process APK (convert to JAR, extract assets, cleanup)
-            ExtensionInstaller.processApk(paths, cleanupApk = true)
+                // First, try to close any existing ClassLoader for this JAR
+                PackageTools.jarLoaderMap.remove(jarFilePath)?.close()
+
+                var deleted = false
+                for (i in 1..5) {
+                    try {
+                        deleted = jarFile.delete()
+                        if (deleted) break
+                        Thread.sleep(100)
+                    } catch (e: Exception) {
+                        logger.warn { "Attempt $i: Could not delete existing JAR: ${e.message}" }
+                        Thread.sleep(100)
+                    }
+                }
+                if (!deleted) {
+                    throw Exception(
+                        "Could not delete existing JAR file at $jarFilePath - it may be locked by another process. Try restarting the server.",
+                    )
+                }
+            }
+
+            dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
+
+            // Give Windows time to release file locks
+            Thread.sleep(100)
+
+            extractAssetsFromApk(apkFilePath, jarFilePath)
+
+            // Fix stackmap frames AFTER extractAssetsFromApk
+            // dex2jar produces bytecode with invalid stackmap frames that Java's verifier rejects
+            logger.info { "Fixing stackmap frames in JAR: $jarFilePath" }
+            try {
+                BytecodeEditor.fixStackmapFrames(Path(jarFilePath))
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to fix stackmap frames" }
+            }
+
+            // Clean up temporary files
+            try {
+                File(apkFilePath).delete()
+            } catch (e: Exception) {
+                logger.warn { "Could not delete APK file: ${e.message}" }
+            }
+
+            try {
+                File(dexFilePath).delete()
+            } catch (e: Exception) {
+                logger.warn { "Could not delete DEX file: ${e.message}" }
+            }
 
             // Load the extension class
             val extensionMainClassInstance =
                 try {
-                    loadIReaderSource(paths.jarFilePath, className, pkgName)
+                    loadIReaderSource(jarFilePath, className, pkgName)
                 } catch (e: Exception) {
                     logger.error(e) { "Failed to load IReader source class: $className" }
                     throw Exception("Could not load IReader source class: ${e.message}")
@@ -272,6 +384,82 @@ object IReaderExtension {
         }
     }
 
+    private fun extractAssetsFromApk(
+        apkPath: String,
+        jarPath: String,
+    ) {
+        val apkFile = File(apkPath)
+        val jarFile = File(jarPath)
+
+        val assetsFolder = File("${apkFile.parent}/${apkFile.nameWithoutExtension}_assets")
+        assetsFolder.mkdir()
+        ZipInputStream(apkFile.inputStream()).use { zipInputStream ->
+            var zipEntry = zipInputStream.nextEntry
+            while (zipEntry != null) {
+                if (zipEntry.name.startsWith("assets/") && !zipEntry.isDirectory) {
+                    val assetFile = File(assetsFolder, zipEntry.name)
+                    assetFile.parentFile.mkdirs()
+                    FileOutputStream(assetFile).use { outputStream ->
+                        zipInputStream.copyTo(outputStream)
+                    }
+                }
+                zipEntry = zipInputStream.nextEntry
+            }
+        }
+
+        val tempJarFile = File("${jarFile.parent}/${jarFile.nameWithoutExtension}_temp.jar")
+        ZipInputStream(jarFile.inputStream()).use { jarZipInputStream ->
+            ZipOutputStream(FileOutputStream(tempJarFile)).use { jarZipOutputStream ->
+                var zipEntry = jarZipInputStream.nextEntry
+                while (zipEntry != null) {
+                    if (!zipEntry.name.startsWith("META-INF/")) {
+                        jarZipOutputStream.putNextEntry(ZipEntry(zipEntry.name))
+                        jarZipInputStream.copyTo(jarZipOutputStream)
+                    }
+                    zipEntry = jarZipInputStream.nextEntry
+                }
+                assetsFolder.walkTopDown().forEach { file ->
+                    if (file.isFile) {
+                        jarZipOutputStream.putNextEntry(ZipEntry(file.relativeTo(assetsFolder).toString().replace("\\", "/")))
+                        file.inputStream().use { inputStream ->
+                            inputStream.copyTo(jarZipOutputStream)
+                        }
+                        jarZipOutputStream.closeEntry()
+                    }
+                }
+            }
+        }
+
+        // Retry logic for Windows file locking issues
+        var retries = 5
+        var deleted = false
+        while (retries > 0 && !deleted) {
+            try {
+                deleted = jarFile.delete()
+                if (!deleted) {
+                    Thread.sleep(100)
+                    retries--
+                }
+            } catch (e: Exception) {
+                logger.warn { "Retry ${6 - retries}: Could not delete JAR file: ${e.message}" }
+                Thread.sleep(100)
+                retries--
+            }
+        }
+
+        if (!deleted) {
+            logger.error { "Failed to delete original JAR file after multiple retries" }
+            throw Exception("Could not replace JAR file - it may be locked by another process")
+        }
+
+        if (!tempJarFile.renameTo(jarFile)) {
+            logger.error { "Failed to rename temp JAR file" }
+            throw Exception("Could not rename temporary JAR file")
+        }
+
+        assetsFolder.deleteRecursively()
+    }
+
     private val network: NetworkHelper by injectLazy()
 
     private suspend fun downloadAPKFile(
@@ -374,41 +562,32 @@ object IReaderExtension {
     ): Any {
         logger.debug { "Loading IReader source from JAR: $jarPath, class: $className" }
 
-        // Create a ClassLoader that includes both the extension JAR and the server's classpath
-        // This allows the extension to access our IReader core API classes
-        val classLoader =
-            PackageTools.jarLoaderMap[jarPath] ?: URLClassLoader(
-                arrayOf(Path(jarPath).toUri().toURL()),
-                this::class.java.classLoader, // Use server's classloader as parent
-            )
-        val classToLoad = Class.forName(className, false, classLoader)
-
+        // Use system class loader as parent like IReader main app does
+        val systemClassLoader = URLClassLoader.getSystemClassLoader()
+        
+        // Create a ClassLoader for the extension JAR
+        val classLoader = PackageTools.jarLoaderMap[jarPath] ?: URLClassLoader(
+            arrayOf(File(jarPath).toURI().toURL()),
+            systemClassLoader,
+        )
+        
         PackageTools.jarLoaderMap[jarPath] = classLoader
 
-        // Create Dependencies for the source
-        val httpClients = ireader.core.http.HttpClients()
-        val preferences = ireader.core.prefs.PreferenceStoreImpl(pkgName)
+        // Create Dependencies for the source (like IReader main app)
+        val preferences = PreferenceStoreFactory().create(pkgName)
+        val httpClients = ireader.core.http.HttpClients(preferences)
         val dependencies = ireader.core.source.Dependencies(httpClients, preferences)
 
-        // Try to instantiate with Dependencies parameter
+        // Load source like IReader main app does - use getConstructor with specific type
         return try {
-            // Use reflection to find constructor by parameter count to avoid class loading issues
-            val constructors = classToLoad.declaredConstructors
-            val dependenciesConstructor = constructors.firstOrNull { it.parameterCount == 1 }
-
-            if (dependenciesConstructor != null) {
-                logger.debug { "Found constructor with 1 parameter, using Dependencies" }
-                dependenciesConstructor.newInstance(dependencies)
-            } else {
-                // Try no-arg constructor
-                logger.debug { "No single-parameter constructor found, trying no-arg constructor" }
-                val noArgConstructor =
-                    constructors.firstOrNull { it.parameterCount == 0 }
-                        ?: throw Exception("Source class has no compatible constructor: $className")
-                noArgConstructor.newInstance()
-            }
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to instantiate source class: $className" }
+            val obj = Class.forName(className, false, classLoader)
+                .getConstructor(ireader.core.source.Dependencies::class.java)
+                .newInstance(dependencies)
+            
+            logger.info { "Successfully loaded IReader source: $className" }
+            obj
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load catalog $pkgName" }
             throw Exception("Could not instantiate source: ${e.message}", e)
         }
     }

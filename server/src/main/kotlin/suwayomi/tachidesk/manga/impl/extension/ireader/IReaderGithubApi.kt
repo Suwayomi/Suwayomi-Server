@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.parseAs
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import uy.kohesive.injekt.injectLazy
@@ -22,13 +23,15 @@ object IReaderGithubApi {
 
     @Serializable
     private data class IReaderExtensionJsonObject(
-        val name: String,
-        val pkg: String,
-        val apk: String,
-        val lang: String,
-        val code: Long,
-        val version: String,
-        val nsfw: Boolean,
+        @SerialName("name") val name: String,
+        @SerialName("pkg") val pkg: String,
+        @SerialName("version") val version: String,
+        @SerialName("code") val code: Int,
+        @SerialName("lang") val lang: String,
+        @SerialName("apk") val apk: String,
+        @SerialName("id") val id: Long,
+        @SerialName("description") val description: String,
+        @SerialName("nsfw") val nsfw: Boolean,
     )
 
     suspend fun findExtensions(repo: String): List<OnlineIReaderExtension> {

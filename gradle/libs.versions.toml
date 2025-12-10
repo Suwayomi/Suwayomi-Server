@@ -17,7 +17,10 @@ xmlserialization = "0.91.3"
 ktlint = "1.7.1"
 koin = "4.1.1"
 moko = "0.25.1"
-
+ksoup = "0.2.5"
+datetime = "0.7.1"
+datastore = "1.1.1"
+ktor = "3.3.2"
 [libraries]
 # Kotlin
 kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
@@ -165,7 +168,23 @@ ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 
 # moko
 moko = { module = "dev.icerock.moko:resources", version.ref = "moko" }
-
+# Ksoup - Kotlin Multiplatform HTML parser (works on iOS, Android, Desktop)
+ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+ksoup-network = { module = "com.fleeksoft.ksoup:ksoup-network", version.ref = "ksoup" }
+androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
+androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
+datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "datetime" }
+ktor-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-core-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
+ktor-core-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-js = { module = "io.ktor:ktor-client-js", version.ref = "ktor" }
+ktor-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-contentNegotiation-gson = { module = "io.ktor:ktor-serialization-gson", version.ref = "ktor" }
+ktor-contentNegotiation-kotlinx = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-contentNegotiation-jackson = { module = "io.ktor:ktor-serialization-jackson", version = "3.1.2" }
+stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin" }
+kermit = "co.touchlab:kermit:2.0.8"
 [plugins]
 # Kotlin
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin"}

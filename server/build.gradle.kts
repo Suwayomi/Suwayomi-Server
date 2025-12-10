@@ -70,14 +70,22 @@ dependencies {
 
     // IReader extension dependencies - these must be provided by the server
     // Extensions are compiled with compileOnly and expect the runtime to provide these
-    implementation("io.ktor:ktor-client-core:3.1.2")
-    implementation("io.ktor:ktor-client-cio:3.1.2")
-    implementation("io.ktor:ktor-client-okhttp:3.1.2")
-    implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
-    implementation("io.ktor:ktor-serialization-gson:3.1.2")
-    implementation("io.ktor:ktor-serialization-jackson:3.1.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+    implementation(libs.coroutines.core)
+    implementation(libs.stdlib)
+    implementation(libs.datetime)
+    implementation(libs.serialization.json)
+    implementation(libs.ktor.core)
+    implementation(libs.ktor.core.cio) // CIO engine for Ktor
+    implementation(libs.ktor.contentNegotiation)
+    implementation(libs.ktor.contentNegotiation.kotlinx)
+    // Ksoup - KMP-compatible HTML parser (replaces Jsoup for iOS)
+    implementation(libs.ksoup)
+    implementation(libs.ksoup.network)
+    // Kermit logging - exposed as implementation for consumers
+    implementation(libs.kermit)
+    implementation(libs.ktor.okhttp)
+    implementation(libs.ktor.contentNegotiation.gson)
+
 
     // ComicInfo
     implementation(libs.serialization.xml.core)
@@ -119,6 +127,11 @@ dependencies {
     implementation(libs.cronUtils)
 
     implementation(libs.jwt)
+    implementation(libs.ksoup)
+    implementation(libs.ksoup.network)
+    implementation(libs.androidx.datastore.core)
+    implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.datetime)
 
     compileOnly(libs.kte)
 }
@@ -131,6 +144,12 @@ application {
     applicationDefaultJvmArgs =
         listOf(
             "-Djunrar.extractor.thread-keep-alive-seconds=30",
+            "-XX:+TieredCompilation",
+            // Required for IReader extensions: dex2jar produces bytecode with invalid
+            // stackmap frames that Java's verifier rejects. This affects both APK->JAR
+            // conversion and pre-built JARs from the IReader repository.
+            // ASM frame recomputation doesn't work for Kotlin coroutine bytecode.
+            "-Xverify:none",
         )
     mainClass.set(MainClass)
 }
