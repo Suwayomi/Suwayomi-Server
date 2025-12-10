@@ -86,7 +86,10 @@ object Search {
                             },
                         )
                     }
-                    else -> it
+
+                    else -> {
+                        it
+                    }
                 },
             )
         }
@@ -122,13 +125,27 @@ object Search {
                 is Filter.Header -> {
                     // NOOP
                 }
+
                 is Filter.Separator -> {
                     // NOOP
                 }
-                is Filter.Select<*> -> filter.state = change.state.toInt()
-                is Filter.Text -> filter.state = change.state
-                is Filter.CheckBox -> filter.state = change.state.toBooleanStrict()
-                is Filter.TriState -> filter.state = change.state.toInt()
+
+                is Filter.Select<*> -> {
+                    filter.state = change.state.toInt()
+                }
+
+                is Filter.Text -> {
+                    filter.state = change.state
+                }
+
+                is Filter.CheckBox -> {
+                    filter.state = change.state.toBooleanStrict()
+                }
+
+                is Filter.TriState -> {
+                    filter.state = change.state.toInt()
+                }
+
                 is Filter.Group<*> -> {
                     val groupChange = jsonMapper.fromJsonString<FilterChange>(change.state)
 
@@ -139,6 +156,7 @@ object Search {
                         is Filter.Select<*> -> groupFilter.state = groupChange.state.toInt()
                     }
                 }
+
                 is Filter.Sort -> {
                     filter.state = jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
                 }

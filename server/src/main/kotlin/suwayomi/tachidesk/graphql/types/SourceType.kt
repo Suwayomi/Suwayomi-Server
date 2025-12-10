@@ -204,12 +204,27 @@ data class GroupFilter(
 
 fun filterOf(filter: SourceFilter<*>): Filter =
     when (filter) {
-        is SourceFilter.Header -> HeaderFilter(filter.name)
-        is SourceFilter.Separator -> SeparatorFilter(filter.name)
-        is SourceFilter.Select<*> -> SelectFilter(filter.name, filter.displayValues, filter.state)
-        is SourceFilter.Text -> TextFilter(filter.name, filter.state)
-        is SourceFilter.CheckBox -> CheckBoxFilter(filter.name, filter.state)
-        is SourceFilter.TriState ->
+        is SourceFilter.Header -> {
+            HeaderFilter(filter.name)
+        }
+
+        is SourceFilter.Separator -> {
+            SeparatorFilter(filter.name)
+        }
+
+        is SourceFilter.Select<*> -> {
+            SelectFilter(filter.name, filter.displayValues, filter.state)
+        }
+
+        is SourceFilter.Text -> {
+            TextFilter(filter.name, filter.state)
+        }
+
+        is SourceFilter.CheckBox -> {
+            CheckBoxFilter(filter.name, filter.state)
+        }
+
+        is SourceFilter.TriState -> {
             TriStateFilter(
                 filter.name,
                 when (filter.state) {
@@ -218,13 +233,22 @@ fun filterOf(filter: SourceFilter<*>): Filter =
                     else -> TriState.IGNORE
                 },
             )
-        is SourceFilter.Group<*> ->
+        }
+
+        is SourceFilter.Group<*> -> {
             GroupFilter(
                 filter.name,
                 filter.state.map { filterOf(it as SourceFilter<*>) },
             )
-        is SourceFilter.Sort -> SortFilter(filter.name, filter.values.asList(), filter.state?.let(SortFilter::SortSelection))
-        else -> throw RuntimeException("sealed class cannot have more subtypes!")
+        }
+
+        is SourceFilter.Sort -> {
+            SortFilter(filter.name, filter.values.asList(), filter.state?.let(SortFilter::SortSelection))
+        }
+
+        else -> {
+            throw RuntimeException("sealed class cannot have more subtypes!")
+        }
     }
 
 /*sealed interface FilterChange {
@@ -286,25 +310,31 @@ fun updateFilterList(
             is SourceFilter.Header -> {
                 // NOOP
             }
+
             is SourceFilter.Separator -> {
                 // NOOP
             }
+
             is SourceFilter.Select<*> -> {
                 filter.state = change.selectState
                     ?: throw Exception("Expected select state change at position ${change.position}")
             }
+
             is SourceFilter.Text -> {
                 filter.state = change.textState
                     ?: throw Exception("Expected text state change at position ${change.position}")
             }
+
             is SourceFilter.CheckBox -> {
                 filter.state = change.checkBoxState
                     ?: throw Exception("Expected checkbox state change at position ${change.position}")
             }
+
             is SourceFilter.TriState -> {
                 filter.state = change.triState?.ordinal
                     ?: throw Exception("Expected tri state change at position ${change.position}")
             }
+
             is SourceFilter.Group<*> -> {
                 val groupChange =
                     change.groupChange
@@ -315,20 +345,24 @@ fun updateFilterList(
                         groupFilter.state = groupChange.checkBoxState
                             ?: throw Exception("Expected checkbox state change at position ${change.position}")
                     }
+
                     is SourceFilter.TriState -> {
                         groupFilter.state = groupChange.triState?.ordinal
                             ?: throw Exception("Expected tri state change at position ${change.position}")
                     }
+
                     is SourceFilter.Text -> {
                         groupFilter.state = groupChange.textState
                             ?: throw Exception("Expected text state change at position ${change.position}")
                     }
+
                     is SourceFilter.Select<*> -> {
                         groupFilter.state = groupChange.selectState
                             ?: throw Exception("Expected select state change at position ${change.position}")
                     }
                 }
             }
+
             is SourceFilter.Sort -> {
                 filter.state = change.sortState?.run {
                     SourceFilter.Sort.Selection(index, ascending)
@@ -402,7 +436,7 @@ data class MultiSelectListPreference(
 
 fun preferenceOf(preference: SourcePreference): Preference =
     when (preference) {
-        is SourceSwitchPreference ->
+        is SourceSwitchPreference -> {
             SwitchPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -412,7 +446,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.currentValue as Boolean,
                 preference.defaultValue as Boolean,
             )
-        is SourceCheckBoxPreference ->
+        }
+
+        is SourceCheckBoxPreference -> {
             CheckBoxPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -422,7 +458,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.currentValue as Boolean,
                 preference.defaultValue as Boolean,
             )
-        is SourceEditTextPreference ->
+        }
+
+        is SourceEditTextPreference -> {
             EditTextPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -435,7 +473,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.dialogMessage?.toString(),
                 preference.text,
             )
-        is SourceListPreference ->
+        }
+
+        is SourceListPreference -> {
             ListPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -447,7 +487,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.entries.map { it.toString() },
                 preference.entryValues.map { it.toString() },
             )
-        is SourceMultiSelectListPreference ->
+        }
+
+        is SourceMultiSelectListPreference -> {
             MultiSelectListPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -461,5 +503,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.entries.map { it.toString() },
                 preference.entryValues.map { it.toString() },
             )
-        else -> throw RuntimeException("sealed class cannot have more subtypes!")
+        }
+
+        else -> {
+            throw RuntimeException("sealed class cannot have more subtypes!")
+        }
     }

@@ -367,37 +367,127 @@ class KcefWebView {
     ): KeyEvent? {
         val code =
             when (char.uppercaseChar()) {
-                in 'A'..'Z', in '0'..'9' -> char.uppercaseChar().code
-                '&' -> KeyEvent.VK_AMPERSAND
-                '*' -> KeyEvent.VK_ASTERISK
-                '@' -> KeyEvent.VK_AT
-                '\\' -> KeyEvent.VK_BACK_SLASH
-                '{' -> KeyEvent.VK_BRACELEFT
-                '}' -> KeyEvent.VK_BRACERIGHT
-                '^' -> KeyEvent.VK_CIRCUMFLEX
-                ']' -> KeyEvent.VK_CLOSE_BRACKET
-                ':' -> KeyEvent.VK_COLON
-                ',' -> KeyEvent.VK_COMMA
-                '$' -> KeyEvent.VK_DOLLAR
-                '=' -> KeyEvent.VK_EQUALS
-                '€' -> KeyEvent.VK_EURO_SIGN
-                '!' -> KeyEvent.VK_EXCLAMATION_MARK
-                '>' -> KeyEvent.VK_GREATER
-                '(' -> KeyEvent.VK_LEFT_PARENTHESIS
-                '<' -> KeyEvent.VK_LESS
-                '-' -> KeyEvent.VK_MINUS
-                '#' -> KeyEvent.VK_NUMBER_SIGN
-                '[' -> KeyEvent.VK_OPEN_BRACKET
-                '.' -> KeyEvent.VK_PERIOD
-                '+' -> KeyEvent.VK_PLUS
-                '\'' -> KeyEvent.VK_QUOTE
-                '"' -> KeyEvent.VK_QUOTEDBL
-                ')' -> KeyEvent.VK_RIGHT_PARENTHESIS
-                ';' -> KeyEvent.VK_SEMICOLON
-                '/' -> KeyEvent.VK_SLASH
-                ' ' -> KeyEvent.VK_SPACE
-                '_' -> KeyEvent.VK_UNDERSCORE
-                else ->
+                in 'A'..'Z', in '0'..'9' -> {
+                    char.uppercaseChar().code
+                }
+
+                '&' -> {
+                    KeyEvent.VK_AMPERSAND
+                }
+
+                '*' -> {
+                    KeyEvent.VK_ASTERISK
+                }
+
+                '@' -> {
+                    KeyEvent.VK_AT
+                }
+
+                '\\' -> {
+                    KeyEvent.VK_BACK_SLASH
+                }
+
+                '{' -> {
+                    KeyEvent.VK_BRACELEFT
+                }
+
+                '}' -> {
+                    KeyEvent.VK_BRACERIGHT
+                }
+
+                '^' -> {
+                    KeyEvent.VK_CIRCUMFLEX
+                }
+
+                ']' -> {
+                    KeyEvent.VK_CLOSE_BRACKET
+                }
+
+                ':' -> {
+                    KeyEvent.VK_COLON
+                }
+
+                ',' -> {
+                    KeyEvent.VK_COMMA
+                }
+
+                '$' -> {
+                    KeyEvent.VK_DOLLAR
+                }
+
+                '=' -> {
+                    KeyEvent.VK_EQUALS
+                }
+
+                '€' -> {
+                    KeyEvent.VK_EURO_SIGN
+                }
+
+                '!' -> {
+                    KeyEvent.VK_EXCLAMATION_MARK
+                }
+
+                '>' -> {
+                    KeyEvent.VK_GREATER
+                }
+
+                '(' -> {
+                    KeyEvent.VK_LEFT_PARENTHESIS
+                }
+
+                '<' -> {
+                    KeyEvent.VK_LESS
+                }
+
+                '-' -> {
+                    KeyEvent.VK_MINUS
+                }
+
+                '#' -> {
+                    KeyEvent.VK_NUMBER_SIGN
+                }
+
+                '[' -> {
+                    KeyEvent.VK_OPEN_BRACKET
+                }
+
+                '.' -> {
+                    KeyEvent.VK_PERIOD
+                }
+
+                '+' -> {
+                    KeyEvent.VK_PLUS
+                }
+
+                '\'' -> {
+                    KeyEvent.VK_QUOTE
+                }
+
+                '"' -> {
+                    KeyEvent.VK_QUOTEDBL
+                }
+
+                ')' -> {
+                    KeyEvent.VK_RIGHT_PARENTHESIS
+                }
+
+                ';' -> {
+                    KeyEvent.VK_SEMICOLON
+                }
+
+                '/' -> {
+                    KeyEvent.VK_SLASH
+                }
+
+                ' ' -> {
+                    KeyEvent.VK_SPACE
+                }
+
+                '_' -> {
+                    KeyEvent.VK_UNDERSCORE
+                }
+
+                else -> {
                     when (strKey) {
                         "Alt" -> KeyEvent.VK_ALT
                         "Backspace" -> KeyEvent.VK_BACK_SPACE
@@ -435,6 +525,7 @@ class KcefWebView {
                         "ArrowUp" -> KeyEvent.VK_UP
                         else -> KeyEvent.VK_UNDEFINED
                     }
+                }
             }
         if (id == KeyEvent.KEY_TYPED) {
             if (char == KeyEvent.CHAR_UNDEFINED && code != KeyEvent.VK_ENTER) return null

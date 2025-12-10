@@ -24,12 +24,19 @@ class MangaUpdates(
             (0..10)
                 .flatMap { decimal ->
                     when (decimal) {
-                        0 -> listOf("-")
-                        10 -> listOf("10.0")
-                        else ->
+                        0 -> {
+                            listOf("-")
+                        }
+
+                        10 -> {
+                            listOf("10.0")
+                        }
+
+                        else -> {
                             (0..9).map { fraction ->
                                 "$decimal.$fraction"
                             }
+                        }
                     }
                 }
     }

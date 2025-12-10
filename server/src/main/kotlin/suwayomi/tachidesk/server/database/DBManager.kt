@@ -52,6 +52,7 @@ object DBManager {
                         addDataSourceProperty("cachePrepStmts", "true")
                         addDataSourceProperty("useServerPrepStmts", "true")
                     }
+
                     DatabaseType.H2 -> {
                         jdbcUrl = "jdbc:h2:${applicationDirs.dataRoot}/database"
                         driverClassName = "org.h2.Driver"
@@ -95,12 +96,33 @@ object DBManager {
                 preserveKeywordCasing = false
             }
 
-        // Create a new HikariCP pool
-        hikariDataSource = createHikariDataSource()
+        return if (serverConfig.useHikariConnectionPool.value) {
+            // Create a new HikariCP pool
+            hikariDataSource = createHikariDataSource()
 
-        return Database
-            .connect(hikariDataSource!!, databaseConfig = dbConfig)
-            .also { db = it }
+            return Database
+                .connect(hikariDataSource!!, databaseConfig = dbConfig)
+        } else {
+            when (serverConfig.databaseType.value) {
+                DatabaseType.POSTGRESQL -> {
+                    Database.connect(
+                        "jdbc:${serverConfig.databaseUrl.value}",
+                        "org.postgresql.Driver",
+                        user = serverConfig.databaseUsername.value,
+                        password = serverConfig.databasePassword.value,
+                        databaseConfig = dbConfig,
+                    )
+                }
+
+                DatabaseType.H2 -> {
+                    Database.connect(
+                        "jdbc:h2:${Injekt.get<ApplicationDirs>().dataRoot}/database",
+                        "org.h2.Driver",
+                        databaseConfig = dbConfig,
+                    )
+                }
+            }
+        }.also { db = it }
     }
 
     fun shutdown() {

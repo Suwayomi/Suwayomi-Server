@@ -25,8 +25,14 @@ fun UserType.requireUser(): Int =
 
 fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
     when (this) {
-        is UserType.Admin -> id
-        UserType.Visitor if ctx.getAttribute(Attribute.TachideskBasic) -> 1
+        is UserType.Admin -> {
+            id
+        }
+
+        UserType.Visitor if ctx.getAttribute(Attribute.TachideskBasic) -> {
+            1
+        }
+
         UserType.Visitor -> {
             ctx.header("WWW-Authenticate", "Basic")
             throw UnauthorizedException()
@@ -53,8 +59,14 @@ fun getUserFromContext(ctx: Context): UserType {
 
     return when (serverConfig.authMode.value) {
         // NOTE: Basic Auth is expected to have been validated by JavalinSetup
-        AuthMode.NONE, AuthMode.BASIC_AUTH -> UserType.Admin(1)
-        AuthMode.SIMPLE_LOGIN -> if (cookieValid()) UserType.Admin(1) else UserType.Visitor
+        AuthMode.NONE, AuthMode.BASIC_AUTH -> {
+            UserType.Admin(1)
+        }
+
+        AuthMode.SIMPLE_LOGIN -> {
+            if (cookieValid()) UserType.Admin(1) else UserType.Visitor
+        }
+
         AuthMode.UI_LOGIN -> {
             val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
             val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
@@ -72,8 +84,14 @@ fun getUserFromWsContext(ctx: WsConnectContext): UserType {
 
     return when (serverConfig.authMode.value) {
         // NOTE: Basic Auth is expected to have been validated by JavalinSetup
-        AuthMode.NONE, AuthMode.BASIC_AUTH -> UserType.Admin(1)
-        AuthMode.SIMPLE_LOGIN -> if (cookieValid()) UserType.Admin(1) else UserType.Visitor
+        AuthMode.NONE, AuthMode.BASIC_AUTH -> {
+            UserType.Admin(1)
+        }
+
+        AuthMode.SIMPLE_LOGIN -> {
+            if (cookieValid()) UserType.Admin(1) else UserType.Visitor
+        }
+
         AuthMode.UI_LOGIN -> {
             val authentication =
                 ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol") ?: ctx.cookie("suwayomi-server-token")

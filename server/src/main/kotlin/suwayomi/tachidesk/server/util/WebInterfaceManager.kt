@@ -12,6 +12,7 @@ import android.content.Context
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.util.lang.launchIO
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
@@ -84,6 +85,7 @@ object WebInterfaceManager {
 
     private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheck"
     private const val SERVED_WEBUI_FLAVOR_KEY = "servedWebUIFlavor"
+    private const val VERSION_UPDATE_TIMESTAMP_KEY = "webUIVersionUpdateTimestamp"
 
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
@@ -141,6 +143,7 @@ object WebInterfaceManager {
         return AboutWebUI(
             channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
+            updateTimestamp = preferences.getLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()),
         )
     }
 
@@ -191,7 +194,7 @@ object WebInterfaceManager {
         }
 
         @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launchIO {
             setupWebUI()
             isSetupComplete = true
         }
@@ -398,7 +401,7 @@ object WebInterfaceManager {
             try {
                 downloadVersion(flavor, getVersion())
                 true
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 false
             } ||
                 isLocalWebUIValid
@@ -425,7 +428,7 @@ object WebInterfaceManager {
 
         try {
             setupBundledWebUI()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw Exception("Unable to setup a webUI")
         }
     }
@@ -476,6 +479,7 @@ object WebInterfaceManager {
         log.info { "An update is available, starting download..." }
         try {
             downloadVersion(flavor, getLatestCompatibleVersion(flavor))
+            preferences.edit().putLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()).apply()
             serveWebUI()
         } catch (e: Exception) {
             log.warn(e) { "failed due to" }
@@ -495,7 +499,7 @@ object WebInterfaceManager {
     private fun getLocalVersion(path: String = applicationDirs.webUIRoot): String =
         try {
             File("$path/revision").readText().trim()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             "r-1"
         }
 
@@ -582,7 +586,7 @@ object WebInterfaceManager {
                     .string()
                     .trim()
             })
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
 
@@ -709,7 +713,7 @@ object WebInterfaceManager {
         version: String,
     ) {
         @OptIn(DelicateCoroutinesApi::class)
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launchIO {
             downloadVersion(flavor, version)
             serveWebUI()
         }

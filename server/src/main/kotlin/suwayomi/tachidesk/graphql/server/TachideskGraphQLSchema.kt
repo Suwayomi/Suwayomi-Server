@@ -70,10 +70,16 @@ class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
 
     override fun willGenerateGraphQLType(type: KType): GraphQLType? =
         when (type.classifier as? KClass<*>) {
-            Long::class -> GraphQLLongAsString // encode to string for JS
-            Duration::class -> GraphQLDurationAsString // encode Duration as ISO-8601 string
+            // encode to string for JS
+            Long::class -> GraphQLLongAsString
+
+            // encode Duration as ISO-8601 string
+            Duration::class -> GraphQLDurationAsString
+
             Cursor::class -> GraphQLCursor
+
             UploadedFile::class -> GraphQLUpload
+
             else -> super.willGenerateGraphQLType(type)
         }
 }

@@ -372,10 +372,11 @@ object Manga {
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
         return when (val source = getCatalogueSourceOrStub(sourceId)) {
-            is HttpSource ->
+            is HttpSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
                     fetchHttpSourceMangaThumbnail(source, mangaEntry)
                 }
+            }
 
             is LocalSource -> {
                 val imageFile =
@@ -393,7 +394,7 @@ object Manga {
                 imageFile.inputStream() to contentType
             }
 
-            is StubSource ->
+            is StubSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
                     val thumbnailUrl =
                         mangaEntry[MangaTable.thumbnail_url]
@@ -403,8 +404,11 @@ object Manga {
                             GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
                         ).await()
                 }
+            }
 
-            else -> throw IllegalArgumentException("Unknown source")
+            else -> {
+                throw IllegalArgumentException("Unknown source")
+            }
         }
     }
 

@@ -149,6 +149,7 @@ object ExtensionsList {
                                         this[ExtensionTable.hasUpdate] = true
                                         updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
                                     }
+
                                     foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode] -> {
                                         // somehow the user installed an invalid version
                                         this[ExtensionTable.isObsolete] = true

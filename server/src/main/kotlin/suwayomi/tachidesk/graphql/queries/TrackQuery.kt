@@ -61,8 +61,14 @@ class TrackQuery {
             cursor: Cursor,
         ): Boolean =
             when (this) {
-                ID -> tracker.id > cursor.value.toInt()
-                NAME -> tracker.name > cursor.value
+                ID -> {
+                    tracker.id > cursor.value.toInt()
+                }
+
+                NAME -> {
+                    tracker.name > cursor.value
+                }
+
                 IS_LOGGED_IN -> {
                     val value = cursor.value.substringAfter('-').toBooleanStrict()
                     !value || tracker.isLoggedIn
@@ -74,8 +80,14 @@ class TrackQuery {
             cursor: Cursor,
         ): Boolean =
             when (this) {
-                ID -> tracker.id < cursor.value.toInt()
-                NAME -> tracker.name < cursor.value
+                ID -> {
+                    tracker.id < cursor.value.toInt()
+                }
+
+                NAME -> {
+                    tracker.name < cursor.value
+                }
+
                 IS_LOGGED_IN -> {
                     val value = cursor.value.substringAfter('-').toBooleanStrict()
                     value || !tracker.isLoggedIn
@@ -159,18 +171,21 @@ class TrackQuery {
 
                         res =
                             when (orderType) {
-                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST ->
+                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> {
                                     when (orderBy) {
                                         TrackerOrderBy.ID -> res.sortedByDescending { it.id }
                                         TrackerOrderBy.NAME -> res.sortedByDescending { it.name }
                                         TrackerOrderBy.IS_LOGGED_IN -> res.sortedByDescending { it.isLoggedIn }
                                     }
-                                SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST ->
+                                }
+
+                                SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
                                     when (orderBy) {
                                         TrackerOrderBy.ID -> res.sortedBy { it.id }
                                         TrackerOrderBy.NAME -> res.sortedBy { it.name }
                                         TrackerOrderBy.IS_LOGGED_IN -> res.sortedBy { it.isLoggedIn }
                                     }
+                                }
                             }
                     }
                 }

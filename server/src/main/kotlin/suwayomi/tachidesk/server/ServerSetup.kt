@@ -125,6 +125,7 @@ data class DatabaseSettings(
     val databaseUrl: String,
     val databaseUsername: String,
     val databasePassword: String,
+    val useHikariConnectionPool: Boolean,
 )
 
 val androidCompat by lazy { AndroidCompat() }
@@ -271,13 +272,15 @@ fun applicationSetup() {
 
     logger.debug {
         "Loaded config:\n" +
-            GlobalConfigManager.config
-                .root()
+            GlobalConfigManager
+                .getRedactedConfig(
+                    SettingsRegistry
+                        .getAll()
+                        .filter { !it.value.privacySafe }
+                        .keys
+                        .toList(),
+                ).root()
                 .render(ConfigRenderOptions.concise().setFormatted(true))
-                .replace(
-                    Regex("(\".*(?i:username|password).*\"\\s:\\s)\".*\""),
-                    "$1\"[REDACTED]\"",
-                )
     }
 
     logger.debug { "Data Root directory is set to: ${applicationDirs.dataRoot}" }
@@ -398,17 +401,19 @@ fun applicationSetup() {
             serverConfig.databaseUrl,
             serverConfig.databaseUsername,
             serverConfig.databasePassword,
+            serverConfig.useHikariConnectionPool,
         ) { vargs ->
             DatabaseSettings(
                 vargs[0] as DatabaseType,
                 vargs[1] as String,
                 vargs[2] as String,
                 vargs[3] as String,
+                vargs[4] as Boolean,
             )
         }.distinctUntilChanged(),
-        { (databaseType, databaseUrl, databaseUsername, _) ->
+        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, hikariCp) ->
             logger.info {
-                "Database changed - type=$databaseType url=$databaseUrl, username=$databaseUsername, password=[REDACTED]"
+                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], hikaricp=$hikariCp"
             }
             databaseUp()
 
@@ -461,7 +466,7 @@ fun applicationSetup() {
         }.distinctUntilChanged(),
         { (proxyEnabled, proxyVersion, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
             logger.info {
-                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]"
+                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=[REDACTED], password=[REDACTED]"
             }
             if (proxyEnabled) {
                 System.setProperty("socksProxyHost", proxyHost)
