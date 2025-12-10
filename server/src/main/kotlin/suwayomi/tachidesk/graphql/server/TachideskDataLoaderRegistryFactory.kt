@@ -24,6 +24,8 @@ import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.IReaderExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.IReaderExtensionForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.IReaderNovelDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.IReaderNovelForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.IReaderSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.IReaderSourcesForExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
@@ -84,6 +86,8 @@ class TachideskDataLoaderRegistryFactory {
                 ExtensionForSourceDataLoader(),
                 IReaderExtensionDataLoader(),
                 IReaderExtensionForSourceDataLoader(),
+                IReaderNovelDataLoader(),
+                IReaderNovelForSourceDataLoader(),
                 IReaderSourceDataLoader(),
                 IReaderSourcesForExtensionDataLoader(),
                 TrackerDataLoader(),
