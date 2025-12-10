@@ -12,6 +12,7 @@ import graphql.execution.DataFetcherResult
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.IReaderNovelType
+import suwayomi.tachidesk.graphql.types.IReaderNovelsPageType
 import suwayomi.tachidesk.manga.impl.IReaderNovel
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
@@ -19,7 +20,7 @@ import java.util.concurrent.CompletableFuture
 class IReaderNovelQuery {
     @RequireAuth
     @GraphQLDescription("Get detailed information about a novel")
-    fun ireaderNovelDetails(
+    fun ireaderNovel(
         @GraphQLDescription("Source ID")
         sourceId: Long,
         @GraphQLDescription("Novel URL from the source")
@@ -29,6 +30,54 @@ class IReaderNovelQuery {
             asDataFetcherResult {
                 require(novelUrl.isNotBlank()) { "Novel URL cannot be empty" }
                 IReaderNovelType(IReaderNovel.getNovelDetails(sourceId, novelUrl))
+            }
+        }
+
+    @RequireAuth
+    @GraphQLDescription("Get popular novels from a source")
+    fun ireaderPopularNovels(
+        @GraphQLDescription("Source ID")
+        sourceId: Long,
+        @GraphQLDescription("Page number (1-indexed)")
+        page: Int = 1,
+    ): CompletableFuture<DataFetcherResult<IReaderNovelsPageType?>> =
+        future {
+            asDataFetcherResult {
+                require(page > 0) { "Page must be greater than 0" }
+                IReaderNovelsPageType(IReaderNovel.getPopularNovels(sourceId, page))
+            }
+        }
+
+    @RequireAuth
+    @GraphQLDescription("Get latest novels from a source")
+    fun ireaderLatestNovels(
+        @GraphQLDescription("Source ID")
+        sourceId: Long,
+        @GraphQLDescription("Page number (1-indexed)")
+        page: Int = 1,
+    ): CompletableFuture<DataFetcherResult<IReaderNovelsPageType?>> =
+        future {
+            asDataFetcherResult {
+                require(page > 0) { "Page must be greater than 0" }
+                IReaderNovelsPageType(IReaderNovel.getLatestNovels(sourceId, page))
+            }
+        }
+
+    @RequireAuth
+    @GraphQLDescription("Search novels from a source")
+    fun ireaderSearchNovels(
+        @GraphQLDescription("Source ID")
+        sourceId: Long,
+        @GraphQLDescription("Search query")
+        query: String,
+        @GraphQLDescription("Page number (1-indexed)")
+        page: Int = 1,
+    ): CompletableFuture<DataFetcherResult<IReaderNovelsPageType?>> =
+        future {
+            asDataFetcherResult {
+                require(query.isNotBlank()) { "Search query cannot be empty" }
+                require(page > 0) { "Page must be greater than 0" }
+                IReaderNovelsPageType(IReaderNovel.searchNovels(sourceId, query, page))
             }
         }
 }
