@@ -144,10 +144,12 @@ application {
     applicationDefaultJvmArgs =
         listOf(
             "-Djunrar.extractor.thread-keep-alive-seconds=30",
-            // Disable bytecode verification for IReader extensions
-            // dex2jar produces bytecode with invalid stackmap frames that Java's verifier rejects
-            "-Xverify:none",
             "-XX:+TieredCompilation",
+            // Required for IReader extensions: dex2jar produces bytecode with invalid
+            // stackmap frames that Java's verifier rejects. This affects both APK->JAR
+            // conversion and pre-built JARs from the IReader repository.
+            // ASM frame recomputation doesn't work for Kotlin coroutine bytecode.
+            "-Xverify:none",
         )
     mainClass.set(MainClass)
 }
