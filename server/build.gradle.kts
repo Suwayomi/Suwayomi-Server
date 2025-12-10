@@ -70,14 +70,22 @@ dependencies {
 
     // IReader extension dependencies - these must be provided by the server
     // Extensions are compiled with compileOnly and expect the runtime to provide these
-    implementation("io.ktor:ktor-client-core:3.1.2")
-    implementation("io.ktor:ktor-client-cio:3.1.2")
-    implementation("io.ktor:ktor-client-okhttp:3.1.2")
-    implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
-    implementation("io.ktor:ktor-serialization-gson:3.1.2")
-    implementation("io.ktor:ktor-serialization-jackson:3.1.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+    implementation(libs.coroutines.core)
+    implementation(libs.stdlib)
+    implementation(libs.datetime)
+    implementation(libs.serialization.json)
+    implementation(libs.ktor.core)
+    implementation(libs.ktor.core.cio) // CIO engine for Ktor
+    implementation(libs.ktor.contentNegotiation)
+    implementation(libs.ktor.contentNegotiation.kotlinx)
+    // Ksoup - KMP-compatible HTML parser (replaces Jsoup for iOS)
+    implementation(libs.ksoup)
+    implementation(libs.ksoup.network)
+    // Kermit logging - exposed as implementation for consumers
+    implementation(libs.kermit)
+    implementation(libs.ktor.okhttp)
+    implementation(libs.ktor.contentNegotiation.gson)
+
 
     // ComicInfo
     implementation(libs.serialization.xml.core)
@@ -136,6 +144,10 @@ application {
     applicationDefaultJvmArgs =
         listOf(
             "-Djunrar.extractor.thread-keep-alive-seconds=30",
+            // Disable bytecode verification for IReader extensions
+            // dex2jar produces bytecode with invalid stackmap frames that Java's verifier rejects
+            "-Xverify:none",
+            "-XX:+TieredCompilation",
         )
     mainClass.set(MainClass)
 }

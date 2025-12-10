@@ -25,6 +25,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.impl.extension.ireader.IReaderExtensionsList.extensionTableAsDataClass
+import suwayomi.tachidesk.manga.impl.util.BytecodeEditor
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
@@ -153,7 +154,7 @@ object IReaderExtension {
                                 key.contains("nsfw", ignoreCase = true) -> {
                                     // Try Int first, fallback to String
                                     try {
-                                        metaData.getInt(key, -1)
+                                        metaData.getString(key, "false")
                                     } catch (e: ClassCastException) {
                                         metaData.getString(key)
                                     }
@@ -226,6 +227,15 @@ object IReaderExtension {
             Thread.sleep(100)
 
             extractAssetsFromApk(apkFilePath, jarFilePath)
+
+            // Fix stackmap frames AFTER extractAssetsFromApk
+            // dex2jar produces bytecode with invalid stackmap frames that Java's verifier rejects
+            logger.info { "Fixing stackmap frames in JAR: $jarFilePath" }
+            try {
+                BytecodeEditor.fixStackmapFrames(Path(jarFilePath))
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to fix stackmap frames" }
+            }
 
             // Clean up temporary files
             try {
@@ -552,41 +562,32 @@ object IReaderExtension {
     ): Any {
         logger.debug { "Loading IReader source from JAR: $jarPath, class: $className" }
 
-        // Create a ClassLoader that includes both the extension JAR and the server's classpath
-        // This allows the extension to access our IReader core API classes
-        val classLoader =
-            PackageTools.jarLoaderMap[jarPath] ?: URLClassLoader(
-                arrayOf(Path(jarPath).toUri().toURL()),
-                this::class.java.classLoader, // Use server's classloader as parent
-            )
-        val classToLoad = Class.forName(className, false, classLoader)
-
+        // Use system class loader as parent like IReader main app does
+        val systemClassLoader = URLClassLoader.getSystemClassLoader()
+        
+        // Create a ClassLoader for the extension JAR
+        val classLoader = PackageTools.jarLoaderMap[jarPath] ?: URLClassLoader(
+            arrayOf(File(jarPath).toURI().toURL()),
+            systemClassLoader,
+        )
+        
         PackageTools.jarLoaderMap[jarPath] = classLoader
 
-        // Create Dependencies for the source
+        // Create Dependencies for the source (like IReader main app)
         val preferences = PreferenceStoreFactory().create(pkgName)
         val httpClients = ireader.core.http.HttpClients(preferences)
         val dependencies = ireader.core.source.Dependencies(httpClients, preferences)
 
-        // Try to instantiate with Dependencies parameter
+        // Load source like IReader main app does - use getConstructor with specific type
         return try {
-            // Use reflection to find constructor by parameter count to avoid class loading issues
-            val constructors = classToLoad.declaredConstructors
-            val dependenciesConstructor = constructors.firstOrNull { it.parameterCount == 1 }
-
-            if (dependenciesConstructor != null) {
-                logger.debug { "Found constructor with 1 parameter, using Dependencies" }
-                dependenciesConstructor.newInstance(dependencies)
-            } else {
-                // Try no-arg constructor
-                logger.debug { "No single-parameter constructor found, trying no-arg constructor" }
-                val noArgConstructor =
-                    constructors.firstOrNull { it.parameterCount == 0 }
-                        ?: throw Exception("Source class has no compatible constructor: $className")
-                noArgConstructor.newInstance()
-            }
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to instantiate source class: $className" }
+            val obj = Class.forName(className, false, classLoader)
+                .getConstructor(ireader.core.source.Dependencies::class.java)
+                .newInstance(dependencies)
+            
+            logger.info { "Successfully loaded IReader source: $className" }
+            obj
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to load catalog $pkgName" }
             throw Exception("Could not instantiate source: ${e.message}", e)
         }
     }

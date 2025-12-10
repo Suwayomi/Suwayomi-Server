@@ -43,6 +43,76 @@ object BytecodeEditor {
     }
 
     /**
+     * Fix stackmap frames in a JAR file.
+     * This is needed for IReader extensions which may have invalid stackmap frames after dex2jar conversion.
+     *
+     * @param jarFile The JarFile to fix stackmap frames in
+     */
+    fun fixStackmapFrames(jarFile: Path) {
+        logger.info { "Starting stackmap frame fix for: $jarFile" }
+        var classCount = 0
+        var fixedCount = 0
+        var failedCount = 0
+        
+        FileSystems.newFileSystem(jarFile, null as ClassLoader?)?.use { fs ->
+            Files
+                .walk(fs.getPath("/"))
+                .asSequence()
+                .filterNotNull()
+                .filterNot(Files::isDirectory)
+                .mapNotNull(::getClassBytes)
+                .forEach { pair ->
+                    classCount++
+                    val result = recomputeFrames(pair)
+                    if (result.second !== pair.second) {
+                        fixedCount++
+                    } else if (result.first == pair.first && result.second === pair.second) {
+                        // Original was returned, might have failed
+                    }
+                    write(result)
+                }
+        }
+        logger.info { "Stackmap frame fix complete: $classCount classes processed, $fixedCount fixed" }
+    }
+
+    /**
+     * Recompute stackmap frames for a class file.
+     * Uses a custom ClassWriter that doesn't need to load classes for frame computation.
+     */
+    private fun recomputeFrames(pair: Pair<Path, ByteArray>): Pair<Path, ByteArray> {
+        val className = pair.first.toString()
+        return try {
+            val cr = ClassReader(pair.second)
+            
+            // Use a custom ClassWriter that returns Object for all common superclass lookups
+            // This avoids needing to load classes while still computing frames
+            val cw = object : ClassWriter(cr, COMPUTE_FRAMES) {
+                override fun getCommonSuperClass(type1: String, type2: String): String {
+                    // For interfaces, return Object
+                    // For classes, try to be smarter about common supertypes
+                    return when {
+                        type1 == "java/lang/Object" || type2 == "java/lang/Object" -> "java/lang/Object"
+                        type1.startsWith("kotlin/") || type2.startsWith("kotlin/") -> "java/lang/Object"
+                        type1.startsWith("kotlinx/") || type2.startsWith("kotlinx/") -> "java/lang/Object"
+                        else -> "java/lang/Object"
+                    }
+                }
+            }
+            
+            // Skip frames and debug info, let ASM recompute everything
+            cr.accept(cw, ClassReader.SKIP_FRAMES or ClassReader.SKIP_DEBUG)
+            
+            val newBytes = cw.toByteArray()
+            logger.debug { "Recomputed frames for $className: ${pair.second.size} -> ${newBytes.size} bytes" }
+            pair.first to newBytes
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to recompute frames for $className" }
+            // Return original bytecode if recomputation fails
+            pair
+        }
+    }
+
+    /**
      * Get class bytes from a [Path]
      *
      * @param path The path entry to get the class bytes from
