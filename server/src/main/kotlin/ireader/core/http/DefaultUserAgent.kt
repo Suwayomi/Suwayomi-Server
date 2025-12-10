@@ -1,5 +1,17 @@
 package ireader.core.http
 
-const val DEFAULT_USER_AGENT =
-    "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) " +
-        "Chrome/107.0.5304.141 Mobile Safari/537.36"
+import eu.kanade.tachiyomi.network.NetworkHelper
+import uy.kohesive.injekt.injectLazy
+
+/**
+ * Default user agent provider.
+ * Uses NetworkHelper.userAgent which can be updated by FlareSolverr.
+ */
+private val networkHelper: NetworkHelper by injectLazy()
+
+/**
+ * Get the current default user agent.
+ * This value can be updated dynamically by FlareSolverr.
+ */
+val DEFAULT_USER_AGENT: String
+    get() = networkHelper.defaultUserAgentProvider()
