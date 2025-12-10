@@ -17,7 +17,8 @@ xmlserialization = "0.91.3"
 ktlint = "1.7.1"
 koin = "4.1.1"
 moko = "0.25.1"
-
+ksoup = "0.2.5"
+datastore = "1.1.1"
 [libraries]
 # Kotlin
 kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlin" }
@@ -165,6 +166,11 @@ ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 
 # moko
 moko = { module = "dev.icerock.moko:resources", version.ref = "moko" }
+# Ksoup - Kotlin Multiplatform HTML parser (works on iOS, Android, Desktop)
+ksoup = { module = "com.fleeksoft.ksoup:ksoup", version.ref = "ksoup" }
+ksoup-network = { module = "com.fleeksoft.ksoup:ksoup-network", version.ref = "ksoup" }
+androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
+androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 
 [plugins]
 # Kotlin

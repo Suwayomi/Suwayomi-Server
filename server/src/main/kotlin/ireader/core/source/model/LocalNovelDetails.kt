@@ -13,11 +13,10 @@ data class LocalNovelDetails(
     val artist: String? = null,
     val description: String? = null,
     val genre: List<String>? = null,
-    // "Ongoing", "Completed", "Hiatus", etc.
-    val status: String? = null,
+    val status: String? = null  // "Ongoing", "Completed", "Hiatus", etc.
 ) {
-    fun toStatus(): Long =
-        when (status?.lowercase()) {
+    fun toStatus(): Long {
+        return when (status?.lowercase()) {
             "ongoing" -> MangaInfo.ONGOING
             "completed" -> MangaInfo.COMPLETED
             "licensed" -> MangaInfo.LICENSED
@@ -26,4 +25,5 @@ data class LocalNovelDetails(
             "hiatus", "on_hiatus" -> MangaInfo.ON_HIATUS
             else -> MangaInfo.UNKNOWN
         }
+    }
 }

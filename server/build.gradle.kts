@@ -119,6 +119,10 @@ dependencies {
     implementation(libs.cronUtils)
 
     implementation(libs.jwt)
+    implementation(libs.ksoup)
+    implementation(libs.ksoup.network)
+    implementation(libs.androidx.datastore.core)
+    implementation(libs.androidx.datastore.preferences.core)
 
     compileOnly(libs.kte)
 }

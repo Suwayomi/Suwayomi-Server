@@ -1,207 +1,84 @@
 package ireader.core.prefs
 
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.modules.EmptySerializersModule
 import kotlinx.serialization.modules.SerializersModule
-import java.util.prefs.Preferences
 
 /**
- * Implementation of IReader's PreferenceStore
- * Must be in ireader.core.prefs package to match extension expectations
+ * A wrapper around an application preferences store. Implementations of this interface should
+ * persist these preferences on disk.
  */
-class PreferenceStoreImpl(
-    private val packageName: String,
-) : PreferenceStore {
-    private val prefs = Preferences.userRoot().node("suwayomi/ireader/$packageName")
-
-    override fun getString(
-        key: String,
-        defaultValue: String,
-    ): Preference<String> = PreferenceImpl(key, defaultValue, prefs)
-
-    override fun getLong(
-        key: String,
-        defaultValue: Long,
-    ): Preference<Long> = PreferenceImpl(key, defaultValue, prefs)
-
-    override fun getInt(
-        key: String,
-        defaultValue: Int,
-    ): Preference<Int> = PreferenceImpl(key, defaultValue, prefs)
-
-    override fun getFloat(
-        key: String,
-        defaultValue: Float,
-    ): Preference<Float> = PreferenceImpl(key, defaultValue, prefs)
-
-    override fun getBoolean(
-        key: String,
-        defaultValue: Boolean,
-    ): Preference<Boolean> = PreferenceImpl(key, defaultValue, prefs)
-
-    override fun getStringSet(
-        key: String,
-        defaultValue: Set<String>,
-    ): Preference<Set<String>> = PreferenceImpl(key, defaultValue, prefs)
-
-    override fun <T> getObject(
-        key: String,
-        defaultValue: T,
-        serializer: (T) -> String,
-        deserializer: (String) -> T,
-    ): Preference<T> = ObjectPreferenceImpl(key, defaultValue, serializer, deserializer, prefs)
-
-    override fun <T> getJsonObject(
-        key: String,
-        defaultValue: T,
-        serializer: KSerializer<T>,
-        serializersModule: SerializersModule,
-    ): Preference<T> =
-        ObjectPreferenceImpl(
-            key,
-            defaultValue,
-            { it.toString() },
-            { defaultValue },
-            prefs,
-        )
-}
-
 interface PreferenceStore {
-    fun getString(
-        key: String,
-        defaultValue: String = "",
-    ): Preference<String>
 
-    fun getLong(
-        key: String,
-        defaultValue: Long = 0,
-    ): Preference<Long>
+    /**
+     * Returns an [String] preference for this [key].
+     */
+    fun getString(key: String, defaultValue: String = ""): Preference<String>
 
-    fun getInt(
-        key: String,
-        defaultValue: Int = 0,
-    ): Preference<Int>
+    /**
+     * Returns a [Long] preference for this [key].
+     */
+    fun getLong(key: String, defaultValue: Long = 0): Preference<Long>
 
-    fun getFloat(
-        key: String,
-        defaultValue: Float = 0f,
-    ): Preference<Float>
+    /**
+     * Returns an [Int] preference for this [key].
+     */
+    fun getInt(key: String, defaultValue: Int = 0): Preference<Int>
 
-    fun getBoolean(
-        key: String,
-        defaultValue: Boolean = false,
-    ): Preference<Boolean>
+    /**
+     * Returns a [Float] preference for this [key].
+     */
+    fun getFloat(key: String, defaultValue: Float = 0f): Preference<Float>
 
-    fun getStringSet(
-        key: String,
-        defaultValue: Set<String> = emptySet(),
-    ): Preference<Set<String>>
+    /**
+     * Returns a [Boolean] preference for this [key].
+     */
+    fun getBoolean(key: String, defaultValue: Boolean = false): Preference<Boolean>
 
+    /**
+     * Returns a [Set<String>] preference for this [key].
+     */
+    fun getStringSet(key: String, defaultValue: Set<String> = emptySet()): Preference<Set<String>>
+
+    /**
+     * Returns preference of type [T] for this [key]. The [serializer] and [deserializer] function
+     * must be provided.
+     */
     fun <T> getObject(
         key: String,
         defaultValue: T,
         serializer: (T) -> String,
-        deserializer: (String) -> T,
+        deserializer: (String) -> T
     ): Preference<T>
 
+    /**
+     * Returns preference of type [T] for this [key]. The [serializer] must be provided.
+     */
     fun <T> getJsonObject(
         key: String,
         defaultValue: T,
         serializer: KSerializer<T>,
-        serializersModule: SerializersModule,
+        serializersModule: SerializersModule = EmptySerializersModule()
     ): Preference<T>
 }
 
-interface Preference<T> {
-    fun key(): String
-
-    fun get(): T
-
-    fun set(value: T)
-
-    fun isSet(): Boolean
-
-    fun delete()
-
-    fun defaultValue(): T
-}
-
-private class PreferenceImpl<T>(
-    private val key: String,
-    private val defaultValue: T,
-    private val prefs: Preferences,
-) : Preference<T> {
-    override fun key() = key
-
-    override fun defaultValue() = defaultValue
-
-    @Suppress("UNCHECKED_CAST")
-    override fun get(): T =
-        when (defaultValue) {
-            is String -> prefs.get(key, defaultValue as String) as T
-            is Int -> prefs.getInt(key, defaultValue as Int) as T
-            is Long -> prefs.getLong(key, defaultValue as Long) as T
-            is Float -> prefs.getFloat(key, defaultValue as Float) as T
-            is Boolean -> prefs.getBoolean(key, defaultValue as Boolean) as T
-            is Set<*> -> {
-                val stored = prefs.get(key, null)
-                if (stored != null) {
-                    stored.split(",").toSet() as T
-                } else {
-                    defaultValue
-                }
-            }
-            else -> defaultValue
-        }
-
-    override fun set(value: T) {
-        when (value) {
-            is String -> prefs.put(key, value)
-            is Int -> prefs.putInt(key, value)
-            is Long -> prefs.putLong(key, value)
-            is Float -> prefs.putFloat(key, value)
-            is Boolean -> prefs.putBoolean(key, value)
-            is Set<*> -> prefs.put(key, (value as Set<String>).joinToString(","))
-        }
-    }
-
-    override fun isSet(): Boolean = prefs.get(key, null) != null
-
-    override fun delete() {
-        prefs.remove(key)
-    }
-}
-
-private class ObjectPreferenceImpl<T>(
-    private val key: String,
-    private val defaultValue: T,
-    private val serializer: (T) -> String,
-    private val deserializer: (String) -> T,
-    private val prefs: Preferences,
-) : Preference<T> {
-    override fun key() = key
-
-    override fun defaultValue() = defaultValue
-
-    override fun get(): T {
-        val stored = prefs.get(key, null)
-        return if (stored != null) {
+/**
+ * Returns an enum preference of type [T] for this [key].
+ */
+inline fun <reified T : Enum<T>> PreferenceStore.getEnum(
+    key: String,
+    defaultValue: T
+): Preference<T> {
+    return getObject(
+        key,
+        defaultValue,
+        { it.name },
+        {
             try {
-                deserializer(stored)
-            } catch (e: Exception) {
+                enumValueOf(it)
+            } catch (e: IllegalArgumentException) {
                 defaultValue
             }
-        } else {
-            defaultValue
         }
-    }
-
-    override fun set(value: T) {
-        prefs.put(key, serializer(value))
-    }
-
-    override fun isSet(): Boolean = prefs.get(key, null) != null
-
-    override fun delete() {
-        prefs.remove(key)
-    }
+    )
 }

@@ -7,5 +7,5 @@ import ireader.core.prefs.PreferenceStore
 
 class Dependencies(
     val httpClients: HttpClientsInterface,
-    val preferences: PreferenceStore,
+    val preferences: PreferenceStore
 )
