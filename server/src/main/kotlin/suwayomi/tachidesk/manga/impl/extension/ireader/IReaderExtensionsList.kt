@@ -23,7 +23,7 @@ object IReaderExtensionsList {
 
     val updateMap = mutableMapOf<String, IReaderExtensionDataClass>()
 
-    private const val IREADER_REPO_URL = "https://raw.githubusercontent.com/IReaderorg/IReader-extensions/repo/index.json"
+    private const val IREADER_REPO_URL = "https://raw.githubusercontent.com/IReaderorg/IReader-extensions/repov2/index.json"
 
     fun extensionTableAsDataClass(): List<IReaderExtensionDataClass> =
         transaction {

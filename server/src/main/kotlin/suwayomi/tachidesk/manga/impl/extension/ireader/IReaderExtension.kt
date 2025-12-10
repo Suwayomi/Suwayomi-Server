@@ -55,8 +55,8 @@ object IReaderExtension {
     private const val METADATA_NSFW = "source.nsfw"
     private const val METADATA_DESCRIPTION = "source.description"
     private const val METADATA_ICON = "source.icon"
-    private const val LIB_VERSION_MIN = 1
-    private const val LIB_VERSION_MAX = 1
+    private const val LIB_VERSION_MIN = 2
+    private const val LIB_VERSION_MAX = 2
 
     suspend fun installExtension(pkgName: String): Int {
         logger.debug { "Installing IReader extension $pkgName" }
@@ -172,9 +172,9 @@ object IReaderExtension {
             // NSFW can be stored as either String or Int in metadata
             val isNsfw =
                 try {
-                    metaData?.getInt(METADATA_NSFW, 0) == 1
+                    metaData?.getString(METADATA_NSFW, "false") == "true"
                 } catch (e: ClassCastException) {
-                    metaData?.getString(METADATA_NSFW) == "1"
+                    metaData?.getString(METADATA_NSFW) == "true"
                 }
             val sourceClassName = metaData?.getString(METADATA_SOURCE_CLASS)?.trim()
 
