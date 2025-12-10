@@ -1016,6 +1016,26 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val syncYomiEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 86,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true
+    )
+
+    val syncYomiHost: MutableStateFlow<String> by StringSetting(
+        protoNumber = 87,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncYomiApiKey: MutableStateFlow<String> by StringSetting(
+        protoNumber = 88,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = false,
+    )
 
 
     /** ****************************************************************** **/
