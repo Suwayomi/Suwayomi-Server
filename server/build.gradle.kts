@@ -123,6 +123,7 @@ dependencies {
     implementation(libs.ksoup.network)
     implementation(libs.androidx.datastore.core)
     implementation(libs.androidx.datastore.preferences.core)
+    implementation(libs.datetime)
 
     compileOnly(libs.kte)
 }

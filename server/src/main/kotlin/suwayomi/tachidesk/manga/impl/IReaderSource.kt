@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import ireader.core.prefs.PreferenceStoreFactory
 import ireader.core.source.Source
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -138,8 +139,8 @@ object IReaderSource {
             PackageTools.jarLoaderMap[jarPath] = classLoader
 
             // Create Dependencies
-            val httpClients = ireader.core.http.HttpClients()
-            val preferences = ireader.core.prefs.PreferenceStoreImpl(pkgName)
+            val preferences = PreferenceStoreFactory().create(pkgName)
+            val httpClients = ireader.core.http.HttpClients(preferences)
             val dependencies = ireader.core.source.Dependencies(httpClients, preferences)
 
             // Instantiate the extension

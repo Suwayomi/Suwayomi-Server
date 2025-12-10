@@ -11,6 +11,7 @@ import android.net.Uri
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import ireader.core.prefs.PreferenceStoreFactory
 import ireader.core.source.Source
 import ireader.core.source.SourceFactory
 import okhttp3.CacheControl
@@ -563,8 +564,8 @@ object IReaderExtension {
         PackageTools.jarLoaderMap[jarPath] = classLoader
 
         // Create Dependencies for the source
-        val httpClients = ireader.core.http.HttpClients()
-        val preferences = ireader.core.prefs.PreferenceStoreImpl(pkgName)
+        val preferences = PreferenceStoreFactory().create(pkgName)
+        val httpClients = ireader.core.http.HttpClients(preferences)
         val dependencies = ireader.core.source.Dependencies(httpClients, preferences)
 
         // Try to instantiate with Dependencies parameter
