@@ -326,9 +326,7 @@ class SyncYomiSyncService {
     ): List<BackupCategory> {
         if (localCategoriesList == null) return remoteCategoriesList ?: emptyList()
         if (remoteCategoriesList == null) return localCategoriesList
-        val localCategoriesMap = localCategoriesList
-            .filter { it.name != Category.DEFAULT_CATEGORY_NAME }
-            .associateBy { it.name }
+        val localCategoriesMap = localCategoriesList.associateBy { it.name }
         val remoteCategoriesMap = remoteCategoriesList.associateBy { it.name }
 
         val mergedCategoriesMap = mutableMapOf<String, BackupCategory>()

@@ -8,6 +8,7 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
@@ -65,7 +66,7 @@ object SyncManager {
 
         val backup = Backup(
             BackupMangaHandler.backup(backupFlags),
-            BackupCategoryHandler.backup(backupFlags),
+            BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
             BackupSourceHandler.backup(backupMangas, backupFlags),
             emptyMap(),
             null,
