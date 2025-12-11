@@ -1037,6 +1037,40 @@ class ServerConfig(
         privacySafe = false,
     )
 
+    val syncDataManga: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 89,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 90,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataTracking: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 91,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataHistory: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 92,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataCategories: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 93,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
 
     /** ****************************************************************** **/
     /**                                                                    **/

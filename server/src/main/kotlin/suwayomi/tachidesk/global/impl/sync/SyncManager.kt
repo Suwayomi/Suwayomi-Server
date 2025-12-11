@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Date
@@ -51,11 +52,11 @@ object SyncManager {
         val databaseManga = getAllMangaThatNeedsSync()
 
         val backupFlags = BackupFlags(
-            includeManga = true,
-            includeCategories = true,
-            includeChapters = true,
-            includeTracking = true,
-            includeHistory = true,
+            includeManga = serverConfig.syncDataManga.value,
+            includeCategories = serverConfig.syncDataCategories.value,
+            includeChapters = serverConfig.syncDataChapters.value,
+            includeTracking =  serverConfig.syncDataTracking.value,
+            includeHistory = serverConfig.syncDataHistory.value,
             includeClientData = false,
             includeServerSettings = false,
         )
