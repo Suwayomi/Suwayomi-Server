@@ -77,11 +77,11 @@ object IReaderExtensionController {
         handler(
             documentWith = {
                 withOperation {
-                    summary("IReader Extension install apk")
-                    description("Install the uploaded IReader apk file")
+                    summary("IReader Extension install file")
+                    description("Install the uploaded IReader extension file (JAR preferred, APK also supported)")
                 }
                 uploadedFile("file") {
-                    it.description("IReader Extension apk")
+                    it.description("IReader Extension JAR or APK file")
                     it.required(true)
                 }
             },

@@ -49,6 +49,14 @@ object IReaderGithubApi {
         apkName: String,
     ): String = "${repo}apk/$apkName"
 
+    fun getJarUrl(
+        repo: String,
+        apkName: String,
+    ): String {
+        val jarName = apkName.replace(".apk", ".jar")
+        return "${repo}jar/$jarName"
+    }
+
     private val client by lazy {
         val network: NetworkHelper by injectLazy()
         network.client

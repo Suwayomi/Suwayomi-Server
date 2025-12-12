@@ -63,36 +63,326 @@ object IReaderExtension {
         logger.debug { "Installing IReader extension $pkgName" }
         val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
 
-        return installAPK {
+        return installJAR(pkgName) {
             val repo = extensionRecord.repo ?: throw NullPointerException("Could not find extension repo")
-            val apkURL = IReaderGithubApi.getApkUrl(repo, extensionRecord.apkName)
-            val apkSavePath = "${applicationDirs.extensionsRoot}/ireader/${extensionRecord.apkName}"
+            val jarURL = IReaderGithubApi.getJarUrl(repo, extensionRecord.apkName)
+            val jarName = extensionRecord.apkName.replace(".apk", ".jar")
+            val jarSavePath = "${applicationDirs.extensionsRoot}/ireader/$jarName"
 
             File("${applicationDirs.extensionsRoot}/ireader").mkdirs()
-            downloadAPKFile(apkURL, apkSavePath)
-            apkSavePath
+            downloadFile(jarURL, jarSavePath)
+            jarSavePath
         }
     }
 
     suspend fun installExternalExtension(
         inputStream: InputStream,
-        apkName: String,
-    ): Int =
-        installAPK(true) {
-            val rootPath = Path("${applicationDirs.extensionsRoot}/ireader")
-            File(rootPath.toString()).mkdirs()
-            val downloadedFile = rootPath.resolve(apkName).normalize()
+        fileName: String,
+    ): Int {
+        val rootPath = Path("${applicationDirs.extensionsRoot}/ireader")
+        File(rootPath.toString()).mkdirs()
 
-            logger.debug { "Saving IReader apk at $apkName" }
-            downloadedFile.outputStream().sink().buffer().use { sink ->
-                inputStream.source().use { source ->
-                    sink.writeAll(source)
-                    sink.flush()
-                }
+        // Determine if it's a JAR or APK based on extension
+        val isJar = fileName.endsWith(".jar")
+        val downloadedFile = rootPath.resolve(fileName).normalize()
+
+        logger.debug { "Saving IReader extension at $fileName" }
+        downloadedFile.outputStream().sink().buffer().use { sink ->
+            inputStream.source().use { source ->
+                sink.writeAll(source)
+                sink.flush()
             }
-            downloadedFile.absolutePathString()
         }
 
+        return if (isJar) {
+            // For JAR files, we need to extract package info from the JAR itself
+            installExternalJAR(downloadedFile.absolutePathString())
+        } else {
+            // For APK files, use the legacy APK installation
+            installAPK(true) { downloadedFile.absolutePathString() }
+        }
+    }
+
+    /**
+     * Install a JAR file directly (no APK/dex2jar conversion needed).
+     * This is the preferred method as JAR files are pre-built by the IReader extensions repo.
+     */
+    suspend fun installJAR(
+        pkgName: String,
+        forceReinstall: Boolean = false,
+        fetcher: suspend () -> String,
+    ): Int {
+        val jarFilePath = fetcher()
+        val jarFile = File(jarFilePath)
+        val jarName = jarFile.name
+
+        logger.info { "Installing IReader extension from JAR: $jarName" }
+
+        // Get extension info from database (populated from repo index.json)
+        val extensionRecord = extensionTableAsDataClass().first { it.pkgName == pkgName }
+
+        val isInstalled =
+            transaction {
+                IReaderExtensionTable.selectAll().where { IReaderExtensionTable.pkgName eq pkgName }.firstOrNull()
+            }?.get(IReaderExtensionTable.isInstalled) ?: false
+
+        if (isInstalled && forceReinstall) {
+            uninstallExtension(pkgName)
+        }
+
+        if (!isInstalled || forceReinstall) {
+            // Delete existing JAR file if it exists to avoid file locking issues
+            if (jarFile.exists()) {
+                logger.debug { "JAR file already exists: $jarFilePath" }
+                PackageTools.jarLoaderMap.remove(jarFilePath)?.close()
+            }
+
+            // Find the source class in the JAR
+            val className = findSourceClassInJar(jarFilePath, pkgName)
+                ?: throw Exception("Could not find source class in JAR for package $pkgName")
+
+            logger.info { "Found IReader source class: $className" }
+
+            // Load the extension class
+            val extensionMainClassInstance =
+                try {
+                    loadIReaderSource(jarFilePath, className, pkgName)
+                } catch (e: Exception) {
+                    logger.error(e) { "Failed to load IReader source class: $className" }
+                    throw Exception("Could not load IReader source class: ${e.message}")
+                }
+
+            // Extract source info using reflection
+            val sourceInfoList = extractSourceInfoFromInstance(extensionMainClassInstance)
+
+            val langs = sourceInfoList.map { it.lang }.toSet()
+            val extensionLang =
+                when (langs.size) {
+                    0 -> ""
+                    1 -> langs.first()
+                    else -> "all"
+                }
+
+            transaction {
+                IReaderExtensionTable.update({ IReaderExtensionTable.pkgName eq pkgName }) {
+                    it[this.isInstalled] = true
+                    it[this.classFQName] = className
+                }
+
+                val extensionId =
+                    IReaderExtensionTable
+                        .selectAll()
+                        .where { IReaderExtensionTable.pkgName eq pkgName }
+                        .first()[IReaderExtensionTable.id]
+                        .value
+
+                sourceInfoList.forEach { source ->
+                    IReaderSourceTable.insert {
+                        it[id] = source.id
+                        it[name] = source.name
+                        it[lang] = source.lang
+                        it[extension] = extensionId
+                        it[IReaderSourceTable.isNsfw] = extensionRecord.isNsfw
+                    }
+                    logger.info { "Registered IReader source: ${source.name} (${source.lang}) with ID ${source.id}" }
+                }
+            }
+            return 201
+        } else {
+            return 302
+        }
+    }
+
+    /**
+     * Install an external JAR file (uploaded by user).
+     */
+    private suspend fun installExternalJAR(jarFilePath: String): Int {
+        val jarFile = File(jarFilePath)
+        val jarName = jarFile.name
+
+        logger.info { "Installing external IReader JAR: $jarName" }
+
+        // Try to find the package name from the JAR
+        val pkgName = findPackageNameInJar(jarFilePath)
+            ?: throw Exception("Could not determine package name from JAR")
+
+        // Find the source class
+        val className = findSourceClassInJar(jarFilePath, pkgName)
+            ?: throw Exception("Could not find source class in JAR")
+
+        logger.info { "Found package: $pkgName, class: $className" }
+
+        // Close any existing class loader
+        PackageTools.jarLoaderMap.remove(jarFilePath)?.close()
+
+        // Load the extension class
+        val extensionMainClassInstance =
+            try {
+                loadIReaderSource(jarFilePath, className, pkgName)
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to load IReader source class: $className" }
+                throw Exception("Could not load IReader source class: ${e.message}")
+            }
+
+        // Extract source info
+        val sourceInfoList = extractSourceInfoFromInstance(extensionMainClassInstance)
+
+        val langs = sourceInfoList.map { it.lang }.toSet()
+        val extensionLang =
+            when (langs.size) {
+                0 -> ""
+                1 -> langs.first()
+                else -> "all"
+            }
+
+        val extensionName = sourceInfoList.firstOrNull()?.name ?: jarName.removeSuffix(".jar")
+
+        transaction {
+            // Insert or update extension record
+            val existingExtension = IReaderExtensionTable.selectAll()
+                .where { IReaderExtensionTable.pkgName eq pkgName }
+                .firstOrNull()
+
+            if (existingExtension == null) {
+                IReaderExtensionTable.insert {
+                    it[this.apkName] = jarName.replace(".jar", ".apk") // Keep apkName for compatibility
+                    it[name] = extensionName
+                    it[this.pkgName] = pkgName
+                    it[versionName] = "1.0"
+                    it[versionCode] = 1
+                    it[lang] = extensionLang
+                    it[isNsfw] = false
+                    it[isInstalled] = true
+                    it[classFQName] = className
+                }
+            } else {
+                IReaderExtensionTable.update({ IReaderExtensionTable.pkgName eq pkgName }) {
+                    it[isInstalled] = true
+                    it[classFQName] = className
+                }
+            }
+
+            val extensionId =
+                IReaderExtensionTable
+                    .selectAll()
+                    .where { IReaderExtensionTable.pkgName eq pkgName }
+                    .first()[IReaderExtensionTable.id]
+                    .value
+
+            // Clear existing sources for this extension
+            IReaderSourceTable.deleteWhere { IReaderSourceTable.extension eq extensionId }
+
+            sourceInfoList.forEach { source ->
+                IReaderSourceTable.insert {
+                    it[id] = source.id
+                    it[name] = source.name
+                    it[lang] = source.lang
+                    it[extension] = extensionId
+                    it[IReaderSourceTable.isNsfw] = false
+                }
+                logger.info { "Registered IReader source: ${source.name} (${source.lang}) with ID ${source.id}" }
+            }
+        }
+        return 201
+    }
+
+    /**
+     * Helper data class for source info extraction.
+     */
+    private data class SourceInfo(
+        val id: Long,
+        val name: String,
+        val lang: String,
+    )
+
+    /**
+     * Extract source info from an extension instance using reflection.
+     */
+    private fun extractSourceInfoFromInstance(extensionMainClassInstance: Any): List<SourceInfo> {
+        fun implementsInterface(obj: Any, interfaceName: String): Boolean {
+            fun checkClass(clazz: Class<*>?): Boolean {
+                if (clazz == null) return false
+                if (clazz.interfaces.any { it.name == interfaceName }) return true
+                if (checkClass(clazz.superclass)) return true
+                return clazz.interfaces.any { checkClass(it) }
+            }
+            return checkClass(obj.javaClass)
+        }
+
+        fun extractSourceInfo(sourceObj: Any): SourceInfo {
+            val idMethod = sourceObj.javaClass.getMethod("getId")
+            val nameMethod = sourceObj.javaClass.getMethod("getName")
+            val langMethod = sourceObj.javaClass.getMethod("getLang")
+
+            return SourceInfo(
+                id = idMethod.invoke(sourceObj) as Long,
+                name = nameMethod.invoke(sourceObj) as String,
+                lang = langMethod.invoke(sourceObj) as String,
+            )
+        }
+
+        return when {
+            implementsInterface(extensionMainClassInstance, "ireader.core.source.SourceFactory") -> {
+                logger.info { "Extension implements SourceFactory" }
+                val method = extensionMainClassInstance.javaClass.getMethod("createSources")
+                val sourcesList = method.invoke(extensionMainClassInstance) as List<*>
+                sourcesList.map { extractSourceInfo(it!!) }
+            }
+            implementsInterface(extensionMainClassInstance, "ireader.core.source.Source") -> {
+                logger.info { "Extension implements Source: ${extensionMainClassInstance.javaClass.name}" }
+                listOf(extractSourceInfo(extensionMainClassInstance))
+            }
+            else -> {
+                val className = extensionMainClassInstance.javaClass.name
+                val superclass = extensionMainClassInstance.javaClass.superclass
+                val interfaces = extensionMainClassInstance.javaClass.interfaces.map { it.name }
+
+                logger.error {
+                    """
+                    Invalid IReader extension!
+                    Class: $className
+                    Superclass: ${superclass?.name}
+                    Interfaces: $interfaces
+                    
+                    Extension must implement ireader.core.source.Source or ireader.core.source.SourceFactory
+                    """.trimIndent()
+                }
+
+                throw RuntimeException("Invalid IReader extension: $className does not implement Source interface")
+            }
+        }
+    }
+
+    /**
+     * Find package name from classes in JAR.
+     */
+    private fun findPackageNameInJar(jarPath: String): String? {
+        try {
+            val jarFile = java.util.jar.JarFile(jarPath)
+            val entries = jarFile.entries()
+
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                val name = entry.name
+
+                if (name.endsWith(".class") && !name.contains('$')) {
+                    val className = name.replace('/', '.').removeSuffix(".class")
+                    // Return the package name (everything before the last dot)
+                    val lastDot = className.lastIndexOf('.')
+                    if (lastDot > 0) {
+                        jarFile.close()
+                        return className.substring(0, lastDot)
+                    }
+                }
+            }
+            jarFile.close()
+        } catch (e: Exception) {
+            logger.error(e) { "Error finding package name in JAR" }
+        }
+        return null
+    }
+
+    @Deprecated("Use installJAR instead - APK installation requires dex2jar conversion")
     suspend fun installAPK(
         forceReinstall: Boolean = false,
         fetcher: suspend () -> String,
@@ -462,10 +752,11 @@ object IReaderExtension {
 
     private val network: NetworkHelper by injectLazy()
 
-    private suspend fun downloadAPKFile(
+    private suspend fun downloadFile(
         url: String,
         savePath: String,
     ) {
+        logger.debug { "Downloading file from $url to $savePath" }
         val response =
             network.client
                 .newCall(
@@ -479,7 +770,14 @@ object IReaderExtension {
                 sink.flush()
             }
         }
+        logger.debug { "Downloaded ${downloadedFile.length()} bytes" }
     }
+
+    @Deprecated("Use downloadFile instead")
+    private suspend fun downloadAPKFile(
+        url: String,
+        savePath: String,
+    ) = downloadFile(url, savePath)
 
     fun uninstallExtension(pkgName: String) {
         logger.debug { "Uninstalling IReader extension $pkgName" }
@@ -592,45 +890,81 @@ object IReaderExtension {
         }
     }
 
+    /**
+     * Find the source class in a JAR file.
+     * 
+     * IReader extensions use KSP to generate a class called `tachiyomix.extension.Extension`
+     * which is the entry point for the extension. This class extends the actual source class
+     * and is what should be instantiated.
+     */
     private fun findSourceClassInJar(
         jarPath: String,
         packageName: String,
     ): String? {
+        // The standard IReader extension class generated by KSP
+        val standardExtensionClass = "tachiyomix.extension.Extension"
+        
         try {
             val jarFile = java.util.jar.JarFile(jarPath)
             val entries = jarFile.entries()
 
-            val sourceClasses = mutableListOf<String>()
+            val allClasses = mutableListOf<String>()
+            var hasStandardExtension = false
 
             while (entries.hasMoreElements()) {
                 val entry = entries.nextElement()
                 val name = entry.name
 
-                // Look for .class files in the package
-                if (name.endsWith(".class") && name.startsWith(packageName.replace('.', '/'))) {
+                if (name.endsWith(".class") && !name.contains('$')) {
                     val className = name.replace('/', '.').removeSuffix(".class")
-
-                    // Skip inner classes and common non-source classes
-                    if (!className.contains('$') &&
-                        !className.endsWith("BuildConfig") &&
-                        !className.endsWith("R")
-                    ) {
-                        sourceClasses.add(className)
+                    allClasses.add(className)
+                    
+                    // Check for the standard KSP-generated Extension class
+                    if (className == standardExtensionClass) {
+                        hasStandardExtension = true
                     }
                 }
             }
 
             jarFile.close()
 
-            logger.debug { "Found ${sourceClasses.size} potential source classes: $sourceClasses" }
+            logger.debug { "JAR contains ${allClasses.size} classes: $allClasses" }
 
-            // Prefer classes with common source names
-            return sourceClasses.firstOrNull { it.endsWith("SourceFactory") }
+            // First priority: Use the standard KSP-generated Extension class
+            if (hasStandardExtension) {
+                logger.info { "Found standard IReader extension class: $standardExtensionClass" }
+                return standardExtensionClass
+            }
+
+            // Fallback: Look for classes that might be sources based on naming
+            logger.warn { "Standard extension class not found, searching for alternatives..." }
+            
+            val sourceClasses = allClasses.filter { className ->
+                !className.endsWith("BuildConfig") &&
+                !className.endsWith("R") &&
+                !className.endsWith("Kt") &&
+                !className.contains(".R$") &&
+                (className.endsWith("Source") || 
+                 className.endsWith("SourceFactory") || 
+                 className.endsWith("Extension") ||
+                 className.contains("Source"))
+            }
+            
+            logger.debug { "Potential source classes: $sourceClasses" }
+            
+            return sourceClasses.firstOrNull { it.endsWith("Extension") }
+                ?: sourceClasses.firstOrNull { it.endsWith("SourceFactory") }
                 ?: sourceClasses.firstOrNull { it.endsWith("Source") }
                 ?: sourceClasses.firstOrNull()
+                ?: allClasses.firstOrNull { 
+                    !it.endsWith("BuildConfig") && 
+                    !it.endsWith("R") && 
+                    !it.endsWith("Kt") 
+                }
         } catch (e: Exception) {
             logger.error(e) { "Error scanning JAR for source classes" }
             return null
         }
     }
 }
+

@@ -63,7 +63,7 @@ class IReaderExtensionMutation {
 
     data class InstallExternalIReaderExtensionInput(
         val clientMutationId: String? = null,
-        @GraphQLDescription("APK file of the IReader extension")
+        @GraphQLDescription("JAR or APK file of the IReader extension (JAR preferred)")
         val extensionFile: UploadedFile,
     )
 
@@ -73,7 +73,7 @@ class IReaderExtensionMutation {
     )
 
     @RequireAuth
-    @GraphQLDescription("Install an external IReader extension from an APK file")
+    @GraphQLDescription("Install an external IReader extension from a JAR or APK file")
     fun installExternalIReaderExtension(
         input: InstallExternalIReaderExtensionInput,
     ): CompletableFuture<DataFetcherResult<InstallExternalIReaderExtensionPayload?>> {
@@ -86,11 +86,18 @@ class IReaderExtensionMutation {
                     extensionFile.filename(),
                 )
 
+                // For JAR files, the apkName is stored with .apk extension for compatibility
+                val lookupName = if (extensionFile.filename().endsWith(".jar")) {
+                    extensionFile.filename().replace(".jar", ".apk")
+                } else {
+                    extensionFile.filename()
+                }
+
                 val extension =
                     transaction {
                         IReaderExtensionTable
                             .selectAll()
-                            .where { IReaderExtensionTable.apkName eq extensionFile.filename() }
+                            .where { IReaderExtensionTable.apkName eq lookupName }
                             .firstOrNull()
                             ?.let { IReaderExtensionType.fromResultRow(it) }
                     }

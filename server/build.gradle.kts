@@ -1,4 +1,5 @@
 import de.undercouch.gradle.tasks.download.Download
+import jdk.tools.jlink.resources.plugins
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import java.time.Instant
 
@@ -86,7 +87,6 @@ dependencies {
     implementation(libs.ktor.okhttp)
     implementation(libs.ktor.contentNegotiation.gson)
 
-
     // ComicInfo
     implementation(libs.serialization.xml.core)
     implementation(libs.serialization.xml)
@@ -144,12 +144,6 @@ application {
     applicationDefaultJvmArgs =
         listOf(
             "-Djunrar.extractor.thread-keep-alive-seconds=30",
-            "-XX:+TieredCompilation",
-            // Required for IReader extensions: dex2jar produces bytecode with invalid
-            // stackmap frames that Java's verifier rejects. This affects both APK->JAR
-            // conversion and pre-built JARs from the IReader repository.
-            // ASM frame recomputation doesn't work for Kotlin coroutine bytecode.
-            "-Xverify:none",
         )
     mainClass.set(MainClass)
 }

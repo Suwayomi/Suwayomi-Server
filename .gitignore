@@ -22,3 +22,5 @@ scripts/electron-*
 scripts/rcedit-*
 scripts/resources/*.so
 IReader-master
+IReader-extensions-master
+
