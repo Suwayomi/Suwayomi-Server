@@ -41,6 +41,9 @@ object ChapterTable : IntIdTable() {
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 
     val koreaderHash = varchar("koreader_hash", 32).nullable()
+
+    val version = long("version").default(0)
+    val isSyncing = bool("is_syncing").default(false)
 }
 
 fun ChapterTable.toDataClass(
@@ -82,4 +85,5 @@ fun ChapterTable.toDataClass(
         } else {
             emptyMap()
         },
+    version = chapterEntry[version],
 )

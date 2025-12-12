@@ -21,6 +21,8 @@ import kotlinx.coroutines.sync.withLock
 import okio.buffer
 import okio.gzip
 import okio.source
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
@@ -31,6 +33,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
 import java.util.Date
 import java.util.Timer
@@ -109,6 +113,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     fun restore(
         sourceStream: InputStream,
         flags: BackupFlags,
+        isSync: Boolean = false,
     ): String {
         val restoreId = System.currentTimeMillis().toString()
 
@@ -117,7 +122,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         updateRestoreState(restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
-            restoreLegacy(sourceStream, restoreId, flags)
+            restoreLegacy(sourceStream, restoreId, flags, isSync)
         }
 
         return restoreId
@@ -127,11 +132,12 @@ object ProtoBackupImport : ProtoBackupBase() {
         sourceStream: InputStream,
         restoreId: String = "legacy",
         flags: BackupFlags = BackupFlags.DEFAULT,
+        isSync: Boolean = false,
     ): ValidationResult =
         backupMutex.withLock {
             try {
                 logger.info { "restore($restoreId): restoring..." }
-                performRestore(restoreId, sourceStream, flags)
+                performRestore(restoreId, sourceStream, flags, isSync)
             } catch (e: Exception) {
                 logger.error(e) { "restore($restoreId): failed due to" }
 
@@ -152,11 +158,14 @@ object ProtoBackupImport : ProtoBackupBase() {
         id: String,
         sourceStream: InputStream,
         flags: BackupFlags,
+        isSync: Boolean,
     ): ValidationResult {
         val backupString =
             sourceStream
                 .source()
-                .gzip()
+                .run {
+                    if (!isSync) gzip() else this
+                }
                 .buffer()
                 .use { it.readByteArray() }
         val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
@@ -233,6 +242,17 @@ object ProtoBackupImport : ProtoBackupBase() {
             - Missing Trackers:
                 ${validationResult.missingTrackers.joinToString("\n                    ")}
             """.trimIndent()
+        }
+
+        if (isSync) {
+            transaction {
+                MangaTable.update({ MangaTable.isSyncing eq true}) {
+                    it[isSyncing] = false
+                }
+                ChapterTable.update({ ChapterTable.isSyncing eq true}) {
+                    it[isSyncing] = false
+                }
+            }
         }
 
         updateRestoreState(id, BackupRestoreState.Success)
