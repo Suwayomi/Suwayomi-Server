@@ -25,17 +25,22 @@ import ireader.core.source.model.MangaInfo
 import ireader.core.source.model.MangasPageInfo
 
 /**
- * Enhanced HttpSource with built-in Cloudflare bypass support
- * Extend this class for sources that use Cloudflare protection
+ * Enhanced HttpSource with built-in Cloudflare bypass support.
+ * Extend this class for sources that use Cloudflare protection.
+ * 
+ * This implementation integrates with Tachidesk's FlareSolverr configuration
+ * for Cloudflare bypass, sharing cookies and settings across all extensions.
  */
 abstract class CloudflareHttpSource(
     dependencies: Dependencies
 ) : HttpSource(dependencies) {
     
     /**
-     * Cloudflare bypass manager - override to provide custom implementation
+     * Cloudflare bypass manager - uses Tachidesk's integrated bypass by default
      */
-    protected open val cloudflareBypass: CloudflareBypassManager? = null
+    protected open val cloudflareBypass: CloudflareBypassManager? by lazy {
+        dependencies.httpClients.cloudflareBypassManager
+    }
     
     /**
      * Rate limiter - override to provide custom implementation
@@ -48,9 +53,11 @@ abstract class CloudflareHttpSource(
     protected open val fingerprintManager: FingerprintManager? = null
     
     /**
-     * Cookie store for Cloudflare cookies
+     * Cookie store for Cloudflare cookies - uses Tachidesk's integrated store
      */
-    protected open val cookieStore: CloudflareCookieStore = InMemoryCloudfareCookieStore()
+    protected open val cookieStore: CloudflareCookieStore by lazy {
+        ireader.core.http.cloudflare.TachideskCloudflareIntegration.cookieStore
+    }
     
     /**
      * Whether to automatically handle Cloudflare challenges
