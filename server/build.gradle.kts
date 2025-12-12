@@ -108,8 +108,24 @@ dependencies {
     implementation(libs.cronUtils)
 
     implementation(libs.jwt)
+    implementation(libs.datetime)
 
     compileOnly(libs.kte)
+    // IReader extension dependencies - these must be provided by the server
+    // Extensions are compiled with compileOnly and expect the runtime to provide these
+    implementation(libs.coroutines.core)
+    implementation(libs.stdlib)
+    implementation(libs.datetime)
+    implementation(libs.serialization.json)
+    implementation(libs.ktor.core)
+    implementation(libs.ktor.core.cio) // CIO engine for Ktor
+    implementation(libs.ktor.contentNegotiation)
+    implementation(libs.ktor.contentNegotiation.kotlinx)
+    // Ksoup - KMP-compatible HTML parser (replaces Jsoup for iOS)
+    implementation(libs.ksoup)
+    implementation(libs.ksoup.network)
+    implementation(libs.ktor.okhttp)
+    implementation(libs.ktor.contentNegotiation.gson)
 }
 
 jte {
@@ -242,6 +258,7 @@ tasks {
 
     runKtlintCheckOverMainSourceSet {
         mustRunAfter(generateJte)
+        dependsOn(":server:server-config-generate:generateSettings")
     }
 
     compileKotlin {
