@@ -1072,6 +1072,13 @@ class ServerConfig(
         privacySafe = true,
     )
 
+    val syncInterval: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 94,
+        defaultValue = 0,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/

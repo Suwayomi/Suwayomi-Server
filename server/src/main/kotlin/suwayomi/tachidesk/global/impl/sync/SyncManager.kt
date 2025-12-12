@@ -3,6 +3,10 @@ package suwayomi.tachidesk.global.impl.sync
 import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.sql.selectAll
@@ -26,10 +30,12 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Date
 import kotlin.system.measureTimeMillis
+import kotlin.time.Duration.Companion.minutes
 
 @Serializable
 data class SyncData(
@@ -39,6 +45,33 @@ data class SyncData(
 object SyncManager {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
+
+    @OptIn(DelicateCoroutinesApi::class)
+    fun scheduleSyncTask() {
+        serverConfig.subscribeTo(
+            combine(
+                serverConfig.syncYomiEnabled,
+                serverConfig.syncInterval,
+            ) { enabled, interval -> Pair(enabled, interval) },
+            { (enabled, interval) ->
+                if (enabled && interval > 0) {
+                    val intervalMs = interval.minutes.inWholeMilliseconds
+
+                    HAScheduler.schedule(
+                        {
+                            GlobalScope.launch {
+                                syncData()
+                            }
+                        },
+                        interval = intervalMs,
+                        delay = intervalMs,
+                        name = "sync",
+                    )
+                }
+            },
+            ignoreInitialValue = false,
+        )
+    }
 
     suspend fun syncData() {
         transaction {
@@ -56,7 +89,7 @@ object SyncManager {
             includeManga = serverConfig.syncDataManga.value,
             includeCategories = serverConfig.syncDataCategories.value,
             includeChapters = serverConfig.syncDataChapters.value,
-            includeTracking =  serverConfig.syncDataTracking.value,
+            includeTracking = serverConfig.syncDataTracking.value,
             includeHistory = serverConfig.syncDataHistory.value,
             includeClientData = false,
             includeServerSettings = false,
