@@ -1,39 +1,39 @@
 package ireader.core.storage
 
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.io.File
 
-val AppDir : File = getCacheDir()
+/**
+ * Application directories for IReader extensions.
+ * Uses Tachidesk's ApplicationDirs for consistency with the rest of the codebase.
+ */
+private val applicationDirs: ApplicationDirs by lazy { Injekt.get() }
 
-val ExtensionDir = File(AppDir, "/Extensions/")
-val BackupDir = File(AppDir, "/Backup/")
+/**
+ * Root application directory (same as Tachidesk's data root).
+ */
+val AppDir: File by lazy { File(applicationDirs.dataRoot) }
 
-enum class OperatingSystem {
-    Android, IOS, Windows, Linux, MacOS, Unknown
-}
+/**
+ * Directory for IReader extensions.
+ */
+val ExtensionDir: File by lazy { File(applicationDirs.extensionsRoot, "ireader") }
 
-private val currentOperatingSystem: OperatingSystem
-    get() {
-        val operSys = System.getProperty("os.name").lowercase()
-        return if (operSys.contains("win")) {
-            OperatingSystem.Windows
-        } else if (operSys.contains("nix") || operSys.contains("nux") ||
-                operSys.contains("aix")
-        ) {
-            OperatingSystem.Linux
-        } else if (operSys.contains("mac")) {
-            OperatingSystem.MacOS
-        } else {
-            OperatingSystem.Unknown
-        }
-    }
+/**
+ * Directory for IReader backups.
+ */
+val BackupDir: File by lazy { File(applicationDirs.dataRoot, "backup/ireader") }
 
-private fun getCacheDir(): File  {
-    val ApplicationName = "IReader"
-    return when (currentOperatingSystem) {
-        OperatingSystem.Windows -> File(System.getenv("AppData"), "$ApplicationName/cache/")
-        OperatingSystem.Linux -> File(System.getProperty("user.home"), ".cache/$ApplicationName/")
-        OperatingSystem.MacOS -> File(System.getProperty("user.home"), "Library/Caches/$ApplicationName/")
-        else -> throw IllegalStateException("Unsupported operating system")
-    }
-}
-
+/**
+ * Directory for IReader cache.
+ */
+val CacheDir: File by lazy { File(applicationDirs.tempRoot, "ireader") }

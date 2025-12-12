@@ -7,6 +7,11 @@ package suwayomi.tachidesk.manga.impl.extension.ireader
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+/**
+ * Represents an IReader extension available online.
+ * 
+ * This data class follows the same structure as OnlineExtension for Tachiyomi extensions.
+ */
 data class OnlineIReaderExtension(
     val repo: String,
     val name: String,
