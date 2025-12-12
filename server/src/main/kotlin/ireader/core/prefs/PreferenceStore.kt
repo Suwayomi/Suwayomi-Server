@@ -1,5 +1,8 @@
 package ireader.core.prefs
 
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -7,7 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.modules.SerializersModule
-import java.util.prefs.Preferences
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 /**
  * Implementation of IReader's PreferenceStore
@@ -16,7 +20,7 @@ import java.util.prefs.Preferences
 class PreferenceStoreImpl(
     private val packageName: String,
 ) : PreferenceStore {
-    private val prefs = Preferences.userRoot().node("suwayomi/ireader/$packageName")
+    private val prefs = Injekt.get<Application>().getSharedPreferences("suwayomi/ireader/$packageName", Context.MODE_PRIVATE)
 
     override fun getString(
         key: String,
@@ -121,7 +125,7 @@ interface PreferenceStore {
 private class PreferenceImpl<T>(
     private val key: String,
     private val defaultValue: T,
-    private val prefs: Preferences,
+    private val prefs: SharedPreferences,
 ) : Preference<T> {
     override fun key() = key
 
@@ -130,37 +134,33 @@ private class PreferenceImpl<T>(
     @Suppress("UNCHECKED_CAST")
     override fun get(): T =
         when (defaultValue) {
-            is String -> prefs.get(key, defaultValue as String) as T
+            is String -> prefs.getString(key, defaultValue as String) as T
             is Int -> prefs.getInt(key, defaultValue as Int) as T
             is Long -> prefs.getLong(key, defaultValue as Long) as T
             is Float -> prefs.getFloat(key, defaultValue as Float) as T
             is Boolean -> prefs.getBoolean(key, defaultValue as Boolean) as T
-            is Set<*> -> {
-                val stored = prefs.get(key, null)
-                if (stored != null) {
-                    stored.split(",").toSet() as T
-                } else {
-                    defaultValue
-                }
-            }
+            is Set<*> -> prefs.getStringSet(key, defaultValue as Set<String>) as T
             else -> defaultValue
         }
 
     override fun set(value: T) {
-        when (value) {
-            is String -> prefs.put(key, value)
-            is Int -> prefs.putInt(key, value)
-            is Long -> prefs.putLong(key, value)
-            is Float -> prefs.putFloat(key, value)
-            is Boolean -> prefs.putBoolean(key, value)
-            is Set<*> -> prefs.put(key, (value as Set<String>).joinToString(","))
+        prefs.edit().apply {
+            when (value) {
+                is String -> putString(key, value)
+                is Int -> putInt(key, value)
+                is Long -> putLong(key, value)
+                is Float -> putFloat(key, value)
+                is Boolean -> putBoolean(key, value)
+                is Set<*> -> putStringSet(key, value as Set<String>)
+            }
+            apply()
         }
     }
 
-    override fun isSet(): Boolean = prefs.get(key, null) != null
+    override fun isSet(): Boolean = prefs.contains(key)
 
     override fun delete() {
-        prefs.remove(key)
+        prefs.edit().remove(key).apply()
     }
 
     override fun changes(): Flow<T> {
@@ -179,14 +179,14 @@ private class ObjectPreferenceImpl<T>(
     private val defaultValue: T,
     private val serializer: (T) -> String,
     private val deserializer: (String) -> T,
-    private val prefs: Preferences,
+    private val prefs: SharedPreferences,
 ) : Preference<T> {
     override fun key() = key
 
     override fun defaultValue() = defaultValue
 
     override fun get(): T {
-        val stored = prefs.get(key, null)
+        val stored = prefs.getString(key, null)
         return if (stored != null) {
             try {
                 deserializer(stored)
@@ -199,13 +199,13 @@ private class ObjectPreferenceImpl<T>(
     }
 
     override fun set(value: T) {
-        prefs.put(key, serializer(value))
+        prefs.edit().putString(key, serializer(value)).apply()
     }
 
-    override fun isSet(): Boolean = prefs.get(key, null) != null
+    override fun isSet(): Boolean = prefs.contains(key)
 
     override fun delete() {
-        prefs.remove(key)
+        prefs.edit().remove(key).apply()
     }
 
     override fun changes(): Flow<T> {
