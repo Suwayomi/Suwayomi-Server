@@ -11,16 +11,18 @@ package ireader.core.http
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.BrowserUserAgent
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 import io.ktor.serialization.gson.gson
 import ireader.core.http.cloudflare.CloudflareBypassManager
 import ireader.core.http.cloudflare.TachideskCloudflareIntegration
 import ireader.core.prefs.PreferenceStore
-import ireader.core.storage.AppDir
 import okhttp3.Cache
 import okhttp3.OkHttpClient
+import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
@@ -29,8 +31,8 @@ import java.util.concurrent.TimeUnit
 /**
  * HTTP clients for IReader extensions.
  * 
- * Integrates with Tachidesk's NetworkHelper for cookie management and
- * Cloudflare bypass using FlareSolverr.
+ * Integrates with Tachidesk's NetworkHelper for cookie management,
+ * user agent synchronization, shared cache, and Cloudflare bypass using FlareSolverr.
  */
 class HttpClients(
     store: PreferenceStore,
@@ -38,11 +40,21 @@ class HttpClients(
 ) : HttpClientsInterface {
     override val config: NetworkConfig = networkConfig
 
-    // Use Tachidesk's network helper for shared cookie management
+    // Use Tachidesk's network helper for shared cookie management and user agent
     private val tachideskNetwork: NetworkHelper by lazy { Injekt.get() }
+    private val applicationDirs: ApplicationDirs by lazy { Injekt.get() }
 
+    /**
+     * User agent synced from Tachidesk's NetworkHelper.
+     * This ensures IReader extensions use the same user agent as Tachiyomi extensions,
+     * including any updates from Cloudflare bypass.
+     */
+    override val userAgent: String
+        get() = tachideskNetwork.defaultUserAgentProvider()
+
+    // Use shared cache directory with Tachidesk
     private val cache = run {
-        val dir = File(AppDir, "network_cache/")
+        val dir = File(applicationDirs.tempRoot, "network_cache/")
         dir.mkdirs()
         Cache(dir, config.cacheSize)
     }
@@ -72,7 +84,10 @@ class HttpClients(
 
     override val default =
         HttpClient(OkHttp) {
-            BrowserUserAgent()
+            // Use Tachidesk's synced user agent instead of generic browser UA
+            defaultRequest {
+                header(HttpHeaders.UserAgent, userAgent)
+            }
             engine {
                 preconfigured =
                     this@HttpClients.basicClient
@@ -98,7 +113,10 @@ class HttpClients(
 
     override val cloudflareClient =
         HttpClient(OkHttp) {
-            BrowserUserAgent()
+            // Use Tachidesk's synced user agent instead of generic browser UA
+            defaultRequest {
+                header(HttpHeaders.UserAgent, userAgent)
+            }
             engine {
                 // Use Tachidesk's cloudflare client which has the interceptor
                 preconfigured = tachideskNetwork.cloudflareClient
@@ -129,4 +147,10 @@ interface HttpClientsInterface {
     val config: NetworkConfig
     val sslConfig: SSLConfiguration
     val cloudflareBypassManager: CloudflareBypassManager
+    
+    /**
+     * User agent synced from Tachidesk's NetworkHelper.
+     * Updated automatically when Cloudflare bypass succeeds.
+     */
+    val userAgent: String
 }

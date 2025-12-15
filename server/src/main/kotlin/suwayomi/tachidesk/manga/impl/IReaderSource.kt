@@ -46,7 +46,7 @@ object IReaderSource {
                     lang = it[IReaderSourceTable.lang],
                     iconUrl = getExtensionIconUrl(sourceExtension[IReaderExtensionTable.apkName]),
                     supportsLatest = true,
-                    isConfigurable = false,
+                    isConfigurable = true, // IReader sources have preferences via PreferenceStore
                     isNsfw = it[IReaderSourceTable.isNsfw],
                     displayName = catalogSource?.name ?: it[IReaderSourceTable.name],
                     baseUrl = baseUrl,
@@ -74,7 +74,7 @@ object IReaderSource {
                 lang = source[IReaderSourceTable.lang],
                 iconUrl = getExtensionIconUrl(extension[IReaderExtensionTable.apkName]),
                 supportsLatest = true,
-                isConfigurable = false,
+                isConfigurable = true, // IReader sources have preferences via PreferenceStore
                 isNsfw = source[IReaderSourceTable.isNsfw],
                 displayName = catalogSource?.name ?: source[IReaderSourceTable.name],
                 baseUrl = baseUrl,

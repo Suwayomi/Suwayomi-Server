@@ -58,7 +58,7 @@ data class IReaderSourceType(
                     lang = row[IReaderSourceTable.lang],
                     iconUrl = IReaderExtension.getExtensionIconUrl(row[IReaderExtensionTable.apkName]),
                     supportsLatest = true,
-                    isConfigurable = false,
+                    isConfigurable = true, // IReader sources have preferences via PreferenceStore
                     isNsfw = row[IReaderSourceTable.isNsfw],
                     displayName = row[IReaderSourceTable.name],
                     baseUrl = null,

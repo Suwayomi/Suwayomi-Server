@@ -101,6 +101,7 @@ class EnhancedHttpClientsWrapper(
     override val sslConfig: SSLConfiguration get() = delegate.sslConfig
     override val cloudflareBypassManager: CloudflareBypassManager get() = 
         cloudflareBypass ?: throw IllegalStateException("CloudflareBypassManager not configured")
+    override val userAgent: String get() = delegate.userAgent
     
     override suspend fun fetchWithBypass(
         url: String,
