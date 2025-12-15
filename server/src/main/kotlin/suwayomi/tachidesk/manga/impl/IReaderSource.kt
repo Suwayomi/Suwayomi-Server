@@ -38,7 +38,7 @@ object IReaderSource {
 
                 val sourceId = it[IReaderSourceTable.id].value
                 val catalogSource = getCatalogueSourceOrNull(sourceId)
-                val baseUrl: String? = null // BaseUrl extraction would require reflection
+                val baseUrl = extractBaseUrl(catalogSource)
 
                 IReaderSourceDataClass(
                     id = sourceId.toString(),
@@ -66,7 +66,7 @@ object IReaderSource {
                     .first()
 
             val catalogSource = getCatalogueSourceOrNull(sourceId)
-            val baseUrl: String? = null // BaseUrl extraction would require reflection
+            val baseUrl = extractBaseUrl(catalogSource)
 
             IReaderSourceDataClass(
                 id = sourceId.toString(),
@@ -189,5 +189,54 @@ object IReaderSource {
 
     fun unregisterCatalogueSource(sourceId: Long) {
         sourceCache.remove(sourceId)
+    }
+
+    /**
+     * Extract baseUrl from an IReader source using reflection.
+     * IReader's HttpSource has a baseUrl property.
+     */
+    private fun extractBaseUrl(source: ireader.core.source.CatalogSource?): String? {
+        if (source == null) return null
+        return try {
+            // Try to get baseUrl from the underlying source instance
+            val wrapper = source as? IReaderSourceWrapper
+            val sourceInstance = wrapper?.let {
+                val field = it.javaClass.getDeclaredField("sourceInstance")
+                field.isAccessible = true
+                field.get(it)
+            } ?: source
+
+            // Try getBaseUrl method first
+            val baseUrlMethod = sourceInstance.javaClass.getMethod("getBaseUrl")
+            baseUrlMethod.invoke(sourceInstance) as? String
+        } catch (e: Exception) {
+            logger.debug { "Could not extract baseUrl: ${e.message}" }
+            null
+        }
+    }
+
+    /**
+     * Get the package name for a source to access its preferences.
+     */
+    fun getSourcePackageName(sourceId: Long): String? {
+        return transaction {
+            val sourceRecord = IReaderSourceTable.selectAll()
+                .where { IReaderSourceTable.id eq sourceId }
+                .firstOrNull() ?: return@transaction null
+
+            val extensionId = sourceRecord[IReaderSourceTable.extension].value
+            IReaderExtensionTable.selectAll()
+                .where { IReaderExtensionTable.id eq extensionId }
+                .firstOrNull()
+                ?.get(IReaderExtensionTable.pkgName)
+        }
+    }
+
+    /**
+     * Get the PreferenceStore for a source.
+     */
+    fun getSourcePreferenceStore(sourceId: Long): ireader.core.prefs.PreferenceStore? {
+        val pkgName = getSourcePackageName(sourceId) ?: return null
+        return PreferenceStoreFactory().create(pkgName)
     }
 }

@@ -10,11 +10,13 @@ package suwayomi.tachidesk.graphql.mutations
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import graphql.execution.DataFetcherResult
 import ireader.core.source.model.ChapterInfo
-import ireader.core.source.model.MangaInfo
 import ireader.core.source.model.MangasPageInfo
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
+import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -25,8 +27,10 @@ import suwayomi.tachidesk.graphql.types.IReaderChapterType
 import suwayomi.tachidesk.graphql.types.IReaderNovelType
 import suwayomi.tachidesk.graphql.types.IReaderPageType
 import suwayomi.tachidesk.manga.impl.IReaderNovel
+import suwayomi.tachidesk.manga.impl.IReaderSource
 import suwayomi.tachidesk.manga.model.table.IReaderChapterTable
 import suwayomi.tachidesk.manga.model.table.IReaderNovelTable
+import suwayomi.tachidesk.manga.model.table.IReaderSourceMetaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -370,6 +374,124 @@ class IReaderSourceMutation {
                 FetchIReaderChapterContentPayload(
                     clientMutationId = clientMutationId,
                     pages = pages.map { IReaderPageType.fromPage(it) },
+                )
+            }
+        }
+    }
+
+    // ==================== Source Preferences ====================
+
+    data class SetIReaderSourcePreferenceInput(
+        val clientMutationId: String? = null,
+        @GraphQLDescription("Source ID")
+        val sourceId: Long,
+        @GraphQLDescription("Preference key")
+        val key: String,
+        @GraphQLDescription("Preference value as string")
+        val value: String,
+    )
+
+    data class SetIReaderSourcePreferencePayload(
+        val clientMutationId: String?,
+        @GraphQLDescription("The preference that was set")
+        val preference: IReaderSourcePreferenceResult?,
+    )
+
+    data class IReaderSourcePreferenceResult(
+        val key: String,
+        val value: String,
+    )
+
+    @RequireAuth
+    @GraphQLDescription("Set a preference value for an IReader source")
+    fun setIReaderSourcePreference(
+        input: SetIReaderSourcePreferenceInput,
+    ): CompletableFuture<DataFetcherResult<SetIReaderSourcePreferencePayload?>> {
+        val (clientMutationId, sourceId, key, value) = input
+
+        return future {
+            asDataFetcherResult {
+                // Verify source exists
+                IReaderSource.getSource(sourceId)
+                    ?: throw IllegalArgumentException("Source not found: $sourceId")
+
+                // Store preference in meta table
+                transaction {
+                    val existing = IReaderSourceMetaTable.selectAll()
+                        .where {
+                            (IReaderSourceMetaTable.ref eq sourceId) and
+                                (IReaderSourceMetaTable.key eq key)
+                        }
+                        .firstOrNull()
+
+                    if (existing != null) {
+                        IReaderSourceMetaTable.update({
+                            (IReaderSourceMetaTable.ref eq sourceId) and
+                                (IReaderSourceMetaTable.key eq key)
+                        }) {
+                            it[IReaderSourceMetaTable.value] = value
+                        }
+                    } else {
+                        IReaderSourceMetaTable.insert {
+                            it[ref] = sourceId
+                            it[IReaderSourceMetaTable.key] = key
+                            it[IReaderSourceMetaTable.value] = value
+                        }
+                    }
+                }
+
+                // Also update the PreferenceStore so the source picks up the change
+                val prefStore = IReaderSource.getSourcePreferenceStore(sourceId)
+                prefStore?.getString(key, "")?.set(value)
+
+                SetIReaderSourcePreferencePayload(
+                    clientMutationId = clientMutationId,
+                    preference = IReaderSourcePreferenceResult(key, value),
+                )
+            }
+        }
+    }
+
+    data class DeleteIReaderSourcePreferenceInput(
+        val clientMutationId: String? = null,
+        @GraphQLDescription("Source ID")
+        val sourceId: Long,
+        @GraphQLDescription("Preference key to delete")
+        val key: String,
+    )
+
+    data class DeleteIReaderSourcePreferencePayload(
+        val clientMutationId: String?,
+        val success: Boolean,
+    )
+
+    @RequireAuth
+    @GraphQLDescription("Delete a preference for an IReader source")
+    fun deleteIReaderSourcePreference(
+        input: DeleteIReaderSourcePreferenceInput,
+    ): CompletableFuture<DataFetcherResult<DeleteIReaderSourcePreferencePayload?>> {
+        val (clientMutationId, sourceId, key) = input
+
+        return future {
+            asDataFetcherResult {
+                // Verify source exists
+                IReaderSource.getSource(sourceId)
+                    ?: throw IllegalArgumentException("Source not found: $sourceId")
+
+                val deleted = transaction {
+                    IReaderSourceMetaTable.deleteWhere {
+                        (IReaderSourceMetaTable.ref eq sourceId) and
+                            (IReaderSourceMetaTable.key eq key)
+                    }
+                }
+
+                // Also delete from PreferenceStore
+                val prefStore = IReaderSource.getSourcePreferenceStore(sourceId)
+                prefStore?.getString(key, "")?.delete()
+
+                DeleteIReaderSourcePreferencePayload(
+                    clientMutationId = clientMutationId,
+                    success = deleted > 0,
                 )
             }
         }

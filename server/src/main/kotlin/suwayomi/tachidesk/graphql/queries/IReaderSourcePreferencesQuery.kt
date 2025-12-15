@@ -9,20 +9,39 @@ package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import graphql.execution.DataFetcherResult
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.manga.impl.IReaderSource
+import suwayomi.tachidesk.manga.model.table.IReaderSourceMetaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
+@GraphQLDescription("IReader source preference value types")
+enum class IReaderPreferenceType {
+    STRING,
+    INT,
+    LONG,
+    FLOAT,
+    BOOLEAN,
+    STRING_SET,
+}
+
 @GraphQLDescription("IReader source preference")
 data class IReaderSourcePreference(
+    @GraphQLDescription("Preference key")
     val key: String,
+    @GraphQLDescription("Display title (same as key for IReader)")
     val title: String,
+    @GraphQLDescription("Description/summary")
     val summary: String?,
+    @GraphQLDescription("Default value as string")
     val defaultValue: String?,
+    @GraphQLDescription("Current value as string")
     val currentValue: String?,
-    val valueType: String,
+    @GraphQLDescription("Value type")
+    val valueType: IReaderPreferenceType,
 )
 
 class IReaderSourcePreferencesQuery {
@@ -34,13 +53,36 @@ class IReaderSourcePreferencesQuery {
     ): CompletableFuture<DataFetcherResult<List<IReaderSourcePreference>?>> =
         future {
             asDataFetcherResult {
-                val source =
-                    IReaderSource.getSource(sourceId)
-                        ?: throw IllegalArgumentException("Source not found: $sourceId")
+                IReaderSource.getSource(sourceId)
+                    ?: throw IllegalArgumentException("Source not found: $sourceId")
 
-                // IReader sources may have preferences through their preference store
-                // This is a placeholder for when preference support is fully implemented
-                emptyList<IReaderSourcePreference>()
+                // Get stored preferences from the meta table
+                val storedPrefs = transaction {
+                    IReaderSourceMetaTable.selectAll()
+                        .where { IReaderSourceMetaTable.ref eq sourceId }
+                        .map { row ->
+                            IReaderSourcePreference(
+                                key = row[IReaderSourceMetaTable.key],
+                                title = row[IReaderSourceMetaTable.key],
+                                summary = null,
+                                defaultValue = null,
+                                currentValue = row[IReaderSourceMetaTable.value],
+                                valueType = inferValueType(row[IReaderSourceMetaTable.value]),
+                            )
+                        }
+                }
+
+                storedPrefs
             }
         }
+
+    private fun inferValueType(value: String): IReaderPreferenceType {
+        return when {
+            value == "true" || value == "false" -> IReaderPreferenceType.BOOLEAN
+            value.toLongOrNull() != null -> IReaderPreferenceType.LONG
+            value.toDoubleOrNull() != null -> IReaderPreferenceType.FLOAT
+            value.startsWith("[") && value.endsWith("]") -> IReaderPreferenceType.STRING_SET
+            else -> IReaderPreferenceType.STRING
+        }
+    }
 }
