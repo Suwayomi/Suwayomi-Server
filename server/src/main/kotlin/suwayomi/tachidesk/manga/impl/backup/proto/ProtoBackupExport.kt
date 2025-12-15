@@ -23,6 +23,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupIReaderHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
@@ -154,11 +155,12 @@ object ProtoBackupExport : ProtoBackupBase() {
         val backup: Backup =
             transaction {
                 Backup(
-                    BackupMangaHandler.backup(flags),
-                    BackupCategoryHandler.backup(flags),
-                    BackupSourceHandler.backup(backupMangas, flags),
-                    BackupGlobalMetaHandler.backup(flags),
-                    BackupSettingsHandler.backup(flags),
+                    backupManga = BackupMangaHandler.backup(flags),
+                    backupCategories = BackupCategoryHandler.backup(flags),
+                    backupSources = BackupSourceHandler.backup(backupMangas, flags),
+                    meta = BackupGlobalMetaHandler.backup(flags),
+                    serverSettings = BackupSettingsHandler.backup(flags),
+                    ireaderData = BackupIReaderHandler.backup(flags),
                 )
             }
 

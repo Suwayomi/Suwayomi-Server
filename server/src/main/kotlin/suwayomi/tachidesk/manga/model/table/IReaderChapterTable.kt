@@ -20,6 +20,7 @@ object IReaderChapterTable : IntIdTable() {
 
     val isRead = bool("read").default(false)
     val isBookmarked = bool("bookmark").default(false)
+    val isDownloaded = bool("is_downloaded").default(false)
     val lastPageRead = integer("last_page_read").default(0)
     val lastReadAt = long("last_read_at").default(0)
     val fetchedAt = long("fetched_at").default(0)

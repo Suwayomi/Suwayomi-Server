@@ -16,6 +16,8 @@ data class Backup(
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
     @ProtoNumber(9001) var serverSettings: BackupServerSettings?,
+    // IReader (novel) data
+    @ProtoNumber(9100) var ireaderData: BackupIReaderData? = null,
 ) {
     fun getSourceMap(): Map<Long, String> =
         backupSources

@@ -27,6 +27,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.Validatio
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupIReaderHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
@@ -219,6 +220,12 @@ object ProtoBackupImport : ProtoBackupBase() {
                     flags = flags,
                 )
             }
+        }
+
+        // Restore IReader (novel) data
+        if (flags.includeManga && backup.ireaderData != null) {
+            logger.info { "restore($id): restoring IReader data..." }
+            BackupIReaderHandler.restore(backup.ireaderData!!, flags)
         }
 
         logger.info {
