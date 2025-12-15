@@ -88,7 +88,7 @@ object BackupIReaderHandler {
                 author = novelRow[IReaderNovelTable.author],
                 description = novelRow[IReaderNovelTable.description],
                 genre = novelRow[IReaderNovelTable.genre],
-                status = novelRow[IReaderNovelTable.status],
+                status = novelRow[IReaderNovelTable.status].toInt(),
                 thumbnailUrl = novelRow[IReaderNovelTable.thumbnailUrl],
                 inLibrary = novelRow[IReaderNovelTable.inLibrary],
                 chapters = chapters,
@@ -168,7 +168,7 @@ object BackupIReaderHandler {
                     it[author] = backupNovel.author
                     it[description] = backupNovel.description
                     it[genre] = backupNovel.genre
-                    it[status] = backupNovel.status
+                    it[status] = backupNovel.status.toLong()
                     it[thumbnailUrl] = backupNovel.thumbnailUrl
                     it[inLibrary] = backupNovel.inLibrary
                 }
@@ -183,7 +183,7 @@ object BackupIReaderHandler {
                     it[author] = backupNovel.author
                     it[description] = backupNovel.description
                     it[genre] = backupNovel.genre
-                    it[status] = backupNovel.status
+                    it[status] = backupNovel.status.toLong()
                     it[thumbnailUrl] = backupNovel.thumbnailUrl
                     it[inLibrary] = backupNovel.inLibrary
                 }[IReaderNovelTable.id].value
