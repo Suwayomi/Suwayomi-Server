@@ -9,18 +9,26 @@ package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import graphql.execution.DataFetcherResult
+import ireader.core.source.model.ChapterInfo
+import ireader.core.source.model.MangaInfo
+import ireader.core.source.model.MangasPageInfo
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.IReaderChapterType
 import suwayomi.tachidesk.graphql.types.IReaderNovelType
 import suwayomi.tachidesk.graphql.types.IReaderPageType
 import suwayomi.tachidesk.manga.impl.IReaderNovel
-import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.IReaderChapterTable
 import suwayomi.tachidesk.manga.model.table.IReaderNovelTable
-import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
 class IReaderSourceMutation {
@@ -48,6 +56,7 @@ class IReaderSourceMutation {
         val hasNextPage: Boolean,
     )
 
+
     @RequireAuth
     @GraphQLDescription("Fetch novels from an IReader source")
     fun fetchIReaderNovels(input: FetchIReaderNovelsInput): CompletableFuture<DataFetcherResult<FetchIReaderNovelsPayload?>> {
@@ -71,14 +80,92 @@ class IReaderSourceMutation {
                         }
                     }
 
+                // Save novels to database and get their IDs
+                val novels = insertOrUpdateNovels(novelsPage, sourceId)
+
                 FetchIReaderNovelsPayload(
                     clientMutationId = clientMutationId,
-                    novels = novelsPage.mangas.map { IReaderNovelType(it, sourceId) },
+                    novels = novels,
                     hasNextPage = novelsPage.hasNextPage,
                 )
             }
         }
     }
+
+    /**
+     * Insert or update novels in the database and return the list with database IDs
+     */
+    private fun insertOrUpdateNovels(
+        novelsPage: MangasPageInfo,
+        sourceId: Long,
+    ): List<IReaderNovelType> =
+        transaction {
+            val novels = novelsPage.mangas
+
+            // Find existing novels by URL and source
+            val existingNovelsByUrl =
+                IReaderNovelTable
+                    .selectAll()
+                    .where {
+                        (IReaderNovelTable.sourceReference eq sourceId) and
+                            (IReaderNovelTable.url inList novels.map { it.key })
+                    }.associateBy { it[IReaderNovelTable.url] }
+
+            val existingUrls = existingNovelsByUrl.keys
+
+            // Insert new novels
+            val novelsToInsert = novels.filter { it.key !in existingUrls }
+            val insertedNovelsByUrl =
+                IReaderNovelTable
+                    .batchInsert(novelsToInsert) { novel ->
+                        this[IReaderNovelTable.url] = novel.key
+                        this[IReaderNovelTable.title] = novel.title
+                        this[IReaderNovelTable.artist] = novel.artist
+                        this[IReaderNovelTable.author] = novel.author
+                        this[IReaderNovelTable.description] = novel.description
+                        this[IReaderNovelTable.genre] = novel.genres.joinToString(", ")
+                        this[IReaderNovelTable.status] = novel.status
+                        this[IReaderNovelTable.thumbnailUrl] = novel.cover
+                        this[IReaderNovelTable.sourceReference] = sourceId
+                        this[IReaderNovelTable.lastFetchedAt] = Instant.now().epochSecond
+                    }.associate { it[IReaderNovelTable.url] to it[IReaderNovelTable.id].value }
+
+            // Update existing novels that are not in library
+            val novelsToUpdate =
+                novels
+                    .mapNotNull { novel ->
+                        existingNovelsByUrl[novel.key]?.let { novel to it }
+                    }.filterNot { (_, row) -> row[IReaderNovelTable.inLibrary] }
+
+            if (novelsToUpdate.isNotEmpty()) {
+                BatchUpdateStatement(IReaderNovelTable).apply {
+                    novelsToUpdate.forEach { (novel, row) ->
+                        addBatch(EntityID(row[IReaderNovelTable.id].value, IReaderNovelTable))
+                        this[IReaderNovelTable.title] = novel.title
+                        this[IReaderNovelTable.artist] = novel.artist ?: row[IReaderNovelTable.artist]
+                        this[IReaderNovelTable.author] = novel.author ?: row[IReaderNovelTable.author]
+                        this[IReaderNovelTable.description] = novel.description ?: row[IReaderNovelTable.description]
+                        this[IReaderNovelTable.genre] = novel.genres.joinToString(", ").ifEmpty { row[IReaderNovelTable.genre] }
+                        this[IReaderNovelTable.status] = novel.status
+                        this[IReaderNovelTable.thumbnailUrl] = novel.cover ?: row[IReaderNovelTable.thumbnailUrl]
+                        this[IReaderNovelTable.lastFetchedAt] = Instant.now().epochSecond
+                    }
+                    execute(this@transaction)
+                }
+            }
+
+            // Combine all URLs to IDs
+            val allNovelsByUrl =
+                existingNovelsByUrl.mapValues { it.value[IReaderNovelTable.id].value } + insertedNovelsByUrl
+
+            // Return novels from database with proper IDs
+            val novelIds = novels.mapNotNull { allNovelsByUrl[it.key] }
+            IReaderNovelTable
+                .selectAll()
+                .where { IReaderNovelTable.id inList novelIds }
+                .map { IReaderNovelType(it) }
+        }
+
 
     data class FetchIReaderChaptersInput(
         val clientMutationId: String? = null,
@@ -102,7 +189,7 @@ class IReaderSourceMutation {
 
         return future {
             asDataFetcherResult {
-                val (resolvedSourceId, resolvedNovelUrl) =
+                val (resolvedNovelId, resolvedSourceId, resolvedNovelUrl) =
                     when {
                         novelId != null -> {
                             // Look up novel from database
@@ -113,24 +200,128 @@ class IReaderSourceMutation {
                                         .where { IReaderNovelTable.id eq novelId }
                                         .firstOrNull()
                                 } ?: throw IllegalArgumentException("Novel with ID $novelId not found")
-                            novel[IReaderNovelTable.sourceReference] to novel[IReaderNovelTable.url]
+                            Triple(novelId, novel[IReaderNovelTable.sourceReference], novel[IReaderNovelTable.url])
                         }
                         novelUrl != null && source != null -> {
                             require(novelUrl.isNotBlank()) { "Novel URL cannot be empty" }
-                            source to novelUrl
+                            // Find or create the novel in the database
+                            val dbNovelId = findOrCreateNovel(source, novelUrl)
+                            Triple(dbNovelId, source, novelUrl)
                         }
                         else -> throw IllegalArgumentException("Either novelId OR (novelUrl + source) must be provided")
                     }
 
-                val chapters = IReaderNovel.getChapterList(resolvedSourceId, resolvedNovelUrl)
+                val chapterInfos = IReaderNovel.getChapterList(resolvedSourceId, resolvedNovelUrl)
+
+                // Save chapters to database and get their IDs
+                val chapters = insertOrUpdateChapters(chapterInfos, resolvedNovelId)
+
+                // Update novel's chaptersLastFetchedAt
+                transaction {
+                    IReaderNovelTable.update({ IReaderNovelTable.id eq resolvedNovelId }) {
+                        it[chaptersLastFetchedAt] = Instant.now().epochSecond
+                    }
+                }
 
                 FetchIReaderChaptersPayload(
                     clientMutationId = clientMutationId,
-                    chapters = chapters.map { IReaderChapterType(it) },
+                    chapters = chapters,
                 )
             }
         }
     }
+
+    /**
+     * Find an existing novel by URL and source, or create a placeholder
+     */
+    private fun findOrCreateNovel(
+        sourceId: Long,
+        novelUrl: String,
+    ): Int =
+        transaction {
+            val existing =
+                IReaderNovelTable
+                    .selectAll()
+                    .where {
+                        (IReaderNovelTable.sourceReference eq sourceId) and
+                            (IReaderNovelTable.url eq novelUrl)
+                    }.firstOrNull()
+
+            existing?.get(IReaderNovelTable.id)?.value
+                ?: IReaderNovelTable
+                    .batchInsert(listOf(novelUrl)) { url ->
+                        this[IReaderNovelTable.url] = url
+                        this[IReaderNovelTable.title] = "" // Will be populated when details are fetched
+                        this[IReaderNovelTable.sourceReference] = sourceId
+                    }.first()[IReaderNovelTable.id].value
+        }
+
+    /**
+     * Insert or update chapters in the database and return the list with database IDs
+     */
+    private fun insertOrUpdateChapters(
+        chapters: List<ChapterInfo>,
+        novelId: Int,
+    ): List<IReaderChapterType> =
+        transaction {
+            // Find existing chapters by URL and novel
+            val existingChaptersByUrl =
+                IReaderChapterTable
+                    .selectAll()
+                    .where {
+                        (IReaderChapterTable.novel eq novelId) and
+                            (IReaderChapterTable.url inList chapters.map { it.key })
+                    }.associateBy { it[IReaderChapterTable.url] }
+
+            val existingUrls = existingChaptersByUrl.keys
+
+            // Insert new chapters
+            val chaptersToInsert = chapters.filter { it.key !in existingUrls }
+            val now = Instant.now().epochSecond
+            val insertedChaptersByUrl =
+                IReaderChapterTable
+                    .batchInsert(chaptersToInsert.withIndex().toList()) { (index, chapter) ->
+                        this[IReaderChapterTable.url] = chapter.key
+                        this[IReaderChapterTable.name] = chapter.name
+                        this[IReaderChapterTable.dateUpload] = chapter.dateUpload
+                        this[IReaderChapterTable.chapterNumber] = chapter.number
+                        this[IReaderChapterTable.scanlator] = chapter.scanlator.ifEmpty { null }
+                        this[IReaderChapterTable.sourceOrder] = index
+                        this[IReaderChapterTable.novel] = novelId
+                        this[IReaderChapterTable.fetchedAt] = now
+                    }.associate { it[IReaderChapterTable.url] to it[IReaderChapterTable.id].value }
+
+            // Update existing chapters
+            val chaptersToUpdate =
+                chapters.mapNotNull { chapter ->
+                    existingChaptersByUrl[chapter.key]?.let { chapter to it }
+                }
+
+            if (chaptersToUpdate.isNotEmpty()) {
+                BatchUpdateStatement(IReaderChapterTable).apply {
+                    chaptersToUpdate.forEach { (chapter, row) ->
+                        addBatch(EntityID(row[IReaderChapterTable.id].value, IReaderChapterTable))
+                        this[IReaderChapterTable.name] = chapter.name
+                        this[IReaderChapterTable.dateUpload] = chapter.dateUpload
+                        this[IReaderChapterTable.chapterNumber] = chapter.number
+                        this[IReaderChapterTable.scanlator] = chapter.scanlator.ifEmpty { null }
+                    }
+                    execute(this@transaction)
+                }
+            }
+
+            // Combine all URLs to IDs
+            val allChaptersByUrl =
+                existingChaptersByUrl.mapValues { it.value[IReaderChapterTable.id].value } + insertedChaptersByUrl
+
+            // Return chapters from database with proper IDs
+            val chapterIds = chapters.mapNotNull { allChaptersByUrl[it.key] }
+            IReaderChapterTable
+                .selectAll()
+                .where { IReaderChapterTable.id inList chapterIds }
+                .map { IReaderChapterType(it) }
+        }
+
 
     data class FetchIReaderChapterContentInput(
         val clientMutationId: String? = null,
@@ -157,15 +348,15 @@ class IReaderSourceMutation {
                 val (resolvedSourceId, resolvedChapterUrl) =
                     when {
                         chapterId != null -> {
-                            // Look up chapter from database and get source from associated manga
-                            val chapterWithManga =
+                            // Look up chapter from database and get source from associated novel
+                            val chapterWithNovel =
                                 transaction {
-                                    (ChapterTable innerJoin MangaTable)
+                                    (IReaderChapterTable innerJoin IReaderNovelTable)
                                         .selectAll()
-                                        .where { ChapterTable.id eq chapterId }
+                                        .where { IReaderChapterTable.id eq chapterId }
                                         .firstOrNull()
                                 } ?: throw IllegalArgumentException("Chapter with ID $chapterId not found")
-                            chapterWithManga[MangaTable.sourceReference] to chapterWithManga[ChapterTable.url]
+                            chapterWithNovel[IReaderNovelTable.sourceReference] to chapterWithNovel[IReaderChapterTable.url]
                         }
                         chapterUrl != null && source != null -> {
                             require(chapterUrl.isNotBlank()) { "Chapter URL cannot be empty" }

@@ -99,7 +99,6 @@ class EnhancedHttpClientsWrapper(
     override val cloudflareClient: HttpClient get() = delegate.cloudflareClient
     override val config: NetworkConfig get() = delegate.config
     override val sslConfig: SSLConfiguration get() = delegate.sslConfig
-    override val cookieSynchronizer: CookieSynchronizer get() = delegate.cookieSynchronizer
     override val cloudflareBypassManager: CloudflareBypassManager get() = 
         cloudflareBypass ?: throw IllegalStateException("CloudflareBypassManager not configured")
     

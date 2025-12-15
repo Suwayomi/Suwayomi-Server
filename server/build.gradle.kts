@@ -114,7 +114,6 @@ dependencies {
     // IReader extension dependencies - these must be provided by the server
     // Extensions are compiled with compileOnly and expect the runtime to provide these
     implementation(libs.coroutines.core)
-    implementation(libs.stdlib)
     implementation(libs.datetime)
     implementation(libs.serialization.json)
     implementation(libs.ktor.core)

@@ -11,409 +11,439 @@ Tachidesk-Server now supports IReader extensions, allowing you to browse and rea
 
 ### 2. Runtime Dependencies
 Added all dependencies that IReader extensions require:
-- Ktor HTTP Client (v3.1.2) - For network requests
+- Ktor HTTP Client - For network requests
 - Ktor Serialization - For JSON/data handling
-- Kotlinx Serialization (v1.8.0) - For data serialization
+- Kotlinx Serialization - For data serialization
 
 ### 3. Extension Loading System
 - Extensions are loaded with the server's classloader as parent
 - Extensions find all required classes in the server's classpath
 - No ClassNotFoundException or NoClassDefFoundError
 
-### 4. API Endpoints
-Complete REST API for managing extensions and browsing novels.
+### 4. GraphQL API
+Complete GraphQL API for managing extensions and browsing novels. All data is persisted to the database.
 
-## API Endpoints
+## GraphQL API
+
+IReader functionality is accessed exclusively through the GraphQL API at `/api/graphql`.
 
 ### Extension Management
 
 #### List Extensions
-```http
-GET /api/v1/ireader/extension/list
+```graphql
+query {
+  ireaderExtensions {
+    pkgName
+    name
+    lang
+    versionCode
+    versionName
+    hasUpdate
+    installed
+    isNsfw
+    iconUrl
+  }
+}
 ```
-Returns all available IReader extensions.
+
+#### List Extensions with Filters
+```graphql
+query {
+  ireaderExtensions(installed: true, lang: "en") {
+    pkgName
+    name
+    installed
+  }
+}
+```
+
+#### Get Single Extension
+```graphql
+query {
+  ireaderExtension(pkgName: "ireader.freewebnovel.en") {
+    pkgName
+    name
+    installed
+    hasUpdate
+  }
+}
+```
+
+#### Get Extension Statistics
+```graphql
+query {
+  ireaderExtensionStats {
+    total
+    installed
+    hasUpdate
+    obsolete
+    byLanguage {
+      language
+      count
+    }
+  }
+}
+```
+
+#### Get Available Languages
+```graphql
+query {
+  ireaderExtensionLanguages
+}
+```
 
 #### Install Extension
-```http
-GET /api/v1/ireader/extension/install/{pkgName}
-```
-Example:
-```bash
-curl "http://localhost:4567/api/v1/ireader/extension/install/ireader.freewebnovel.en"
-```
-
-#### Upload Extension
-```http
-POST /api/v1/ireader/extension/install
-Content-Type: multipart/form-data
+```graphql
+mutation {
+  installIReaderExtension(input: { pkgName: "ireader.freewebnovel.en" }) {
+    extension {
+      pkgName
+      name
+    }
+  }
+}
 ```
 
 #### Update Extension
-```http
-GET /api/v1/ireader/extension/update/{pkgName}
-```
-
-**Note:** You must call `/api/v1/ireader/extension/list` first to detect available updates before calling update.
-
-Example:
-```bash
-# 1. Refresh extension list to detect updates
-curl "http://localhost:4567/api/v1/ireader/extension/list"
-
-# 2. Update the extension
-curl "http://localhost:4567/api/v1/ireader/extension/update/ireader.freewebnovel.en"
+```graphql
+mutation {
+  updateIReaderExtension(input: { pkgName: "ireader.freewebnovel.en" }) {
+    extension {
+      pkgName
+      versionCode
+    }
+  }
+}
 ```
 
 #### Uninstall Extension
-```http
-GET /api/v1/ireader/extension/uninstall/{pkgName}
-```
-
-#### Get Extension Icon
-```http
-GET /api/v1/ireader/extension/icon/{apkName}
+```graphql
+mutation {
+  uninstallIReaderExtension(input: { pkgName: "ireader.freewebnovel.en" }) {
+    success
+  }
+}
 ```
 
 ### Source Management
 
 #### List Sources
-```http
-GET /api/v1/ireader/source/list
-```
-Returns all installed IReader sources.
-
-**Response:**
-```json
-[
-  {
-    "id": "1234567890",
-    "name": "FreeWebNovel",
-    "lang": "en",
-    "iconUrl": "/api/v1/ireader/extension/icon/ireader.freewebnovel.en.apk",
-    "supportsLatest": true,
-    "isConfigurable": false,
-    "isNsfw": false,
-    "displayName": "FreeWebNovel",
-    "baseUrl": null
+```graphql
+query {
+  ireaderSources {
+    nodes {
+      id
+      name
+      lang
+      iconUrl
+      supportsLatest
+      isNsfw
+    }
+    totalCount
   }
-]
+}
 ```
 
-#### Get Source Details
-```http
-GET /api/v1/ireader/source/{sourceId}
+#### List Sources with Filters
+```graphql
+query {
+  ireaderSources(condition: { lang: "en" }) {
+    nodes {
+      id
+      name
+    }
+  }
+}
+```
+
+#### Get Single Source
+```graphql
+query {
+  ireaderSource(id: 1234567890) {
+    id
+    name
+    lang
+    iconUrl
+  }
+}
 ```
 
 ### Novel Browsing
 
-#### Browse Popular Novels
-```http
-GET /api/v1/ireader/source/{sourceId}/popular/{page}
-```
+All novel browsing operations save data to the database, ensuring novels have proper database IDs.
 
-**Example:**
-```bash
-curl "http://localhost:4567/api/v1/ireader/source/1234567890/popular/1"
-```
-
-**Response:**
-```json
-{
-  "mangas": [
-    {
-      "key": "https://freewebnovel.com/novel-123",
-      "title": "Cultivation Chat Group",
-      "cover": "https://freewebnovel.com/cover.jpg",
-      "author": "",
-      "description": "",
-      "genres": [],
-      "status": 0
+#### Fetch Popular/Latest/Search Novels
+```graphql
+mutation {
+  fetchIReaderNovels(input: {
+    source: 1234567890
+    type: POPULAR  # or LATEST or SEARCH
+    page: 1
+    query: "cultivation"  # required for SEARCH type
+  }) {
+    novels {
+      id          # Database ID
+      sourceId
+      url
+      title
+      thumbnailUrl
+      author
+      description
+      genre
+      status
+      inLibrary
     }
-  ],
-  "hasNextPage": true
+    hasNextPage
+  }
 }
 ```
 
-#### Browse Latest Novels
-```http
-GET /api/v1/ireader/source/{sourceId}/latest/{page}
-```
+### Chapter Management
 
-#### Search Novels
-```http
-GET /api/v1/ireader/source/{sourceId}/search?query={query}&page={page}
-```
+Chapters are saved to the database with proper IDs for later reference.
 
-**Example:**
-```bash
-curl "http://localhost:4567/api/v1/ireader/source/1234567890/search?query=cultivation&page=1"
-```
-
-### Novel Details
-
-#### Get Novel Details
-```http
-GET /api/v1/ireader/source/{sourceId}/details?novelUrl={encodedUrl}
-```
-
-**Example:**
-```bash
-# URL must be encoded
-curl "http://localhost:4567/api/v1/ireader/source/1234567890/details?novelUrl=https%3A%2F%2Ffreewebnovel.com%2Fnovel-123"
-```
-
-**Response:**
-```json
-{
-  "key": "https://freewebnovel.com/novel-123",
-  "title": "Cultivation Chat Group",
-  "author": "Legend of the Paladin",
-  "description": "On a certain day, Song Shuhang accidentally joined...",
-  "genres": ["Action", "Adventure", "Comedy", "Fantasy"],
-  "status": 1,
-  "cover": "https://freewebnovel.com/cover.jpg"
+#### Fetch Chapters for a Novel
+```graphql
+mutation {
+  fetchIReaderChapters(input: {
+    novelId: 123  # Use database novel ID
+    # OR use source + novelUrl:
+    # source: 1234567890
+    # novelUrl: "https://example.com/novel"
+  }) {
+    chapters {
+      id          # Database ID
+      name
+      url
+      dateUpload
+      chapterNumber
+      scanlator
+      novelId
+      isRead
+      isBookmarked
+      lastPageRead
+      sourceOrder
+    }
+  }
 }
 ```
 
-**Status Values:**
-- `0` = Unknown
-- `1` = Ongoing
-- `2` = Completed
-- `3` = Licensed
-- `4` = Publishing Finished
-- `5` = Cancelled
-- `6` = On Hiatus
-
-#### Get Chapter List
-```http
-GET /api/v1/ireader/source/{sourceId}/chapters?novelUrl={encodedUrl}
-```
-
-**Response:**
-```json
-[
-  {
-    "key": "https://freewebnovel.com/chapter-1",
-    "name": "Chapter 1: Accidentally Joined a Cultivation Chat Group",
-    "dateUpload": 1234567890000,
-    "number": 1.0,
-    "scanlator": "",
-    "type": 1
+#### Fetch Chapter Content
+```graphql
+mutation {
+  fetchIReaderChapterContent(input: {
+    chapterId: 456  # Use database chapter ID
+    # OR use source + chapterUrl:
+    # source: 1234567890
+    # chapterUrl: "https://example.com/chapter-1"
+  }) {
+    pages {
+      text
+    }
   }
-]
+}
 ```
 
-#### Get Chapter Content
-```http
-GET /api/v1/ireader/source/{sourceId}/chapter?chapterUrl={encodedUrl}
-```
-
-**Response:**
-```json
-[
-  {
-    "text": "Chapter 1: Accidentally Joined a Cultivation Chat Group"
-  },
-  {
-    "text": "On a certain day, Song Shuhang accidentally joined a deeply afflicted Xianxia chuunibyou..."
-  },
-  {
-    "text": "Another paragraph of the chapter..."
-  }
-]
-```
 
 ## Complete Example: Reading a Novel
 
 ### Step 1: Install Extension
-```bash
-curl "http://localhost:4567/api/v1/ireader/extension/install/ireader.freewebnovel.en"
+```graphql
+mutation {
+  installIReaderExtension(input: { pkgName: "ireader.freewebnovel.en" }) {
+    extension { pkgName name }
+  }
+}
 ```
 
 ### Step 2: Get Source ID
-```bash
-curl "http://localhost:4567/api/v1/ireader/source/list" | jq '.[0].id'
-# Output: "1234567890"
+```graphql
+query {
+  ireaderSources(condition: { lang: "en" }) {
+    nodes { id name }
+  }
+}
 ```
 
 ### Step 3: Browse Popular Novels
-```bash
-curl "http://localhost:4567/api/v1/ireader/source/1234567890/popular/1" | jq '.mangas[0]'
-```
-
-**Output:**
-```json
-{
-  "key": "https://freewebnovel.com/cultivation-chat-group.html",
-  "title": "Cultivation Chat Group",
-  "cover": "https://freewebnovel.com/files/article/image/0/13/13.jpg"
-}
-```
-
-### Step 4: Get Novel Details
-```bash
-# URL encode the novel key
-NOVEL_URL="https://freewebnovel.com/cultivation-chat-group.html"
-ENCODED_URL=$(echo -n "$NOVEL_URL" | jq -sRr @uri)
-
-curl "http://localhost:4567/api/v1/ireader/source/1234567890/details?novelUrl=$ENCODED_URL" | jq
-```
-
-**Output:**
-```json
-{
-  "key": "https://freewebnovel.com/cultivation-chat-group.html",
-  "title": "Cultivation Chat Group",
-  "author": "Legend of the Paladin",
-  "description": "On a certain day, Song Shuhang accidentally joined...",
-  "genres": ["Action", "Adventure", "Comedy", "Fantasy", "Martial Arts", "Xianxia"],
-  "status": 2,
-  "cover": "https://freewebnovel.com/files/article/image/0/13/13.jpg"
-}
-```
-
-### Step 5: Get Chapter List
-```bash
-curl "http://localhost:4567/api/v1/ireader/source/1234567890/chapters?novelUrl=$ENCODED_URL" | jq '.[0]'
-```
-
-**Output:**
-```json
-{
-  "key": "https://freewebnovel.com/cultivation-chat-group/chapter-1.html",
-  "name": "Chapter 1: Accidentally Joined a Cultivation Chat Group",
-  "dateUpload": 0,
-  "number": 1.0,
-  "scanlator": "",
-  "type": 1
-}
-```
-
-### Step 6: Read Chapter Content
-```bash
-CHAPTER_URL="https://freewebnovel.com/cultivation-chat-group/chapter-1.html"
-ENCODED_CHAPTER=$(echo -n "$CHAPTER_URL" | jq -sRr @uri)
-
-curl "http://localhost:4567/api/v1/ireader/source/1234567890/chapter?chapterUrl=$ENCODED_CHAPTER" | jq '.[0:3]'
-```
-
-**Output:**
-```json
-[
-  {
-    "text": "Chapter 1: Accidentally Joined a Cultivation Chat Group"
-  },
-  {
-    "text": "On a certain day, Song Shuhang accidentally joined a deeply afflicted Xianxia chuunibyou..."
-  },
-  {
-    "text": "The entire group shared the common goal of ascending to immortality..."
+```graphql
+mutation {
+  fetchIReaderNovels(input: { source: 1234567890, type: POPULAR, page: 1 }) {
+    novels {
+      id
+      title
+      author
+      thumbnailUrl
+    }
+    hasNextPage
   }
-]
+}
 ```
 
-## PowerShell Example
+### Step 4: Get Chapters (using novel's database ID)
+```graphql
+mutation {
+  fetchIReaderChapters(input: { novelId: 123 }) {
+    chapters {
+      id
+      name
+      chapterNumber
+    }
+  }
+}
+```
 
-```powershell
-# Install extension
-Invoke-RestMethod -Uri "http://localhost:4567/api/v1/ireader/extension/install/ireader.freewebnovel.en"
-
-# Get sources
-$sources = Invoke-RestMethod -Uri "http://localhost:4567/api/v1/ireader/source/list"
-$sourceId = $sources[0].id
-
-# Browse popular
-$popular = Invoke-RestMethod -Uri "http://localhost:4567/api/v1/ireader/source/$sourceId/popular/1"
-$novel = $popular.mangas[0]
-
-# Get details
-$encodedUrl = [System.Web.HttpUtility]::UrlEncode($novel.key)
-$details = Invoke-RestMethod -Uri "http://localhost:4567/api/v1/ireader/source/$sourceId/details?novelUrl=$encodedUrl"
-
-# Get chapters
-$chapters = Invoke-RestMethod -Uri "http://localhost:4567/api/v1/ireader/source/$sourceId/chapters?novelUrl=$encodedUrl"
-
-# Read first chapter
-$chapterUrl = [System.Web.HttpUtility]::UrlEncode($chapters[0].key)
-$content = Invoke-RestMethod -Uri "http://localhost:4567/api/v1/ireader/source/$sourceId/chapter?chapterUrl=$chapterUrl"
-
-# Display
-Write-Host "Novel: $($details.title)" -ForegroundColor Cyan
-Write-Host "Author: $($details.author)" -ForegroundColor Gray
-Write-Host "Chapters: $($chapters.Count)" -ForegroundColor Gray
-Write-Host "`nFirst Chapter:" -ForegroundColor Yellow
-$content[0..2] | ForEach-Object { Write-Host $_.text }
+### Step 5: Read Chapter Content (using chapter's database ID)
+```graphql
+mutation {
+  fetchIReaderChapterContent(input: { chapterId: 456 }) {
+    pages { text }
+  }
+}
 ```
 
 ## JavaScript/TypeScript Example
 
-```javascript
-const BASE_URL = 'http://localhost:4567/api/v1';
+```typescript
+const GRAPHQL_URL = 'http://localhost:4567/api/graphql';
+
+async function graphql(query: string, variables?: Record<string, any>) {
+  const response = await fetch(GRAPHQL_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  });
+  return response.json();
+}
 
 // Install extension
-await fetch(`${BASE_URL}/ireader/extension/install/ireader.freewebnovel.en`);
+await graphql(`
+  mutation {
+    installIReaderExtension(input: { pkgName: "ireader.freewebnovel.en" }) {
+      extension { pkgName }
+    }
+  }
+`);
 
 // Get sources
-const sources = await fetch(`${BASE_URL}/ireader/source/list`).then(r => r.json());
-const sourceId = sources[0].id;
+const { data } = await graphql(`
+  query { ireaderSources { nodes { id name } } }
+`);
+const sourceId = parseInt(data.ireaderSources.nodes[0].id);
 
-// Browse popular
-const popular = await fetch(`${BASE_URL}/ireader/source/${sourceId}/popular/1`).then(r => r.json());
-const novel = popular.mangas[0];
+// Browse popular novels (saved to database)
+const novelsResult = await graphql(`
+  mutation($source: Long!, $page: Int!) {
+    fetchIReaderNovels(input: { source: $source, type: POPULAR, page: $page }) {
+      novels { id title author }
+      hasNextPage
+    }
+  }
+`, { source: sourceId, page: 1 });
 
-// Get details
-const novelUrl = encodeURIComponent(novel.key);
-const details = await fetch(`${BASE_URL}/ireader/source/${sourceId}/details?novelUrl=${novelUrl}`).then(r => r.json());
+const novel = novelsResult.data.fetchIReaderNovels.novels[0];
+console.log('Novel:', novel.title, '(ID:', novel.id, ')');
 
-// Get chapters
-const chapters = await fetch(`${BASE_URL}/ireader/source/${sourceId}/chapters?novelUrl=${novelUrl}`).then(r => r.json());
+// Get chapters (saved to database)
+const chaptersResult = await graphql(`
+  mutation($novelId: Int!) {
+    fetchIReaderChapters(input: { novelId: $novelId }) {
+      chapters { id name chapterNumber }
+    }
+  }
+`, { novelId: novel.id });
 
-// Read chapter
-const chapterUrl = encodeURIComponent(chapters[0].key);
-const content = await fetch(`${BASE_URL}/ireader/source/${sourceId}/chapter?chapterUrl=${chapterUrl}`).then(r => r.json());
+const chapter = chaptersResult.data.fetchIReaderChapters.chapters[0];
+console.log('Chapters:', chaptersResult.data.fetchIReaderChapters.chapters.length);
 
-console.log('Novel:', details.title);
-console.log('Chapters:', chapters.length);
-console.log('Content:', content.map(p => p.text).join('\n\n'));
+// Read chapter content
+const contentResult = await graphql(`
+  mutation($chapterId: Int!) {
+    fetchIReaderChapterContent(input: { chapterId: $chapterId }) {
+      pages { text }
+    }
+  }
+`, { chapterId: chapter.id });
+
+console.log('Content:', contentResult.data.fetchIReaderChapterContent.pages.map(p => p.text).join('\n\n'));
 ```
 
 ## Python Example
 
 ```python
 import requests
-from urllib.parse import quote
 
-BASE_URL = 'http://localhost:4567/api/v1'
+GRAPHQL_URL = 'http://localhost:4567/api/graphql'
+
+def graphql(query, variables=None):
+    response = requests.post(GRAPHQL_URL, json={'query': query, 'variables': variables or {}})
+    return response.json()
 
 # Install extension
-requests.get(f'{BASE_URL}/ireader/extension/install/ireader.freewebnovel.en')
+graphql('''
+  mutation {
+    installIReaderExtension(input: { pkgName: "ireader.freewebnovel.en" }) {
+      extension { pkgName }
+    }
+  }
+''')
 
 # Get sources
-sources = requests.get(f'{BASE_URL}/ireader/source/list').json()
-source_id = sources[0]['id']
+result = graphql('query { ireaderSources { nodes { id name } } }')
+source_id = int(result['data']['ireaderSources']['nodes'][0]['id'])
 
-# Browse popular
-popular = requests.get(f'{BASE_URL}/ireader/source/{source_id}/popular/1').json()
-novel = popular['mangas'][0]
+# Browse popular novels
+result = graphql('''
+  mutation($source: Long!, $page: Int!) {
+    fetchIReaderNovels(input: { source: $source, type: POPULAR, page: $page }) {
+      novels { id title author }
+      hasNextPage
+    }
+  }
+''', {'source': source_id, 'page': 1})
 
-# Get details
-novel_url = quote(novel['key'])
-details = requests.get(f'{BASE_URL}/ireader/source/{source_id}/details?novelUrl={novel_url}').json()
+novel = result['data']['fetchIReaderNovels']['novels'][0]
+print(f"Novel: {novel['title']} (ID: {novel['id']})")
 
 # Get chapters
-chapters = requests.get(f'{BASE_URL}/ireader/source/{source_id}/chapters?novelUrl={novel_url}').json()
+result = graphql('''
+  mutation($novelId: Int!) {
+    fetchIReaderChapters(input: { novelId: $novelId }) {
+      chapters { id name chapterNumber }
+    }
+  }
+''', {'novelId': novel['id']})
 
-# Read chapter
-chapter_url = quote(chapters[0]['key'])
-content = requests.get(f'{BASE_URL}/ireader/source/{source_id}/chapter?chapterUrl={chapter_url}').json()
-
-print(f"Novel: {details['title']}")
-print(f"Author: {details['author']}")
+chapters = result['data']['fetchIReaderChapters']['chapters']
 print(f"Chapters: {len(chapters)}")
+
+# Read chapter content
+result = graphql('''
+  mutation($chapterId: Int!) {
+    fetchIReaderChapterContent(input: { chapterId: $chapterId }) {
+      pages { text }
+    }
+  }
+''', {'chapterId': chapters[0]['id']})
+
+content = result['data']['fetchIReaderChapterContent']['pages']
 print("\nFirst Chapter:")
 for paragraph in content[:3]:
     print(paragraph['text'])
 ```
+
+## Database Persistence
+
+All novels and chapters are automatically saved to the database when fetched:
+
+- **Novels** are stored in `IReaderNovelTable` with fields like `id`, `url`, `title`, `author`, `description`, `genre`, `status`, `thumbnailUrl`, `inLibrary`, etc.
+- **Chapters** are stored in `IReaderChapterTable` with fields like `id`, `url`, `name`, `chapterNumber`, `dateUpload`, `isRead`, `isBookmarked`, `lastPageRead`, etc.
+
+This ensures:
+- Data can be referenced by database IDs
+- Reading progress can be tracked
+- Library management is possible
+- Offline access to metadata
 
 ## Available Extensions
 
@@ -427,11 +457,11 @@ Popular IReader extensions you can install:
 
 ## Notes
 
-- **URL Encoding**: Always URL-encode novel and chapter URLs when passing them as query parameters
+- **GraphQL Only**: IReader functionality is only available through the GraphQL API
+- **Database IDs**: Always use database IDs (`id` field) when referencing novels and chapters
 - **Pagination**: Page numbers start at 1
 - **Rate Limiting**: Some sources may have rate limits, implement delays if needed
 - **Content Format**: Chapter content is returned as an array of text paragraphs
-- **Images**: Image support in chapters is not yet implemented
 - **NSFW**: Some sources may contain NSFW content (check `isNsfw` field)
 
 ## Troubleshooting
@@ -471,6 +501,12 @@ Popular IReader extensions you can install:
 │  - Ktor HTTP Client                 │
 │  - kotlinx.serialization            │
 │  - All model classes                │
+└─────────────────────────────────────┘
+                ↓ data persisted to
+┌─────────────────────────────────────┐
+│  Database                           │
+│  - IReaderNovelTable                │
+│  - IReaderChapterTable              │
 └─────────────────────────────────────┘
 ```
 

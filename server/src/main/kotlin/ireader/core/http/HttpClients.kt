@@ -48,7 +48,6 @@ class HttpClients(
     }
 
     override val sslConfig = SSLConfiguration()
-    override val cookieSynchronizer = CookieSynchronizer()
 
     /**
      * Cloudflare bypass manager integrated with Tachidesk's FlareSolverr
@@ -129,6 +128,5 @@ interface HttpClientsInterface {
     val cloudflareClient: HttpClient
     val config: NetworkConfig
     val sslConfig: SSLConfiguration
-    val cookieSynchronizer: CookieSynchronizer
     val cloudflareBypassManager: CloudflareBypassManager
 }

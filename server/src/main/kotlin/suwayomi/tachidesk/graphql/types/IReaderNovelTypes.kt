@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
+import suwayomi.tachidesk.manga.model.table.IReaderChapterTable
 import suwayomi.tachidesk.manga.model.table.IReaderNovelTable
 import java.util.concurrent.CompletableFuture
 
@@ -127,18 +128,50 @@ data class IReaderNovelNodeList(
 
 @GraphQLDescription("Chapter information from IReader source")
 data class IReaderChapterType(
+    val id: Int,
     val name: String,
-    val key: String,
+    val url: String,
     val dateUpload: Long,
-    val number: Float,
-    val scanlator: String,
+    val chapterNumber: Float,
+    val scanlator: String?,
+    val novelId: Int,
+    val isRead: Boolean,
+    val isBookmarked: Boolean,
+    val lastPageRead: Int,
+    val lastReadAt: Long,
+    val fetchedAt: Long,
+    val sourceOrder: Int,
 ) {
-    constructor(chapterInfo: ChapterInfo) : this(
+    constructor(row: ResultRow) : this(
+        id = row[IReaderChapterTable.id].value,
+        name = row[IReaderChapterTable.name],
+        url = row[IReaderChapterTable.url],
+        dateUpload = row[IReaderChapterTable.dateUpload],
+        chapterNumber = row[IReaderChapterTable.chapterNumber],
+        scanlator = row[IReaderChapterTable.scanlator],
+        novelId = row[IReaderChapterTable.novel].value,
+        isRead = row[IReaderChapterTable.isRead],
+        isBookmarked = row[IReaderChapterTable.isBookmarked],
+        lastPageRead = row[IReaderChapterTable.lastPageRead],
+        lastReadAt = row[IReaderChapterTable.lastReadAt],
+        fetchedAt = row[IReaderChapterTable.fetchedAt],
+        sourceOrder = row[IReaderChapterTable.sourceOrder],
+    )
+
+    constructor(chapterInfo: ChapterInfo, novelId: Int = 0, id: Int = 0, sourceOrder: Int = 0) : this(
+        id = id,
         name = chapterInfo.name,
-        key = chapterInfo.key,
+        url = chapterInfo.key,
         dateUpload = chapterInfo.dateUpload,
-        number = chapterInfo.number,
+        chapterNumber = chapterInfo.number,
         scanlator = chapterInfo.scanlator,
+        novelId = novelId,
+        isRead = false,
+        isBookmarked = false,
+        lastPageRead = 0,
+        lastReadAt = 0,
+        fetchedAt = 0,
+        sourceOrder = sourceOrder,
     )
 }
 

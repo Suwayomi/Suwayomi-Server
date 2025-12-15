@@ -2,6 +2,7 @@
 .gradle
 .idea
 gradle.properties
+local.properties
 .fleet
 # But we need these
 !.idea/runConfigurations
