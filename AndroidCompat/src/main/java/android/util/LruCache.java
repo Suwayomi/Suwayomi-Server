@@ -16,8 +16,6 @@
 
 package android.util;
 
-import android.compat.annotation.UnsupportedAppUsage;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -61,9 +59,7 @@ import java.util.Map;
  * of <a href="http://developer.android.com/sdk/compatibility-library.html">Android's
  * Support Package</a> for earlier releases.
  */
-@android.ravenwood.annotation.RavenwoodKeepWholeClass
 public class LruCache<K, V> {
-    @UnsupportedAppUsage
     private final LinkedHashMap<K, V> map;
 
     /** Size of this cache in units. Not necessarily the number of elements. */
@@ -226,7 +222,7 @@ public class LruCache<K, V> {
     }
 
     private Map.Entry<K, V> eldest() {
-        return map.eldest();
+        return map.firstEntry();
     }
 
     /**
