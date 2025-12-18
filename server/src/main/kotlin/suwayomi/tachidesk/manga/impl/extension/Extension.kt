@@ -102,66 +102,55 @@ object Extension {
         fetcher: suspend () -> String,
     ): Int {
         val apkFilePath = fetcher()
-        val apkName = File(apkFilePath).name
+        val paths = ExtensionInstaller.prepareInstallationPaths(apkFilePath)
 
         // check if we don't have the extension already installed
-        // if it's installed and we want to update, it first has to be uninstalled
         val isInstalled =
             transaction {
-                ExtensionTable.selectAll().where { ExtensionTable.apkName eq apkName }.firstOrNull()
+                ExtensionTable.selectAll().where { ExtensionTable.apkName eq paths.apkName }.firstOrNull()
             }?.get(ExtensionTable.isInstalled) ?: false
-
-        val fileNameWithoutType = apkName.substringBefore(".apk")
-
-        val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
-        val jarFilePath = "$dirPathWithoutType.jar"
-        val dexFilePath = "$dirPathWithoutType.dex"
 
         val packageInfo = getPackageInfo(apkFilePath)
         val pkgName = packageInfo.packageName
+
         if (isInstalled && forceReinstall) {
             uninstallExtension(pkgName)
         }
 
         if (!isInstalled || forceReinstall) {
+            // Validate extension feature
+            ExtensionInstaller.validateExtensionFeature(packageInfo, EXTENSION_FEATURE, "Tachiyomi")
             if (!packageInfo.reqFeatures.orEmpty().any { it.name == EXTENSION_FEATURE }) {
                 throw Exception("This apk is not a Tachiyomi extension")
             }
 
             // Validate lib version
-            val libVersion = packageInfo.versionName.substringBeforeLast('.').toDouble()
-            if (libVersion < LIB_VERSION_MIN || libVersion > LIB_VERSION_MAX) {
-                throw Exception(
-                    "Lib version is $libVersion, while only versions " +
-                        "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed",
-                )
-            }
+            ExtensionInstaller.validateLibVersion(
+                packageInfo.versionName,
+                LIB_VERSION_MIN,
+                LIB_VERSION_MAX,
+                parseAsInt = false,
+            )
 
             // TODO: allow trusting keys
 //            val signatureHash = getSignatureHash(packageInfo)
-
 //            if (signatureHash == null) {
 //                throw Exception("Package $pkgName isn't signed")
 //            } else if (signatureHash !in trustedSignatures) {
 //                throw Exception("This apk is not a signed with the official tachiyomi signature")
 //            }
 
-            val isNsfw = packageInfo.applicationInfo.metaData.getString(METADATA_NSFW) == "1"
-
-            val className =
-                packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
+            // Extract metadata
+            val isNsfw = ExtensionInstaller.extractNsfwFlag(packageInfo.applicationInfo.metaData, METADATA_NSFW)
+            val className = ExtensionInstaller.extractClassName(packageInfo, METADATA_SOURCE_CLASS)
 
             logger.debug { "Main class for extension is $className" }
 
-            dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
-            extractAssetsFromApk(apkFilePath, jarFilePath)
-
-            // clean up
-            File(apkFilePath).delete()
-            File(dexFilePath).delete()
+            // Process APK (convert to JAR, extract assets, cleanup)
+            ExtensionInstaller.processApk(paths, cleanupApk = true)
 
             // collect sources from the extension
-            val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
+            val extensionMainClassInstance = loadExtensionSources(paths.jarFilePath, className)
             val sources: List<CatalogueSource> =
                 when (extensionMainClassInstance) {
                     is Source -> listOf(extensionMainClassInstance)
@@ -186,7 +175,7 @@ object Extension {
             transaction {
                 if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
                     ExtensionTable.insert {
-                        it[this.apkName] = apkName
+                        it[this.apkName] = paths.apkName
                         it[name] = extensionName
                         it[this.pkgName] = packageInfo.packageName
                         it[versionName] = packageInfo.versionName
@@ -197,7 +186,7 @@ object Extension {
                 }
 
                 ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
-                    it[this.apkName] = apkName
+                    it[this.apkName] = paths.apkName
                     it[this.isInstalled] = true
                     it[this.classFQName] = className
                     it[versionName] = packageInfo.versionName
@@ -226,58 +215,6 @@ object Extension {
         } else {
             return 302 // extension was already installed
         }
-    }
-
-    private fun extractAssetsFromApk(
-        apkPath: String,
-        jarPath: String,
-    ) {
-        val apkFile = File(apkPath)
-        val jarFile = File(jarPath)
-
-        val assetsFolder = File("${apkFile.parent}/${apkFile.nameWithoutExtension}_assets")
-        assetsFolder.mkdir()
-        ZipInputStream(apkFile.inputStream()).use { zipInputStream ->
-            var zipEntry = zipInputStream.nextEntry
-            while (zipEntry != null) {
-                if (zipEntry.name.startsWith("assets/") && !zipEntry.isDirectory) {
-                    val assetFile = File(assetsFolder, zipEntry.name)
-                    assetFile.parentFile.mkdirs()
-                    FileOutputStream(assetFile).use { outputStream ->
-                        zipInputStream.copyTo(outputStream)
-                    }
-                }
-                zipEntry = zipInputStream.nextEntry
-            }
-        }
-
-        val tempJarFile = File("${jarFile.parent}/${jarFile.nameWithoutExtension}_temp.jar")
-        ZipInputStream(jarFile.inputStream()).use { jarZipInputStream ->
-            ZipOutputStream(FileOutputStream(tempJarFile)).use { jarZipOutputStream ->
-                var zipEntry = jarZipInputStream.nextEntry
-                while (zipEntry != null) {
-                    if (!zipEntry.name.startsWith("META-INF/")) {
-                        jarZipOutputStream.putNextEntry(ZipEntry(zipEntry.name))
-                        jarZipInputStream.copyTo(jarZipOutputStream)
-                    }
-                    zipEntry = jarZipInputStream.nextEntry
-                }
-                assetsFolder.walkTopDown().forEach { file ->
-                    if (file.isFile) {
-                        jarZipOutputStream.putNextEntry(ZipEntry(file.relativeTo(assetsFolder).toString().replace("\\", "/")))
-                        file.inputStream().use { inputStream ->
-                            inputStream.copyTo(jarZipOutputStream)
-                        }
-                        jarZipOutputStream.closeEntry()
-                    }
-                }
-            }
-        }
-
-        jarFile.delete()
-        tempJarFile.renameTo(jarFile)
-
-        assetsFolder.deleteRecursively()
     }
 
     private val network: NetworkHelper by injectLazy()
