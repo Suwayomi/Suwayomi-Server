@@ -7,6 +7,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.sql.selectAll
@@ -47,6 +48,7 @@ object SyncManager {
     private val logger = KotlinLogging.logger {}
 
     private var currentTaskId: String? = null
+    private val syncMutex = Mutex()
 
     @OptIn(DelicateCoroutinesApi::class)
     fun scheduleSyncTask() {
@@ -64,7 +66,7 @@ object SyncManager {
                     HAScheduler.schedule(
                         {
                             GlobalScope.launch {
-                                syncData()
+                                startSync()
                             }
                         },
                         interval = intervalMs,
@@ -79,11 +81,23 @@ object SyncManager {
         )
     }
 
-    suspend fun syncData() {
+    suspend fun startSync() {
         if (!serverConfig.syncYomiEnabled.value) {
             return
         }
 
+        if (!syncMutex.tryLock()) {
+            return
+        }
+
+        try {
+            syncData()
+        } finally {
+            syncMutex.unlock()
+        }
+    }
+
+    private suspend fun syncData() {
         transaction {
             MangaTable.update({ MangaTable.isSyncing eq true }) {
                 it[isSyncing] = false

@@ -22,7 +22,7 @@ class SyncMutation {
         val (clientMutationId) = input
 
         GlobalScope.launch {
-            SyncManager.syncData()
+            SyncManager.startSync()
         }
 
         return StartSyncPayload(
