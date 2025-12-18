@@ -46,6 +46,8 @@ object SyncManager {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
 
+    private var currentTaskId: String? = null
+
     @OptIn(DelicateCoroutinesApi::class)
     fun scheduleSyncTask() {
         serverConfig.subscribeTo(
@@ -54,8 +56,10 @@ object SyncManager {
                 serverConfig.syncInterval,
             ) { enabled, interval -> Pair(enabled, interval) },
             { (enabled, interval) ->
-                if (enabled && interval > 0) {
+                currentTaskId = if (enabled && interval > 0) {
                     val intervalMs = interval.minutes.inWholeMilliseconds
+
+                    currentTaskId?.let { HAScheduler.deschedule(it) }
 
                     HAScheduler.schedule(
                         {
@@ -67,6 +71,8 @@ object SyncManager {
                         delay = intervalMs,
                         name = "sync",
                     )
+                } else {
+                    null
                 }
             },
             ignoreInitialValue = false,
