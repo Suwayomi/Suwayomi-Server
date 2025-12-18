@@ -65,9 +65,7 @@ object SyncManager {
 
                     HAScheduler.schedule(
                         {
-                            GlobalScope.launch {
-                                startSync()
-                            }
+                            startSync()
                         },
                         interval = intervalMs,
                         delay = intervalMs,
@@ -81,7 +79,8 @@ object SyncManager {
         )
     }
 
-    suspend fun startSync() {
+    @OptIn(DelicateCoroutinesApi::class)
+    fun startSync() {
         if (!serverConfig.syncYomiEnabled.value) {
             return
         }
@@ -90,9 +89,9 @@ object SyncManager {
             return
         }
 
-        try {
+        GlobalScope.launch {
             syncData()
-        } finally {
+        }.invokeOnCompletion {
             syncMutex.unlock()
         }
     }

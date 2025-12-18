@@ -1,11 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.graphql.directives.RequireAuth
-import suwayomi.tachidesk.server.serverConfig
 
 class SyncMutation {
     data class StartSyncInput(
@@ -16,14 +12,11 @@ class SyncMutation {
         val clientMutationId: String? = null,
     )
 
-    @OptIn(DelicateCoroutinesApi::class)
     @RequireAuth
     fun startSync(input: StartSyncInput): StartSyncPayload {
         val (clientMutationId) = input
 
-        GlobalScope.launch {
-            SyncManager.startSync()
-        }
+        SyncManager.startSync()
 
         return StartSyncPayload(
             clientMutationId = clientMutationId,
