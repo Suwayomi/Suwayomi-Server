@@ -133,7 +133,7 @@ object SyncManager {
             backup = backup,
         )
 
-        val remoteBackup = SyncYomiSyncService().doSync(syncData)
+        val remoteBackup = SyncYomiSyncService.doSync(syncData)
 
         if (remoteBackup == null) {
             logger.debug { "Skip restore due to network issues" }
