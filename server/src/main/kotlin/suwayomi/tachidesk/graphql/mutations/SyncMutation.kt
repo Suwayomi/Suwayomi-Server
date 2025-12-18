@@ -21,10 +21,8 @@ class SyncMutation {
     fun startSync(input: StartSyncInput): StartSyncPayload {
         val (clientMutationId) = input
 
-        if (serverConfig.syncYomiEnabled.value) {
-            GlobalScope.launch {
-                SyncManager.syncData()
-            }
+        GlobalScope.launch {
+            SyncManager.syncData()
         }
 
         return StartSyncPayload(

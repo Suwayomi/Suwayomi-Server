@@ -80,6 +80,10 @@ object SyncManager {
     }
 
     suspend fun syncData() {
+        if (!serverConfig.syncYomiEnabled.value) {
+            return
+        }
+
         transaction {
             MangaTable.update({ MangaTable.isSyncing eq true }) {
                 it[isSyncing] = false
