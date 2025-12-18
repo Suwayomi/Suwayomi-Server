@@ -13,6 +13,7 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import suwayomi.tachidesk.graphql.types.StartSyncResult
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
@@ -80,13 +81,13 @@ object SyncManager {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun startSync() {
+    fun startSync(): StartSyncResult {
         if (!serverConfig.syncYomiEnabled.value) {
-            return
+            return StartSyncResult.SYNC_DISABLED
         }
 
         if (!syncMutex.tryLock()) {
-            return
+            return StartSyncResult.SYNC_IN_PROGRESS
         }
 
         GlobalScope.launch {
@@ -94,6 +95,8 @@ object SyncManager {
         }.invokeOnCompletion {
             syncMutex.unlock()
         }
+
+        return StartSyncResult.SUCCESS
     }
 
     private suspend fun syncData() {
@@ -354,3 +357,4 @@ object SyncManager {
         }
     }
 }
+
