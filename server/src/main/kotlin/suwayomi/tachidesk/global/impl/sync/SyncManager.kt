@@ -8,6 +8,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.sql.selectAll
@@ -97,6 +98,24 @@ object SyncManager {
         }
 
         return StartSyncResult.SUCCESS
+    }
+
+    suspend fun ensureSync() {
+        if (!serverConfig.syncYomiEnabled.value) {
+            return
+        }
+
+        if (syncMutex.tryLock()) {
+            // there is no ongoing sync, so start one
+            try {
+                syncData()
+            } finally {
+                syncMutex.unlock()
+            }
+        } else {
+            // wait for the ongoing sync to finish
+            syncMutex.withLock {}
+        }
     }
 
     private suspend fun syncData() {

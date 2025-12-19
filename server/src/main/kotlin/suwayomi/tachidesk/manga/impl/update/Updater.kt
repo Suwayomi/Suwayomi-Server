@@ -26,8 +26,10 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -337,6 +339,10 @@ class Updater : IUpdater {
         clear: Boolean?,
         forceAll: Boolean,
     ) {
+        runBlocking {
+            SyncManager.ensureSync()
+        }
+
         saveLastUpdateTimestamp()
 
         if (clear == true) {
