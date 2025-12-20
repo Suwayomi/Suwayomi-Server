@@ -3,6 +3,7 @@ package suwayomi.tachidesk.global.impl.sync
 import android.app.Application
 import android.content.Context
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.PUT
 import eu.kanade.tachiyomi.network.await
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -11,7 +12,6 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.protobuf.ProtoBuf
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
@@ -21,11 +21,14 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.TimeUnit
+import kotlin.getValue
 
 object SyncYomiSyncService {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
 
+    private val network: NetworkHelper by injectLazy()
     private val logger = KotlinLogging.logger {}
 
     private class SyncYomiException(message: String?) : Exception(message)
@@ -69,8 +72,7 @@ object SyncYomiSyncService {
             headers = headers,
         )
 
-        val client = OkHttpClient()
-        val response = client.newCall(downloadRequest).await()
+        val response = network.client.newCall(downloadRequest).await()
 
         if (response.code == HttpStatus.NOT_MODIFIED.code) {
             // not modified
@@ -121,7 +123,7 @@ object SyncYomiSyncService {
         val headers = headersBuilder.build()
 
         // Set timeout to 30 seconds
-        val client = OkHttpClient.Builder()
+        val client = network.client.newBuilder()
             .connectTimeout(timeout, TimeUnit.SECONDS)
             .readTimeout(timeout, TimeUnit.SECONDS)
             .writeTimeout(timeout, TimeUnit.SECONDS)
