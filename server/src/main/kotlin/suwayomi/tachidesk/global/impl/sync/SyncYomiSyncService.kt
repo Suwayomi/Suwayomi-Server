@@ -35,7 +35,7 @@ object SyncYomiSyncService {
             val (remoteData, etag) = pullSyncData()
 
             val finalSyncData = if (remoteData != null) {
-                assert(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
+                require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
                 logger.debug { "Try update remote data with ETag($etag)" }
                 mergeSyncData(syncData, remoteData)
             } else {
@@ -74,7 +74,7 @@ object SyncYomiSyncService {
 
         if (response.code == HttpStatus.NOT_MODIFIED.code) {
             // not modified
-            assert(lastETag.isNotEmpty())
+            require(lastETag.isNotEmpty())
             logger.info { "Remote server not modified" }
             return Pair(null, lastETag)
         } else if (response.code == HttpStatus.NOT_FOUND.code) {
@@ -84,7 +84,7 @@ object SyncYomiSyncService {
 
         if (response.isSuccessful) {
             val newETag = response.headers["ETag"]
-                .takeIf { it?.isNotEmpty() == true } ?: throw SyncYomiException("Missing ETag")
+                ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
 
             val byteArray = response.body.byteStream().use {
                 return@use it.readBytes()
@@ -143,7 +143,7 @@ object SyncYomiSyncService {
 
         if (response.isSuccessful) {
             val newETag = response.headers["ETag"]
-                .takeIf { it?.isNotEmpty() == true } ?: throw SyncYomiException("Missing ETag")
+                ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
             syncPreferences.edit()
                 .putString("last_sync_etag", newETag)
                 .apply()

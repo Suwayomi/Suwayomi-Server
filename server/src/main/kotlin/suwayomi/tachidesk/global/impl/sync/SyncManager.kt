@@ -36,8 +36,8 @@ import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.util.Date
 import kotlin.system.measureTimeMillis
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 @Serializable
@@ -92,9 +92,11 @@ object SyncManager {
         }
 
         GlobalScope.launch {
-            syncData()
-        }.invokeOnCompletion {
-            syncMutex.unlock()
+            try {
+                syncData()
+            } finally {
+                syncMutex.unlock()
+            }
         }
 
         return StartSyncResult.SUCCESS
@@ -166,7 +168,7 @@ object SyncManager {
             // nothing changed
             logger.debug { "Skip restore due to remote was overwrite from local" }
             syncPreferences.edit()
-                .putLong("last_sync_timestamp", Date().time)
+                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
             return
         }
@@ -180,7 +182,7 @@ object SyncManager {
         if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && databaseManga.isNotEmpty()) {
             // It's first sync no need to restore data. (just update remote data)
             syncPreferences.edit()
-                .putLong("last_sync_timestamp", Date().time)
+                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
             return
         }
@@ -198,7 +200,7 @@ object SyncManager {
         if (filteredFavorites.isEmpty()) {
             // update the sync timestamp
             syncPreferences.edit()
-                .putLong("last_sync_timestamp", Date().time)
+                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
             return
         }
@@ -220,7 +222,7 @@ object SyncManager {
 
         // update the sync timestamp
         syncPreferences.edit()
-            .putLong("last_sync_timestamp", Date().time)
+            .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
             .apply()
     }
 
@@ -363,7 +365,7 @@ object SyncManager {
                 it[MangaTable.inLibrary] = manga.inLibrary
                 it[MangaTable.inLibraryAt] = manga.inLibraryAt
 
-                it[MangaTable.sourceReference] = manga.sourceId.toLongOrNull() ?: 0L
+                it[MangaTable.sourceReference] = manga.sourceId.toLong()
 
                 it[MangaTable.realUrl] = manga.realUrl
                 it[MangaTable.lastFetchedAt] = manga.lastFetchedAt ?: 0L
