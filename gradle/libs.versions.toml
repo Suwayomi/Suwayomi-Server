@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.2.21"
+kotlin = "2.3.0"
 coroutines = "1.10.2"
 serialization = "1.9.0"
 jvmTarget = "21"
@@ -38,7 +38,7 @@ serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", v
 
 # Logging
 slf4japi = "org.slf4j:slf4j-api:2.0.17"
-logback = "ch.qos.logback:logback-classic:1.5.21"
+logback = "ch.qos.logback:logback-classic:1.5.22"
 kotlinlogging = "io.github.oshai:kotlin-logging-jvm:7.0.13"
 
 # OkHttp
@@ -99,13 +99,13 @@ sort = "com.github.gpanther:java-nat-sort:natural-comparator-1.1"
 android-stubs = "com.github.Suwayomi:android-jar:1.0.0"
 
 # Asm modificiation
-asm = "org.ow2.asm:asm:9.9" # version locked by Dex2Jar
+asm = "org.ow2.asm:asm:9.9.1" # version locked by Dex2Jar
 dex2jar-translator = { module = "de.femtopedia.dex2jar:dex-translator", version.ref = "dex2jar" }
 dex2jar-tools = { module = "de.femtopedia.dex2jar:dex-tools", version.ref = "dex2jar" }
 
 # APK
 apk-parser = "net.dongliu:apk-parser:2.6.10"
-apksig = "com.android.tools.build:apksig:8.13.1"
+apksig = "com.android.tools.build:apksig:8.13.2"
 
 # Xml
 xmlpull = "xmlpull:xmlpull:1.1.3.4a"
