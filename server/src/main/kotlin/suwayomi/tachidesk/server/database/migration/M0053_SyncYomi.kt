@@ -6,12 +6,14 @@ import suwayomi.tachidesk.server.serverConfig
 
 @Suppress("ClassName", "unused")
 class M0053_SyncYomi : SQLMigration() {
-    override val sql = when (serverConfig.databaseType.value) {
-        DatabaseType.POSTGRESQL -> postgresQuery()
-        DatabaseType.H2 -> h2Query()
-    }
+    override val sql =
+        when (serverConfig.databaseType.value) {
+            DatabaseType.POSTGRESQL -> postgresQuery()
+            DatabaseType.H2 -> h2Query()
+        }
 
-    fun postgresQuery(): String = """
+    fun postgresQuery(): String =
+        """
         ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
         ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
 
@@ -75,9 +77,10 @@ class M0053_SyncYomi : SQLMigration() {
         AFTER INSERT ON categorymanga
         FOR EACH ROW
         EXECUTE FUNCTION insert_manga_category_update_version();
-    """.trimIndent()
+        """.trimIndent()
 
-    fun h2Query() = """
+    fun h2Query() =
+        """
         ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
         ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
 
@@ -98,5 +101,5 @@ class M0053_SyncYomi : SQLMigration() {
         AFTER INSERT ON categorymanga
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.InsertMangaCategoryUpdateVersionTrigger";
-    """.trimIndent()
+        """.trimIndent()
 }

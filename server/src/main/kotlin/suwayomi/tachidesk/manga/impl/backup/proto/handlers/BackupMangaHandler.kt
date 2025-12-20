@@ -109,7 +109,7 @@ object BackupMangaHandler {
                                     it.uploadDate,
                                     it.chapterNumber,
                                     chapters.size - it.index,
-                                    it.version
+                                    it.version,
                                 ).apply {
                                     if (flags.includeClientData) {
                                         this.meta = chapterToMeta[it.id] ?: emptyMap()

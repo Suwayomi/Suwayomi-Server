@@ -31,21 +31,24 @@ object SyncYomiSyncService {
     private val network: NetworkHelper by injectLazy()
     private val logger = KotlinLogging.logger {}
 
-    private class SyncYomiException(message: String?) : Exception(message)
+    private class SyncYomiException(
+        message: String?,
+    ) : Exception(message)
 
     suspend fun doSync(syncData: SyncData): Backup? {
         try {
             val (remoteData, etag) = pullSyncData()
 
-            val finalSyncData = if (remoteData != null) {
-                require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
-                logger.debug { "Try update remote data with ETag($etag)" }
-                mergeSyncData(syncData, remoteData)
-            } else {
-                // init or overwrite remote data
-                logger.debug { "Try overwrite remote data with ETag($etag)" }
-                syncData
-            }
+            val finalSyncData =
+                if (remoteData != null) {
+                    require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
+                    logger.debug { "Try update remote data with ETag($etag)" }
+                    mergeSyncData(syncData, remoteData)
+                } else {
+                    // init or overwrite remote data
+                    logger.debug { "Try overwrite remote data with ETag($etag)" }
+                    syncData
+                }
 
             pushSyncData(finalSyncData, etag)
             return finalSyncData.backup
@@ -67,10 +70,11 @@ object SyncYomiSyncService {
         }
         val headers = headersBuilder.build()
 
-        val downloadRequest = GET(
-            url = downloadUrl,
-            headers = headers,
-        )
+        val downloadRequest =
+            GET(
+                url = downloadUrl,
+                headers = headers,
+            )
 
         val response = network.client.newCall(downloadRequest).await()
 
@@ -85,12 +89,14 @@ object SyncYomiSyncService {
         }
 
         if (response.isSuccessful) {
-            val newETag = response.headers["ETag"]
-                ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
+            val newETag =
+                response.headers["ETag"]
+                    ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
 
-            val byteArray = response.body.byteStream().use {
-                return@use it.readBytes()
-            }
+            val byteArray =
+                response.body.byteStream().use {
+                    return@use it.readBytes()
+                }
 
             return try {
                 val backup = ProtoBuf.decodeFromByteArray(Backup.serializer(), byteArray)
@@ -108,7 +114,10 @@ object SyncYomiSyncService {
         }
     }
 
-    private suspend fun pushSyncData(syncData: SyncData, eTag: String) {
+    private suspend fun pushSyncData(
+        syncData: SyncData,
+        eTag: String,
+    ) {
         val backup = syncData.backup ?: return
 
         val host = serverConfig.syncYomiHost.value
@@ -123,11 +132,13 @@ object SyncYomiSyncService {
         val headers = headersBuilder.build()
 
         // Set timeout to 30 seconds
-        val client = network.client.newBuilder()
-            .connectTimeout(timeout, TimeUnit.SECONDS)
-            .readTimeout(timeout, TimeUnit.SECONDS)
-            .writeTimeout(timeout, TimeUnit.SECONDS)
-            .build()
+        val client =
+            network.client
+                .newBuilder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .build()
 
         val byteArray = ProtoBuf.encodeToByteArray(Backup.serializer(), backup)
         if (byteArray.isEmpty()) {
@@ -135,18 +146,21 @@ object SyncYomiSyncService {
         }
         val body = byteArray.toRequestBody("application/octet-stream".toMediaType())
 
-        val uploadRequest = PUT(
-            url = uploadUrl,
-            headers = headers,
-            body = body,
-        )
+        val uploadRequest =
+            PUT(
+                url = uploadUrl,
+                headers = headers,
+                body = body,
+            )
 
         val response = client.newCall(uploadRequest).await()
 
         if (response.isSuccessful) {
-            val newETag = response.headers["ETag"]
-                ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
-            syncPreferences.edit()
+            val newETag =
+                response.headers["ETag"]
+                    ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
+            syncPreferences
+                .edit()
                 .putString("last_sync_etag", newETag)
                 .apply()
             logger.debug { "SyncYomi sync completed" }
@@ -159,29 +173,34 @@ object SyncYomiSyncService {
         }
     }
 
-    fun mergeSyncData(localSyncData: SyncData, remoteSyncData: SyncData): SyncData {
+    fun mergeSyncData(
+        localSyncData: SyncData,
+        remoteSyncData: SyncData,
+    ): SyncData {
         val mergedCategoriesList =
             mergeCategoriesLists(localSyncData.backup?.backupCategories, remoteSyncData.backup?.backupCategories)
 
-        val mergedMangaList = mergeMangaLists(
-            localSyncData.backup?.backupManga,
-            remoteSyncData.backup?.backupManga,
-            localSyncData.backup?.backupCategories ?: emptyList(),
-            remoteSyncData.backup?.backupCategories ?: emptyList(),
-            mergedCategoriesList,
-        )
+        val mergedMangaList =
+            mergeMangaLists(
+                localSyncData.backup?.backupManga,
+                remoteSyncData.backup?.backupManga,
+                localSyncData.backup?.backupCategories ?: emptyList(),
+                remoteSyncData.backup?.backupCategories ?: emptyList(),
+                mergedCategoriesList,
+            )
 
         val mergedSourcesList =
             mergeSourcesLists(localSyncData.backup?.backupSources, remoteSyncData.backup?.backupSources)
 
         // Create the merged Backup object
-        val mergedBackup = Backup(
-            backupManga = mergedMangaList,
-            backupCategories = mergedCategoriesList,
-            backupSources = mergedSourcesList,
-            meta = emptyMap(),
-            serverSettings = null,
-        )
+        val mergedBackup =
+            Backup(
+                backupManga = mergedMangaList,
+                backupCategories = mergedCategoriesList,
+                backupSources = mergedSourcesList,
+                meta = emptyMap(),
+                serverSettings = null,
+            )
 
         // Create the merged SData object
         return SyncData(
@@ -201,9 +220,8 @@ object SyncYomiSyncService {
 
         logger.debug { "Starting merge. Local list size: ${localMangaListSafe.size}, Remote list size: ${remoteMangaListSafe.size}" }
 
-        fun mangaCompositeKey(manga: BackupManga): String {
-            return "${manga.source}|${manga.url}|${manga.title.lowercase().trim()}|${manga.author?.lowercase()?.trim()}"
-        }
+        fun mangaCompositeKey(manga: BackupManga): String =
+            "${manga.source}|${manga.url}|${manga.title.lowercase().trim()}|${manga.author?.lowercase()?.trim()}"
 
         // Create maps using composite keys
         val localMangaMap = localMangaListSafe.associateBy { mangaCompositeKey(it) }
@@ -213,51 +231,65 @@ object SyncYomiSyncService {
         val remoteCategoriesMapByOrder = remoteCategories.associateBy { it.order }
         val mergedCategoriesMapByName = mergedCategories.associateBy { it.name }
 
-        fun updateCategories(theManga: BackupManga, theMap: Map<Int, BackupCategory>): BackupManga {
-            return theManga.copy(
-                categories = theManga.categories.mapNotNull {
-                    theMap[it]?.let { category ->
-                        mergedCategoriesMapByName[category.name]?.order
-                    }
-                },
+        fun updateCategories(
+            theManga: BackupManga,
+            theMap: Map<Int, BackupCategory>,
+        ): BackupManga =
+            theManga.copy(
+                categories =
+                    theManga.categories.mapNotNull {
+                        theMap[it]?.let { category ->
+                            mergedCategoriesMapByName[category.name]?.order
+                        }
+                    },
             )
-        }
 
         logger.debug { "Starting merge. Local list size: ${localMangaListSafe.size}, Remote list size: ${remoteMangaListSafe.size}" }
 
-        val mergedList = (localMangaMap.keys + remoteMangaMap.keys).distinct().mapNotNull { compositeKey ->
-            val local = localMangaMap[compositeKey]
-            val remote = remoteMangaMap[compositeKey]
+        val mergedList =
+            (localMangaMap.keys + remoteMangaMap.keys).distinct().mapNotNull { compositeKey ->
+                val local = localMangaMap[compositeKey]
+                val remote = remoteMangaMap[compositeKey]
 
-            // New version comparison logic
-            when {
-                local != null && remote == null -> updateCategories(local, localCategoriesMapByOrder)
-                local == null && remote != null -> updateCategories(remote, remoteCategoriesMapByOrder)
-                local != null && remote != null -> {
-                    // Compare versions to decide which manga to keep
-                    if (local.version >= remote.version) {
-                        logger.debug { "Keeping local version of ${local.title} with merged chapters." }
-                        updateCategories(
-                            local.copy(chapters = mergeChapters(local.chapters, remote.chapters)),
-                            localCategoriesMapByOrder,
-                        )
-                    } else {
-                        logger.debug { "Keeping remote version of ${remote.title} with merged chapters." }
-                        updateCategories(
-                            remote.copy(chapters = mergeChapters(local.chapters, remote.chapters)),
-                            remoteCategoriesMapByOrder,
-                        )
+                // New version comparison logic
+                when {
+                    local != null && remote == null -> {
+                        updateCategories(local, localCategoriesMapByOrder)
                     }
-                }
 
-                else -> null // No manga found for key
+                    local == null && remote != null -> {
+                        updateCategories(remote, remoteCategoriesMapByOrder)
+                    }
+
+                    local != null && remote != null -> {
+                        // Compare versions to decide which manga to keep
+                        if (local.version >= remote.version) {
+                            logger.debug { "Keeping local version of ${local.title} with merged chapters." }
+                            updateCategories(
+                                local.copy(chapters = mergeChapters(local.chapters, remote.chapters)),
+                                localCategoriesMapByOrder,
+                            )
+                        } else {
+                            logger.debug { "Keeping remote version of ${remote.title} with merged chapters." }
+                            updateCategories(
+                                remote.copy(chapters = mergeChapters(local.chapters, remote.chapters)),
+                                remoteCategoriesMapByOrder,
+                            )
+                        }
+                    }
+
+                    else -> {
+                        null
+                    } // No manga found for key
+                }
             }
-        }
 
         // Counting favorites and non-favorites
         val (favorites, nonFavorites) = mergedList.partition { it.favorite }
 
-        logger.debug { "Merge completed. Total merged manga: ${mergedList.size}, Favorites: ${favorites.size}, Non-Favorites: ${nonFavorites.size}" }
+        logger.debug {
+            "Merge completed. Total merged manga: ${mergedList.size}, Favorites: ${favorites.size}, Non-Favorites: ${nonFavorites.size}"
+        }
 
         return mergedList
     }
@@ -266,9 +298,7 @@ object SyncYomiSyncService {
         localChapters: List<BackupChapter>,
         remoteChapters: List<BackupChapter>,
     ): List<BackupChapter> {
-        fun chapterCompositeKey(chapter: BackupChapter): String {
-            return "${chapter.url}|${chapter.name}|${chapter.chapterNumber}"
-        }
+        fun chapterCompositeKey(chapter: BackupChapter): String = "${chapter.url}|${chapter.name}|${chapter.chapterNumber}"
 
         val localChapterMap = localChapters.associateBy { chapterCompositeKey(it) }
         val remoteChapterMap = remoteChapters.associateBy { chapterCompositeKey(it) }
@@ -276,45 +306,51 @@ object SyncYomiSyncService {
         logger.debug { "Starting chapter merge. Local chapters: ${localChapters.size}, Remote chapters: ${remoteChapters.size}" }
 
         // Merge both chapter maps based on version numbers
-        val mergedChapters = (localChapterMap.keys + remoteChapterMap.keys).distinct().mapNotNull { compositeKey ->
-            val localChapter = localChapterMap[compositeKey]
-            val remoteChapter = remoteChapterMap[compositeKey]
+        val mergedChapters =
+            (localChapterMap.keys + remoteChapterMap.keys).distinct().mapNotNull { compositeKey ->
+                val localChapter = localChapterMap[compositeKey]
+                val remoteChapter = remoteChapterMap[compositeKey]
 
-            logger.debug { "Processing chapter key: $compositeKey. Local chapter: ${localChapter != null}, Remote chapter: ${remoteChapter != null}" }
-
-            when {
-                localChapter != null && remoteChapter == null -> {
-                    logger.debug { "Keeping local chapter: ${localChapter.name}." }
-                    localChapter
+                logger.debug {
+                    "Processing chapter key: $compositeKey. Local chapter: ${localChapter != null}, Remote chapter: ${remoteChapter != null}"
                 }
 
-                localChapter == null && remoteChapter != null -> {
-                    logger.debug { "Taking remote chapter: ${remoteChapter.name}." }
-                    remoteChapter
-                }
+                when {
+                    localChapter != null && remoteChapter == null -> {
+                        logger.debug { "Keeping local chapter: ${localChapter.name}." }
+                        localChapter
+                    }
 
-                localChapter != null && remoteChapter != null -> {
-                    // Use version number to decide which chapter to keep
-                    val chosenChapter = if (localChapter.version >= remoteChapter.version) {
-                        // If there mare more chapter on remote, local sourceOrder will need to be updated to maintain correct source order.
-                        if (localChapters.size < remoteChapters.size) {
-                            localChapter.copy(sourceOrder = remoteChapter.sourceOrder)
-                        } else {
-                            localChapter
-                        }
-                    } else {
+                    localChapter == null && remoteChapter != null -> {
+                        logger.debug { "Taking remote chapter: ${remoteChapter.name}." }
                         remoteChapter
                     }
-                    logger.debug { "Merging chapter: ${chosenChapter.name}. Chosen version from: ${if (localChapter.version >= remoteChapter.version) "Local" else "Remote"}, Local version: ${localChapter.version}, Remote version: ${remoteChapter.version}." }
-                    chosenChapter
-                }
 
-                else -> {
-                    logger.debug { "No chapter found for composite key: $compositeKey. Skipping." }
-                    null
+                    localChapter != null && remoteChapter != null -> {
+                        // Use version number to decide which chapter to keep
+                        val chosenChapter =
+                            if (localChapter.version >= remoteChapter.version) {
+                                // If there mare more chapter on remote, local sourceOrder will need to be updated to maintain correct source order.
+                                if (localChapters.size < remoteChapters.size) {
+                                    localChapter.copy(sourceOrder = remoteChapter.sourceOrder)
+                                } else {
+                                    localChapter
+                                }
+                            } else {
+                                remoteChapter
+                            }
+                        logger.debug {
+                            "Merging chapter: ${chosenChapter.name}. Chosen version from: ${if (localChapter.version >= remoteChapter.version) "Local" else "Remote"}, Local version: ${localChapter.version}, Remote version: ${remoteChapter.version}."
+                        }
+                        chosenChapter
+                    }
+
+                    else -> {
+                        logger.debug { "No chapter found for composite key: $compositeKey. Skipping." }
+                        null
+                    }
                 }
             }
-        }
 
         logger.debug { "Chapter merge completed. Total merged chapters: ${mergedChapters.size}" }
 
@@ -336,11 +372,12 @@ object SyncYomiSyncService {
             val remoteCategory = remoteCategoriesMap[name]
             if (remoteCategory != null) {
                 // Compare and merge local and remote categories
-                val mergedCategory = if (localCategory.order > remoteCategory.order) {
-                    localCategory
-                } else {
-                    remoteCategory
-                }
+                val mergedCategory =
+                    if (localCategory.order > remoteCategory.order) {
+                        localCategory
+                    } else {
+                        remoteCategory
+                    }
                 mergedCategoriesMap[name] = mergedCategory
             } else {
                 // If the category is only in the local list, add it to the merged list
@@ -369,29 +406,32 @@ object SyncYomiSyncService {
         logger.debug { "Starting source merge. Local sources: ${localSources?.size}, Remote sources: ${remoteSources?.size}" }
 
         // Merge both source maps
-        val mergedSources = (localSourceMap.keys + remoteSourceMap.keys).distinct().mapNotNull { sourceId ->
-            val localSource = localSourceMap[sourceId]
-            val remoteSource = remoteSourceMap[sourceId]
+        val mergedSources =
+            (localSourceMap.keys + remoteSourceMap.keys).distinct().mapNotNull { sourceId ->
+                val localSource = localSourceMap[sourceId]
+                val remoteSource = remoteSourceMap[sourceId]
 
-            logger.debug { "Processing source ID: $sourceId. Local source: ${localSource != null}, Remote source: ${remoteSource != null}" }
-
-            when {
-                localSource != null && remoteSource == null -> {
-                    logger.debug { "Using local source: ${localSource.name}." }
-                    localSource
+                logger.debug {
+                    "Processing source ID: $sourceId. Local source: ${localSource != null}, Remote source: ${remoteSource != null}"
                 }
 
-                remoteSource != null && localSource == null -> {
-                    logger.debug { "Using remote source: ${remoteSource.name}." }
-                    remoteSource
-                }
+                when {
+                    localSource != null && remoteSource == null -> {
+                        logger.debug { "Using local source: ${localSource.name}." }
+                        localSource
+                    }
 
-                else -> {
-                    logger.debug { "Remote and local is not empty: $sourceId. Skipping." }
-                    null
+                    remoteSource != null && localSource == null -> {
+                        logger.debug { "Using remote source: ${remoteSource.name}." }
+                        remoteSource
+                    }
+
+                    else -> {
+                        logger.debug { "Remote and local is not empty: $sourceId. Skipping." }
+                        null
+                    }
                 }
             }
-        }
 
         logger.debug { "Source merge completed. Total merged sources: ${mergedSources.size}" }
 

@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:filename")
+
 package suwayomi.tachidesk.graphql.types
 
 enum class StartSyncResult {

@@ -165,8 +165,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 .source()
                 .run {
                     if (!isSync) gzip() else this
-                }
-                .buffer()
+                }.buffer()
                 .use { it.readByteArray() }
         val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
 
@@ -246,10 +245,10 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         if (isSync) {
             transaction {
-                MangaTable.update({ MangaTable.isSyncing eq true}) {
+                MangaTable.update({ MangaTable.isSyncing eq true }) {
                     it[isSyncing] = false
                 }
-                ChapterTable.update({ ChapterTable.isSyncing eq true}) {
+                ChapterTable.update({ ChapterTable.isSyncing eq true }) {
                     it[isSyncing] = false
                 }
             }

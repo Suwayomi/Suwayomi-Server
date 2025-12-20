@@ -12,19 +12,21 @@ class UpdateMangaVersionTrigger : TriggerAdapter() {
         newRow: ResultSet,
     ) {
         val isSyncing = newRow.getBoolean("is_syncing")
-        val hasChanged = oldRow.getString("url") != newRow.getString("url") ||
-            oldRow.getString("description") != newRow.getString("description") ||
-            oldRow.getBoolean("in_library") != newRow.getBoolean("in_library")
+        val hasChanged =
+            oldRow.getString("url") != newRow.getString("url") ||
+                oldRow.getString("description") != newRow.getString("description") ||
+                oldRow.getBoolean("in_library") != newRow.getBoolean("in_library")
 
         if (!isSyncing && hasChanged) {
             val id = newRow.getInt("id")
 
-            conn.prepareStatement(
-                "UPDATE MANGA SET version = version + 1 WHERE id = ?",
-            ).use {
-                it.setInt(1, id)
-                it.executeUpdate()
-            }
+            conn
+                .prepareStatement(
+                    "UPDATE MANGA SET version = version + 1 WHERE id = ?",
+                ).use {
+                    it.setInt(1, id)
+                    it.executeUpdate()
+                }
         }
     }
 }
@@ -37,28 +39,31 @@ class UpdateChapterAndMangaVersionTrigger : TriggerAdapter() {
         newRow: ResultSet,
     ) {
         val isSyncing = newRow.getBoolean("is_syncing")
-        val hasChanged = oldRow.getBoolean("read") != newRow.getBoolean("read") ||
-            oldRow.getBoolean("bookmark") != newRow.getBoolean("bookmark") ||
-            oldRow.getInt("last_page_read") != newRow.getInt("last_page_read")
+        val hasChanged =
+            oldRow.getBoolean("read") != newRow.getBoolean("read") ||
+                oldRow.getBoolean("bookmark") != newRow.getBoolean("bookmark") ||
+                oldRow.getInt("last_page_read") != newRow.getInt("last_page_read")
 
         if (!isSyncing && hasChanged) {
             val chapterId = newRow.getInt("id")
             val mangaId = newRow.getInt("manga")
 
-            conn.prepareStatement(
-                "UPDATE CHAPTER SET version = version + 1 WHERE id = ?",
-            ).use {
-                it.setInt(1, chapterId)
-                it.executeUpdate()
-            }
+            conn
+                .prepareStatement(
+                    "UPDATE CHAPTER SET version = version + 1 WHERE id = ?",
+                ).use {
+                    it.setInt(1, chapterId)
+                    it.executeUpdate()
+                }
 
-            conn.prepareStatement(
-                "UPDATE MANGA SET version = version + 1 WHERE id = ? AND (SELECT is_syncing FROM MANGA WHERE id = ?) = FALSE",
-            ).use {
-                it.setInt(1, mangaId)
-                it.setInt(2, mangaId)
-                it.executeUpdate()
-            }
+            conn
+                .prepareStatement(
+                    "UPDATE MANGA SET version = version + 1 WHERE id = ? AND (SELECT is_syncing FROM MANGA WHERE id = ?) = FALSE",
+                ).use {
+                    it.setInt(1, mangaId)
+                    it.setInt(2, mangaId)
+                    it.executeUpdate()
+                }
         }
     }
 }
@@ -72,13 +77,13 @@ class InsertMangaCategoryUpdateVersionTrigger : TriggerAdapter() {
     ) {
         val mangaId = newRow.getInt("manga")
 
-        conn.prepareStatement(
-            "UPDATE MANGA SET version = version + 1 WHERE id = ? AND (SELECT is_syncing FROM MANGA WHERE id = ?) = FALSE",
-        ).use {
-            it.setInt(1, mangaId)
-            it.setInt(2, mangaId)
-            it.executeUpdate()
-        }
+        conn
+            .prepareStatement(
+                "UPDATE MANGA SET version = version + 1 WHERE id = ? AND (SELECT is_syncing FROM MANGA WHERE id = ?) = FALSE",
+            ).use {
+                it.setInt(1, mangaId)
+                it.setInt(2, mangaId)
+                it.executeUpdate()
+            }
     }
 }
-
