@@ -11,8 +11,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.StartSyncResult
 import suwayomi.tachidesk.manga.impl.Category
@@ -122,146 +123,140 @@ object SyncManager {
     }
 
     private suspend fun syncData() {
-        transaction {
+        newSuspendedTransaction {
             MangaTable.update({ MangaTable.isSyncing eq true }) {
                 it[isSyncing] = false
             }
             ChapterTable.update({ ChapterTable.isSyncing eq true }) {
                 it[isSyncing] = false
             }
-        }
 
-        val databaseManga = getAllMangaThatNeedsSync()
+            val backupFlags =
+                BackupFlags(
+                    includeManga = serverConfig.syncDataManga.value,
+                    includeCategories = serverConfig.syncDataCategories.value,
+                    includeChapters = serverConfig.syncDataChapters.value,
+                    includeTracking = serverConfig.syncDataTracking.value,
+                    includeHistory = serverConfig.syncDataHistory.value,
+                    includeClientData = false,
+                    includeServerSettings = false,
+                )
 
-        val backupFlags =
-            BackupFlags(
-                includeManga = serverConfig.syncDataManga.value,
-                includeCategories = serverConfig.syncDataCategories.value,
-                includeChapters = serverConfig.syncDataChapters.value,
-                includeTracking = serverConfig.syncDataTracking.value,
-                includeHistory = serverConfig.syncDataHistory.value,
-                includeClientData = false,
-                includeServerSettings = false,
+            val backupMangas = BackupMangaHandler.backup(backupFlags)
+
+            val backup =
+                Backup(
+                    BackupMangaHandler.backup(backupFlags),
+                    BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
+                    BackupSourceHandler.backup(backupMangas, backupFlags),
+                    emptyMap(),
+                    null,
+                )
+
+            val syncData =
+                SyncData(
+                    backup = backup,
+                )
+
+            val remoteBackup = SyncYomiSyncService.doSync(syncData)
+
+            if (remoteBackup == null) {
+                logger.debug { "Skip restore due to network issues" }
+                // should we call showSyncError?
+                return@newSuspendedTransaction
+            }
+
+            if (remoteBackup === syncData.backup) {
+                // nothing changed
+                logger.debug { "Skip restore due to remote was overwrite from local" }
+                syncPreferences
+                    .edit()
+                    .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
+                    .apply()
+                return@newSuspendedTransaction
+            }
+
+            // Stop the sync early if the remote backup is null or empty
+            if (remoteBackup.backupManga.isEmpty()) {
+                return@newSuspendedTransaction
+            }
+
+            val isLibraryEmpty =
+                MangaTable
+                    .selectAll()
+                    .where { MangaTable.inLibrary eq true }
+                    .empty()
+
+            // Check if it's first sync based on lastSyncTimestamp
+            if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
+                // It's first sync no need to restore data. (just update remote data)
+                syncPreferences
+                    .edit()
+                    .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
+                    .apply()
+                return@newSuspendedTransaction
+            }
+
+            val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
+            updateNonFavorites(nonFavorites)
+
+            val newSyncData =
+                backup.copy(
+                    backupManga = filteredFavorites,
+                    backupCategories = remoteBackup.backupCategories,
+                    backupSources = remoteBackup.backupSources,
+                )
+
+            // It's local sync no need to restore data. (just update remote data)
+            if (filteredFavorites.isEmpty()) {
+                // update the sync timestamp
+                syncPreferences
+                    .edit()
+                    .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
+                    .apply()
+                return@newSuspendedTransaction
+            }
+
+            val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
+            ProtoBackupImport.restore(
+                sourceStream = backupStream,
+                flags =
+                    BackupFlags(
+                        includeManga = true,
+                        includeCategories = true,
+                        includeChapters = true,
+                        includeTracking = true,
+                        includeHistory = true,
+                        includeClientData = false,
+                        includeServerSettings = false,
+                    ),
+                isSync = true,
             )
 
-        val backupMangas = BackupMangaHandler.backup(backupFlags)
-
-        val backup =
-            Backup(
-                BackupMangaHandler.backup(backupFlags),
-                BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
-                BackupSourceHandler.backup(backupMangas, backupFlags),
-                emptyMap(),
-                null,
-            )
-
-        val syncData =
-            SyncData(
-                backup = backup,
-            )
-
-        val remoteBackup = SyncYomiSyncService.doSync(syncData)
-
-        if (remoteBackup == null) {
-            logger.debug { "Skip restore due to network issues" }
-            // should we call showSyncError?
-            return
-        }
-
-        if (remoteBackup === syncData.backup) {
-            // nothing changed
-            logger.debug { "Skip restore due to remote was overwrite from local" }
-            syncPreferences
-                .edit()
-                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-                .apply()
-            return
-        }
-
-        // Stop the sync early if the remote backup is null or empty
-        if (remoteBackup.backupManga.isEmpty()) {
-            return
-        }
-
-        // Check if it's first sync based on lastSyncTimestamp
-        if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && databaseManga.isNotEmpty()) {
-            // It's first sync no need to restore data. (just update remote data)
-            syncPreferences
-                .edit()
-                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-                .apply()
-            return
-        }
-
-        val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
-        updateNonFavorites(nonFavorites)
-
-        val newSyncData =
-            backup.copy(
-                backupManga = filteredFavorites,
-                backupCategories = remoteBackup.backupCategories,
-                backupSources = remoteBackup.backupSources,
-            )
-
-        // It's local sync no need to restore data. (just update remote data)
-        if (filteredFavorites.isEmpty()) {
             // update the sync timestamp
             syncPreferences
                 .edit()
                 .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
-            return
         }
-
-        val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
-        ProtoBackupImport.restore(
-            sourceStream = backupStream,
-            flags =
-                BackupFlags(
-                    includeManga = true,
-                    includeCategories = true,
-                    includeChapters = true,
-                    includeTracking = true,
-                    includeHistory = true,
-                    includeClientData = false,
-                    includeServerSettings = false,
-                ),
-            isSync = true,
-        )
-
-        // update the sync timestamp
-        syncPreferences
-            .edit()
-            .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-            .apply()
     }
-
-    private fun getAllMangaFromDB(): List<MangaDataClass> = transaction { MangaTable.selectAll().map { MangaTable.toDataClass(it) } }
-
-    private fun getAllMangaThatNeedsSync(): List<MangaDataClass> =
-        transaction {
-            MangaTable.selectAll().where { MangaTable.inLibrary eq true }.map { MangaTable.toDataClass(it) }
-        }
 
     private fun isMangaDifferent(
         localManga: MangaDataClass,
         remoteManga: BackupManga,
     ): Boolean {
         val localChapters =
-            transaction {
-                ChapterTable
-                    .selectAll()
-                    .where { ChapterTable.manga eq localManga.id }
-                    .map { ChapterTable.toDataClass(it) }
-            }
+            ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq localManga.id }
+                .map { ChapterTable.toDataClass(it) }
+
         val localCategories =
-            transaction {
-                CategoryMangaTable
-                    .innerJoin(CategoryTable)
-                    .selectAll()
-                    .where { CategoryMangaTable.manga eq localManga.id }
-                    .map { it[CategoryTable.order] }
-            }
+            CategoryMangaTable
+                .innerJoin(CategoryTable)
+                .selectAll()
+                .where { CategoryMangaTable.manga eq localManga.id }
+                .map { it[CategoryTable.order] }
 
         if (areChaptersDifferent(localChapters, remoteManga.chapters)) {
             return true
@@ -307,17 +302,20 @@ object SyncManager {
 
         val elapsedTime =
             measureTime {
-                val databaseManga = getAllMangaFromDB()
-                val localMangaMap =
-                    databaseManga.associateBy {
-                        Triple(it.sourceId.toLong(), it.url, it.title)
-                    }
-
                 logger.debug { "Starting to filter favorites and non-favorites from backup data." }
 
                 backup.backupManga.forEach { remoteManga ->
-                    val compositeKey = Triple(remoteManga.source, remoteManga.url, remoteManga.title)
-                    val localManga = localMangaMap[compositeKey]
+                    val localManga =
+                        MangaTable
+                            .selectAll()
+                            .where {
+                                (MangaTable.sourceReference eq remoteManga.source) and
+                                    (MangaTable.url eq remoteManga.url) and
+                                    (MangaTable.title eq remoteManga.title)
+                            }.limit(1)
+                            .map { MangaTable.toDataClass(it) }
+                            .firstOrNull()
+
                     when {
                         // Checks if the manga is in favorites and needs updating or adding
                         remoteManga.favorite -> {
@@ -346,13 +344,19 @@ object SyncManager {
     }
 
     private fun updateNonFavorites(nonFavorites: List<BackupManga>) {
-        val localMangaList = getAllMangaFromDB()
-
-        val localMangaMap = localMangaList.associateBy { Triple(it.sourceId.toLong(), it.url, it.title) }
-
         nonFavorites.forEach { nonFavorite ->
-            val key = Triple(nonFavorite.source, nonFavorite.url, nonFavorite.title)
-            localMangaMap[key]?.let { localManga ->
+            val localManga =
+                MangaTable
+                    .selectAll()
+                    .where {
+                        (MangaTable.sourceReference eq nonFavorite.source) and
+                            (MangaTable.url eq nonFavorite.url) and
+                            (MangaTable.title eq nonFavorite.title)
+                    }.limit(1)
+                    .map { MangaTable.toDataClass(it) }
+                    .firstOrNull()
+
+            if (localManga != null) {
                 if (localManga.inLibrary != nonFavorite.favorite) {
                     val updatedManga = localManga.copy(inLibrary = nonFavorite.favorite)
                     updateManga(updatedManga)
@@ -362,34 +366,32 @@ object SyncManager {
     }
 
     private fun updateManga(manga: MangaDataClass) {
-        transaction {
-            MangaTable.update({ MangaTable.id eq manga.id }) {
-                it[MangaTable.url] = manga.url
-                it[MangaTable.title] = manga.title
-                it[MangaTable.initialized] = manga.initialized
+        MangaTable.update({ MangaTable.id eq manga.id }) {
+            it[MangaTable.url] = manga.url
+            it[MangaTable.title] = manga.title
+            it[MangaTable.initialized] = manga.initialized
 
-                it[MangaTable.artist] = manga.artist
-                it[MangaTable.author] = manga.author
-                it[MangaTable.description] = manga.description
-                it[MangaTable.genre] = manga.genre.joinToString(separator = ", ")
+            it[MangaTable.artist] = manga.artist
+            it[MangaTable.author] = manga.author
+            it[MangaTable.description] = manga.description
+            it[MangaTable.genre] = manga.genre.joinToString(separator = ", ")
 
-                it[MangaTable.status] = MangaStatus.valueOf(manga.status).value
-                it[MangaTable.thumbnail_url] = manga.thumbnailUrl
-                it[MangaTable.thumbnailUrlLastFetched] = manga.thumbnailUrlLastFetched
+            it[MangaTable.status] = MangaStatus.valueOf(manga.status).value
+            it[MangaTable.thumbnail_url] = manga.thumbnailUrl
+            it[MangaTable.thumbnailUrlLastFetched] = manga.thumbnailUrlLastFetched
 
-                it[MangaTable.inLibrary] = manga.inLibrary
-                it[MangaTable.inLibraryAt] = manga.inLibraryAt
+            it[MangaTable.inLibrary] = manga.inLibrary
+            it[MangaTable.inLibraryAt] = manga.inLibraryAt
 
-                it[MangaTable.sourceReference] = manga.sourceId.toLong()
+            it[MangaTable.sourceReference] = manga.sourceId.toLong()
 
-                it[MangaTable.realUrl] = manga.realUrl
-                it[MangaTable.lastFetchedAt] = manga.lastFetchedAt ?: 0L
-                it[MangaTable.chaptersLastFetchedAt] = manga.chaptersLastFetchedAt ?: 0L
+            it[MangaTable.realUrl] = manga.realUrl
+            it[MangaTable.lastFetchedAt] = manga.lastFetchedAt ?: 0L
+            it[MangaTable.chaptersLastFetchedAt] = manga.chaptersLastFetchedAt ?: 0L
 
-                it[MangaTable.updateStrategy] = manga.updateStrategy.name
+            it[MangaTable.updateStrategy] = manga.updateStrategy.name
 
-                it[MangaTable.version] = manga.version
-            }
+            it[MangaTable.version] = manga.version
         }
     }
 }
