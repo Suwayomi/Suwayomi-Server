@@ -36,9 +36,9 @@ import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import kotlin.system.measureTimeMillis
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.measureTime
 
 @Serializable
 data class SyncData(
@@ -305,8 +305,8 @@ object SyncManager {
         val favorites = mutableListOf<BackupManga>()
         val nonFavorites = mutableListOf<BackupManga>()
 
-        val elapsedTimeMillis =
-            measureTimeMillis {
+        val elapsedTime =
+            measureTime {
                 val databaseManga = getAllMangaFromDB()
                 val localMangaMap =
                     databaseManga.associateBy {
@@ -338,10 +338,8 @@ object SyncManager {
                 }
             }
 
-        val minutes = elapsedTimeMillis / 60000
-        val seconds = (elapsedTimeMillis % 60000) / 1000
         logger.debug {
-            "Filtering completed in ${minutes}m ${seconds}s. Favorites found: ${favorites.size}, Non-favorites found: ${nonFavorites.size}"
+            "Filtering completed in $elapsedTime. Favorites found: ${favorites.size}, Non-favorites found: ${nonFavorites.size}"
         }
 
         return Pair(favorites, nonFavorites)
