@@ -11,6 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -131,8 +132,6 @@ object SyncManager {
             }
         }
 
-        val databaseManga = getAllMangaThatNeedsSync()
-
         val backupFlags =
             BackupFlags(
                 includeManga = serverConfig.syncDataManga.value,
@@ -183,8 +182,16 @@ object SyncManager {
             return
         }
 
+        val isLibraryEmpty =
+            transaction {
+                MangaTable
+                    .selectAll()
+                    .where { MangaTable.inLibrary eq true }
+                    .empty()
+            }
+
         // Check if it's first sync based on lastSyncTimestamp
-        if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && databaseManga.isNotEmpty()) {
+        if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
             // It's first sync no need to restore data. (just update remote data)
             syncPreferences
                 .edit()
@@ -235,13 +242,6 @@ object SyncManager {
             .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
             .apply()
     }
-
-    private fun getAllMangaFromDB(): List<MangaDataClass> = transaction { MangaTable.selectAll().map { MangaTable.toDataClass(it) } }
-
-    private fun getAllMangaThatNeedsSync(): List<MangaDataClass> =
-        transaction {
-            MangaTable.selectAll().where { MangaTable.inLibrary eq true }.map { MangaTable.toDataClass(it) }
-        }
 
     private fun isMangaDifferent(
         localManga: MangaDataClass,
@@ -307,17 +307,22 @@ object SyncManager {
 
         val elapsedTime =
             measureTime {
-                val databaseManga = getAllMangaFromDB()
-                val localMangaMap =
-                    databaseManga.associateBy {
-                        Triple(it.sourceId.toLong(), it.url, it.title)
-                    }
-
                 logger.debug { "Starting to filter favorites and non-favorites from backup data." }
 
                 backup.backupManga.forEach { remoteManga ->
-                    val compositeKey = Triple(remoteManga.source, remoteManga.url, remoteManga.title)
-                    val localManga = localMangaMap[compositeKey]
+                    val localManga =
+                        transaction {
+                            MangaTable
+                                .selectAll()
+                                .where {
+                                    (MangaTable.sourceReference eq remoteManga.source) and
+                                        (MangaTable.url eq remoteManga.url) and
+                                        (MangaTable.title eq remoteManga.title)
+                                }.limit(1)
+                                .map { MangaTable.toDataClass(it) }
+                                .firstOrNull()
+                        }
+
                     when {
                         // Checks if the manga is in favorites and needs updating or adding
                         remoteManga.favorite -> {
@@ -346,13 +351,21 @@ object SyncManager {
     }
 
     private fun updateNonFavorites(nonFavorites: List<BackupManga>) {
-        val localMangaList = getAllMangaFromDB()
-
-        val localMangaMap = localMangaList.associateBy { Triple(it.sourceId.toLong(), it.url, it.title) }
-
         nonFavorites.forEach { nonFavorite ->
-            val key = Triple(nonFavorite.source, nonFavorite.url, nonFavorite.title)
-            localMangaMap[key]?.let { localManga ->
+            val localManga =
+                transaction {
+                    MangaTable
+                        .selectAll()
+                        .where {
+                            (MangaTable.sourceReference eq nonFavorite.source) and
+                                (MangaTable.url eq nonFavorite.url) and
+                                (MangaTable.title eq nonFavorite.title)
+                        }.limit(1)
+                        .map { MangaTable.toDataClass(it) }
+                        .firstOrNull()
+                }
+
+            if (localManga != null) {
                 if (localManga.inLibrary != nonFavorite.favorite) {
                     val updatedManga = localManga.copy(inLibrary = nonFavorite.favorite)
                     updateManga(updatedManga)
