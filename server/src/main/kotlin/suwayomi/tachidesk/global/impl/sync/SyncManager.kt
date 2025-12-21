@@ -316,8 +316,7 @@ object SyncManager {
                                 .selectAll()
                                 .where {
                                     (MangaTable.sourceReference eq remoteManga.source) and
-                                        (MangaTable.url eq remoteManga.url) and
-                                        (MangaTable.title eq remoteManga.title)
+                                        (MangaTable.url eq remoteManga.url)
                                 }.limit(1)
                                 .map { MangaTable.toDataClass(it) }
                                 .firstOrNull()
@@ -358,8 +357,7 @@ object SyncManager {
                         .selectAll()
                         .where {
                             (MangaTable.sourceReference eq nonFavorite.source) and
-                                (MangaTable.url eq nonFavorite.url) and
-                                (MangaTable.title eq nonFavorite.title)
+                                (MangaTable.url eq nonFavorite.url)
                         }.limit(1)
                         .map { MangaTable.toDataClass(it) }
                         .firstOrNull()
