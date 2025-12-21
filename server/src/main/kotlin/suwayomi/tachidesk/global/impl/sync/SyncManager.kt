@@ -17,6 +17,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.StartSyncResult
 import suwayomi.tachidesk.manga.impl.Category
+import suwayomi.tachidesk.manga.impl.Library.handleMangaThumbnail
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
@@ -30,7 +31,6 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
@@ -365,41 +365,14 @@ object SyncManager {
 
             if (localManga != null) {
                 if (localManga.inLibrary != nonFavorite.favorite) {
-                    val updatedManga = localManga.copy(inLibrary = nonFavorite.favorite)
-                    updateManga(updatedManga)
+                    transaction {
+                        MangaTable.update({ MangaTable.id eq localManga.id }) {
+                            it[inLibrary] = nonFavorite.favorite
+                        }
+                    }.apply {
+                        handleMangaThumbnail(localManga.id, nonFavorite.favorite)
+                    }
                 }
-            }
-        }
-    }
-
-    private fun updateManga(manga: MangaDataClass) {
-        transaction {
-            MangaTable.update({ MangaTable.id eq manga.id }) {
-                it[MangaTable.url] = manga.url
-                it[MangaTable.title] = manga.title
-                it[MangaTable.initialized] = manga.initialized
-
-                it[MangaTable.artist] = manga.artist
-                it[MangaTable.author] = manga.author
-                it[MangaTable.description] = manga.description
-                it[MangaTable.genre] = manga.genre.joinToString(separator = ", ")
-
-                it[MangaTable.status] = MangaStatus.valueOf(manga.status).value
-                it[MangaTable.thumbnail_url] = manga.thumbnailUrl
-                it[MangaTable.thumbnailUrlLastFetched] = manga.thumbnailUrlLastFetched
-
-                it[MangaTable.inLibrary] = manga.inLibrary
-                it[MangaTable.inLibraryAt] = manga.inLibraryAt
-
-                it[MangaTable.sourceReference] = manga.sourceId.toLong()
-
-                it[MangaTable.realUrl] = manga.realUrl
-                it[MangaTable.lastFetchedAt] = manga.lastFetchedAt ?: 0L
-                it[MangaTable.chaptersLastFetchedAt] = manga.chaptersLastFetchedAt ?: 0L
-
-                it[MangaTable.updateStrategy] = manga.updateStrategy.name
-
-                it[MangaTable.version] = manga.version
             }
         }
     }
