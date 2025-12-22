@@ -22,8 +22,7 @@ import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
-import java.util.concurrent.TimeUnit
-import kotlin.getValue
+import kotlin.time.Duration.Companion.seconds
 
 object SyncYomiSyncService {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
@@ -123,7 +122,6 @@ object SyncYomiSyncService {
         val host = serverConfig.syncYomiHost.value
         val apiKey = serverConfig.syncYomiApiKey.value
         val uploadUrl = "$host/api/sync/content"
-        val timeout = 30L
 
         val headersBuilder = Headers.Builder().add("X-API-Token", apiKey)
         if (eTag.isNotEmpty()) {
@@ -132,12 +130,13 @@ object SyncYomiSyncService {
         val headers = headersBuilder.build()
 
         // Set timeout to 30 seconds
+        val timeout = 30.seconds
         val client =
             network.client
                 .newBuilder()
-                .connectTimeout(timeout, TimeUnit.SECONDS)
-                .readTimeout(timeout, TimeUnit.SECONDS)
-                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
                 .build()
 
         val byteArray = ProtoBuf.encodeToByteArray(Backup.serializer(), backup)
