@@ -12,6 +12,7 @@ class M0053_SyncYomi : SQLMigration() {
             DatabaseType.H2 -> h2Query()
         }
 
+    // language=postgresql
     fun postgresQuery(): String =
         """
         ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
@@ -24,12 +25,12 @@ class M0053_SyncYomi : SQLMigration() {
         CREATE OR REPLACE FUNCTION update_manga_version()
         RETURNS trigger AS $$
         BEGIN
-            IF NEW.is_syncing = FALSE AND (
-                NEW.url IS DISTINCT FROM OLD.url OR
-                NEW.description IS DISTINCT FROM OLD.description OR
-                NEW.in_library IS DISTINCT FROM OLD.in_library
-            ) THEN
-                UPDATE manga SET version = version + 1 WHERE id = NEW.id;
+            IF NOT NEW.is_syncing
+               AND ROW(NEW.url, NEW.description, NEW.in_library)
+                   IS DISTINCT FROM
+                   ROW(OLD.url, OLD.description, OLD.in_library)
+            THEN
+                NEW.version := OLD.version + 1;
             END IF;
 
             RETURN NEW;
@@ -45,12 +46,13 @@ class M0053_SyncYomi : SQLMigration() {
         CREATE OR REPLACE FUNCTION update_chapter_and_manga_version()
         RETURNS trigger AS $$
         BEGIN
-            IF NEW.is_syncing = FALSE AND (
-                NEW.read IS DISTINCT FROM OLD.read OR
-                NEW.bookmark IS DISTINCT FROM OLD.bookmark OR
-                NEW.last_page_read IS DISTINCT FROM OLD.last_page_read
-            ) THEN
-                UPDATE chapter SET version = version + 1 WHERE id = NEW.id;
+            IF NOT NEW.is_syncing
+               AND ROW(NEW.read, NEW.bookmark, NEW.last_page_read)
+                   IS DISTINCT FROM
+                   ROW(OLD.read, OLD.bookmark, OLD.last_page_read)
+            THEN
+                NEW.version := OLD.version + 1;
+        
                 UPDATE manga SET version = version + 1 WHERE id = NEW.manga AND is_syncing = FALSE;
             END IF;
 
@@ -79,6 +81,7 @@ class M0053_SyncYomi : SQLMigration() {
         EXECUTE FUNCTION insert_manga_category_update_version();
         """.trimIndent()
 
+    // language=h2
     fun h2Query() =
         """
         ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
