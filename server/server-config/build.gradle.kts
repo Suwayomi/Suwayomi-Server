@@ -20,6 +20,9 @@ dependencies {
     // Coroutines for MutableStateFlow
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.jdk8)
+
+    // DateTime for ISO-8601 duration parsing
+    implementation(libs.datetime)
     
     // Config handling
     implementation(libs.config)
