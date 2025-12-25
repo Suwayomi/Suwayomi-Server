@@ -42,6 +42,7 @@ import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SettingsQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
+import suwayomi.tachidesk.graphql.queries.SyncQuery
 import suwayomi.tachidesk.graphql.queries.TrackQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -99,6 +100,7 @@ val schema =
                 TopLevelObject(MetaQuery()),
                 TopLevelObject(SettingsQuery()),
                 TopLevelObject(SourceQuery()),
+                TopLevelObject(SyncQuery()),
                 TopLevelObject(TrackQuery()),
                 TopLevelObject(UpdateQuery()),
             ),
