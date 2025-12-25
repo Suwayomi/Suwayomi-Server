@@ -34,27 +34,30 @@ object SyncYomiSyncService {
         message: String?,
     ) : Exception(message)
 
-    suspend fun doSync(syncData: SyncData): Backup? {
-        try {
-            val (remoteData, etag) = pullSyncData()
+    suspend fun doSync(
+        syncData: SyncData,
+        setSyncState: (SyncManager.SyncState) -> Unit,
+    ): Backup? {
+        setSyncState(SyncManager.SyncState.Downloading)
+        val (remoteData, etag) = pullSyncData()
 
-            val finalSyncData =
-                if (remoteData != null) {
-                    require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
-                    logger.debug { "Try update remote data with ETag($etag)" }
-                    mergeSyncData(syncData, remoteData)
-                } else {
-                    // init or overwrite remote data
-                    logger.debug { "Try overwrite remote data with ETag($etag)" }
-                    syncData
-                }
+        val finalSyncData =
+            if (remoteData != null) {
+                require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
+                logger.debug { "Try update remote data with ETag($etag)" }
+                setSyncState(SyncManager.SyncState.Merging)
+                mergeSyncData(syncData, remoteData)
+            } else {
+                // init or overwrite remote data
+                logger.debug { "Try overwrite remote data with ETag($etag)" }
+                syncData
+            }
 
-            pushSyncData(finalSyncData, etag)
-            return finalSyncData.backup
-        } catch (e: Exception) {
-            logger.error { "Error syncing: ${e.message}" }
-            return null
+        if (finalSyncData.backup != null) {
+            setSyncState(SyncManager.SyncState.Uploading)
         }
+        pushSyncData(finalSyncData, etag)
+        return finalSyncData.backup
     }
 
     private suspend fun pullSyncData(): Pair<SyncData?, String> {
