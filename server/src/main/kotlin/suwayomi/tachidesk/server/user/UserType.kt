@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.server.user
 
+import com.auth0.jwt.exceptions.JWTVerificationException
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.Context
 import io.javalin.http.Header
 import io.javalin.websocket.WsConnectContext
@@ -8,6 +10,8 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.serverConfig
+
+private val logger = KotlinLogging.logger {}
 
 sealed class UserType {
     class Admin(
@@ -71,7 +75,30 @@ fun getUserFromContext(ctx: Context): UserType {
             val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
             val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
 
-            getUserFromToken(token)
+            val user = getUserFromToken(token)
+            if (user is UserType.Visitor) {
+                // Access token is invalid/expired, try to refresh using refresh token cookie
+                val refreshToken = ctx.cookie("suwayomi-server-refresh-token")
+                if (!refreshToken.isNullOrBlank()) {
+                    try {
+                        val newAccessToken = Jwt.refreshJwt(refreshToken)
+                        // Set the new access token as a cookie with long Max-Age
+                        // (matches refresh token expiry so browser doesn't clear it)
+                        ctx.cookie(
+                            AuthCookieUtil.createAuthCookie(
+                                ctx,
+                                "suwayomi-server-token",
+                                newAccessToken,
+                                serverConfig.jwtRefreshExpiry.value.inWholeSeconds.toInt(),
+                            ),
+                        )
+                        return UserType.Admin(1)
+                    } catch (e: JWTVerificationException) {
+                        logger.debug(e) { "Refresh token invalid, user remains as Visitor" }
+                    }
+                }
+            }
+            user
         }
     }
 }
@@ -93,6 +120,9 @@ fun getUserFromWsContext(ctx: WsConnectContext): UserType {
         }
 
         AuthMode.UI_LOGIN -> {
+            // Note: WebSocket connections cannot auto-refresh tokens because
+            // WsConnectContext doesn't support setting response cookies.
+            // Clients should ensure valid tokens before establishing WS connections.
             val authentication =
                 ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol") ?: ctx.cookie("suwayomi-server-token")
             val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
