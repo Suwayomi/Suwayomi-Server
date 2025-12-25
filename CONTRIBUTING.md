@@ -84,3 +84,5 @@ Run `AndroidCompat/getAndroid.sh`(macOS/Linux) or `AndroidCompat/getAndroid.ps1`
 from project's root directory to download and rebuild the jar file from Google's repository,
 then use `AndroidCompat/lib/android.jar` to manually create a maven repository inside the `android-jar` git branch.
 Update the dependency declaration afterwards.
+
+Test
