@@ -76,11 +76,8 @@ object Jwt {
 
     fun refreshJwt(refreshToken: String): String {
         val jwt = verifier.verify(refreshToken)
-        require(jwt.getClaim("token_type").asString() == "refresh") {
-            "Cannot use access token to refresh"
-        }
-        require(jwt.audience.single() == AUDIENCE) {
-            "Token intended for different audience ${jwt.audience}"
+        require(jwt.audience.single() == "$AUDIENCE-refresh") {
+            "Invalid token audience ${jwt.audience}"
         }
         return createAccessToken()
     }
@@ -89,11 +86,8 @@ object Jwt {
         try {
             val decodedJWT = verifier.verify(jwt)
 
-            require(decodedJWT.getClaim("token_type").asString() == "access") {
-                "Cannot use refresh token to access"
-            }
-            require(decodedJWT.audience.single() == AUDIENCE) {
-                "Token intended for different audience ${decodedJWT.audience}"
+            require(decodedJWT.audience.single() == "$AUDIENCE-session") {
+                "Invalid token audience ${decodedJWT.audience}"
             }
 
             return UserType.Admin(1)
@@ -108,8 +102,7 @@ object Jwt {
             JWT
                 .create()
                 .withIssuer(ISSUER)
-                .withAudience(AUDIENCE)
-                .withClaim("token_type", "access")
+                .withAudience("$AUDIENCE-session")
                 .withExpiresAt(Instant.now().plusSeconds(accessTokenExpiry.inWholeSeconds))
 
         return jwt.sign(algorithm)
@@ -119,8 +112,7 @@ object Jwt {
         JWT
             .create()
             .withIssuer(ISSUER)
-            .withAudience(AUDIENCE)
-            .withClaim("token_type", "refresh")
+            .withAudience("$AUDIENCE-refresh")
             .withExpiresAt(Instant.now().plusSeconds(refreshTokenExpiry.inWholeSeconds))
             .sign(algorithm)
 }

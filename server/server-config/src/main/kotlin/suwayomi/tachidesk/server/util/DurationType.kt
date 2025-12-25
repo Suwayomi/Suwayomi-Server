@@ -5,7 +5,11 @@ import io.github.config4k.ClassContainer
 import io.github.config4k.CustomType
 import io.github.config4k.readers.SelectReader
 import io.github.config4k.toConfig
+import java.time.Period
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.toKotlinDuration
+import java.time.Duration as JavaDuration
 
 class DurationType : CustomType {
     override fun parse(
@@ -17,7 +21,7 @@ class DurationType : CustomType {
         val reader = SelectReader.getReader(clazz)
         val path = name
         val result = reader(config, path) as String
-        return Duration.parse(convertToKotlinDuration(result))
+        return parseIso8601Duration(result)
     }
 
     override fun testParse(clazz: ClassContainer): Boolean = clazz.mapperClass.qualifiedName == "kotlin.time.Duration"
@@ -30,34 +34,31 @@ class DurationType : CustomType {
     ): Config = (obj as Duration).toString().toConfig(name)
 
     companion object {
-        // Regex to match ISO-8601 period part with years/months (e.g., P1Y2M3D, P7M, P1Y)
-        private val PERIOD_REGEX = Regex("""P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)D)?(T.*)?""")
-
         /**
-         * Converts ISO-8601 duration strings with years/months to Kotlin Duration format.
+         * Parses ISO-8601 duration strings including years/months.
          * Kotlin's Duration.parse() doesn't support months/years because they're not fixed-length.
          * This converts them to days (1 year = 365 days, 1 month = 30 days).
          */
-        fun convertToKotlinDuration(input: String): String {
-            val match = PERIOD_REGEX.matchEntire(input) ?: return input
+        fun parseIso8601Duration(input: String): Duration {
+            val tIndex = input.indexOf('T')
 
-            val years = match.groupValues[1].toIntOrNull() ?: 0
-            val months = match.groupValues[2].toIntOrNull() ?: 0
-            val days = match.groupValues[3].toIntOrNull() ?: 0
-            val timePart = match.groupValues[4] // e.g., "T2H30M"
+            return when {
+                // Duration only (PT2H30M)
+                tIndex == 1 -> JavaDuration.parse(input).toKotlinDuration()
 
-            // If no years or months, return original (already valid for Kotlin)
-            if (years == 0 && months == 0) {
-                return input
-            }
+                // Period only (P1Y2M3D)
+                tIndex == -1 -> {
+                    val period = Period.parse(input)
+                    (period.years * 365L + period.months * 30L + period.days).days
+                }
 
-            // Convert years and months to days (approximate)
-            val totalDays = (years * 365) + (months * 30) + days
-
-            return if (timePart.isNotEmpty()) {
-                "P${totalDays}D$timePart"
-            } else {
-                "P${totalDays}D"
+                // Both period and time (P1DT2H)
+                else -> {
+                    val period = Period.parse(input.substring(0, tIndex))
+                    val duration = JavaDuration.parse("P${input.substring(tIndex)}")
+                    val periodDays = (period.years * 365L + period.months * 30L + period.days).days
+                    periodDays + duration.toKotlinDuration()
+                }
             }
         }
     }
