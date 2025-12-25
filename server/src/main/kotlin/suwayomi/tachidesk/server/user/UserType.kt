@@ -1,7 +1,9 @@
 package suwayomi.tachidesk.server.user
 
 import io.javalin.http.Context
+import io.javalin.http.Cookie
 import io.javalin.http.Header
+import io.javalin.http.SameSite
 import io.javalin.websocket.WsConnectContext
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.types.AuthMode
@@ -71,7 +73,33 @@ fun getUserFromContext(ctx: Context): UserType {
             val authentication = ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
             val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
 
-            getUserFromToken(token)
+            val user = getUserFromToken(token)
+            if (user is UserType.Visitor) {
+                // Access token is invalid/expired, try to refresh using refresh token cookie
+                val refreshToken = ctx.cookie("suwayomi-server-refresh-token")
+                if (!refreshToken.isNullOrBlank()) {
+                    try {
+                        val newAccessToken = Jwt.refreshJwt(refreshToken)
+                        // Set the new access token as a cookie with long Max-Age
+                        // (matches refresh token expiry so browser doesn't clear it)
+                        ctx.cookie(
+                            Cookie(
+                                name = "suwayomi-server-token",
+                                value = newAccessToken,
+                                maxAge = serverConfig.jwtRefreshExpiry.value.inWholeSeconds.toInt(),
+                                sameSite = SameSite.STRICT,
+                                isHttpOnly = true,
+                                secure = ctx.scheme() == "https",
+                                path = "/",
+                            ),
+                        )
+                        return UserType.Admin(1)
+                    } catch (_: Exception) {
+                        // Refresh token is also invalid, user stays as Visitor
+                    }
+                }
+            }
+            user
         }
     }
 }
