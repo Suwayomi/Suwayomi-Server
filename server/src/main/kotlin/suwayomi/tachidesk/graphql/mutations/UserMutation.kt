@@ -2,34 +2,14 @@ package suwayomi.tachidesk.graphql.mutations
 
 import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.Context
-import io.javalin.http.Cookie
-import io.javalin.http.SameSite
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.user.AuthCookieUtil.createAuthCookie
 import suwayomi.tachidesk.server.user.UserType
 
 class UserMutation {
-    companion object {
-        /** Create an auth cookie with secure flag set based on request scheme */
-        fun createAuthCookie(
-            ctx: Context,
-            name: String,
-            value: String,
-            maxAge: Int,
-        ): Cookie =
-            Cookie(
-                name = name,
-                value = value,
-                maxAge = maxAge,
-                sameSite = SameSite.STRICT,
-                isHttpOnly = true,
-                secure = ctx.scheme() == "https",
-                path = "/",
-            )
-    }
-
     data class LoginInput(
         val clientMutationId: String? = null,
         val username: String,
@@ -86,6 +66,10 @@ class UserMutation {
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: LogoutInput,
     ): LogoutPayload {
+        if (dataFetchingEnvironment.getAttribute(Attribute.TachideskUser) is UserType.Visitor) {
+            throw IllegalArgumentException("Must be logged in to logout")
+        }
+
         // Clear the authentication cookies by setting them with maxAge=0
         val ctx = dataFetchingEnvironment.graphQlContext.get<Context>(Context::class)
         ctx.cookie(createAuthCookie(ctx, "suwayomi-server-token", "", 0))

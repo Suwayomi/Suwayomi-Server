@@ -17,10 +17,9 @@ class DurationType : CustomType {
         config: Config,
         name: String,
     ): Any? {
-        val clazz = ClassContainer(String::class)
-        val reader = SelectReader.getReader(clazz)
-        val path = name
-        val result = reader(config, path) as String
+        val stringContainer = ClassContainer(String::class)
+        val reader = SelectReader.getReader(stringContainer)
+        val result = reader(config, name) as String
         return parseIso8601Duration(result)
     }
 
@@ -34,6 +33,9 @@ class DurationType : CustomType {
     ): Config = (obj as Duration).toString().toConfig(name)
 
     companion object {
+        private const val DAYS_PER_YEAR = 365L
+        private const val DAYS_PER_MONTH = 30L
+
         /**
          * Parses ISO-8601 duration strings including years/months.
          * Kotlin's Duration.parse() doesn't support months/years because they're not fixed-length.
@@ -49,14 +51,14 @@ class DurationType : CustomType {
                 // Period only (P1Y2M3D)
                 tIndex == -1 -> {
                     val period = Period.parse(input)
-                    (period.years * 365L + period.months * 30L + period.days).days
+                    (period.years * DAYS_PER_YEAR + period.months * DAYS_PER_MONTH + period.days).days
                 }
 
                 // Both period and time (P1DT2H)
                 else -> {
                     val period = Period.parse(input.substring(0, tIndex))
                     val duration = JavaDuration.parse("P${input.substring(tIndex)}")
-                    val periodDays = (period.years * 365L + period.months * 30L + period.days).days
+                    val periodDays = (period.years * DAYS_PER_YEAR + period.months * DAYS_PER_MONTH + period.days).days
                     periodDays + duration.toKotlinDuration()
                 }
             }
