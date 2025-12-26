@@ -5,6 +5,9 @@ import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -56,8 +59,8 @@ object SyncManager {
     private var currentTaskId: String? = null
     private val syncMutex = Mutex()
 
-    var lastSyncState: SyncState? = null
-        private set
+    private val _lastSyncState: MutableStateFlow<SyncState?> = MutableStateFlow(null)
+    val lastSyncState: StateFlow<SyncState?> = _lastSyncState.asStateFlow()
 
     @OptIn(DelicateCoroutinesApi::class)
     fun scheduleSyncTask() {
@@ -129,7 +132,7 @@ object SyncManager {
     }
 
     private suspend fun syncData() {
-        lastSyncState = SyncState.Started
+        _lastSyncState.value = SyncState.Started
         val startMark = TimeSource.Monotonic.markNow()
 
         transaction {
@@ -152,7 +155,7 @@ object SyncManager {
                 includeServerSettings = false,
             )
 
-        lastSyncState = SyncState.CreatingBackup
+        _lastSyncState.value = SyncState.CreatingBackup
         val backupMangas = BackupMangaHandler.backup(backupFlags)
         val backup =
             Backup(
@@ -171,17 +174,17 @@ object SyncManager {
         val remoteBackup =
             try {
                 SyncYomiSyncService.doSync(syncData) {
-                    lastSyncState = it
+                    _lastSyncState.value = it
                 }
             } catch (e: Exception) {
                 logger.error { "Error syncing: ${e.message}" }
-                lastSyncState = SyncState.Error("${e::class.qualifiedName}: ${e.message}")
+                _lastSyncState.value = SyncState.Error("${e::class.qualifiedName}: ${e.message}")
                 return
             }
 
         if (remoteBackup == null) {
             logger.debug { "Skip restore due to network issues" }
-            lastSyncState = SyncState.Error("Network error")
+            _lastSyncState.value = SyncState.Error("Network error")
             return
         }
 
@@ -192,14 +195,14 @@ object SyncManager {
                 .edit()
                 .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
-            lastSyncState = SyncState.Success(startMark.elapsedNow())
+            _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
             return
         }
 
         // Stop the sync early if the remote backup is null or empty
         if (remoteBackup.backupManga.isEmpty()) {
             logger.error { "No data found on remote server." }
-            lastSyncState = SyncState.Error("No data found on remote server.")
+            _lastSyncState.value = SyncState.Error("No data found on remote server.")
             return
         }
 
@@ -218,7 +221,7 @@ object SyncManager {
                 .edit()
                 .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
-            lastSyncState = SyncState.Success(startMark.elapsedNow())
+            _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
             return
         }
 
@@ -239,7 +242,7 @@ object SyncManager {
                 .edit()
                 .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
-            lastSyncState = SyncState.Success(startMark.elapsedNow())
+            _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
             return
         }
 
@@ -259,7 +262,7 @@ object SyncManager {
                     ),
                 isSync = true,
             )
-        lastSyncState = SyncState.Restoring(restoreId)
+        _lastSyncState.value = SyncState.Restoring(restoreId)
 
         ProtoBackupImport.notifyFlow.first {
             val restoreState = ProtoBackupImport.getRestoreState(restoreId)
@@ -273,7 +276,7 @@ object SyncManager {
             .edit()
             .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
             .apply()
-        lastSyncState = SyncState.Success(startMark.elapsedNow())
+        _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
     }
 
     private fun isMangaDifferent(

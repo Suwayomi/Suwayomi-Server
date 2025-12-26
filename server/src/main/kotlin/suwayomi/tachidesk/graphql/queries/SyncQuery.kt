@@ -7,5 +7,5 @@ import suwayomi.tachidesk.graphql.types.toStatus
 
 class SyncQuery {
     @RequireAuth
-    fun lastSyncStatus(): SyncStatus? = SyncManager.lastSyncState?.toStatus()
+    fun lastSyncStatus(): SyncStatus? = SyncManager.lastSyncState.value?.toStatus()
 }
