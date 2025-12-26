@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.graphql.types
 
 import suwayomi.tachidesk.global.impl.sync.SyncManager
-import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 
 enum class StartSyncResult {
     SUCCESS,
@@ -22,7 +21,7 @@ enum class SyncState {
 
 data class SyncStatus(
     val state: SyncState,
-    val backupRestoreStatus: BackupRestoreStatus?,
+    val backupRestoreId: String?,
     val completionDuration: Long?,
     val errorMessage: String?,
 )
@@ -32,7 +31,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         SyncManager.SyncState.Started -> {
             SyncStatus(
                 state = SyncState.STARTED,
-                backupRestoreStatus = null,
+                backupRestoreId = null,
                 completionDuration = null,
                 errorMessage = null,
             )
@@ -41,7 +40,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         SyncManager.SyncState.CreatingBackup -> {
             SyncStatus(
                 state = SyncState.CREATING_BACKUP,
-                backupRestoreStatus = null,
+                backupRestoreId = null,
                 completionDuration = null,
                 errorMessage = null,
             )
@@ -50,7 +49,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         SyncManager.SyncState.Downloading -> {
             SyncStatus(
                 state = SyncState.DOWNLOADING,
-                backupRestoreStatus = null,
+                backupRestoreId = null,
                 completionDuration = null,
                 errorMessage = null,
             )
@@ -59,7 +58,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         SyncManager.SyncState.Merging -> {
             SyncStatus(
                 state = SyncState.MERGING,
-                backupRestoreStatus = null,
+                backupRestoreId = null,
                 completionDuration = null,
                 errorMessage = null,
             )
@@ -68,7 +67,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         SyncManager.SyncState.Uploading -> {
             SyncStatus(
                 state = SyncState.UPLOADING,
-                backupRestoreStatus = null,
+                backupRestoreId = null,
                 completionDuration = null,
                 errorMessage = null,
             )
@@ -77,7 +76,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         is SyncManager.SyncState.Restoring -> {
             SyncStatus(
                 state = SyncState.RESTORING,
-                backupRestoreStatus = ProtoBackupImport.getRestoreState(restoreId)?.toStatus(),
+                backupRestoreId = restoreId,
                 completionDuration = null,
                 errorMessage = null,
             )
@@ -86,7 +85,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         is SyncManager.SyncState.Success -> {
             SyncStatus(
                 state = SyncState.SUCCESS,
-                backupRestoreStatus = null,
+                backupRestoreId = null,
                 completionDuration = elapsedTime.inWholeMilliseconds,
                 errorMessage = null,
             )
@@ -95,7 +94,7 @@ fun SyncManager.SyncState.toStatus(): SyncStatus =
         is SyncManager.SyncState.Error -> {
             SyncStatus(
                 state = SyncState.ERROR,
-                backupRestoreStatus = null,
+                backupRestoreId = null,
                 completionDuration = null,
                 errorMessage = message,
             )
