@@ -5,6 +5,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.Bangumi
 import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.Kitsu
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.MangaUpdates
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.MyAnimeList
+import suwayomi.tachidesk.manga.impl.track.tracker.shikimori.Shikimori
 
 object TrackerManager {
     const val MYANIMELIST = 1
@@ -22,7 +23,7 @@ object TrackerManager {
 
     val kitsu = Kitsu(KITSU)
 
-//    val shikimori = Shikimori(SHIKIMORI)
+    val shikimori = Shikimori(SHIKIMORI)
     val bangumi = Bangumi(BANGUMI)
 
 //    val komga = Komga(KOMGA)
