@@ -3,10 +3,12 @@ package suwayomi.tachidesk.manga.impl.track.tracker.shikimori
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
+import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.shikimori.dto.SMOAuth
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
 
 class Shikimori(
     id: Int,
@@ -112,6 +114,13 @@ class Shikimori(
     override fun getRereadingStatus(): Int = REREADING
 
     override fun getCompletionStatus(): Int = COMPLETED
+
+    override fun authUrl(): String = ShikimoriApi.authUrl().toString()
+
+    override suspend fun authCallback(url: String) {
+        val token = url.extractToken("code") ?: throw IOException("cannot find token")
+        login(token)
+    }
 
     override suspend fun login(
         username: String,
