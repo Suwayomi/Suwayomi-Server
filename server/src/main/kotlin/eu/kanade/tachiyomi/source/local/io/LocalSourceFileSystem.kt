@@ -2,26 +2,24 @@ package eu.kanade.tachiyomi.source.local.io
 
 import suwayomi.tachidesk.server.ApplicationDirs
 import java.io.File
+import java.nio.file.Path
+import kotlin.io.path.Path
+import kotlin.io.path.div
+import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
+import kotlin.io.path.listDirectoryEntries
 
 class LocalSourceFileSystem(
     private val applicationDirs: ApplicationDirs,
 ) {
-    fun getBaseDirectories(): Sequence<File> = sequenceOf(File(applicationDirs.localMangaRoot))
+    fun getBaseDirectory(): Path = Path(applicationDirs.localMangaRoot)
 
-    fun getFilesInBaseDirectories(): Sequence<File> =
-        getBaseDirectories()
-            // Get all the files inside all baseDir
-            .flatMap { it.listFiles().orEmpty().toList() }
+    fun getFilesInBaseDirectory(): List<Path> = getBaseDirectory().listDirectoryEntries().toList()
 
-    fun getMangaDirectory(name: String): File? =
-        getFilesInBaseDirectories()
-            // Get the first mangaDir or null
-            .firstOrNull { it.isDirectory && it.name == name }
+    fun getMangaDirectory(name: String): Path? =
+        getBaseDirectory()
+            .resolve(name)
+            .takeIf { it.exists() && it.isDirectory() }
 
-    fun getFilesInMangaDirectory(name: String): Sequence<File> =
-        getFilesInBaseDirectories()
-            // Filter out ones that are not related to the manga and is not a directory
-            .filter { it.isDirectory && it.name == name }
-            // Get all the files inside the filtered folders
-            .flatMap { it.listFiles().orEmpty().toList() }
+    fun getFilesInMangaDirectory(name: String): List<Path> = getMangaDirectory(name)?.listDirectoryEntries().orEmpty().toList()
 }
