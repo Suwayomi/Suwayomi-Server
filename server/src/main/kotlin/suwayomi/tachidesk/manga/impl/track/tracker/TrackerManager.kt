@@ -31,7 +31,7 @@ object TrackerManager {
 //    val kavita = Kavita(context, KAVITA)
 //    val suwayomi = Suwayomi(SUWAYOMI)
 
-    val services: List<Tracker> = listOf(myAnimeList, aniList, kitsu, mangaUpdates, bangumi)
+    val services: List<Tracker> = listOf(myAnimeList, aniList, kitsu, mangaUpdates, shikimori, bangumi)
 
     fun getTracker(id: Int) = services.find { it.id == id }
 

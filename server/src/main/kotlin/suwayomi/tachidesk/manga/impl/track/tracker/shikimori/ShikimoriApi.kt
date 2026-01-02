@@ -183,8 +183,8 @@ class ShikimoriApi(
 
         private const val REDIRECT_URL = "https://suwayomi.org/tracker-oauth"
 
-        private const val CLIENT_ID = ""
-        private const val CLIENT_SECRET = ""
+        private const val CLIENT_ID = "qTrMBF5HtM_33Pv2Vm2fFmEaBUI_c3LvohyJ0beQ9pA"
+        private const val CLIENT_SECRET = "MN_XHQK_aeSqduW_rB64cARi2fFoLGl-AgZ0iMD9zq0"
 
         fun authUrl(): Uri =
             LOGIN_URL
