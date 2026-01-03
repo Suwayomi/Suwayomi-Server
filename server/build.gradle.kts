@@ -45,6 +45,9 @@ dependencies {
     implementation(libs.bundles.javalin)
     implementation(libs.bundles.jackson)
 
+    // Ktor
+    implementation(libs.bundles.ktor)
+
     // GraphQL
     implementation(libs.graphql.kotlin.server)
     implementation(libs.graphql.kotlin.scheme)
@@ -157,7 +160,7 @@ buildConfig {
 
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
 
-    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Suwayomi-Server"))
+    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/MPDR200011/Suwayomi-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
 }
 

@@ -7,7 +7,7 @@ import java.io.BufferedReader
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-const val MainClass = "suwayomi.tachidesk.MainKt"
+const val MainClass = "net.odorcave.kubinashi.MainKt"
 
 // should be bumped with each stable release
 val getTachideskVersion = { "v2.1.${getCommitCount()}" }

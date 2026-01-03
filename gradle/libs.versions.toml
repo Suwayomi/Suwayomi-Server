@@ -17,6 +17,7 @@ xmlserialization = "0.91.3"
 ktlint = "1.8.0"
 koin = "4.1.1"
 moko = "0.25.2"
+ktor-version = "3.2.3"
 
 [libraries]
 # Kotlin
@@ -57,6 +58,14 @@ jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin"
 jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
 jte = { module = "gg.jte:jte", version.ref = "jte" }
 kte = { module = "gg.jte:jte-kotlin", version.ref = "jte" }
+
+# Ktor
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor-version" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor-version" }
+ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor-version" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref ="ktor-version" }
+ktor-gson = { module = "io.ktor:ktor-serialization-gson", version.ref ="ktor-version" }
+
 
 # GraphQL
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
@@ -231,6 +240,13 @@ javalin = [
     #"javalin-openapi",
     "javalin-rendering",
     "jte",
+]
+ktor = [
+    "ktor-server-core",
+    "ktor-server-netty",
+    "ktor-server-call-logging",
+    "ktor-server-content-negotiation",
+    "ktor-gson",
 ]
 jackson = [
     "jackson-databind",
