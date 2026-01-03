@@ -39,7 +39,7 @@ serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", v
 # Logging
 slf4japi = "org.slf4j:slf4j-api:2.0.17"
 logback = "ch.qos.logback:logback-classic:1.5.23"
-kotlinlogging = "io.github.oshai:kotlin-logging-jvm:7.0.13"
+kotlinlogging = "io.github.oshai:kotlin-logging-jvm:7.0.14"
 
 # OkHttp
 okhttp-core = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
