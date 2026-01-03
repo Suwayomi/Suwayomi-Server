@@ -6,8 +6,7 @@ The configuration file is written in HOCON. Google is your friend if you want to
 
 ## Troubleshooting
 ### I messed up my configuration file
-- The reference configuration file can be found [here](https://github.com/Suwayomi/Suwayomi-Server/blob/master/server/src/main/resources/server-reference.conf) replace your whole configuration or erroneous keys referring to it.
-- Suwayomi will create a default configuration file when one doesn't exist, you can delete `server.conf` to get a copy of the reference configuration file after a restart.
+Suwayomi will create a default configuration file when one doesn't exist, you can delete `server.conf` to get a copy of the reference configuration file after a restart.
 
 ### I am running Suwayomi in a headless environment (docker, NAS, VPS, etc.)
 - Set `server.systemTrayEnabled` to false, it will prevent Suwayomi to attempt to create a System Tray icon.
