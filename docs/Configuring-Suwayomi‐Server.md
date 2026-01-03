@@ -254,8 +254,7 @@ server.useHikariConnectionPool = true
 
 **Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+PostgreSQL. Please be aware that PostgreSQL support is currently still in beta.
 
-> [!CAUTION]
-> Be careful when restoring backups if you change these options! Server settings may be included in the backup, so restoring a backup with those settings may unintentionally switch your setup to a different database than intended.
+**Note:** These settings are excluded from backups, so a backup can be used to easily switch database installations by setting up the connection first, then restoring the backup.
 
 ## Overriding configuration options with command-line arguments
 You can override the above configuration options with command-line arguments. 
