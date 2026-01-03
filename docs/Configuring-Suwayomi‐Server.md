@@ -52,6 +52,7 @@ server.electronPath = ""
 server.webUIFlavor = "WebUI" # "WebUI" or "Custom"
 server.webUIChannel = preview # "BUNDLED" or "STABLE" or "PREVIEW"
 server.webUIUpdateCheckInterval = 23
+server.webUISubpath = ""
 ```
 - `server.webUIEnabled` controls if Suwayomi will serve `Suwayomi-WebUI` and if it downloads/updates it on startup.
 - `server.initialOpenInBrowserEnabled` controls if Suwayomi will attempt to open a brwoser/electron window on startup, disabling this on headless servers is recommended.
@@ -61,6 +62,7 @@ server.webUIUpdateCheckInterval = 23
   - Note: "Custom" would be useful if you want to test preview versions of Suwayomi-WebUI or when you are using or developing other web interfaces like the web version of Suwayomi-Sorayomi.
 - `server.webUIChannel` allows to choose which update channel to use (only valid when flavor is set to "WebUI"). Use `"BUNDLED"` to use the version included in the server download, `"STABLE"` to use the latest stable release or `"PREVIEW"` to use the latest preview release (potentially buggy).
 - `server.webUIUpdateCheckInterval` the interval time in hours at which to check for updates. Use `0` to disable update checking.
+- `server.webUISubpath` controls on which sub-path the UI is served; by default, it will be accessible on `/` (i.e. directly), with this setting it can also be set to appear at e.g. `/suwayomi`
 
 ### Downloader
 ```
@@ -167,11 +169,25 @@ server.backupPath = ""
 server.backupTime = "00:00"
 server.backupInterval = 1
 server.backupTTL = 14
+server.autoBackupIncludeManga = true
+server.autoBackupIncludeCategories = true
+server.autoBackupIncludeChapters = true
+server.autoBackupIncludeTracking = true
+server.autoBackupIncludeHistory = true
+server.autoBackupIncludeClientData = true
+server.autoBackupIncludeServerSettings = true
 ```
 - `server.backupPath = ""` the path where backups will be stored, if the value is empty, the default directory `backups` inside [the data directory](https://github.com/Suwayomi/Suwayomi-Server/wiki/The-Data-Directory) will be used. If you are on Windows the slashes `\` needs to be doubled(`\\`) or replaced with `/`
 - `server.backupTime = "00:00"` sets the time of day at which the automated backup should be triggered.
 - `server.backupInterval = 1` sets the interval in which the server will automatically create a backup in days, `0` to disable it.
 - `server.backupTTL = 14` sets how long backup files will be kept before they will get deleted in days, `0` to disable it.
+- `server.autoBackupIncludeManga` whether to include manga data in automatic backups
+- `server.autoBackupIncludeCategories` whether to include category data in automatic backups
+- `server.autoBackupIncludeChapters` whether to include manga chapter data in automatic backups
+- `server.autoBackupIncludeTracking` whether to include manga tracking data in automatic backups
+- `server.autoBackupIncludeHistory` whether to include manga reading history in automatic backups
+- `server.autoBackupIncludeClientData` whether to include client data in automatic backups
+- `server.autoBackupIncludeServerSettings` whether to include server settings in automatic backups
 
 ### Local Source
 ```
