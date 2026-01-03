@@ -22,7 +22,9 @@ import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 object SyncYomiSyncService {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
@@ -36,16 +38,17 @@ object SyncYomiSyncService {
 
     suspend fun doSync(
         syncData: SyncData,
+        startDate: Instant,
         setSyncState: (SyncManager.SyncState) -> Unit,
     ): Backup? {
-        setSyncState(SyncManager.SyncState.Downloading)
+        setSyncState(SyncManager.SyncState.Downloading(startDate))
         val (remoteData, etag) = pullSyncData()
 
         val finalSyncData =
             if (remoteData != null) {
                 require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
                 logger.debug { "Try update remote data with ETag($etag)" }
-                setSyncState(SyncManager.SyncState.Merging)
+                setSyncState(SyncManager.SyncState.Merging(startDate))
                 mergeSyncData(syncData, remoteData)
             } else {
                 // init or overwrite remote data
@@ -54,7 +57,7 @@ object SyncYomiSyncService {
             }
 
         if (finalSyncData.backup != null) {
-            setSyncState(SyncManager.SyncState.Uploading)
+            setSyncState(SyncManager.SyncState.Uploading(startDate))
         }
         pushSyncData(finalSyncData, etag)
         return finalSyncData.backup

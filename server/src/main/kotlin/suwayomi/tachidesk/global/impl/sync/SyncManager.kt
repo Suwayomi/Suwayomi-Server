@@ -42,9 +42,8 @@ import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.time.Clock
-import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.TimeSource
+import kotlin.time.Instant
 import kotlin.time.measureTime
 
 @Serializable
@@ -132,8 +131,8 @@ object SyncManager {
     }
 
     private suspend fun syncData() {
-        _lastSyncState.value = SyncState.Started
-        val startMark = TimeSource.Monotonic.markNow()
+        val startInstant = Clock.System.now()
+        _lastSyncState.value = SyncState.Started(startInstant)
 
         transaction {
             MangaTable.update({ MangaTable.isSyncing eq true }) {
@@ -155,7 +154,7 @@ object SyncManager {
                 includeServerSettings = false,
             )
 
-        _lastSyncState.value = SyncState.CreatingBackup
+        _lastSyncState.value = SyncState.CreatingBackup(startInstant)
         val backupMangas = BackupMangaHandler.backup(backupFlags)
         val backup =
             Backup(
@@ -173,18 +172,18 @@ object SyncManager {
 
         val remoteBackup =
             try {
-                SyncYomiSyncService.doSync(syncData) {
+                SyncYomiSyncService.doSync(syncData, startInstant) {
                     _lastSyncState.value = it
                 }
             } catch (e: Exception) {
                 logger.error { "Error syncing: ${e.message}" }
-                _lastSyncState.value = SyncState.Error("${e::class.qualifiedName}: ${e.message}")
+                _lastSyncState.value = SyncState.Error(startInstant, "${e::class.qualifiedName}: ${e.message}")
                 return
             }
 
         if (remoteBackup == null) {
             logger.debug { "Skip restore due to network issues" }
-            _lastSyncState.value = SyncState.Error("Network error")
+            _lastSyncState.value = SyncState.Error(startInstant, "Network error")
             return
         }
 
@@ -195,14 +194,14 @@ object SyncManager {
                 .edit()
                 .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
-            _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
+            _lastSyncState.value = SyncState.Success(startInstant)
             return
         }
 
         // Stop the sync early if the remote backup is null or empty
         if (remoteBackup.backupManga.isEmpty()) {
             logger.error { "No data found on remote server." }
-            _lastSyncState.value = SyncState.Error("No data found on remote server.")
+            _lastSyncState.value = SyncState.Error(startInstant, "No data found on remote server.")
             return
         }
 
@@ -221,7 +220,7 @@ object SyncManager {
                 .edit()
                 .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
-            _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
+            _lastSyncState.value = SyncState.Success(startInstant)
             return
         }
 
@@ -242,7 +241,7 @@ object SyncManager {
                 .edit()
                 .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
                 .apply()
-            _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
+            _lastSyncState.value = SyncState.Success(startInstant)
             return
         }
 
@@ -262,7 +261,7 @@ object SyncManager {
                     ),
                 isSync = true,
             )
-        _lastSyncState.value = SyncState.Restoring(restoreId)
+        _lastSyncState.value = SyncState.Restoring(startInstant, restoreId)
 
         ProtoBackupImport.notifyFlow.first {
             val restoreState = ProtoBackupImport.getRestoreState(restoreId)
@@ -276,7 +275,7 @@ object SyncManager {
             .edit()
             .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
             .apply()
-        _lastSyncState.value = SyncState.Success(startMark.elapsedNow())
+        _lastSyncState.value = SyncState.Success(startInstant)
     }
 
     private fun isMangaDifferent(
@@ -413,27 +412,43 @@ object SyncManager {
         }
     }
 
-    sealed class SyncState {
-        data object Started : SyncState()
+    sealed class SyncState(
+        open val startDate: Instant,
+    ) {
+        data class Started(
+            override val startDate: Instant,
+        ) : SyncState(startDate)
 
-        data object CreatingBackup : SyncState()
+        data class CreatingBackup(
+            override val startDate: Instant,
+        ) : SyncState(startDate)
 
-        data object Downloading : SyncState()
+        data class Downloading(
+            override val startDate: Instant,
+        ) : SyncState(startDate)
 
-        data object Merging : SyncState()
+        data class Merging(
+            override val startDate: Instant,
+        ) : SyncState(startDate)
 
-        data object Uploading : SyncState()
+        data class Uploading(
+            override val startDate: Instant,
+        ) : SyncState(startDate)
 
         data class Restoring(
+            override val startDate: Instant,
             val restoreId: String,
-        ) : SyncState()
+        ) : SyncState(startDate)
 
         data class Success(
-            val elapsedTime: Duration,
-        ) : SyncState()
+            override val startDate: Instant,
+            val endDate: Instant = Clock.System.now(),
+        ) : SyncState(startDate)
 
         data class Error(
+            override val startDate: Instant,
             val message: String,
-        ) : SyncState()
+            val endDate: Instant = Clock.System.now(),
+        ) : SyncState(startDate)
     }
 }

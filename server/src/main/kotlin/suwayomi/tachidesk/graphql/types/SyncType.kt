@@ -21,81 +21,70 @@ enum class SyncState {
 
 data class SyncStatus(
     val state: SyncState,
-    val backupRestoreId: String?,
-    val completionDuration: Long?,
-    val errorMessage: String?,
+    val startDate: Long,
+    val endDate: Long? = null,
+    val backupRestoreId: String? = null,
+    val errorMessage: String? = null,
 )
 
 fun SyncManager.SyncState.toStatus(): SyncStatus =
     when (this) {
-        SyncManager.SyncState.Started -> {
+        is SyncManager.SyncState.Started -> {
             SyncStatus(
                 state = SyncState.STARTED,
-                backupRestoreId = null,
-                completionDuration = null,
-                errorMessage = null,
+                startDate = startDate.toEpochMilliseconds(),
             )
         }
 
-        SyncManager.SyncState.CreatingBackup -> {
+        is SyncManager.SyncState.CreatingBackup -> {
             SyncStatus(
                 state = SyncState.CREATING_BACKUP,
-                backupRestoreId = null,
-                completionDuration = null,
-                errorMessage = null,
+                startDate = startDate.toEpochMilliseconds(),
             )
         }
 
-        SyncManager.SyncState.Downloading -> {
+        is SyncManager.SyncState.Downloading -> {
             SyncStatus(
                 state = SyncState.DOWNLOADING,
-                backupRestoreId = null,
-                completionDuration = null,
-                errorMessage = null,
+                startDate = startDate.toEpochMilliseconds(),
             )
         }
 
-        SyncManager.SyncState.Merging -> {
+        is SyncManager.SyncState.Merging -> {
             SyncStatus(
                 state = SyncState.MERGING,
-                backupRestoreId = null,
-                completionDuration = null,
-                errorMessage = null,
+                startDate = startDate.toEpochMilliseconds(),
             )
         }
 
-        SyncManager.SyncState.Uploading -> {
+        is SyncManager.SyncState.Uploading -> {
             SyncStatus(
                 state = SyncState.UPLOADING,
-                backupRestoreId = null,
-                completionDuration = null,
-                errorMessage = null,
+                startDate = startDate.toEpochMilliseconds(),
             )
         }
 
         is SyncManager.SyncState.Restoring -> {
             SyncStatus(
                 state = SyncState.RESTORING,
+                startDate = startDate.toEpochMilliseconds(),
                 backupRestoreId = restoreId,
-                completionDuration = null,
-                errorMessage = null,
             )
         }
 
         is SyncManager.SyncState.Success -> {
             SyncStatus(
                 state = SyncState.SUCCESS,
-                backupRestoreId = null,
-                completionDuration = elapsedTime.inWholeMilliseconds,
-                errorMessage = null,
+                startDate = startDate.toEpochMilliseconds(),
+                endDate = endDate.toEpochMilliseconds(),
             )
         }
 
         is SyncManager.SyncState.Error -> {
             SyncStatus(
                 state = SyncState.ERROR,
-                backupRestoreId = null,
-                completionDuration = null,
+                startDate = startDate.toEpochMilliseconds(),
+                endDate = endDate.toEpochMilliseconds(),
                 errorMessage = message,
             )
         }
