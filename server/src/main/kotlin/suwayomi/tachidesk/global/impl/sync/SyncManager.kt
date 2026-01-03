@@ -77,7 +77,7 @@ object SyncManager {
 
                         HAScheduler.schedule(
                             {
-                                startSync()
+                                startSync(periodic = true)
                             },
                             interval = intervalMs,
                             delay = intervalMs,
@@ -92,7 +92,7 @@ object SyncManager {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun startSync(): StartSyncResult {
+    fun startSync(periodic: Boolean = false): StartSyncResult {
         if (!serverConfig.syncYomiEnabled.value) {
             return StartSyncResult.SYNC_DISABLED
         }
@@ -103,7 +103,7 @@ object SyncManager {
 
         GlobalScope.launch {
             try {
-                syncData()
+                syncData(periodic)
             } finally {
                 syncMutex.unlock()
             }
@@ -130,9 +130,17 @@ object SyncManager {
         }
     }
 
-    private suspend fun syncData() {
+    private suspend fun syncData(periodic: Boolean = false) {
         val startInstant = Clock.System.now()
         _lastSyncState.value = SyncState.Started(startInstant)
+
+        logger.info {
+            if (periodic) {
+                "Starting periodic sync"
+            } else {
+                "Starting manual sync"
+            }
+        }
 
         transaction {
             MangaTable.update({ MangaTable.isSyncing eq true }) {
@@ -177,31 +185,27 @@ object SyncManager {
                 }
             } catch (e: Exception) {
                 logger.error { "Error syncing: ${e.message}" }
-                _lastSyncState.value = SyncState.Error(startInstant, "${e::class.qualifiedName}: ${e.message}")
+                finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
                 return
             }
 
         if (remoteBackup == null) {
             logger.debug { "Skip restore due to network issues" }
-            _lastSyncState.value = SyncState.Error(startInstant, "Network error")
+            finishWithError(startInstant, "Network error", periodic)
             return
         }
 
         if (remoteBackup === syncData.backup) {
             // nothing changed
             logger.debug { "Skip restore due to remote was overwrite from local" }
-            syncPreferences
-                .edit()
-                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-                .apply()
-            _lastSyncState.value = SyncState.Success(startInstant)
+            finishWithSuccess(startInstant, periodic)
             return
         }
 
         // Stop the sync early if the remote backup is null or empty
         if (remoteBackup.backupManga.isEmpty()) {
             logger.error { "No data found on remote server." }
-            _lastSyncState.value = SyncState.Error(startInstant, "No data found on remote server.")
+            finishWithError(startInstant, "No data found on remote server.", periodic)
             return
         }
 
@@ -216,11 +220,7 @@ object SyncManager {
         // Check if it's first sync based on lastSyncTimestamp
         if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
             // It's first sync no need to restore data. (just update remote data)
-            syncPreferences
-                .edit()
-                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-                .apply()
-            _lastSyncState.value = SyncState.Success(startInstant)
+            finishWithSuccess(startInstant, periodic)
             return
         }
 
@@ -237,11 +237,7 @@ object SyncManager {
         // It's local sync no need to restore data. (just update remote data)
         if (filteredFavorites.isEmpty()) {
             // update the sync timestamp
-            syncPreferences
-                .edit()
-                .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-                .apply()
-            _lastSyncState.value = SyncState.Success(startInstant)
+            finishWithSuccess(startInstant, periodic)
             return
         }
 
@@ -271,11 +267,42 @@ object SyncManager {
         }
 
         // update the sync timestamp
+        finishWithSuccess(startInstant, periodic)
+    }
+
+    private fun finishWithSuccess(
+        startInstant: Instant,
+        periodic: Boolean,
+    ) {
         syncPreferences
             .edit()
             .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
             .apply()
         _lastSyncState.value = SyncState.Success(startInstant)
+
+        logger.info {
+            if (periodic) {
+                "Periodic sync completed successfully"
+            } else {
+                "Manual sync completed successfully"
+            }
+        }
+    }
+
+    private fun finishWithError(
+        startInstant: Instant,
+        message: String,
+        periodic: Boolean,
+    ) {
+        _lastSyncState.value = SyncState.Error(startInstant, message)
+
+        logger.info {
+            if (periodic) {
+                "Periodic sync failed: $message"
+            } else {
+                "Manual sync failed: $message"
+            }
+        }
     }
 
     private fun isMangaDifferent(
