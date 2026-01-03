@@ -80,6 +80,7 @@ dependencies {
 
     // Disk & File
     implementation(libs.cache4k)
+    implementation(libs.nightcompress)
     implementation(libs.zip4j)
     implementation(libs.commonscompress)
     implementation(libs.junrar)

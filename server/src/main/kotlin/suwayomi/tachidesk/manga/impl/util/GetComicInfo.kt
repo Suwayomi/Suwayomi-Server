@@ -8,6 +8,8 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
+import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -30,6 +32,7 @@ fun getComicInfo(
     val dateUpload = chapter[ChapterTable.date_upload]
     val localDate =
         Instant.ofEpochMilli(dateUpload).atZone(ZoneId.systemDefault()).toLocalDate()
+    val source = getCatalogueSourceOrStub(manga[MangaTable.sourceReference])
 
     return ComicInfo(
         title = ComicInfo.Title(chapter[ChapterTable.name]),
@@ -61,6 +64,7 @@ fun getComicInfo(
         day = localDate?.dayOfMonth?.let { ComicInfo.Day(it) },
         month = localDate?.monthValue?.let { ComicInfo.Month(it) },
         year = localDate?.year?.let { ComicInfo.Year(it) },
+        source = ComicInfo.SourceMihon(source.name)
     )
 }
 
