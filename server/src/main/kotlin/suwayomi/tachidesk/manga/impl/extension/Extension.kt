@@ -38,6 +38,7 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -228,7 +229,7 @@ object Extension {
         }
     }
 
-    private fun extractAssetsFromApk(
+    public fun extractAssetsFromApk(
         apkPath: String,
         jarPath: String,
     ) {
@@ -282,7 +283,7 @@ object Extension {
 
     private val network: NetworkHelper by injectLazy()
 
-    private suspend fun downloadAPKFile(
+    suspend fun downloadAPKFile(
         url: String,
         savePath: String,
     ) {

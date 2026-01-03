@@ -14,6 +14,11 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.i18n.MR
+import suwayomi.tachidesk.manga.impl.extension.Extension
+import suwayomi.tachidesk.manga.impl.util.PackageTools
+import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_SOURCE_CLASS
+import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -57,6 +62,27 @@ object GetCatalogueSource {
             sourceCache[it.id] = it as HttpSource
         }
         return sourceCache[sourceId]!!
+    }
+
+    fun loadCatalogueSourceFromApk(apkName: String) {
+        val jarName = apkName.substringBefore(".apk") + ".jar"
+        val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
+
+        val apkSavePath = "${applicationDirs.extensionsRoot}/$apkName"
+        val packageInfo = PackageTools.getPackageInfo(apkSavePath);
+        val className =
+            packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
+
+        Extension.extractAssetsFromApk(apkSavePath, jarPath)
+
+        when (val instance = loadExtensionSources(jarPath, className)) {
+            is Source -> listOf(instance)
+            is SourceFactory -> instance.createSources()
+            else -> throw Exception("Unknown source class type! ${instance.javaClass}")
+        }.forEach {
+            logger.warn { "Registering source from $apkName with id ${it.id} (lang=${it.lang})" }
+            sourceCache[it.id] = it as HttpSource
+        }
     }
 
     fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? =
