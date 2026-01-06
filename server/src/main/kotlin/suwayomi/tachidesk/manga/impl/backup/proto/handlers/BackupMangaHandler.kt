@@ -272,7 +272,7 @@ object BackupMangaHandler {
                     restoreMangaChapterData(mangaId, restoreMode, chapters, history, flags)
                 }
 
-                // merge categories
+                // update categories
                 if (flags.includeCategories) {
                     restoreMangaCategoryData(mangaId, categoryIds)
                 }
