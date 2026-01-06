@@ -20,6 +20,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.types.StartSyncResult
+import suwayomi.tachidesk.graphql.types.SyncState
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Library.handleMangaThumbnail
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
@@ -134,140 +135,139 @@ object SyncManager {
         val startInstant = Clock.System.now()
         _lastSyncState.value = SyncState.Started(startInstant)
 
-        logger.info {
-            if (periodic) {
-                "Starting periodic sync"
-            } else {
-                "Starting manual sync"
+        try {
+            logger.info {
+                if (periodic) {
+                    "Starting periodic sync"
+                } else {
+                    "Starting manual sync"
+                }
             }
-        }
 
-        transaction {
-            MangaTable.update({ MangaTable.isSyncing eq true }) {
-                it[isSyncing] = false
+            transaction {
+                MangaTable.update({ MangaTable.isSyncing eq true }) {
+                    it[isSyncing] = false
+                }
+                ChapterTable.update({ ChapterTable.isSyncing eq true }) {
+                    it[isSyncing] = false
+                }
             }
-            ChapterTable.update({ ChapterTable.isSyncing eq true }) {
-                it[isSyncing] = false
-            }
-        }
 
-        val backupFlags =
-            BackupFlags(
-                includeManga = serverConfig.syncDataManga.value,
-                includeCategories = serverConfig.syncDataCategories.value,
-                includeChapters = serverConfig.syncDataChapters.value,
-                includeTracking = serverConfig.syncDataTracking.value,
-                includeHistory = serverConfig.syncDataHistory.value,
-                includeClientData = false,
-                includeServerSettings = false,
-            )
+            val backupFlags =
+                BackupFlags(
+                    includeManga = serverConfig.syncDataManga.value,
+                    includeCategories = serverConfig.syncDataCategories.value,
+                    includeChapters = serverConfig.syncDataChapters.value,
+                    includeTracking = serverConfig.syncDataTracking.value,
+                    includeHistory = serverConfig.syncDataHistory.value,
+                    includeClientData = false,
+                    includeServerSettings = false,
+                )
 
-        _lastSyncState.value = SyncState.CreatingBackup(startInstant)
-        val backupMangas = BackupMangaHandler.backup(backupFlags)
-        val backup =
-            Backup(
-                BackupMangaHandler.backup(backupFlags),
-                BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
-                BackupSourceHandler.backup(backupMangas, backupFlags),
-                emptyMap(),
-                null,
-            )
+            _lastSyncState.value = SyncState.CreatingBackup(startInstant)
+            val backupMangas = BackupMangaHandler.backup(backupFlags)
+            val backup =
+                Backup(
+                    BackupMangaHandler.backup(backupFlags),
+                    BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
+                    BackupSourceHandler.backup(backupMangas, backupFlags),
+                    emptyMap(),
+                    null,
+                )
 
-        val syncData =
-            SyncData(
-                backup = backup,
-            )
+            val syncData =
+                SyncData(
+                    backup = backup,
+                )
 
-        val remoteBackup =
-            try {
+            val remoteBackup =
                 SyncYomiSyncService.doSync(syncData, startInstant) {
                     _lastSyncState.value = it
                 }
-            } catch (e: Exception) {
-                logger.error { "Error syncing: ${e.message}" }
-                finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
+
+            if (remoteBackup == null) {
+                logger.debug { "Skip restore due to network issues" }
+                finishWithError(startInstant, "Network error", periodic)
                 return
             }
 
-        if (remoteBackup == null) {
-            logger.debug { "Skip restore due to network issues" }
-            finishWithError(startInstant, "Network error", periodic)
-            return
-        }
-
-        if (remoteBackup === syncData.backup) {
-            // nothing changed
-            logger.debug { "Skip restore due to remote was overwrite from local" }
-            finishWithSuccess(startInstant, periodic)
-            return
-        }
-
-        // Stop the sync early if the remote backup is null or empty
-        if (remoteBackup.backupManga.isEmpty()) {
-            logger.error { "No data found on remote server." }
-            finishWithError(startInstant, "No data found on remote server.", periodic)
-            return
-        }
-
-        val isLibraryEmpty =
-            transaction {
-                MangaTable
-                    .selectAll()
-                    .where { MangaTable.inLibrary eq true }
-                    .empty()
+            if (remoteBackup === syncData.backup) {
+                // nothing changed
+                logger.debug { "Skip restore due to remote was overwrite from local" }
+                finishWithSuccess(startInstant, periodic)
+                return
             }
 
-        // Check if it's first sync based on lastSyncTimestamp
-        if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
-            // It's first sync no need to restore data. (just update remote data)
-            finishWithSuccess(startInstant, periodic)
-            return
-        }
+            // Stop the sync early if the remote backup is null or empty
+            if (remoteBackup.backupManga.isEmpty()) {
+                logger.error { "No data found on remote server." }
+                finishWithError(startInstant, "No data found on remote server.", periodic)
+                return
+            }
 
-        val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
-        updateNonFavorites(nonFavorites)
+            val isLibraryEmpty =
+                transaction {
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.inLibrary eq true }
+                        .empty()
+                }
 
-        val newSyncData =
-            backup.copy(
-                backupManga = filteredFavorites,
-                backupCategories = remoteBackup.backupCategories,
-                backupSources = remoteBackup.backupSources,
-            )
+            // Check if it's first sync based on lastSyncTimestamp
+            if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
+                // It's first sync no need to restore data. (just update remote data)
+                finishWithSuccess(startInstant, periodic)
+                return
+            }
 
-        // It's local sync no need to restore data. (just update remote data)
-        if (filteredFavorites.isEmpty()) {
+            val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
+            updateNonFavorites(nonFavorites)
+
+            val newSyncData =
+                backup.copy(
+                    backupManga = filteredFavorites,
+                    backupCategories = remoteBackup.backupCategories,
+                    backupSources = remoteBackup.backupSources,
+                )
+
+            // It's local sync no need to restore data. (just update remote data)
+            if (filteredFavorites.isEmpty()) {
+                // update the sync timestamp
+                finishWithSuccess(startInstant, periodic)
+                return
+            }
+
+            val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
+            val restoreId =
+                ProtoBackupImport.restore(
+                    sourceStream = backupStream,
+                    flags =
+                        BackupFlags(
+                            includeManga = true,
+                            includeCategories = true,
+                            includeChapters = true,
+                            includeTracking = true,
+                            includeHistory = true,
+                            includeClientData = false,
+                            includeServerSettings = false,
+                        ),
+                    isSync = true,
+                )
+            _lastSyncState.value = SyncState.Restoring(startInstant, restoreId)
+
+            ProtoBackupImport.notifyFlow.first {
+                val restoreState = ProtoBackupImport.getRestoreState(restoreId)
+
+                restoreState == ProtoBackupImport.BackupRestoreState.Success ||
+                    restoreState == ProtoBackupImport.BackupRestoreState.Failure
+            }
+
             // update the sync timestamp
             finishWithSuccess(startInstant, periodic)
-            return
+        } catch (e: Throwable) {
+            logger.error { "Error syncing: ${e.message}" }
+            finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
         }
-
-        val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
-        val restoreId =
-            ProtoBackupImport.restore(
-                sourceStream = backupStream,
-                flags =
-                    BackupFlags(
-                        includeManga = true,
-                        includeCategories = true,
-                        includeChapters = true,
-                        includeTracking = true,
-                        includeHistory = true,
-                        includeClientData = false,
-                        includeServerSettings = false,
-                    ),
-                isSync = true,
-            )
-        _lastSyncState.value = SyncState.Restoring(startInstant, restoreId)
-
-        ProtoBackupImport.notifyFlow.first {
-            val restoreState = ProtoBackupImport.getRestoreState(restoreId)
-
-            restoreState == ProtoBackupImport.BackupRestoreState.Success ||
-                restoreState == ProtoBackupImport.BackupRestoreState.Failure
-        }
-
-        // update the sync timestamp
-        finishWithSuccess(startInstant, periodic)
     }
 
     private fun finishWithSuccess(
