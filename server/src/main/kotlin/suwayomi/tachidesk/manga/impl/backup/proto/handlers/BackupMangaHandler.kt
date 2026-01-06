@@ -392,6 +392,7 @@ object BackupMangaHandler {
         mangaId: Int,
         categoryIds: List<Int>,
     ) {
+        CategoryManga.removeMangaFromAllCategories(mangaId)
         CategoryManga.addMangaToCategories(mangaId, categoryIds)
     }
 
