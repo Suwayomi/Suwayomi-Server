@@ -67,7 +67,7 @@ COPY docker-scripts/startup_script.sh /home/suwayomi/startup_script.sh
 # then update permissions of files.
 # we grant o+rwx because we need to allow non default UIDs (eg via docker run ... --user)
 # to write to the directory to generate the server.conf
-COPY server/build/Suwayomi-Server-v2.1.2041.jar /home/suwayomi/startup/tachidesk_latest.jar
+COPY server/build/Suwayomi-Server-1.0.jar /home/suwayomi/startup/tachidesk_latest.jar
 RUN chmod 777 -R /home/suwayomi && \
     chown -R suwayomi:suwayomi /home/suwayomi
 
