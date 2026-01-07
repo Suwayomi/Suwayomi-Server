@@ -216,6 +216,5 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.DEPLOY_RELEASE_TOKEN }}
           draft: true
           files: release/*
