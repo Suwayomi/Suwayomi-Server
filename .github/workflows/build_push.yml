@@ -3,7 +3,7 @@ name: CI build
 on:
   push:
     branches:
-      - master
+      - branch-that-doesnt-exits
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
