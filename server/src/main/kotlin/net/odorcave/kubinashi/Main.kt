@@ -1,17 +1,16 @@
 package net.odorcave.kubinashi
 
-/*
- * Copyright (C) Contributors to the Suwayomi project
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
-
 import com.google.errorprone.annotations.Immutable
+import com.google.gson.Gson
 import com.google.gson.LongSerializationPolicy
+import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.await
+import eu.kanade.tachiyomi.network.parseAs
 import eu.kanade.tachiyomi.source.model.SMangaImpl
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapterImpl
+import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.chapter.ChapterSanitizer
@@ -35,6 +34,7 @@ import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -43,19 +43,16 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import net.odorcave.kubinashi.gson.PageAdapter
 import net.odorcave.kubinashi.model.Chapter
+import org.koin.java.KoinJavaComponent.inject
 import org.slf4j.event.Level
-import suwayomi.tachidesk.manga.impl.Manga
-import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.Extension.downloadAPKFile
+import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import suwayomi.tachidesk.manga.model.table.ExtensionTable.apkName
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.applicationSetup
-import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.injectLazy
 import java.io.Serializable
-import java.util.concurrent.Executors
 
 @Immutable
 data class SourceManga(val source: Long, val manga: SMangaImpl) : Serializable;
@@ -66,47 +63,23 @@ data class SourceChapter(val source: Long, val chapter: SChapterImpl) : Serializ
 @Immutable
 data class SourcePage(val source: Long, val page: Page) : Serializable;
 
+@Immutable
+data class NeededExtension(val apk: String) : Serializable
+typealias NeededExtensionList = Array<NeededExtension>
+
 fun Application.routing(logger: KLogger) {
-    val coroutineDispatcher = Executors.newFixedThreadPool(5).asCoroutineDispatcher()
 
     routing {
-        // get("/search") {
-        //     try {
-        //         val query = call.request.queryParameters["q"]
-        //         val language = call.request.queryParameters["l"] ?: "en"
-        //         if (query == null) {
-        //             call.respond<Map<Long, List<Manga>>>(mapOf())
-        //             return@get
-        //         }
 
-        //         val sources = sourceManager.getCatalogueSources().filter { it.lang == language }
+        post("/extensions/sync") {
+            val extensionsToInstall = call.receive<NeededExtensionList>()
 
-        //         val resultsMap = ConcurrentHashMap<Long, List<SManga>>()
-        //         sources.map { source ->
-        //             async {
-        //                 try {
-        //                     val page = withContext(coroutineDispatcher) {
-        //                         source.getSearchManga(1, query, source.getFilterList())
-        //                     }
+            extensionsToInstall.forEach {
+                installExtensionApk(it.apk)
+            }
 
-        //                     val titles = page.mangas
-        //                         .distinctBy { it.url }
-
-        //                     resultsMap.set(source.id, titles)
-        //                 } catch (e: Exception) {
-        //                     Log.e(
-        //                         LOG_TAG,
-        //                         "Failed to query with error: ${e.message}\n${e.stackTraceToString()}",
-        //                     )
-        //                 }
-        //             }
-        //         }.awaitAll()
-
-        //         call.respond(resultsMap.toMap())
-        //     } catch (e: Exception) {
-        //         Log.e(LOG_TAG, "Failed to query with error: ${e.message}\\n${e.stackTraceToString()} ")
-        //     }
-        // }
+            call.respond(HttpStatusCode.OK)
+        }
 
         get("/search/{sourceId}") {
             logger.warn { "search called" }
@@ -114,7 +87,7 @@ fun Application.routing(logger: KLogger) {
                 val query = call.request.queryParameters["q"]
                 val language = call.request.queryParameters["l"] ?: "en"
                 if (query == null) {
-                    call.respond<Map<Long, List<Manga>>>(mapOf())
+                    call.respond<Map<Long, List<SManga>>>(mapOf())
                     return@get
                 }
 
@@ -250,38 +223,48 @@ fun Application.routing(logger: KLogger) {
     }
 }
 
+suspend fun installExtensionApk(apkName: String) {
+    val applicationDirs: ApplicationDirs by injectLazy();
+
+    val apkURL = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/apk/$apkName"
+    val apkSavePath = "${applicationDirs.extensionsRoot}/$apkName"
+
+    // download apk file
+    downloadAPKFile(apkURL, apkSavePath)
+
+    val jarName = apkName.substringBefore(".apk") + ".jar"
+    val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
+    val fileNameWithoutType = apkName.substringBefore(".apk")
+
+    dex2jar(apkSavePath, jarPath, fileNameWithoutType)
+
+    GetCatalogueSource.loadCatalogueSourceFromApk(apkName)
+}
 
 fun main() {
     applicationSetup()
     var logger = KotlinLogging.logger {}
 
-    val applicationDirs: ApplicationDirs by injectLazy();
+    val network: NetworkHelper by injectLazy();
+
+    val LARAVEL_HOST = System.getenv("LARAVEL_HOST") ?: "http://localhost:8000"
 
     logger.warn { "Installing extensions" }
     runBlocking {
-        listOf(
-            "tachiyomi-all.mangadex-v1.4.204.apk",
-            "tachiyomi-all.mangafire-v1.4.16.apk",
-        ).forEach { apkName ->
+        val response = network.client.newCall(
+            GET("${LARAVEL_HOST}/extensions/needed")
+        ).execute().body.string()
+
+        val neededExtensions = Gson().fromJson(response, NeededExtensionList::class.java)
+
+        neededExtensions.map { it.apk }.forEach { apkName ->
             logger.warn { "Installing $apkName" }
 
-            val apkURL = "https://raw.githubusercontent.com/keiyoushi/extensions/repo/apk/$apkName"
-            val apkSavePath = "${applicationDirs.extensionsRoot}/$apkName"
-            // download apk file
-            downloadAPKFile(apkURL, apkSavePath)
-
-            val jarName = apkName.substringBefore(".apk") + ".jar"
-            val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
-            val fileNameWithoutType = apkName.substringBefore(".apk")
-
-            dex2jar(apkSavePath, jarPath, fileNameWithoutType)
-
-            GetCatalogueSource.loadCatalogueSourceFromApk(apkName)
-
+            installExtensionApk(apkName);
         }
     }
 
-    val server = embeddedServer(Netty, port = 8080) {
+    val server = embeddedServer(Netty, port = 8081) {
         install(ContentNegotiation) {
             gson {
                 // Needs to be parsed to string because JSON can't handle all Long values and truncates some

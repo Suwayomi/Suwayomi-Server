@@ -18,6 +18,7 @@ ktlint = "1.8.0"
 koin = "4.1.1"
 moko = "0.25.2"
 ktor-version = "3.2.3"
+gson = "2.13.2"
 
 [libraries]
 # Kotlin
@@ -48,6 +49,9 @@ okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.
 okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version.ref = "okhttp" }
 okhttp-brotli = { module = "com.squareup.okhttp3:okhttp-brotli", version.ref = "okhttp" }
 okio = "com.squareup.okio:okio:3.16.4"
+
+# GSON
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
 # Javalin api
 javalin-core = { module = "io.javalin:javalin", version.ref = "javalin" }
