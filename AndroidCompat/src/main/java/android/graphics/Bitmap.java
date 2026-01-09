@@ -2,6 +2,7 @@ package android.graphics;
 
 import android.annotation.ColorInt;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -85,6 +86,19 @@ public final class Bitmap {
                 return BufferedImage.TYPE_INT_ARGB;
             default:
                 throw new UnsupportedOperationException("Bitmap.Config(" + config + ") not supported");
+        }
+    }
+
+    private static Config bufferedImageTypeToConfig(int type) {
+        switch (type) {
+            case BufferedImage.TYPE_BYTE_GRAY:
+                return Config.ALPHA_8;
+            case BufferedImage.TYPE_USHORT_565_RGB:
+                return Config.RGB_565;
+            case BufferedImage.TYPE_INT_ARGB:
+                return Config.ARGB_8888;
+            default:
+                return null;
         }
     }
 
@@ -263,5 +277,11 @@ public final class Bitmap {
 
     public void recycle() {
         // do nothing
+    }
+
+    @Nullable
+    public final Config getConfig() {
+        int type = image.getType();
+        return bufferedImageTypeToConfig(type);
     }
 }
