@@ -296,7 +296,7 @@ object Page {
             )
         if (conversionWriter == null) {
             logger.warn { "Conversion aborted: No reader for target format ${target.target}" }
-            return inputStream to sourceMimeType
+            return null
         }
 
         val (writer, writerParams) = conversionWriter
@@ -310,7 +310,7 @@ object Page {
                 writer.write(null, IIOImage(inImage, null, null), writerParams)
             }
         } catch (e: Exception) {
-            logger.warn(e) { "Conversion aborted" }
+            logger.warn(e) { "Conversion aborted ($sourceMimeType -> ${target.target})" }
             return null
         } finally {
             writer.dispose()
