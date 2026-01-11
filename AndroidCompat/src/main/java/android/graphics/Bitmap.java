@@ -2,6 +2,8 @@ package android.graphics;
 
 import android.annotation.ColorInt;
 import android.annotation.NonNull;
+import android.annotation.Nullable;
+import android.util.Log;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -58,7 +60,23 @@ public final class Bitmap {
         ARGB_8888(5),
         RGBA_F16(6),
         HARDWARE(7),
-        RGBA_1010102(8);
+        RGBA_1010102(8),
+
+        _TYPE_3BYTE_BGR(BufferedImage.TYPE_3BYTE_BGR),
+        _TYPE_4BYTE_ABGR(BufferedImage.TYPE_4BYTE_ABGR),
+        _TYPE_4BYTE_ABGR_PRE(BufferedImage.TYPE_4BYTE_ABGR_PRE),
+        _TYPE_BYTE_BINARY(BufferedImage.TYPE_BYTE_BINARY),
+        _TYPE_BYTE_GRAY(BufferedImage.TYPE_BYTE_GRAY),
+        _TYPE_BYTE_INDEXED(BufferedImage.TYPE_BYTE_INDEXED),
+        _TYPE_CUSTOM(BufferedImage.TYPE_CUSTOM),
+        _TYPE_INT_ARGB(BufferedImage.TYPE_INT_ARGB),
+        _TYPE_INT_ARGB_PRE(BufferedImage.TYPE_INT_ARGB_PRE),
+        _TYPE_INT_BGR(BufferedImage.TYPE_INT_BGR),
+        _TYPE_INT_RGB(BufferedImage.TYPE_INT_RGB),
+        _TYPE_USHORT_555_RGB(BufferedImage.TYPE_USHORT_555_RGB),
+        _TYPE_USHORT_565_RGB(BufferedImage.TYPE_USHORT_565_RGB),
+        _TYPE_USHORT_GRAY(BufferedImage.TYPE_USHORT_GRAY),
+        ;
 
         final int nativeInt;
 
@@ -83,8 +101,59 @@ public final class Bitmap {
                 return BufferedImage.TYPE_USHORT_565_RGB;
             case ARGB_8888:
                 return BufferedImage.TYPE_INT_ARGB;
+            case _TYPE_3BYTE_BGR:
+            case _TYPE_4BYTE_ABGR:
+            case _TYPE_4BYTE_ABGR_PRE:
+            case _TYPE_BYTE_BINARY:
+            case _TYPE_BYTE_GRAY:
+            case _TYPE_BYTE_INDEXED:
+            case _TYPE_CUSTOM:
+            case _TYPE_INT_ARGB:
+            case _TYPE_INT_ARGB_PRE:
+            case _TYPE_INT_BGR:
+            case _TYPE_INT_RGB:
+            case _TYPE_USHORT_555_RGB:
+            case _TYPE_USHORT_565_RGB:
+            case _TYPE_USHORT_GRAY:
+                return config.ordinal();
             default:
                 throw new UnsupportedOperationException("Bitmap.Config(" + config + ") not supported");
+        }
+    }
+
+    private static Config bufferedImageTypeToConfig(int type) {
+        switch (type) {
+            case BufferedImage.TYPE_BYTE_GRAY:
+                return Config.ALPHA_8;
+            case BufferedImage.TYPE_USHORT_565_RGB:
+                return Config.RGB_565;
+            case BufferedImage.TYPE_INT_ARGB:
+                return Config.ARGB_8888;
+            case BufferedImage.TYPE_3BYTE_BGR:
+                return Config._TYPE_3BYTE_BGR;
+            case BufferedImage.TYPE_4BYTE_ABGR:
+                return Config._TYPE_4BYTE_ABGR;
+            case BufferedImage.TYPE_4BYTE_ABGR_PRE:
+                return Config._TYPE_4BYTE_ABGR_PRE;
+            case BufferedImage.TYPE_BYTE_BINARY:
+                return Config._TYPE_BYTE_BINARY;
+            case BufferedImage.TYPE_BYTE_INDEXED:
+                return Config._TYPE_BYTE_INDEXED;
+            case BufferedImage.TYPE_CUSTOM:
+                return Config._TYPE_CUSTOM;
+            case BufferedImage.TYPE_INT_ARGB_PRE:
+                return Config._TYPE_INT_ARGB_PRE;
+            case BufferedImage.TYPE_INT_BGR:
+                return Config._TYPE_INT_BGR;
+            case BufferedImage.TYPE_INT_RGB:
+                return Config._TYPE_INT_RGB;
+            case BufferedImage.TYPE_USHORT_555_RGB:
+                return Config._TYPE_USHORT_555_RGB;
+            case BufferedImage.TYPE_USHORT_GRAY:
+                return Config._TYPE_USHORT_GRAY;
+            default:
+                Log.w("Bitmap", "Encountered unsupported image type " + type);
+                return null;
         }
     }
 
@@ -263,5 +332,11 @@ public final class Bitmap {
 
     public void recycle() {
         // do nothing
+    }
+
+    @Nullable
+    public final Config getConfig() {
+        int type = image.getType();
+        return bufferedImageTypeToConfig(type);
     }
 }
