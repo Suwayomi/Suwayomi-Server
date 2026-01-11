@@ -246,11 +246,34 @@ public final class Bitmap {
         }
     }
 
+    /**
+     * Shared code to check for illegal arguments passed to getPixel()
+     * or setPixel()
+     *
+     * @param x x coordinate of the pixel
+     * @param y y coordinate of the pixel
+     */
+    private void checkPixelAccess(int x, int y) {
+        checkXYSign(x, y);
+        if (x >= getWidth()) {
+            throw new IllegalArgumentException("x must be < bitmap.width()");
+        }
+        if (y >= getHeight()) {
+            throw new IllegalArgumentException("y must be < bitmap.height()");
+        }
+    }
+
     public void getPixels(@ColorInt int[] pixels, int offset, int stride,
                           int x, int y, int width, int height) {
         checkPixelsAccess(x, y, width, height, offset, stride, pixels);
 
         image.getRGB(x, y, width, height, pixels, offset, stride);
+    }
+
+    @ColorInt
+    public int getPixel(int x, int y) {
+        checkPixelAccess(x, y);
+        return image.getRGB(x, y);
     }
 
     public void eraseColor(int c) {
