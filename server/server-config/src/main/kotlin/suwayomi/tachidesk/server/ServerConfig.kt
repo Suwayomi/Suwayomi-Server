@@ -1016,6 +1016,13 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val kcefEnable: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 86,
+        group = SettingGroup.WEB_UI,
+        privacySafe = true,
+        defaultValue = false,
+        requiresRestart = true,
+    )
 
 
     /** ****************************************************************** **/
