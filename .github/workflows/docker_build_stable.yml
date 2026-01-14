@@ -6,7 +6,7 @@ on:
   
 jobs:
   build_publish_docker_container:
-    uses: ./.github/workflows/container.yml@master
+    uses: ./.github/workflows/container.yml
     with:
       tachidesk_release_type: stable
       do_upload: true
