@@ -168,7 +168,7 @@ object SyncManager {
             val backupMangas = BackupMangaHandler.backup(backupFlags)
             val backup =
                 Backup(
-                    BackupMangaHandler.backup(backupFlags),
+                    backupMangas,
                     BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
                     BackupSourceHandler.backup(backupMangas, backupFlags),
                     emptyMap(),
