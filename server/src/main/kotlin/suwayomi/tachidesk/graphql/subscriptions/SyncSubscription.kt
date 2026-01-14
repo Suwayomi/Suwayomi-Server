@@ -10,7 +10,7 @@ import suwayomi.tachidesk.graphql.types.toStatus
 
 class SyncSubscription {
     @RequireAuth
-    fun lastSyncStatusChange(): Flow<SyncStatus> =
+    fun syncStatusChanged(): Flow<SyncStatus> =
         SyncManager.lastSyncState
             .filterNotNull()
             .map { it.toStatus() }
