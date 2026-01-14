@@ -327,6 +327,10 @@ object SyncManager {
         localManga: MangaDataClass,
         remoteManga: BackupManga,
     ): Boolean {
+        if (localManga.version != remoteManga.version) {
+            return true
+        }
+
         val localChapters =
             transaction {
                 ChapterTable
@@ -334,6 +338,11 @@ object SyncManager {
                     .where { ChapterTable.manga eq localManga.id }
                     .map { ChapterTable.toDataClass(it) }
             }
+
+        if (areChaptersDifferent(localChapters, remoteManga.chapters)) {
+            return true
+        }
+
         val localCategories =
             transaction {
                 CategoryMangaTable
@@ -343,19 +352,7 @@ object SyncManager {
                     .map { it[CategoryTable.order] }
             }
 
-        if (areChaptersDifferent(localChapters, remoteManga.chapters)) {
-            return true
-        }
-
-        if (localManga.version != remoteManga.version) {
-            return true
-        }
-
-        if (localCategories.toSet() != remoteManga.categories.toSet()) {
-            return true
-        }
-
-        return false
+        return localCategories.toSet() != remoteManga.categories.toSet()
     }
 
     private fun areChaptersDifferent(
