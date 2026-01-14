@@ -1018,7 +1018,7 @@ class ServerConfig(
 
     val kcefEnable: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 86,
-        group = SettingGroup.WEB_UI,
+        group = SettingGroup.WEB_VIEW,
         privacySafe = true,
         defaultValue = false,
         requiresRestart = true,
