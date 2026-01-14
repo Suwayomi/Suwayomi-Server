@@ -241,16 +241,7 @@ object SyncManager {
             val restoreId =
                 ProtoBackupImport.restore(
                     sourceStream = backupStream,
-                    flags =
-                        BackupFlags(
-                            includeManga = true,
-                            includeCategories = true,
-                            includeChapters = true,
-                            includeTracking = true,
-                            includeHistory = true,
-                            includeClientData = false,
-                            includeServerSettings = false,
-                        ),
+                    flags = backupFlags,
                     isSync = true,
                 )
             _lastSyncState.value = SyncState.Restoring(startInstant, restoreId)
