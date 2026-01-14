@@ -249,8 +249,6 @@ object SyncYomiSyncService {
                     },
             )
 
-        logger.debug { "Starting merge. Local list size: ${localMangaListSafe.size}, Remote list size: ${remoteMangaListSafe.size}" }
-
         val mergedList =
             (localMangaMap.keys + remoteMangaMap.keys).distinct().mapNotNull { compositeKey ->
                 val local = localMangaMap[compositeKey]
