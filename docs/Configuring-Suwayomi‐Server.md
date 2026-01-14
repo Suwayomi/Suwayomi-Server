@@ -71,6 +71,12 @@ server.kcefEnable = true
 ```
 - `server.kcefEnable` controls if KCEF WebView provider is enabled.
 
+### Network
+```
+server.enableCookieApi = true
+```
+- `server.enableCookieApi = true` enables the `/api/v1/cookie` endpoint for syncing cookies from external webviews. This is useful for sources that require login via webview, as it allows the webview to share cookies with Suwayomi-Server. Or bypassing Cloudflare challenges that require a webview to solve.
+
 
 ### Downloader
 ```

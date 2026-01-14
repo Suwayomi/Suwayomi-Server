@@ -1024,6 +1024,13 @@ class ServerConfig(
         requiresRestart = true,
     )
 
+    val enableCookieApi: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 87,
+        group = SettingGroup.NETWORK,
+        privacySafe = true,
+        defaultValue = false,
+        description = "Enable the /api/v1/cookie endpoint for syncing cookies from external webviews."
+    )    
 
     /** ****************************************************************** **/
     /**                                                                    **/
