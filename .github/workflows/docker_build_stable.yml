@@ -6,7 +6,6 @@ on:
   
 jobs:
   build_publish_docker_container:
-    runs-on: ubuntu-latest
     uses: ./github/workflows/container.yml@master
     with:
       tachidesk_release_type: stable
