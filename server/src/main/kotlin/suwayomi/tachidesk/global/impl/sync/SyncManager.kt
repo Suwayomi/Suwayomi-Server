@@ -43,7 +43,7 @@ import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlin.time.measureTime
 
@@ -71,8 +71,8 @@ object SyncManager {
             ) { enabled, interval -> Pair(enabled, interval) },
             { (enabled, interval) ->
                 currentTaskId =
-                    if (enabled && interval > 0) {
-                        val intervalMs = interval.minutes.inWholeMilliseconds
+                    if (enabled && interval > 0.seconds) {
+                        val intervalMs = interval.inWholeMilliseconds
 
                         currentTaskId?.let { HAScheduler.deschedule(it) }
 

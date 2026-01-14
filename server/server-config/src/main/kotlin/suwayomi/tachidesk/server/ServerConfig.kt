@@ -1072,9 +1072,9 @@ class ServerConfig(
         privacySafe = true,
     )
 
-    val syncInterval: MutableStateFlow<Int> by IntSetting(
+    val syncInterval: MutableStateFlow<Duration> by DurationSetting(
         protoNumber = 94,
-        defaultValue = 0,
+        defaultValue = 0.seconds,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
     )
