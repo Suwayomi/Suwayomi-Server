@@ -70,21 +70,48 @@ object SyncManager {
                 serverConfig.syncInterval,
             ) { enabled, interval -> Pair(enabled, interval) },
             { (enabled, interval) ->
+                currentTaskId?.let { HAScheduler.deschedule(it) }
+
                 currentTaskId =
                     if (enabled && interval > 0.seconds) {
-                        val intervalMs = interval.inWholeMilliseconds
+                        val lastSyncDate =
+                            syncPreferences
+                                .getLong("last_scheduled_sync", 0L)
+                                .takeIf { it != 0L }
+                                ?.let { Instant.fromEpochMilliseconds(it) }
 
-                        currentTaskId?.let { HAScheduler.deschedule(it) }
+                        if (lastSyncDate == null) {
+                            syncPreferences
+                                .edit()
+                                .putLong("last_scheduled_sync", Clock.System.now().toEpochMilliseconds())
+                                .apply()
+                        }
+
+                        val delay =
+                            if (lastSyncDate != null) {
+                                ((interval) - (Clock.System.now() - lastSyncDate)).coerceAtLeast(0.seconds)
+                            } else {
+                                interval
+                            }
 
                         HAScheduler.schedule(
                             {
                                 startSync(periodic = true)
+
+                                syncPreferences
+                                    .edit()
+                                    .putLong("last_scheduled_sync", Clock.System.now().toEpochMilliseconds())
+                                    .apply()
                             },
-                            interval = intervalMs,
-                            delay = intervalMs,
+                            interval = interval.inWholeMilliseconds,
+                            delay = delay.inWholeMilliseconds,
                             name = "sync",
                         )
                     } else {
+                        syncPreferences
+                            .edit()
+                            .remove("last_scheduled_sync")
+                            .apply()
                         null
                     }
             },
