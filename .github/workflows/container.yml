@@ -48,7 +48,7 @@ jobs:
       - name: Get latest release metadata
         id: get_latest_release_metadata
         run: |
-          curl -s https://api.github.com/repos/${{ github.repositoty }}/releases/latest > ${{ runner.temp }}/latest_release.json
+          curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest > ${{ runner.temp }}/latest_release.json
           release_url=$(jq -r '.assets[] | select(.content_type == "application/java-archive") | .browser_download_url' ${{ runner.temp }}/latest_release.json)
           release_tag=$(jq -r '.tag_name' ${{ runner.temp }}/latest_release.json)
           release_filename=$(basename $release_url)
