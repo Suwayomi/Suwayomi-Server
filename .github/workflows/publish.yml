@@ -80,6 +80,7 @@ jobs:
           if-no-files-found: error
 
   jlink:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -111,6 +112,7 @@ jobs:
           path: suwa
 
   bundle:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -173,7 +175,8 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # if: startsWith(github.ref, 'refs/tags/v')
+    if: false
     needs: bundle
     runs-on: ubuntu-latest
     steps:
@@ -216,5 +219,5 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          draft: false
+          draft: true
           files: release/*
