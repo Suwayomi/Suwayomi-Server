@@ -68,8 +68,8 @@ ARG TACHIDESK_RELEASE_JAR_LOCATION
 # then update permissions of files.
 # we grant o+rwx because we need to allow non default UIDs (eg via docker run ... --user)
 # to write to the directory to generate the server.conf
-RUN curl -s --create-dirs -L $TACHIDESK_RELEASE_JAR_LOCATION -o /home/suwayomi/startup/tachidesk_latest.jar && \
-    chmod 777 -R /home/suwayomi && \
+COPY $TACHIDESK_RELEASE_JAR_LOCATION /home/suwayomi/startup/tachidesk_latest.jar
+RUN chmod 777 -R /home/suwayomi && \
     chown -R suwayomi:suwayomi /home/suwayomi
 
 LABEL maintainer="mpdr200011" \

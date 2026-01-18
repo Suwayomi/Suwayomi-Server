@@ -46,7 +46,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: jar
-          path: jar/server.jar
+          path: ${{ env.docker_context }}/jar/server.jar
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
