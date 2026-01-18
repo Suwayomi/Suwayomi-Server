@@ -1,24 +1,19 @@
-name: Build a container
+name: Build the container
 
 on:
-  workflow_call:
-    inputs:
-      tachidesk_release_type:
-        required: true
-        default: 'preview'
-        description: 'Suwayomi Release Type'
-        type: string
-      do_upload:
-        required: true
-        default: true
-        description: 'Should the image be uploaded to the registry?'
-        type: boolean
+  workflow_run:
+    workflows: [CI Build]
+    types:
+      - completed
 
 env:
   test_image_tag: ghcr.io/mpdr200011/suwayomi-server-test:testing
+  tachidesk_release_type: stable
+  do_upload: true
 
 jobs:
   build_the_container:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     defaults:
@@ -45,20 +40,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get latest release metadata
-        id: get_latest_release_metadata
-        run: |
-          curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest > ${{ runner.temp }}/latest_release.json
-          release_url=$(jq -r '.assets[] | select(.content_type == "application/java-archive") | .browser_download_url' ${{ runner.temp }}/latest_release.json)
-          release_tag=$(jq -r '.tag_name' ${{ runner.temp }}/latest_release.json)
-          release_filename=$(basename $release_url)
-          tachidesk_docker_git_commit=$(git rev-list --count HEAD)
-          build_date=$(date "+%F")
-          echo "release_url=$release_url" >> $GITHUB_OUTPUT
-          echo "release_tag=$release_tag" >> $GITHUB_OUTPUT
-          echo "release_filename=$release_filename" >> $GITHUB_OUTPUT
-          echo "tachidesk_docker_git_commit=$tachidesk_docker_git_commit" >> $GITHUB_OUTPUT
-          echo "build_date=$build_date" >> $GITHUB_OUTPUT
+      - name: Download built JAR file
+        uses: actions/download-artifact
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          name: jar
+          path: jar/server.jar
 
       # this only builds the amd64 version of the image, which is fine as that's
       # all that is needed to test the container on GitHub Actions' build servers (which are running amd64 CPUs)
@@ -67,17 +54,13 @@ jobs:
         with:
           load: true # this is important, as this tells build-push-action to save the container to the local docker daemon
           build-args: |
-            BUILD_DATE=${{ steps.get_latest_release_metadata.outputs.build_date }}
-            TACHIDESK_RELEASE_TAG=${{ steps.get_latest_release_metadata.outputs.release_tag }}
-            TACHIDESK_RELEASE_DOWNLOAD_URL=${{ steps.get_latest_release_metadata.outputs.release_url }}
-            TACHIDESK_FILENAME=${{ steps.get_latest_release_metadata.outputs.release_filename }}
-            TACHIDESK_DOCKER_GIT_COMMIT=${{ steps.get_latest_release_metadata.outputs.tachidesk_docker_git_commit }}
+            TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
           tags: ${{ env.test_image_tag }}
 
       # Launch the container and then hit the 'about' API to verify that it can start up correctly.
       - name: Test new container image without passing environment variables
         env:
-          DO_UPLOAD: ${{ inputs.do_upload }}
+          DO_UPLOAD: ${{ env.do_upload }}
         run: |
             mkdir -p ${{ runner.temp }}/tachidesk
             chmod -R 777 ${{ runner.temp }}/tachidesk
@@ -98,7 +81,7 @@ jobs:
 
       - name: Test new container image with passing environment variables
         env:
-          DO_UPLOAD: ${{ inputs.do_upload }}
+          DO_UPLOAD: ${{ env.do_upload }}
         run: |
           mkdir -p ${{ runner.temp }}/tachidesk_env_vars
           chmod -R 777 ${{ runner.temp }}/tachidesk_env_vars
@@ -191,35 +174,31 @@ jobs:
       # Now we build for all the platforms we support here. NB: the amd64
       # won't be rebuilt since the local docker daemon has that still cached
       - name: Push container image to registry
-        if: inputs.do_upload
+        if: env.do_upload
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64,linux/arm64/v8
           push: true
           build-args: |
-            BUILD_DATE=${{ steps.get_latest_release_metadata.outputs.build_date }}
-            TACHIDESK_RELEASE_TAG=${{ steps.get_latest_release_metadata.outputs.release_tag }}
-            TACHIDESK_RELEASE_DOWNLOAD_URL=${{ steps.get_latest_release_metadata.outputs.release_url }}
-            TACHIDESK_FILENAME=${{ steps.get_latest_release_metadata.outputs.release_filename }}
-            TACHIDESK_DOCKER_GIT_COMMIT=${{ steps.get_latest_release_metadata.outputs.tachidesk_docker_git_commit }}
+            TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
             TACHIDESK_KCEF=
             TACHIDESK_KCEF_RELEASE_URL=https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/latest
             TACHIDESK_ABORT_HANDLER_DOWNLOAD_URL=https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/master/scripts/resources/catch_abort.c
           tags: |
-            ${{ inputs.tachidesk_release_type == 'stable' && 'ghcr.io/${{ github.repository_owner }}/tachidesk:latest' || '' }}
-            ghcr.io/${{ github.repository_owner }}/tachidesk:${{ inputs.tachidesk_release_type }}
+            ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/${{ github.repository_owner }}/tachidesk:latest' || '' }}
+            ghcr.io/${{ github.repository_owner }}/tachidesk:${{ env.tachidesk_release_type }}
             ghcr.io/${{ github.repository_owner }}/tachidesk:${{ steps.get_latest_release_metadata.outputs.release_tag }}
-            ${{ inputs.tachidesk_release_type == 'stable' && 'ghcr.io/${{ github.repository_owner }}/suwayomi-server:latest' || '' }}
-            ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ inputs.tachidesk_release_type }}
+            ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/${{ github.repository_owner }}/suwayomi-server:latest' || '' }}
+            ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ env.tachidesk_release_type }}
             ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ steps.get_latest_release_metadata.outputs.release_tag }}
-            ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ steps.get_latest_release_metadata.outputs.release_tag }}-${{ inputs.tachidesk_release_type }}
+            ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ steps.get_latest_release_metadata.outputs.release_tag }}-${{ env.tachidesk_release_type }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/suwayomi-server:buildcache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/suwayomi-server:buildcache,mode=max
 
       - name: Save tag (stable build)
-        if: inputs.do_upload && inputs.tachidesk_release_type == 'stable'
+        if: env.do_upload && env.tachidesk_release_type == 'stable'
         run: |
-          echo "`jq --arg value "${{ steps.get_latest_release_metadata.outputs.release_tag }}" '.stable=$value' scripts/tachidesk_version.json`" > scripts/tachidesk_version.json
+          echo "`jq --arg value "${{ steps.get_latest_release_metadata.outputs.release_tag }}" '.stable=$value' scripts/tachidesk_version.json`" > docker-build/scripts/tachidesk_version.json
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git status

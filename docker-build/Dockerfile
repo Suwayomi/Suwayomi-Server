@@ -63,32 +63,22 @@ RUN userdel -r ubuntu && \
 COPY scripts/create_server_conf.sh /home/suwayomi/create_server_conf.sh
 COPY scripts/startup_script.sh /home/suwayomi/startup_script.sh
 
-ARG TACHIDESK_RELEASE_DOWNLOAD_URL
+ARG TACHIDESK_RELEASE_JAR_LOCATION
 # Copy the app into the container
 # then update permissions of files.
 # we grant o+rwx because we need to allow non default UIDs (eg via docker run ... --user)
 # to write to the directory to generate the server.conf
-RUN curl -s --create-dirs -L $TACHIDESK_RELEASE_DOWNLOAD_URL -o /home/suwayomi/startup/tachidesk_latest.jar && \
+RUN curl -s --create-dirs -L $TACHIDESK_RELEASE_JAR_LOCATION -o /home/suwayomi/startup/tachidesk_latest.jar && \
     chmod 777 -R /home/suwayomi && \
     chown -R suwayomi:suwayomi /home/suwayomi
 
-ARG BUILD_DATE
-ARG TACHIDESK_RELEASE_TAG
-ARG TACHIDESK_FILENAME
-ARG TACHIDESK_DOCKER_GIT_COMMIT
-LABEL maintainer="suwayomi" \
+LABEL maintainer="mpdr200011" \
       org.opencontainers.image.title="Suwayomi Docker" \
-      org.opencontainers.image.authors="https://github.com/suwayomi" \
-      org.opencontainers.image.url="https://github.com/suwayomi/docker-tachidesk/pkgs/container/tachidesk" \
-      org.opencontainers.image.source="https://github.com/suwayomi/docker-tachidesk" \
+      org.opencontainers.image.authors="https://github.com/mpdr200011" \
+      org.opencontainers.image.url="https://github.com/mpdr200011/docker-tachidesk/pkgs/container/tachidesk" \
+      org.opencontainers.image.source="https://github.com/mpdr200011/docker-tachidesk" \
       org.opencontainers.image.description="This image is used to start suwayomi server in a container" \
-      org.opencontainers.image.vendor="suwayomi" \
-      org.opencontainers.image.created=$BUILD_DATE \
-      org.opencontainers.image.version=$TACHIDESK_RELEASE_TAG \
-      tachidesk.docker_commit=$TACHIDESK_DOCKER_GIT_COMMIT \
-      tachidesk.release_tag=$TACHIDESK_RELEASE_TAG \
-      tachidesk.filename=$TACHIDESK_FILENAME \
-      download_url=$TACHIDESK_RELEASE_DOWNLOAD_URL \
+      org.opencontainers.image.vendor="mpdr200011" \
       org.opencontainers.image.licenses="MPL-2.0"
 
 ENV HOME=/home/suwayomi
