@@ -10,6 +10,7 @@ env:
   test_image_tag: ghcr.io/mpdr200011/suwayomi-server-test:testing
   tachidesk_release_type: stable
   do_upload: true
+  docker_context: docker-build/
   dockerfile: docker-build/Dockerfile
 
 jobs:
@@ -55,6 +56,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           file: ${{ env.dockerfile }}
+          context: ${{ env.docker_context }}
           load: true # this is important, as this tells build-push-action to save the container to the local docker daemon
           build-args: |
             TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
@@ -181,6 +183,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           file: ${{ env.dockerfile }}
+          context: ${{ env.docker_context }}
           platforms: linux/amd64,linux/arm64/v8
           push: true
           build-args: |
