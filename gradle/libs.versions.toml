@@ -42,7 +42,7 @@ serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", v
 
 # Logging
 slf4japi = "org.slf4j:slf4j-api:2.0.17"
-logback = "ch.qos.logback:logback-classic:1.5.23"
+logback = "ch.qos.logback:logback-classic:1.5.24"
 kotlinlogging = "io.github.oshai:kotlin-logging-jvm:7.0.14"
 
 # OkHttp
@@ -136,7 +136,7 @@ settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.r
 settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization-jvm", version.ref = "settings" }
 
 # ICU4J
-icu4j = "com.ibm.icu:icu4j:78.1"
+icu4j = "com.ibm.icu:icu4j:78.2"
 
 # Image Decoding implementation provider
 twelvemonkeys-common-lang = { module = "com.twelvemonkeys.common:common-lang", version.ref = "twelvemonkeys" }
