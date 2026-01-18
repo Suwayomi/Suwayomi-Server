@@ -43,9 +43,10 @@ jobs:
       - name: Download built JAR file
         uses: actions/download-artifact@v7
         with:
-          run-id: ${{ github.event.workflow_run.id }}
           name: jar
           path: jar/server.jar
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
 
       # this only builds the amd64 version of the image, which is fine as that's
       # all that is needed to test the container on GitHub Actions' build servers (which are running amd64 CPUs)
