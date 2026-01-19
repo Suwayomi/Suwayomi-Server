@@ -195,19 +195,3 @@ jobs:
             ghcr.io/mpdr200011/suwayomi-server:${{ env.tachidesk_release_type }}
           cache-from: type=registry,ref=ghcr.io/mpdr200011/suwayomi-server:buildcache
           cache-to: type=registry,ref=ghcr.io/mpdr200011/suwayomi-server:buildcache,mode=max
-
-      - name: Save tag (stable build)
-        if: env.do_upload && env.tachidesk_release_type == 'stable'
-        run: |
-          echo "`jq --arg value "${{ steps.get_latest_release_metadata.outputs.release_tag }}" '.stable=$value' scripts/tachidesk_version.json`" > docker-build/scripts/tachidesk_version.json
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git status
-          if [ -n "$(git status --porcelain)" ]; then
-              git pull
-              git add .
-              git commit -a -m "Update stable version"
-              git push
-          else
-              echo "No changes to commit"
-          fi
