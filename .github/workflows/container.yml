@@ -190,11 +190,11 @@ jobs:
             TACHIDESK_ABORT_HANDLER_DOWNLOAD_URL=https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/master/scripts/resources/catch_abort.c
           tags: |
             ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/mpdr200011/tachidesk:latest' || '' }}
-            ghcr.io/${{ github.repository_owner }}/tachidesk:${{ env.tachidesk_release_type }}
+            ghcr.io/mpdr200011/tachidesk:${{ env.tachidesk_release_type }}
             ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/mpdr200011/suwayomi-server:latest' || '' }}
-            ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ env.tachidesk_release_type }}
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/suwayomi-server:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/suwayomi-server:buildcache,mode=max
+            ghcr.io/mpdr200011/suwayomi-server:${{ env.tachidesk_release_type }}
+          cache-from: type=registry,ref=ghcr.io/mpdr200011/suwayomi-server:buildcache
+          cache-to: type=registry,ref=ghcr.io/mpdr200011/suwayomi-server:buildcache,mode=max
 
       - name: Save tag (stable build)
         if: env.do_upload && env.tachidesk_release_type == 'stable'
