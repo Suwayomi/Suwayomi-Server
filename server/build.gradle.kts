@@ -174,7 +174,7 @@ tasks {
             )
         }
         archiveBaseName.set(rootProject.name)
-        archiveVersion.set(getTachideskVersion())
+        archiveVersion.set("")
         archiveClassifier.set("")
         destinationDirectory.set(File("$rootDir/server/build"))
         mergeServiceFiles()

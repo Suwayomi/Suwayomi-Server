@@ -61,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: jar
-          path: master/server/build/*.jar
+          path: master/server/build/Suwayomi-Server.jar
           if-no-files-found: error
 
       - name: Upload icons
