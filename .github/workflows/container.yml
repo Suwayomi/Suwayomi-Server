@@ -10,7 +10,7 @@ env:
   test_image_tag: ghcr.io/mpdr200011/suwayomi-server-test:testing
   tachidesk_release_type: stable
   do_upload: true
-  docker_context: docker-build/
+  docker_context: ./docker-build/
 
 jobs:
   build_the_container:
