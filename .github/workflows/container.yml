@@ -62,6 +62,13 @@ jobs:
           build-args: |
             TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
           tags: ${{ env.test_image_tag }}
+          outputs: type=docker,dest=${{ runner.temp }}/test-image.tar
+
+      - name: Upload test container
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-container
+          path: ${{ runner.temp }}/test-image.tar
 
       # Launch the container and then hit the 'about' API to verify that it can start up correctly.
       - name: Test new container image without passing environment variables
