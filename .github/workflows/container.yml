@@ -189,13 +189,10 @@ jobs:
             TACHIDESK_KCEF_RELEASE_URL=https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/latest
             TACHIDESK_ABORT_HANDLER_DOWNLOAD_URL=https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/master/scripts/resources/catch_abort.c
           tags: |
-            ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/${{ github.repository_owner }}/tachidesk:latest' || '' }}
+            ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/mpdr200011/tachidesk:latest' || '' }}
             ghcr.io/${{ github.repository_owner }}/tachidesk:${{ env.tachidesk_release_type }}
-            ghcr.io/${{ github.repository_owner }}/tachidesk:${{ steps.get_latest_release_metadata.outputs.release_tag }}
-            ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/${{ github.repository_owner }}/suwayomi-server:latest' || '' }}
+            ${{ env.tachidesk_release_type == 'stable' && 'ghcr.io/mpdr200011/suwayomi-server:latest' || '' }}
             ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ env.tachidesk_release_type }}
-            ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ steps.get_latest_release_metadata.outputs.release_tag }}
-            ghcr.io/${{ github.repository_owner }}/suwayomi-server:${{ steps.get_latest_release_metadata.outputs.release_tag }}-${{ env.tachidesk_release_type }}
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/suwayomi-server:buildcache
           cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/suwayomi-server:buildcache,mode=max
 
