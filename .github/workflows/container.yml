@@ -59,7 +59,7 @@ jobs:
           context: ${{ env.docker_context }}
           load: true # this is important, as this tells build-push-action to save the container to the local docker daemon
           build-args: |
-            TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
+            TACHIDESK_RELEASE_JAR_LOCATION=${{ env.docker_context }}/jar/server.jar
           tags: ${{ env.test_image_tag }}
 
       # Launch the container and then hit the 'about' API to verify that it can start up correctly.
@@ -187,7 +187,7 @@ jobs:
           platforms: linux/amd64,linux/arm64/v8
           push: true
           build-args: |
-            TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
+            TACHIDESK_RELEASE_JAR_LOCATION=${{ env.docker_context }}/jar/server.jar
             TACHIDESK_KCEF=
             TACHIDESK_KCEF_RELEASE_URL=https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/latest
             TACHIDESK_ABORT_HANDLER_DOWNLOAD_URL=https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/master/scripts/resources/catch_abort.c
