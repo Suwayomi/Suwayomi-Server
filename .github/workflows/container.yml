@@ -11,7 +11,6 @@ env:
   tachidesk_release_type: stable
   do_upload: true
   docker_context: docker-build/
-  dockerfile: docker-build/Dockerfile
 
 jobs:
   build_the_container:
@@ -55,11 +54,10 @@ jobs:
       - name: Build container image to test
         uses: docker/build-push-action@v6
         with:
-          file: ${{ env.dockerfile }}
           context: ${{ env.docker_context }}
           load: true # this is important, as this tells build-push-action to save the container to the local docker daemon
           build-args: |
-            TACHIDESK_RELEASE_JAR_LOCATION=${{ env.docker_context }}/jar/server.jar
+            TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
           tags: ${{ env.test_image_tag }}
 
       # Launch the container and then hit the 'about' API to verify that it can start up correctly.
@@ -182,12 +180,11 @@ jobs:
         if: env.do_upload
         uses: docker/build-push-action@v6
         with:
-          file: ${{ env.dockerfile }}
           context: ${{ env.docker_context }}
           platforms: linux/amd64,linux/arm64/v8
           push: true
           build-args: |
-            TACHIDESK_RELEASE_JAR_LOCATION=${{ env.docker_context }}/jar/server.jar
+            TACHIDESK_RELEASE_JAR_LOCATION=jar/server.jar
             TACHIDESK_KCEF=
             TACHIDESK_KCEF_RELEASE_URL=https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/latest
             TACHIDESK_ABORT_HANDLER_DOWNLOAD_URL=https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/master/scripts/resources/catch_abort.c
