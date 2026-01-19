@@ -49,9 +49,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Display structure of downloaded files
-        run: ls -R ${{ env.docker_context }}
-
       # this only builds the amd64 version of the image, which is fine as that's
       # all that is needed to test the container on GitHub Actions' build servers (which are running amd64 CPUs)
       - name: Build container image to test
