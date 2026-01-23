@@ -46,6 +46,9 @@ object MangaTable : IntIdTable() {
     val chaptersLastFetchedAt = long("chapters_last_fetched_at").default(0)
 
     val updateStrategy = varchar("update_strategy", 256).default(UpdateStrategy.ALWAYS_UPDATE.name)
+
+    val version = long("version").default(0)
+    val isSyncing = bool("is_syncing").default(false)
 }
 
 fun MangaTable.toDataClass(
@@ -76,6 +79,7 @@ fun MangaTable.toDataClass(
     lastFetchedAt = mangaEntry[lastFetchedAt],
     chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
     updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
+    version = mangaEntry[version],
 )
 
 enum class MangaStatus(

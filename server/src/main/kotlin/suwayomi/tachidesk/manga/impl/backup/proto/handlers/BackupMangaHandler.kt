@@ -73,6 +73,7 @@ object BackupMangaHandler {
                         dateAdded = mangaRow[MangaTable.inLibraryAt].seconds.inWholeMilliseconds,
                         viewer = 0, // not supported in Tachidesk
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
+                        version = mangaRow[MangaTable.version],
                     )
 
                 val mangaId = mangaRow[MangaTable.id].value
@@ -108,6 +109,7 @@ object BackupMangaHandler {
                                     it.uploadDate,
                                     it.chapterNumber,
                                     chapters.size - it.index,
+                                    it.version,
                                 ).apply {
                                     if (flags.includeClientData) {
                                         this.meta = chapterToMeta[it.id] ?: emptyMap()
@@ -230,6 +232,8 @@ object BackupMangaHandler {
                                 it[inLibrary] = manga.favorite
 
                                 it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
+
+                                it[version] = manga.version
                             }.value
                     } else {
                         val dbMangaId = dbManga[MangaTable.id].value
@@ -249,6 +253,8 @@ object BackupMangaHandler {
                             it[inLibrary] = manga.favorite || dbManga[inLibrary]
 
                             it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
+
+                            it[version] = manga.version
                         }
 
                         dbMangaId
@@ -266,7 +272,7 @@ object BackupMangaHandler {
                     restoreMangaChapterData(mangaId, restoreMode, chapters, history, flags)
                 }
 
-                // merge categories
+                // update categories
                 if (flags.includeCategories) {
                     restoreMangaCategoryData(mangaId, categoryIds)
                 }
@@ -337,6 +343,8 @@ object BackupMangaHandler {
                             this[ChapterTable.lastReadAt] =
                                 historyByChapter[chapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0
                         }
+
+                        this[ChapterTable.version] = chapter.version
                     }.map { it[ChapterTable.id].value }
             } else {
                 emptyList()
@@ -384,6 +392,7 @@ object BackupMangaHandler {
         mangaId: Int,
         categoryIds: List<Int>,
     ) {
+        CategoryManga.removeMangaFromAllCategories(mangaId)
         CategoryManga.addMangaToCategories(mangaId, categoryIds)
     }
 
