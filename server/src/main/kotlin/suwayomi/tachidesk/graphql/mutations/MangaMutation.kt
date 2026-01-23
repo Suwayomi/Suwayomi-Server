@@ -1,9 +1,14 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import org.jetbrains.exposed.sql.LikePattern
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -11,6 +16,7 @@ import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -224,6 +230,111 @@ class MangaMutation {
                 }
 
             DeleteMangaMetaPayload(clientMutationId, meta, manga)
+        }
+    }
+
+    data class SetMangaMetasInput(
+        val clientMutationId: String? = null,
+        val mangaIds: List<Int>,
+        val metas: List<MetaInput>,
+    )
+
+    data class SetMangaMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<MangaMetaType>,
+        val mangas: List<MangaType>,
+    )
+
+    @RequireAuth
+    fun setMangaMetas(input: SetMangaMetasInput): DataFetcherResult<SetMangaMetasPayload?> {
+        val (clientMutationId, mangaIds, metas) = input
+
+        return asDataFetcherResult {
+            val metaMap = metas.associate { it.key to it.value }
+            Manga.modifyMangasMetas(mangaIds.associateWith { metaMap })
+
+            val (updatedMetas, mangas) =
+                transaction {
+                    val updatedMetas =
+                        MangaMetaTable
+                            .selectAll()
+                            .where { (MangaMetaTable.ref inList mangaIds) and (MangaMetaTable.key inList metaMap.keys) }
+                            .map { MangaMetaType(it) }
+
+                    val mangas =
+                        MangaTable
+                            .selectAll()
+                            .where { MangaTable.id inList mangaIds }
+                            .map { MangaType(it) }
+                            .distinctBy { it.id }
+
+                    updatedMetas to mangas
+                }
+
+            SetMangaMetasPayload(clientMutationId, updatedMetas, mangas)
+        }
+    }
+
+    data class DeleteMangaMetasInput(
+        val clientMutationId: String? = null,
+        val mangaIds: List<Int>,
+        val keys: List<String>? = null,
+        val prefixes: List<String>? = null,
+    )
+
+    data class DeleteMangaMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<MangaMetaType>,
+        val mangas: List<MangaType>,
+    )
+
+    @RequireAuth
+    fun deleteMangaMetas(input: DeleteMangaMetasInput): DataFetcherResult<DeleteMangaMetasPayload?> {
+        val (clientMutationId, mangaIds, keys, prefixes) = input
+
+        return asDataFetcherResult {
+            require(!keys.isNullOrEmpty() || !prefixes.isNullOrEmpty()) {
+                "Either 'keys' or 'prefixes' must be provided"
+            }
+
+            val (metas, mangas) =
+                transaction {
+                    val keyCondition: Op<Boolean>? = keys?.takeIf { it.isNotEmpty() }?.let { MangaMetaTable.key inList it }
+
+                    val prefixCondition: Op<Boolean>? =
+                        prefixes
+                            ?.filter { it.isNotEmpty() }
+                            ?.map { (MangaMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.reduceOrNull { acc, op -> acc or op }
+
+                    val metaKeyCondition =
+                        if (keyCondition != null && prefixCondition != null) {
+                            keyCondition or prefixCondition
+                        } else {
+                            keyCondition ?: prefixCondition!!
+                        }
+
+                    val condition = (MangaMetaTable.ref inList mangaIds) and metaKeyCondition
+
+                    val metas =
+                        MangaMetaTable
+                            .selectAll()
+                            .where { condition }
+                            .map { MangaMetaType(it) }
+
+                    MangaMetaTable.deleteWhere { condition }
+
+                    val mangas =
+                        MangaTable
+                            .selectAll()
+                            .where { MangaTable.id inList mangaIds }
+                            .map { MangaType(it) }
+                            .distinctBy { it.id }
+
+                    metas to mangas
+                }
+
+            DeleteMangaMetasPayload(clientMutationId, metas, mangas)
         }
     }
 }
