@@ -94,6 +94,11 @@ object DBManager {
                 useNestedTransactions = true
                 @OptIn(ExperimentalKeywordApi::class)
                 preserveKeywordCasing = false
+                defaultSchema =
+                    when (serverConfig.databaseType.value) {
+                        DatabaseType.POSTGRESQL -> Schema("suwayomi")
+                        DatabaseType.H2 -> null
+                    }
             }
 
         return if (serverConfig.useHikariConnectionPool.value) {
@@ -175,7 +180,6 @@ fun databaseUp() {
                         serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
                     )
                 SchemaUtils.createSchema(schema)
-                SchemaUtils.setSchema(schema)
             }
         }
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
