@@ -65,11 +65,11 @@ object DBManager {
 
                 // Optimized for Raspberry Pi / Low memory environments
                 maximumPoolSize = 6 // Moderate pool for better concurrency
+                minimumIdle = 2 // Keep 2 idle connections for responsiveness
                 connectionTimeout = 45.seconds.inWholeMilliseconds // more tolerance for slow devices
                 idleTimeout = 5.minutes.inWholeMilliseconds // close idle connections faster
                 maxLifetime = 15.minutes.inWholeMilliseconds // recycle connections more often
                 leakDetectionThreshold = 1.minutes.inWholeMilliseconds
-                isAutoCommit = false
 
                 // Pool name for monitoring
                 poolName = "Suwayomi-DB-Pool"
@@ -94,6 +94,11 @@ object DBManager {
                 useNestedTransactions = true
                 @OptIn(ExperimentalKeywordApi::class)
                 preserveKeywordCasing = false
+                defaultSchema =
+                    when (serverConfig.databaseType.value) {
+                        DatabaseType.POSTGRESQL -> Schema("suwayomi")
+                        DatabaseType.H2 -> null
+                    }
             }
 
         return if (serverConfig.useHikariConnectionPool.value) {
@@ -175,7 +180,6 @@ fun databaseUp() {
                         serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
                     )
                 SchemaUtils.createSchema(schema)
-                SchemaUtils.setSchema(schema)
             }
         }
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
