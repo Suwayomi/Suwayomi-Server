@@ -17,6 +17,7 @@ enum class SettingGroup(
     CLOUDFLARE("Cloudflare"),
     OPDS("OPDS"),
     KOREADER_SYNC("KOReader sync"),
+    WEB_VIEW("WebView"),
     ;
 
     override fun toString(): String = value
