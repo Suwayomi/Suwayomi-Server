@@ -19,6 +19,14 @@ import suwayomi.tachidesk.graphql.dataLoaders.ChaptersForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackRecordDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackSearchDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DownloadedChapterCountForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.AnimeDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.AnimeExtensionDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.AnimeExtensionForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.AnimeForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.AnimeSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.AnimeSourcesForExtensionDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.EpisodeDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.EpisodesForAnimeDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
@@ -78,6 +86,14 @@ class TachideskDataLoaderRegistryFactory {
                 SourceMetaDataLoader(),
                 ExtensionDataLoader(),
                 ExtensionForSourceDataLoader(),
+                AnimeDataLoader(),
+                AnimeForSourceDataLoader(),
+                EpisodeDataLoader(),
+                EpisodesForAnimeDataLoader(),
+                AnimeSourceDataLoader(),
+                AnimeSourcesForExtensionDataLoader(),
+                AnimeExtensionDataLoader(),
+                AnimeExtensionForSourceDataLoader(),
                 TrackerDataLoader(),
                 TrackerStatusesDataLoader(),
                 TrackerScoresDataLoader(),

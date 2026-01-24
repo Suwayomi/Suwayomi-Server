@@ -100,6 +100,8 @@ class ApplicationDirs(
         get() = "$downloadsRoot/thumbnails"
     val mangaDownloadsRoot
         get() = "$downloadsRoot/mangas"
+    val animeDownloadsRoot
+        get() = "$downloadsRoot/anime"
 }
 
 @Suppress("DEPRECATION")
