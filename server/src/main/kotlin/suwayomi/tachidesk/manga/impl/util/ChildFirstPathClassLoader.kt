@@ -1,6 +1,5 @@
 package suwayomi.tachidesk.manga.impl.util
 
-import jdk.internal.loader.URLClassPath
 import java.io.IOException
 import java.io.InputStream
 import java.net.URL
@@ -17,24 +16,28 @@ class ChildFirstPathClassLoader(
     urls: Array<URL>,
     parent: ClassLoader? = null,
 ) : URLClassLoader(urls, parent) {
-
     private val systemClassLoader: ClassLoader? = getSystemClassLoader()
 
-    override fun loadClass(name: String?, resolve: Boolean): Class<*> {
+    override fun loadClass(
+        name: String?,
+        resolve: Boolean,
+    ): Class<*> {
         var c = findLoadedClass(name)
 
         if (c == null && systemClassLoader != null) {
             try {
                 c = systemClassLoader.loadClass(name)
-            } catch (_: ClassNotFoundException) {}
+            } catch (_: ClassNotFoundException) {
+            }
         }
 
         if (c == null) {
-            c = try {
-                findClass(name)
-            } catch (_: ClassNotFoundException) {
-                super.loadClass(name, resolve)
-            }
+            c =
+                try {
+                    findClass(name)
+                } catch (_: ClassNotFoundException) {
+                    super.loadClass(name, resolve)
+                }
         }
 
         if (resolve) {
@@ -44,34 +47,35 @@ class ChildFirstPathClassLoader(
         return c
     }
 
-    override fun getResource(name: String?): URL? {
-        return systemClassLoader?.getResource(name)
+    override fun getResource(name: String?): URL? =
+        systemClassLoader?.getResource(name)
             ?: findResource(name)
             ?: super.getResource(name)
-    }
 
     override fun getResources(name: String?): Enumeration<URL> {
         val systemUrls = systemClassLoader?.getResources(name)
         val localUrls = findResources(name)
         val parentUrls = parent?.getResources(name)
-        val urls = buildList {
-            while (systemUrls?.hasMoreElements() == true) {
-                add(systemUrls.nextElement())
-            }
+        val urls =
+            buildList {
+                while (systemUrls?.hasMoreElements() == true) {
+                    add(systemUrls.nextElement())
+                }
 
-            while (localUrls?.hasMoreElements() == true) {
-                add(localUrls.nextElement())
-            }
+                while (localUrls?.hasMoreElements() == true) {
+                    add(localUrls.nextElement())
+                }
 
-            while (parentUrls?.hasMoreElements() == true) {
-                add(parentUrls.nextElement())
+                while (parentUrls?.hasMoreElements() == true) {
+                    add(parentUrls.nextElement())
+                }
             }
-        }
 
         return object : Enumeration<URL> {
             val iterator = urls.iterator()
 
             override fun hasMoreElements() = iterator.hasNext()
+
             override fun nextElement() = iterator.next()
         }
     }
