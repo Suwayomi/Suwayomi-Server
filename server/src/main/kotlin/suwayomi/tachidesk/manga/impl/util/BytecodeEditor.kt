@@ -43,6 +43,164 @@ object BytecodeEditor {
     }
 
     /**
+     * Fix stackmap frames in a JAR file by recomputing them with a proper ClassLoader.
+     * This uses ASM's COMPUTE_FRAMES with a ClassLoader that can resolve class hierarchies.
+     *
+     * This is needed for IReader extensions which have invalid stackmap frames after dex2jar conversion.
+     *
+     * @param jarFile The JarFile to fix stackmap frames in
+     */
+    fun fixStackmapFrames(jarFile: Path) {
+        logger.info { "Starting stackmap frame fix for: $jarFile" }
+        var classCount = 0
+        var fixedCount = 0
+
+        // Create a ClassLoader that includes the JAR being processed plus runtime dependencies
+        val jarUrl = jarFile.toUri().toURL()
+        val classLoader =
+            java.net.URLClassLoader(
+                arrayOf(jarUrl),
+                Thread.currentThread().contextClassLoader,
+            )
+
+        FileSystems.newFileSystem(jarFile, null as ClassLoader?)?.use { fs ->
+            Files
+                .walk(fs.getPath("/"))
+                .asSequence()
+                .filterNotNull()
+                .filterNot(Files::isDirectory)
+                .mapNotNull(::getClassBytes)
+                .forEach { pair ->
+                    classCount++
+                    val result = recomputeFramesWithClassLoader(pair, classLoader)
+                    if (result.second !== pair.second) {
+                        fixedCount++
+                    }
+                    write(result)
+                }
+        }
+
+        classLoader.close()
+        logger.info { "Stackmap frame fix complete: $classCount classes processed, $fixedCount recomputed" }
+    }
+
+    /**
+     * Recompute stackmap frames using a ClassLoader-aware ClassWriter.
+     * This properly computes frames by being able to load and analyze class hierarchies.
+     */
+    private fun recomputeFramesWithClassLoader(
+        pair: Pair<Path, ByteArray>,
+        classLoader: ClassLoader,
+    ): Pair<Path, ByteArray> {
+        val className = pair.first.toString()
+        return try {
+            val cr = ClassReader(pair.second)
+
+            // Use a ClassWriter that can load classes to compute common superclasses
+            val cw =
+                object : ClassWriter(cr, COMPUTE_FRAMES) {
+                    override fun getCommonSuperClass(
+                        type1: String,
+                        type2: String,
+                    ): String {
+                        return try {
+                            val class1 = classLoader.loadClass(type1.replace('/', '.'))
+                            val class2 = classLoader.loadClass(type2.replace('/', '.'))
+
+                            when {
+                                class1.isAssignableFrom(class2) -> type1
+                                class2.isAssignableFrom(class1) -> type2
+                                class1.isInterface || class2.isInterface -> "java/lang/Object"
+                                else -> {
+                                    var c1: Class<*> = class1
+                                    while (!c1.isAssignableFrom(class2)) {
+                                        c1 = c1.superclass ?: return "java/lang/Object"
+                                    }
+                                    c1.name.replace('.', '/')
+                                }
+                            }
+                        } catch (e: Exception) {
+                            // Fallback to Object if class loading fails
+                            "java/lang/Object"
+                        }
+                    }
+                }
+
+            // Read with SKIP_FRAMES to discard invalid frames, then recompute
+            cr.accept(cw, ClassReader.SKIP_FRAMES)
+
+            val newBytes = cw.toByteArray()
+            logger.debug { "Recomputed frames for $className: ${pair.second.size} -> ${newBytes.size} bytes" }
+            pair.first to newBytes
+        } catch (e: Exception) {
+            logger.warn { "Failed to recompute frames for $className: ${e.message}" }
+            pair
+        }
+    }
+
+    /**
+     * Downgrade class file version to Java 6 (50.0) and strip StackMapTable attributes.
+     * Java 6 doesn't require stackmap frames, so the JVM will use type inference.
+     * This avoids the VerifyError caused by invalid stackmap frames from dex2jar.
+     */
+    private fun downgradeClassVersion(pair: Pair<Path, ByteArray>): Pair<Path, ByteArray> {
+        val className = pair.first.toString()
+        return try {
+            val cr = ClassReader(pair.second)
+
+            // Use ClassWriter without COMPUTE_FRAMES - we'll strip frames instead
+            val cw = ClassWriter(0)
+
+            // Visit the class and strip StackMapTable attributes
+            cr.accept(
+                object : ClassVisitor(Opcodes.ASM9, cw) {
+                    override fun visit(
+                        version: Int,
+                        access: Int,
+                        name: String?,
+                        signature: String?,
+                        superName: String?,
+                        interfaces: Array<out String>?,
+                    ) {
+                        // Downgrade to Java 6 (version 50) which doesn't require StackMapTable
+                        // This makes the JVM use type inference instead of stackmap verification
+                        super.visit(Opcodes.V1_6, access, name, signature, superName, interfaces)
+                    }
+
+                    override fun visitMethod(
+                        access: Int,
+                        name: String?,
+                        descriptor: String?,
+                        signature: String?,
+                        exceptions: Array<out String>?,
+                    ): MethodVisitor {
+                        val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
+                        // Return a MethodVisitor that skips StackMapTable frames
+                        return object : MethodVisitor(Opcodes.ASM9, mv) {
+                            override fun visitFrame(
+                                type: Int,
+                                numLocal: Int,
+                                local: Array<out Any>?,
+                                numStack: Int,
+                            stack: Array<out Any>?
+                        ) {
+                            // Skip all frame instructions - they're not needed for Java 6
+                        }
+                    }
+                }
+            }, ClassReader.SKIP_FRAMES)
+            
+            val newBytes = cw.toByteArray()
+            logger.debug { "Downgraded $className to Java 6: ${pair.second.size} -> ${newBytes.size} bytes" }
+            pair.first to newBytes
+        } catch (e: Exception) {
+            logger.warn { "Failed to downgrade $className: ${e.message}" }
+            // Return original bytecode if downgrade fails
+            pair
+        }
+    }
+
+    /**
      * Get class bytes from a [Path]
      *
      * @param path The path entry to get the class bytes from
