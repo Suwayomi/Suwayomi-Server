@@ -156,7 +156,7 @@ object PackageTools {
     ): Any {
         try {
             logger.debug { "loading jar with path: $jarPath" }
-            val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(Path(jarPath).toUri().toURL()))
+            val classLoader = jarLoaderMap[jarPath] ?: ChildFirstPathClassLoader(arrayOf<URL>(Path(jarPath).toUri().toURL()))
             val classToLoad = Class.forName(className, false, classLoader)
 
             jarLoaderMap[jarPath] = classLoader
