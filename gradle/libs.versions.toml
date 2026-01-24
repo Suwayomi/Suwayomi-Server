@@ -42,7 +42,7 @@ serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", v
 
 # Logging
 slf4japi = "org.slf4j:slf4j-api:2.0.17"
-logback = "ch.qos.logback:logback-classic:1.5.24"
+logback = "ch.qos.logback:logback-classic:1.5.25"
 kotlinlogging = "io.github.oshai:kotlin-logging-jvm:7.0.14"
 
 # OkHttp
@@ -72,7 +72,7 @@ exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "e
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
-postgres = "org.postgresql:postgresql:42.7.8"
+postgres = "org.postgresql:postgresql:42.7.9"
 h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v2 without sql migration
 hikaricp = "com.zaxxer:HikariCP:7.0.2"
 

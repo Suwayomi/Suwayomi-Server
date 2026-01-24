@@ -204,12 +204,12 @@ object WebInterfaceManager {
         val tempWebUIRoot = createServableDirectory()
         val orgIndexHtml = File("$tempWebUIRoot/index.html")
 
-        if (orgIndexHtml.exists()) {
+        if (ServerSubpath.isDefined() && orgIndexHtml.exists()) {
             val originalIndexHtml = orgIndexHtml.readText()
             val subpathInjectionScript =
                 """
                 <script>
-                    "// <<suwayomi-subpath-injection>>"
+                    // <<suwayomi-subpath-injection>>
                     const baseTag = document.createElement('base');
                     baseTag.href = location.origin + "${ServerSubpath.asRootPath()}";
                     document.head.appendChild(baseTag);
