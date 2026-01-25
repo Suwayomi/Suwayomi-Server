@@ -4,18 +4,18 @@ import com.github.junrar.Archive
 import com.github.junrar.rarfile.FileHeader
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
-import java.io.File
 import java.io.InputStream
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
+import java.nio.file.Path
 
 /**
  * Loader used to load a chapter from a .rar or .cbr file.
  */
 class RarPageLoader(
-    file: File,
+    file: Path,
 ) : PageLoader {
-    private val rar = Archive(file)
+    private val rar = Archive(file.toFile())
 
     override suspend fun getPages(): List<ReaderPage> =
         rar.fileHeaders

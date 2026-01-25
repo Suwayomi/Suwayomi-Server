@@ -1,24 +1,17 @@
-package eu.kanade.tachiyomi.util.storage
+package eu.kanade.tachiyomi.source.local.loader
 
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
-import org.apache.commons.compress.archivers.zip.ZipFile
+import eu.kanade.tachiyomi.source.local.loader.ArchiveReader.Companion.archiveReader
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
-import java.io.Closeable
+import org.jsoup.parser.Parser
 import java.io.File
 import java.io.InputStream
 import java.nio.file.Path
 
 /**
- * Wrapper over ZipFile to load files in epub format.
+ * Wrapper over ArchiveReader to load files in epub format.
  */
-class EpubFile(
-    file: Path,
-) : Closeable {
-    /**
-     * Zip file of this epub.
-     */
-    private val zip = ZipFile.builder().setPath(file).get()
+class EpubReader(private val reader: ArchiveReader) {
 
     /**
      * Path separator used by this epub.
@@ -26,21 +19,11 @@ class EpubFile(
     private val pathSeparator = getPathSeparator()
 
     /**
-     * Closes the underlying zip file.
-     */
-    override fun close() {
-        zip.close()
-    }
-
-    /**
      * Returns an input stream for reading the contents of the specified zip file entry.
      */
-    fun getInputStream(entry: ZipArchiveEntry): InputStream = zip.getInputStream(entry)
-
-    /**
-     * Returns the zip file entry for the specified name, or null if not found.
-     */
-    fun getEntry(name: String): ZipArchiveEntry? = zip.getEntry(name)
+    fun getInputStream(entryName: String): InputStream? {
+        return reader.getInputStream(entryName)
+    }
 
     /**
      * Returns the path of all the images found in the epub file.
@@ -56,9 +39,9 @@ class EpubFile(
      * Returns the path to the package document.
      */
     fun getPackageHref(): String {
-        val meta = zip.getEntry(resolveZipPath("META-INF", "container.xml"))
+        val meta = getInputStream(resolveZipPath("META-INF", "container.xml"))
         if (meta != null) {
-            val metaDoc = zip.getInputStream(meta).use { Jsoup.parse(it, null, "") }
+            val metaDoc = meta.use { Jsoup.parse(it, null, "", Parser.xmlParser()) }
             val path = metaDoc.getElementsByTag("rootfile").first()?.attr("full-path")
             if (path != null) {
                 return path
@@ -71,19 +54,16 @@ class EpubFile(
      * Returns the package document where all the files are listed.
      */
     fun getPackageDocument(ref: String): Document {
-        val entry = zip.getEntry(ref)
-        return zip.getInputStream(entry).use { Jsoup.parse(it, null, "") }
+        return getInputStream(ref)!!.use { Jsoup.parse(it, null, "", Parser.xmlParser()) }
     }
 
     /**
      * Returns all the pages from the epub.
      */
-    fun getPagesFromDocument(document: Document): List<String> {
-        val pages =
-            document
-                .select("manifest > item")
-                .filter { node -> "application/xhtml+xml" == node.attr("media-type") }
-                .associateBy { it.attr("id") }
+    private fun getPagesFromDocument(document: Document): List<String> {
+        val pages = document.select("manifest > item")
+            .filter { node -> "application/xhtml+xml" == node.attr("media-type") }
+            .associateBy { it.attr("id") }
 
         val spine = document.select("spine > itemref").map { it.attr("idref") }
         return spine.mapNotNull { pages[it] }.map { it.attr("href") }
@@ -92,23 +72,18 @@ class EpubFile(
     /**
      * Returns all the images contained in every page from the epub.
      */
-    private fun getImagesFromPages(
-        pages: List<String>,
-        packageHref: String,
-    ): List<String> {
+    private fun getImagesFromPages(pages: List<String>, packageHref: String): List<String> {
         val result = mutableListOf<String>()
         val basePath = getParentDirectory(packageHref)
         pages.forEach { page ->
             val entryPath = resolveZipPath(basePath, page)
-            val entry = zip.getEntry(entryPath)
-            val document = zip.getInputStream(entry).use { Jsoup.parse(it, null, "") }
+            val document = getInputStream(entryPath)!!.use { Jsoup.parse(it, null, "") }
             val imageBasePath = getParentDirectory(entryPath)
 
             document.allElements.forEach {
-                if (it.tagName() == "img") {
-                    result.add(resolveZipPath(imageBasePath, it.attr("src")))
-                } else if (it.tagName() == "image") {
-                    result.add(resolveZipPath(imageBasePath, it.attr("xlink:href")))
+                when (it.tagName()) {
+                    "img" -> result.add(resolveZipPath(imageBasePath, it.attr("src")))
+                    "image" -> result.add(resolveZipPath(imageBasePath, it.attr("xlink:href")))
                 }
             }
         }
@@ -120,8 +95,9 @@ class EpubFile(
      * Returns the path separator used by the epub file.
      */
     private fun getPathSeparator(): String {
-        val meta = zip.getEntry("META-INF\\container.xml")
+        val meta = getInputStream("META-INF\\container.xml")
         return if (meta != null) {
+            meta.close()
             "\\"
         } else {
             "/"
@@ -131,10 +107,7 @@ class EpubFile(
     /**
      * Resolves a zip path from base and relative components and a path separator.
      */
-    private fun resolveZipPath(
-        basePath: String,
-        relativePath: String,
-    ): String {
+    private fun resolveZipPath(basePath: String, relativePath: String): String {
         if (relativePath.startsWith(pathSeparator)) {
             // Path is absolute, so return as-is.
             return relativePath
@@ -160,5 +133,9 @@ class EpubFile(
         } else {
             ""
         }
+    }
+
+    companion object {
+        fun Path.epubReader(): EpubReader = EpubReader(archiveReader())
     }
 }
