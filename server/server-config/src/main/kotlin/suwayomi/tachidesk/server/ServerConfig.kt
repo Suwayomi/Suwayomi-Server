@@ -1020,7 +1020,7 @@ class ServerConfig(
         protoNumber = 86,
         group = SettingGroup.WEB_VIEW,
         privacySafe = true,
-        defaultValue = false,
+        defaultValue = true,
         requiresRestart = true,
     )
 
