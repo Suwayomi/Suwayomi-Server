@@ -199,7 +199,7 @@ object OpdsEntryBuilder {
                     "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
                     serverConfig.opdsCbzMimetype.value.mediaType,
                     MR.strings.opds_linktitle_download_cbz.localized(locale),
-                )
+                ),
             )
 
             // Provide Stream Link (OPDS-PSE) if page count is known
@@ -217,7 +217,7 @@ object OpdsEntryBuilder {
                         pseCount = chapter.pageCount,
                         pseLastRead = chapter.lastPageRead.takeIf { it > 0 },
                         pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
-                    )
+                    ),
                 )
 
                 // Page 0 Cover
@@ -227,7 +227,7 @@ object OpdsEntryBuilder {
                         href = "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/0",
                         type = OpdsConstants.TYPE_IMAGE_JPEG,
                         title = MR.strings.opds_linktitle_chapter_cover.localized(locale),
-                    )
+                    ),
                 )
             }
         } else {
@@ -238,7 +238,7 @@ object OpdsEntryBuilder {
                     href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
                     type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
                     title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
-                )
+                ),
             )
         }
 
