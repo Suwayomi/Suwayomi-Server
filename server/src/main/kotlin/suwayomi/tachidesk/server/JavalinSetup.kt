@@ -27,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.future.future
 import org.eclipse.jetty.server.ServerConnector
+import suwayomi.tachidesk.anime.AnimeAPI
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
@@ -109,6 +110,7 @@ object JavalinSetup {
                         path("v1/") {
                             GlobalAPI.defineEndpoints()
                             MangaAPI.defineEndpoints()
+                            AnimeAPI.defineEndpoints()
                         }
 
                         OpdsAPI.defineEndpoints()
