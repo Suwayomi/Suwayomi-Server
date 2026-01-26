@@ -146,7 +146,7 @@ twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp"
 imageio-webp = "com.github.usefulness:webp-imageio:0.10.2"
 
 # Testing
-mockk = "io.mockk:mockk:1.14.7"
+mockk = "io.mockk:mockk:1.14.9"
 
 # cron scheduler
 cron4j = "it.sauronsoftware.cron4j:cron4j:2.2.5"
