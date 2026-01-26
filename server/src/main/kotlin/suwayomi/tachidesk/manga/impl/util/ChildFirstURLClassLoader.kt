@@ -12,7 +12,7 @@ import java.util.Enumeration
  * - the child class loader
  * - the parent class loader.
  */
-class ChildFirstPathClassLoader(
+class ChildFirstURLClassLoader(
     urls: Array<URL>,
     parent: ClassLoader? = null,
 ) : URLClassLoader(urls, parent) {
