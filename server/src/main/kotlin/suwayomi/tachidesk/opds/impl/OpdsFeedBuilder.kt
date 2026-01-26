@@ -93,10 +93,11 @@ object OpdsFeedBuilder {
                 pageNum,
             )
         builder.totalResults = total
+        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
         builder.entries.addAll(
             historyItems.map { item ->
                 val mangaDetails = OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
-                OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale)
+                OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale, skipMetadata)
             },
         )
         return OpdsXmlUtil.serializeFeedToString(builder.build())
@@ -566,10 +567,11 @@ object OpdsFeedBuilder {
                 pageNum,
             )
         builder.totalResults = total
+        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
         builder.entries.addAll(
             updateItems.map { item ->
                 val mangaDetails = OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
-                OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale)
+                OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale, skipMetadata)
             },
         )
         return OpdsXmlUtil.serializeFeedToString(builder.build())
@@ -674,9 +676,10 @@ object OpdsFeedBuilder {
             locale,
             filterCounts,
         )
+        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
         builder.entries.addAll(
             chapterEntries.map { chapter ->
-                OpdsEntryBuilder.createChapterListEntry(chapter, mangaDetails, baseUrl, false, locale)
+                OpdsEntryBuilder.createChapterListEntry(chapter, mangaDetails, baseUrl, false, locale, skipMetadata)
             },
         )
         return OpdsXmlUtil.serializeFeedToString(builder.build())

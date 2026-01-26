@@ -159,6 +159,7 @@ object OpdsEntryBuilder {
      * @param baseUrl The base URL for constructing links.
      * @param addMangaTitle Whether to prepend the manga title to the entry title.
      * @param locale The locale for localization.
+     * @param skipMetadataFeed Whether to skip the metadata feed.
      * @return An [OpdsEntryXml] object for the chapter.
      */
     suspend fun createChapterListEntry(
@@ -167,6 +168,7 @@ object OpdsEntryBuilder {
         baseUrl: String,
         addMangaTitle: Boolean,
         locale: Locale,
+        skipMetadataFeed: Boolean = false,
     ): OpdsEntryXml {
         val statusKey =
             when {
@@ -186,6 +188,60 @@ object OpdsEntryBuilder {
                     append(MR.strings.opds_chapter_details_progress.localized(locale, chapter.lastPageRead, chapter.pageCount))
                 }
             }
+
+        val links = mutableListOf<OpdsLinkXml>()
+
+        if (skipMetadataFeed) {
+            // Provide Acquisition Link (Download CBZ)
+            links.add(
+                OpdsLinkXml(
+                    OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
+                    "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
+                    serverConfig.opdsCbzMimetype.value.mediaType,
+                    MR.strings.opds_linktitle_download_cbz.localized(locale),
+                )
+            )
+
+            // Provide Stream Link (OPDS-PSE) if page count is known
+            if (chapter.pageCount > 0) {
+                val basePageHref =
+                    "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
+                        "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}&opds=true"
+
+                links.add(
+                    OpdsLinkXml(
+                        rel = OpdsConstants.LINK_REL_PSE_STREAM,
+                        href = basePageHref,
+                        type = OpdsConstants.TYPE_IMAGE_JPEG,
+                        title = MR.strings.opds_linktitle_stream_pages_start.localized(locale),
+                        pseCount = chapter.pageCount,
+                        pseLastRead = chapter.lastPageRead.takeIf { it > 0 },
+                        pseLastReadDate = chapter.lastReadAt.takeIf { it > 0 }?.let { OpdsDateUtil.formatEpochMillisForOpds(it * 1000) },
+                    )
+                )
+
+                // Page 0 Cover
+                links.add(
+                    OpdsLinkXml(
+                        rel = OpdsConstants.LINK_REL_IMAGE,
+                        href = "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/0",
+                        type = OpdsConstants.TYPE_IMAGE_JPEG,
+                        title = MR.strings.opds_linktitle_chapter_cover.localized(locale),
+                    )
+                )
+            }
+        } else {
+            // Link to Metadata Feed
+            links.add(
+                OpdsLinkXml(
+                    rel = OpdsConstants.LINK_REL_SUBSECTION,
+                    href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
+                    type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
+                    title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
+                )
+            )
+        }
+
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}",
             title = entryTitle,
@@ -196,15 +252,7 @@ object OpdsEntryBuilder {
                     chapter.scanlator?.takeIf { it.isNotBlank() }?.let { OpdsAuthorXml(name = it) },
                 ),
             summary = OpdsSummaryXml(value = details),
-            link =
-                listOf(
-                    OpdsLinkXml(
-                        rel = OpdsConstants.LINK_REL_SUBSECTION,
-                        href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
-                        type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
-                        title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
-                    ),
-                ),
+            link = links,
         )
     }
 
