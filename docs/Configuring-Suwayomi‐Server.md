@@ -224,6 +224,7 @@ server.opdsShowOnlyUnreadChapters = false
 server.opdsShowOnlyDownloadedChapters = false
 server.opdsChapterSortOrder = "DESC"
 server.opdsCbzMimetype = "MODERN"
+server.opdsSkipChapterMetadataFeed = false
 ```
 - `server.opdsUseBinaryFileSizes = false` controls if Suwayomi should display file sizes in binary units (KiB, MiB, GiB) or decimal (KB, MB, GB) in OPDS listings.
 - `server.opdsItemsPerPage = 50` sets the number of items per page in OPDS listings. Range: 10 <= n <= 5000.
@@ -233,6 +234,7 @@ server.opdsCbzMimetype = "MODERN"
 - `server.opdsShowOnlyDownloadedChapters = false` controls if OPDS listings should only include downloaded chapters.
 - `server.opdsChapterSortOrder = "DESC"` sets the default chapter sort order in OPDS listings, either `"ASC"` or `"DESC"`
 - `server.opdsCbzMimetype = "MODERN"` controls which mimetype to use for CBZ downloads. This affects the offered link in OPDS, as well as the content type of the CBZ download. Allowed is MODERN (current IANA standard), LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives). Use LEGACY or COMPATIBLE if older clients don't offer the chapter download (note that the chapter needs to first be downloaded in Suwayomi, before it is available in OPDS).
+- `server.opdsSkipChapterMetadataFeed = false` controls if the metadata feed should be skipped. When enabled, download and streaming links are provided directly in the chapter list. This improves compatibility with automated downloaders (like KOReader) but disables visual prompts for KoSync conflicts.
 
 ### KOReader Sync
 ```
