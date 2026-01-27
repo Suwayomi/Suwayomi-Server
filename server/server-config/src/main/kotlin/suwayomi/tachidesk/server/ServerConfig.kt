@@ -1021,7 +1021,8 @@ class ServerConfig(
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
-        description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader but disables visual KoSync conflict prompts.",
+        description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader. KoSync strategies are applied, but PROMPT conflicts are ignored (treating local progress as priority)."
+
     )
 
 
