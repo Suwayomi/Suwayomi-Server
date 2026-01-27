@@ -612,12 +612,14 @@ object OpdsFeedBuilder {
                 else -> ChapterTable.sourceOrder to (serverConfig.opdsChapterSortOrder.value)
             }
         val currentFilter = filterParam?.lowercase() ?: if (serverConfig.opdsShowOnlyUnreadChapters.value) "unread" else "all"
+        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
         var (chapterEntries, totalChapters) =
             ChapterRepository.getChaptersForManga(
                 mangaId,
                 pageNum,
                 sortColumn,
                 currentSortOrder,
+                skipMetadata,
                 currentFilter,
             )
 
@@ -634,6 +636,7 @@ object OpdsFeedBuilder {
                         pageNum,
                         sortColumn,
                         currentSortOrder,
+                        skipMetadata,
                         currentFilter,
                     )
                 chapterEntries = refetchedChapters
@@ -676,7 +679,6 @@ object OpdsFeedBuilder {
             locale,
             filterCounts,
         )
-        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
         builder.entries.addAll(
             chapterEntries.map { chapter ->
                 OpdsEntryBuilder.createChapterListEntry(chapter, mangaDetails, baseUrl, false, locale, skipMetadata)
