@@ -4,9 +4,14 @@ import graphql.execution.DataFetcherResult
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.LikePattern
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -15,6 +20,7 @@ import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
+import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
@@ -244,6 +250,109 @@ class ChapterMutation {
                 }
 
             DeleteChapterMetaPayload(clientMutationId, meta, chapter)
+        }
+
+    data class SetChapterMetasInput(
+        val clientMutationId: String? = null,
+        val chapterIds: List<Int>,
+        val metas: List<MetaInput>,
+    )
+
+    data class SetChapterMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<ChapterMetaType>,
+        val chapters: List<ChapterType>,
+    )
+
+    @RequireAuth
+    fun setChapterMetas(input: SetChapterMetasInput): DataFetcherResult<SetChapterMetasPayload?> =
+        asDataFetcherResult {
+            val (clientMutationId, chapterIds, metas) = input
+
+            val metaMap = metas.associate { it.key to it.value }
+            Chapter.modifyChaptersMetas(chapterIds.associateWith { metaMap })
+
+            val (updatedMetas, chapters) =
+                transaction {
+                    val updatedMetas =
+                        ChapterMetaTable
+                            .selectAll()
+                            .where { (ChapterMetaTable.ref inList chapterIds) and (ChapterMetaTable.key inList metaMap.keys) }
+                            .map { ChapterMetaType(it) }
+
+                    val chapters =
+                        ChapterTable
+                            .selectAll()
+                            .where { ChapterTable.id inList chapterIds }
+                            .map { ChapterType(it) }
+                            .distinctBy { it.id }
+
+                    updatedMetas to chapters
+                }
+
+            SetChapterMetasPayload(clientMutationId, updatedMetas, chapters)
+        }
+
+    data class DeleteChapterMetasInput(
+        val clientMutationId: String? = null,
+        val chapterIds: List<Int>,
+        val keys: List<String>? = null,
+        val prefixes: List<String>? = null,
+    )
+
+    data class DeleteChapterMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<ChapterMetaType>,
+        val chapters: List<ChapterType>,
+    )
+
+    @RequireAuth
+    fun deleteChapterMetas(input: DeleteChapterMetasInput): DataFetcherResult<DeleteChapterMetasPayload?> =
+        asDataFetcherResult {
+            val (clientMutationId, chapterIds, keys, prefixes) = input
+
+            require(!keys.isNullOrEmpty() || !prefixes.isNullOrEmpty()) {
+                "Either 'keys' or 'prefixes' must be provided"
+            }
+
+            val (metas, chapters) =
+                transaction {
+                    val keyCondition: Op<Boolean>? = keys?.takeIf { it.isNotEmpty() }?.let { ChapterMetaTable.key inList it }
+
+                    val prefixCondition: Op<Boolean>? =
+                        prefixes
+                            ?.filter { it.isNotEmpty() }
+                            ?.map { (ChapterMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.reduceOrNull { acc, op -> acc or op }
+
+                    val metaKeyCondition =
+                        if (keyCondition != null && prefixCondition != null) {
+                            keyCondition or prefixCondition
+                        } else {
+                            keyCondition ?: prefixCondition!!
+                        }
+
+                    val condition = (ChapterMetaTable.ref inList chapterIds) and metaKeyCondition
+
+                    val metas =
+                        ChapterMetaTable
+                            .selectAll()
+                            .where { condition }
+                            .map { ChapterMetaType(it) }
+
+                    ChapterMetaTable.deleteWhere { condition }
+
+                    val chapters =
+                        ChapterTable
+                            .selectAll()
+                            .where { ChapterTable.id inList chapterIds }
+                            .map { ChapterType(it) }
+                            .distinctBy { it.id }
+
+                    metas to chapters
+                }
+
+            DeleteChapterMetasPayload(clientMutationId, metas, chapters)
         }
 
     data class FetchChapterPagesInput(

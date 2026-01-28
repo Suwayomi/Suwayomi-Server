@@ -6,15 +6,21 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
 import graphql.execution.DataFetcherResult
+import org.jetbrains.exposed.sql.LikePattern
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.graphql.types.Preference
 import suwayomi.tachidesk.graphql.types.SourceMetaType
 import suwayomi.tachidesk.graphql.types.SourceType
@@ -95,6 +101,111 @@ class SourceMutation {
                 }
 
             DeleteSourceMetaPayload(clientMutationId, meta, source)
+        }
+    }
+
+    data class SetSourceMetasInput(
+        val clientMutationId: String? = null,
+        val sourceIds: List<Long>,
+        val metas: List<MetaInput>,
+    )
+
+    data class SetSourceMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<SourceMetaType>,
+        val sources: List<SourceType>,
+    )
+
+    @RequireAuth
+    fun setSourceMetas(input: SetSourceMetasInput): DataFetcherResult<SetSourceMetasPayload?> {
+        val (clientMutationId, sourceIds, metas) = input
+
+        return asDataFetcherResult {
+            val metaMap = metas.associate { it.key to it.value }
+            Source.modifySourceMetas(sourceIds.associateWith { metaMap })
+
+            val (updatedMetas, sources) =
+                transaction {
+                    val updatedMetas =
+                        SourceMetaTable
+                            .selectAll()
+                            .where { (SourceMetaTable.ref inList sourceIds) and (SourceMetaTable.key inList metaMap.keys) }
+                            .map { SourceMetaType(it) }
+
+                    val sources =
+                        SourceTable
+                            .selectAll()
+                            .where { SourceTable.id inList sourceIds }
+                            .mapNotNull { SourceType(it) }
+                            .distinctBy { it.id }
+
+                    updatedMetas to sources
+                }
+
+            SetSourceMetasPayload(clientMutationId, updatedMetas, sources)
+        }
+    }
+
+    data class DeleteSourceMetasInput(
+        val clientMutationId: String? = null,
+        val sourceIds: List<Long>,
+        val keys: List<String>? = null,
+        val prefixes: List<String>? = null,
+    )
+
+    data class DeleteSourceMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<SourceMetaType>,
+        val sources: List<SourceType>,
+    )
+
+    @RequireAuth
+    fun deleteSourceMetas(input: DeleteSourceMetasInput): DataFetcherResult<DeleteSourceMetasPayload?> {
+        val (clientMutationId, sourceIds, keys, prefixes) = input
+
+        return asDataFetcherResult {
+            require(!keys.isNullOrEmpty() || !prefixes.isNullOrEmpty()) {
+                "Either 'keys' or 'prefixes' must be provided"
+            }
+
+            val (metas, sources) =
+                transaction {
+                    val keyCondition: Op<Boolean>? = keys?.takeIf { it.isNotEmpty() }?.let { SourceMetaTable.key inList it }
+
+                    val prefixCondition: Op<Boolean>? =
+                        prefixes
+                            ?.filter { it.isNotEmpty() }
+                            ?.map { (SourceMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.reduceOrNull { acc, op -> acc or op }
+
+                    val metaKeyCondition =
+                        if (keyCondition != null && prefixCondition != null) {
+                            keyCondition or prefixCondition
+                        } else {
+                            keyCondition ?: prefixCondition!!
+                        }
+
+                    val condition = (SourceMetaTable.ref inList sourceIds) and metaKeyCondition
+
+                    val metas =
+                        SourceMetaTable
+                            .selectAll()
+                            .where { condition }
+                            .map { SourceMetaType(it) }
+
+                    SourceMetaTable.deleteWhere { condition }
+
+                    val sources =
+                        SourceTable
+                            .selectAll()
+                            .where { SourceTable.id inList sourceIds }
+                            .mapNotNull { SourceType(it) }
+                            .distinctBy { it.id }
+
+                    metas to sources
+                }
+
+            DeleteSourceMetasPayload(clientMutationId, metas, sources)
         }
     }
 

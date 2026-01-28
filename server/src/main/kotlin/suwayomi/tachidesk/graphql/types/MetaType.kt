@@ -20,6 +20,11 @@ interface MetaType : Node {
     val value: String
 }
 
+data class MetaInput(
+    val key: String,
+    val value: String,
+)
+
 class ChapterMetaType(
     override val key: String,
     override val value: String,
