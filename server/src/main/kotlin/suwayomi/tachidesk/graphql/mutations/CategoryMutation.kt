@@ -1,13 +1,17 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import org.jetbrains.exposed.sql.LikePattern
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -16,6 +20,7 @@ import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
@@ -86,6 +91,109 @@ class CategoryMutation {
                 }
 
             DeleteCategoryMetaPayload(clientMutationId, meta, category)
+        }
+
+    data class SetCategoryMetasInput(
+        val clientMutationId: String? = null,
+        val categoryIds: List<Int>,
+        val metas: List<MetaInput>,
+    )
+
+    data class SetCategoryMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<CategoryMetaType>,
+        val categories: List<CategoryType>,
+    )
+
+    @RequireAuth
+    fun setCategoryMetas(input: SetCategoryMetasInput): DataFetcherResult<SetCategoryMetasPayload?> =
+        asDataFetcherResult {
+            val (clientMutationId, categoryIds, metas) = input
+
+            val metaMap = metas.associate { it.key to it.value }
+            Category.modifyCategoriesMetas(categoryIds.associateWith { metaMap })
+
+            val (updatedMetas, categories) =
+                transaction {
+                    val updatedMetas =
+                        CategoryMetaTable
+                            .selectAll()
+                            .where { (CategoryMetaTable.ref inList categoryIds) and (CategoryMetaTable.key inList metaMap.keys) }
+                            .map { CategoryMetaType(it) }
+
+                    val categories =
+                        CategoryTable
+                            .selectAll()
+                            .where { CategoryTable.id inList categoryIds }
+                            .map { CategoryType(it) }
+                            .distinctBy { it.id }
+
+                    updatedMetas to categories
+                }
+
+            SetCategoryMetasPayload(clientMutationId, updatedMetas, categories)
+        }
+
+    data class DeleteCategoryMetasInput(
+        val clientMutationId: String? = null,
+        val categoryIds: List<Int>,
+        val keys: List<String>? = null,
+        val prefixes: List<String>? = null,
+    )
+
+    data class DeleteCategoryMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<CategoryMetaType>,
+        val categories: List<CategoryType>,
+    )
+
+    @RequireAuth
+    fun deleteCategoryMetas(input: DeleteCategoryMetasInput): DataFetcherResult<DeleteCategoryMetasPayload?> =
+        asDataFetcherResult {
+            val (clientMutationId, categoryIds, keys, prefixes) = input
+
+            require(!keys.isNullOrEmpty() || !prefixes.isNullOrEmpty()) {
+                "Either 'keys' or 'prefixes' must be provided"
+            }
+
+            val (metas, categories) =
+                transaction {
+                    val keyCondition: Op<Boolean>? = keys?.takeIf { it.isNotEmpty() }?.let { CategoryMetaTable.key inList it }
+
+                    val prefixCondition: Op<Boolean>? =
+                        prefixes
+                            ?.filter { it.isNotEmpty() }
+                            ?.map { (CategoryMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.reduceOrNull { acc, op -> acc or op }
+
+                    val metaKeyCondition =
+                        if (keyCondition != null && prefixCondition != null) {
+                            keyCondition or prefixCondition
+                        } else {
+                            keyCondition ?: prefixCondition!!
+                        }
+
+                    val condition = (CategoryMetaTable.ref inList categoryIds) and metaKeyCondition
+
+                    val metas =
+                        CategoryMetaTable
+                            .selectAll()
+                            .where { condition }
+                            .map { CategoryMetaType(it) }
+
+                    CategoryMetaTable.deleteWhere { condition }
+
+                    val categories =
+                        CategoryTable
+                            .selectAll()
+                            .where { CategoryTable.id inList categoryIds }
+                            .map { CategoryType(it) }
+                            .distinctBy { it.id }
+
+                    metas to categories
+                }
+
+            DeleteCategoryMetasPayload(clientMutationId, metas, categories)
         }
 
     data class UpdateCategoryPatch(
