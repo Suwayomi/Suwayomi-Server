@@ -82,6 +82,12 @@ object CategoryManga {
         }
     }
 
+    fun removeMangaFromAllCategories(mangaId: Int) {
+        transaction {
+            CategoryMangaTable.deleteWhere { CategoryMangaTable.manga eq mangaId }
+        }
+    }
+
     /**
      * list of mangas that belong to a category
      */

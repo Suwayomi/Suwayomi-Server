@@ -125,6 +125,7 @@ object Chapter {
                 downloaded = dbChapter[ChapterTable.isDownloaded],
                 pageCount = dbChapter[ChapterTable.pageCount],
                 chapterCount = chapterList.size,
+                version = dbChapter[ChapterTable.version],
                 meta = chapterMetas.getValue(dbChapter[ChapterTable.id].value),
             )
         }
@@ -283,6 +284,7 @@ object Chapter {
                                 this[ChapterTable.isRead] = false
                                 this[ChapterTable.isBookmarked] = false
                                 this[ChapterTable.isDownloaded] = false
+                                this[ChapterTable.version] = chapter.version
 
                                 // is recognized chapter number
                                 if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
@@ -315,6 +317,7 @@ object Chapter {
                                 this[ChapterTable.scanlator] = it.scanlator
                                 this[ChapterTable.sourceOrder] = it.index
                                 this[ChapterTable.realUrl] = it.realUrl
+                                this[ChapterTable.version] = it.version
                             }
                             execute(this@transaction)
                         }
