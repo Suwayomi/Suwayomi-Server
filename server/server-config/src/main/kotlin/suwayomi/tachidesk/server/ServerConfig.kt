@@ -1016,7 +1016,21 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val kcefEnable: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 86,
+        group = SettingGroup.WEB_VIEW,
+        privacySafe = true,
+        defaultValue = false,
+        requiresRestart = true,
+    )
 
+    val enableCookieApi: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 87,
+        group = SettingGroup.NETWORK,
+        privacySafe = true,
+        defaultValue = false,
+        description = "Enable the /api/v1/cookie endpoint for syncing cookies from external webviews."
+    )    
 
     /** ****************************************************************** **/
     /**                                                                    **/
