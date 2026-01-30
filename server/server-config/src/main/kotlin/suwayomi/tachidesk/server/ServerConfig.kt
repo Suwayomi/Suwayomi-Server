@@ -1016,6 +1016,32 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val animeExtensionRepos: MutableStateFlow<List<String>> by ListSetting<String>(
+        protoNumber = 86,
+        group = SettingGroup.EXTENSION,
+        privacySafe = false,
+        defaultValue = emptyList(),
+        itemValidator = { url ->
+            if (url.matches(repoMatchRegex)) {
+                null
+            } else {
+                "Invalid repository URL format"
+            }
+        },
+        itemToValidValue = { url ->
+            if (url.matches(repoMatchRegex)) {
+                url
+            } else {
+                null
+            }
+        },
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                specificType = "List<String>",
+            ),
+        description = "example: [\"https://github.com/MY_ACCOUNT/MY_REPO/tree/repo\"]",
+    )
+
 
 
     /** ****************************************************************** **/
