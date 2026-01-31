@@ -20,6 +20,7 @@ import net.dongliu.apk.parser.ApkParsers
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.util.ChildFirstURLClassLoader
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.pm.InstalledPackage.Companion.toList
 import xyz.nulldev.androidcompat.pm.toPackageInfo
