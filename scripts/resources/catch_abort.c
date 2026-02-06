@@ -26,4 +26,7 @@ void dlmain() {
   if (sigaction(SIGTRAP, &sa, NULL) != 0) {
     printf("[FATAL] sigaction failed\n");
   }
+  if (sigaction(SIGILL, &sa, NULL) != 0) {
+    printf("[FATAL] sigaction failed\n");
+  }
 }
