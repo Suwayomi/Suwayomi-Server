@@ -61,7 +61,7 @@ kte = { module = "gg.jte:jte-kotlin", version.ref = "jte" }
 # GraphQL
 graphql-kotlin-server = { module = "com.expediagroup:graphql-kotlin-server", version.ref = "graphqlkotlin" }
 graphql-kotlin-scheme = { module = "com.expediagroup:graphql-kotlin-schema-generator", version.ref = "graphqlkotlin" }
-graphql-java-scalars = "com.graphql-java:graphql-java-extended-scalars:22.0"
+graphql-java-scalars = "com.graphql-java:graphql-java-extended-scalars:24.0"
 
 # Exposed ORM
 exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
