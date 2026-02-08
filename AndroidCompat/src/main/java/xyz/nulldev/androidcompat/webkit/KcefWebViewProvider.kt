@@ -648,8 +648,8 @@ class KcefWebViewProvider(
 
     override fun loadData(
         data: String,
-        mimeType: String,
-        encoding: String,
+        mimeType: String?,
+        encoding: String?,
     ) {
         loadDataWithBaseURL(null, data, mimeType, encoding, null)
     }
@@ -657,8 +657,8 @@ class KcefWebViewProvider(
     override fun loadDataWithBaseURL(
         baseUrl: String?,
         data: String,
-        mimeType: String,
-        encoding: String,
+        mimeType: String?,
+        encoding: String?,
         historyUrl: String?,
     ) {
         browser?.close(true)
@@ -690,13 +690,13 @@ class KcefWebViewProvider(
 
     override fun evaluateJavaScript(
         script: String,
-        resultCallback: ValueCallback<String>,
+        resultCallback: ValueCallback<String>?,
     ) {
         browser!!.evaluateJavaScript(
             script.removePrefix("javascript:"),
             {
                 Log.v(TAG, "JS returned: $it")
-                it?.let { handler.post { resultCallback.onReceiveValue(it) } }
+                it?.let { handler.post { resultCallback?.onReceiveValue(it) } }
             },
         )
     }
