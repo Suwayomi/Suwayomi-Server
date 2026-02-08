@@ -7,7 +7,7 @@ on:
     paths: [docs/**, .github/workflows/wiki.yml]
 
 concurrency:
-  group: wiki
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
