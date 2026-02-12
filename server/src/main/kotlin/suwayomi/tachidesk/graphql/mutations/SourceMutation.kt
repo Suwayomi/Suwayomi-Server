@@ -6,15 +6,21 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
 import graphql.execution.DataFetcherResult
+import org.jetbrains.exposed.sql.LikePattern
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.graphql.types.Preference
 import suwayomi.tachidesk.graphql.types.SourceMetaType
 import suwayomi.tachidesk.graphql.types.SourceType
@@ -95,6 +101,140 @@ class SourceMutation {
                 }
 
             DeleteSourceMetaPayload(clientMutationId, meta, source)
+        }
+    }
+
+    data class SetSourceMetasItem(
+        val sourceIds: List<Long>,
+        val metas: List<MetaInput>,
+    )
+
+    data class SetSourceMetasInput(
+        val clientMutationId: String? = null,
+        val items: List<SetSourceMetasItem>,
+    )
+
+    data class SetSourceMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<SourceMetaType>,
+        val sources: List<SourceType>,
+    )
+
+    @RequireAuth
+    fun setSourceMetas(input: SetSourceMetasInput): DataFetcherResult<SetSourceMetasPayload?> {
+        val (clientMutationId, items) = input
+
+        return asDataFetcherResult {
+            val metaBySourceId =
+                items
+                    .flatMap { item ->
+                        val metaMap = item.metas.associate { it.key to it.value }
+                        item.sourceIds.map { sourceId -> sourceId to metaMap }
+                    }.groupBy({ it.first }, { it.second })
+                    .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
+
+            Source.modifySourceMetas(metaBySourceId)
+
+            val allSourceIds = metaBySourceId.keys
+            val allMetaKeys = metaBySourceId.values.flatMap { it.keys }.distinct()
+
+            val (updatedMetas, sources) =
+                transaction {
+                    val updatedMetas =
+                        SourceMetaTable
+                            .selectAll()
+                            .where { (SourceMetaTable.ref inList allSourceIds) and (SourceMetaTable.key inList allMetaKeys) }
+                            .map { SourceMetaType(it) }
+
+                    val sources =
+                        SourceTable
+                            .selectAll()
+                            .where { SourceTable.id inList allSourceIds }
+                            .mapNotNull { SourceType(it) }
+                            .distinctBy { it.id }
+
+                    updatedMetas to sources
+                }
+
+            SetSourceMetasPayload(clientMutationId, updatedMetas, sources)
+        }
+    }
+
+    data class DeleteSourceMetasItem(
+        val sourceIds: List<Long>,
+        val keys: List<String>? = null,
+        val prefixes: List<String>? = null,
+    )
+
+    data class DeleteSourceMetasInput(
+        val clientMutationId: String? = null,
+        val items: List<DeleteSourceMetasItem>,
+    )
+
+    data class DeleteSourceMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<SourceMetaType>,
+        val sources: List<SourceType>,
+    )
+
+    @RequireAuth
+    fun deleteSourceMetas(input: DeleteSourceMetasInput): DataFetcherResult<DeleteSourceMetasPayload?> {
+        val (clientMutationId, items) = input
+
+        return asDataFetcherResult {
+            items.forEach { item ->
+                require(!item.keys.isNullOrEmpty() || !item.prefixes.isNullOrEmpty()) {
+                    "Either 'keys' or 'prefixes' must be provided for each item"
+                }
+            }
+
+            val (allDeletedMetas, allSourceIds) =
+                transaction {
+                    val deletedMetas = mutableListOf<SourceMetaType>()
+                    val sourceIds = mutableSetOf<Long>()
+
+                    items.forEach { item ->
+                        val keyCondition: Op<Boolean>? =
+                            item.keys?.takeIf { it.isNotEmpty() }?.let { SourceMetaTable.key inList it }
+
+                        val prefixCondition: Op<Boolean>? =
+                            item.prefixes
+                                ?.filter { it.isNotEmpty() }
+                                ?.map { (SourceMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                                ?.reduceOrNull { acc, op -> acc or op }
+
+                        val metaKeyCondition =
+                            if (keyCondition != null && prefixCondition != null) {
+                                keyCondition or prefixCondition
+                            } else {
+                                keyCondition ?: prefixCondition!!
+                            }
+
+                        val condition = (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
+
+                        deletedMetas +=
+                            SourceMetaTable
+                                .selectAll()
+                                .where { condition }
+                                .map { SourceMetaType(it) }
+
+                        SourceMetaTable.deleteWhere { condition }
+                        sourceIds += item.sourceIds
+                    }
+
+                    deletedMetas to sourceIds
+                }
+
+            val sources =
+                transaction {
+                    SourceTable
+                        .selectAll()
+                        .where { SourceTable.id inList allSourceIds }
+                        .mapNotNull { SourceType(it) }
+                        .distinctBy { it.id }
+                }
+
+            DeleteSourceMetasPayload(clientMutationId, allDeletedMetas, sources)
         }
     }
 
