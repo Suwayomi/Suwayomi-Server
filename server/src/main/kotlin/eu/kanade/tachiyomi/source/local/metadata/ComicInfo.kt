@@ -8,6 +8,33 @@ import nl.adaptivity.xmlutil.serialization.XmlValue
 
 const val COMIC_INFO_FILE = "ComicInfo.xml"
 
+fun SManga.getComicInfo() =
+    ComicInfo(
+        series = ComicInfo.Series(title),
+        summary = description?.let { ComicInfo.Summary(it) },
+        writer = author?.let { ComicInfo.Writer(it) },
+        penciller = artist?.let { ComicInfo.Penciller(it) },
+        genre = genre?.let { ComicInfo.Genre(it) },
+        publishingStatus =
+            ComicInfo.PublishingStatusTachiyomi(
+                ComicInfoPublishingStatus.toComicInfoValue(status.toLong()),
+            ),
+        title = null,
+        number = null,
+        web = null,
+        translator = null,
+        inker = null,
+        colorist = null,
+        letterer = null,
+        coverArtist = null,
+        tags = null,
+        categories = null,
+        source = null,
+        day = null,
+        month = null,
+        year = null,
+    )
+
 fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
     comicInfo.series?.let { title = it.value }
     comicInfo.writer?.let { author = it.value }
@@ -37,6 +64,8 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
     status = ComicInfoPublishingStatus.toSMangaValue(comicInfo.publishingStatus?.value)
 }
 
+// https://anansi-project.github.io/docs/comicinfo/schemas/v2.0
+@Suppress("UNUSED")
 @Serializable
 @XmlSerialName("ComicInfo", "", "")
 data class ComicInfo(
@@ -56,16 +85,15 @@ data class ComicInfo(
     val web: Web?,
     val publishingStatus: PublishingStatusTachiyomi?,
     val categories: CategoriesTachiyomi?,
+    val source: SourceMihon?,
     val day: Day?,
     val month: Month?,
     val year: Year?,
 ) {
-    @Suppress("UNUSED")
     @XmlElement(false)
     @XmlSerialName("xmlns:xsd", "", "")
     val xmlSchema: String = "http://www.w3.org/2001/XMLSchema"
 
-    @Suppress("UNUSED")
     @XmlElement(false)
     @XmlSerialName("xmlns:xsi", "", "")
     val xmlSchemaInstance: String = "http://www.w3.org/2001/XMLSchema-instance"
@@ -86,24 +114,6 @@ data class ComicInfo(
     @XmlSerialName("Number", "", "")
     data class Number(
         @XmlValue(true) val value: String = "",
-    )
-
-    @Serializable
-    @XmlSerialName("Day", "", "")
-    data class Day(
-        @XmlValue(true) val value: Int = 0,
-    )
-
-    @Serializable
-    @XmlSerialName("Month", "", "")
-    data class Month(
-        @XmlValue(true) val value: Int = 0,
-    )
-
-    @Serializable
-    @XmlSerialName("Year", "", "")
-    data class Year(
-        @XmlValue(true) val value: Int = 0,
     )
 
     @Serializable
@@ -184,6 +194,31 @@ data class ComicInfo(
     data class CategoriesTachiyomi(
         @XmlValue(true) val value: String = "",
     )
+
+    @Serializable
+    @XmlSerialName("SourceMihon", "http://www.w3.org/2001/XMLSchema", "mh")
+    data class SourceMihon(
+        @XmlValue(true) val value: String = "",
+    )
+
+    @Serializable
+    @XmlSerialName("Day", "", "")
+    data class Day(
+        @XmlValue(true) val value: Int = 0,
+    )
+
+    @Serializable
+    @XmlSerialName("Month", "", "")
+    data class Month(
+        @XmlValue(true) val value: Int = 0,
+    )
+
+    @Serializable
+    @XmlSerialName("Year", "", "")
+    data class Year(
+        @XmlValue(true) val value: Int = 0,
+    )
+
 }
 
 enum class ComicInfoPublishingStatus(

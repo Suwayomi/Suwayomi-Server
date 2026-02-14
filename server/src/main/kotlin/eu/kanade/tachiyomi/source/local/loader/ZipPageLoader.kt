@@ -4,14 +4,15 @@ import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import org.apache.commons.compress.archivers.zip.ZipFile
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import java.io.File
+import java.nio.file.Path
 
 /**
  * Loader used to load a chapter from a .zip or .cbz file.
  */
 class ZipPageLoader(
-    file: File,
+    file: Path,
 ) : PageLoader {
-    private val zip = ZipFile.builder().setFile(file).get()
+    private val zip = ZipFile.builder().setPath(file).get()
 
     override suspend fun getPages(): List<ReaderPage> =
         zip.entries
