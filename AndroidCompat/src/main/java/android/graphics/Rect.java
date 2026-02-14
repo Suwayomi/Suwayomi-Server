@@ -55,6 +55,7 @@ public final class Rect {
         this.left = r.left;
         this.top = r.top;
         this.right = r.right;
+        this.bottom = r.bottom;
     }
 
     public final int getWidth() {
