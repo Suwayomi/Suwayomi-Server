@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.network.interceptor
 
+import com.alibaba.fastjson2.toJSONString
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.awaitSuccess
@@ -14,7 +15,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
 import okhttp3.HttpUrl
@@ -198,7 +198,7 @@ object CFClearance {
                                 Json
                                     .encodeToString(
                                         FlareSolverRequest(
-                                            "request.get",
+                                            "request.${originalRequest.method.lowercase()}",
                                             originalRequest.url.toString(),
                                             session = serverConfig.flareSolverrSessionName.value,
                                             sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
@@ -208,6 +208,7 @@ object CFClearance {
                                                 },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
+                                            postData = if (originalRequest.method == "POST") originalRequest.body.toJSONString() else null,
                                         ),
                                     ).toRequestBody(jsonMediaType),
                         ),
