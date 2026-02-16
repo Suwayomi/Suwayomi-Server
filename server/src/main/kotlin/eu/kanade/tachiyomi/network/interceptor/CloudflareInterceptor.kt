@@ -208,9 +208,10 @@ object CFClearance {
                                                 },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                            postData = if (originalRequest.method == "POST") {
-                                                originalRequest.body?.let { encodeToString(it) }
-                                            } else null,
+                                            postData = if (originalRequest.method == "POST" && originalRequest.body is FormBody) {
+                                                Buffer().also { (originalRequest.body as FormBody).writeTo(it) }
+                                                    .readUtf8()
+                                            } else null
                                         ),
                                     ).toRequestBody(jsonMediaType),
                         ),
