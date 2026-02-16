@@ -1,6 +1,5 @@
 package eu.kanade.tachiyomi.network.interceptor
 
-import com.alibaba.fastjson2.toJSONString
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.awaitSuccess
@@ -187,7 +186,6 @@ object CFClearance {
         onlyCookies: Boolean,
     ): FlareSolverResponse {
         val timeout = serverConfig.flareSolverrTimeout.value.seconds
-
         return with(json) {
             mutex.withLock {
                 client.value
@@ -208,7 +206,7 @@ object CFClearance {
                                                 },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                            postData = if (originalRequest.method == "POST") originalRequest.body.toJSONString() else null,
+                                            postData = if (originalRequest.method == "POST") originalRequest.body?.let { encodeToString(it) } else null,
                                         ),
                                     ).toRequestBody(jsonMediaType),
                         ),
