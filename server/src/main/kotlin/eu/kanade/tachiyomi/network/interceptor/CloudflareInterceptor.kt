@@ -69,7 +69,8 @@ class CloudflareInterceptor(
                     flareResponse.solution.status in 200..299 &&
                     flareResponse.solution.response != null
                 ) {
-                    val isImage = flareResponse.solution.response.contains(CHROME_IMAGE_TEMPLATE_REGEX)
+                    val isImage =
+                        flareResponse.solution.response.contains(CHROME_IMAGE_TEMPLATE_REGEX)
                     if (!isImage) {
                         logger.debug { "Falling back to FlareSolverr response" }
 
@@ -86,7 +87,8 @@ class CloudflareInterceptor(
                 }
             }
 
-            val request = CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
+            val request =
+                CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
 
             chain.proceed(request)
         } catch (e: Exception) {
@@ -206,7 +208,9 @@ object CFClearance {
                                                 },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                            postData = if (originalRequest.method == "POST") originalRequest.body?.let { encodeToString(it) } else null,
+                                            postData = if (originalRequest.method == "POST") {
+                                                originalRequest.body?.let { encodeToString(it) }
+                                            } else null,
                                         ),
                                     ).toRequestBody(jsonMediaType),
                         ),
@@ -237,7 +241,11 @@ object CFClearance {
                                 if (!cookie.path.isNullOrEmpty()) it.path(cookie.path)
                                 // We need to convert the expires time to milliseconds for the persistent cookie store
                                 if (cookie.expires != null && cookie.expires > 0) it.expiresAt((cookie.expires * 1000).toLong())
-                                if (!cookie.domain.startsWith('.')) it.hostOnlyDomain(cookie.domain.removePrefix("."))
+                                if (!cookie.domain.startsWith('.')) it.hostOnlyDomain(
+                                    cookie.domain.removePrefix(
+                                        ".",
+                                    ),
+                                )
                             }.build()
                     }.groupBy { it.domain }
                     .flatMap { (domain, cookies) ->
