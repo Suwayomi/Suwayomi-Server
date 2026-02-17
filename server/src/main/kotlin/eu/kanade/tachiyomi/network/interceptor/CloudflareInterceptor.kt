@@ -210,10 +210,14 @@ object CFClearance {
                                                 },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                            postData = if (originalRequest.method == "POST" && originalRequest.body is FormBody) {
-                                                Buffer().also { (originalRequest.body as FormBody).writeTo(it) }
-                                                    .readUtf8()
-                                            } else null
+                                            postData =
+                                                if (originalRequest.method == "POST" && originalRequest.body is FormBody) {
+                                                    Buffer()
+                                                        .also { (originalRequest.body as FormBody).writeTo(it) }
+                                                        .readUtf8()
+                                                } else {
+                                                    null
+                                                },
                                         ),
                                     ).toRequestBody(jsonMediaType),
                         ),
@@ -244,11 +248,9 @@ object CFClearance {
                                 if (!cookie.path.isNullOrEmpty()) it.path(cookie.path)
                                 // We need to convert the expires time to milliseconds for the persistent cookie store
                                 if (cookie.expires != null && cookie.expires > 0) it.expiresAt((cookie.expires * 1000).toLong())
-                                if (!cookie.domain.startsWith('.')) it.hostOnlyDomain(
-                                    cookie.domain.removePrefix(
-                                        ".",
-                                    ),
-                                )
+                                if (!cookie.domain.startsWith('.')) {
+                                    it.hostOnlyDomain(cookie.domain.removePrefix("."))
+                                }
                             }.build()
                     }.groupBy { it.domain }
                     .flatMap { (domain, cookies) ->
