@@ -14,9 +14,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
+import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -24,6 +24,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
+import okio.Buffer
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
@@ -70,7 +71,8 @@ class CloudflareInterceptor(
                     flareResponse.solution.status in 200..299 &&
                     flareResponse.solution.response != null
                 ) {
-                    val isImage = flareResponse.solution.response.contains(CHROME_IMAGE_TEMPLATE_REGEX)
+                    val isImage =
+                        flareResponse.solution.response.contains(CHROME_IMAGE_TEMPLATE_REGEX)
                     if (!isImage) {
                         logger.debug { "Falling back to FlareSolverr response" }
 
@@ -87,7 +89,8 @@ class CloudflareInterceptor(
                 }
             }
 
-            val request = CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
+            val request =
+                CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
 
             chain.proceed(request)
         } catch (e: Exception) {
@@ -187,7 +190,6 @@ object CFClearance {
         onlyCookies: Boolean,
     ): FlareSolverResponse {
         val timeout = serverConfig.flareSolverrTimeout.value.seconds
-
         return with(json) {
             mutex.withLock {
                 client.value
@@ -198,7 +200,7 @@ object CFClearance {
                                 Json
                                     .encodeToString(
                                         FlareSolverRequest(
-                                            "request.get",
+                                            "request.${originalRequest.method.lowercase()}",
                                             originalRequest.url.toString(),
                                             session = serverConfig.flareSolverrSessionName.value,
                                             sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
@@ -208,6 +210,14 @@ object CFClearance {
                                                 },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
+                                            postData =
+                                                if (originalRequest.method == "POST" && originalRequest.body is FormBody) {
+                                                    Buffer()
+                                                        .also { (originalRequest.body as FormBody).writeTo(it) }
+                                                        .readUtf8()
+                                                } else {
+                                                    null
+                                                },
                                         ),
                                     ).toRequestBody(jsonMediaType),
                         ),
@@ -238,7 +248,9 @@ object CFClearance {
                                 if (!cookie.path.isNullOrEmpty()) it.path(cookie.path)
                                 // We need to convert the expires time to milliseconds for the persistent cookie store
                                 if (cookie.expires != null && cookie.expires > 0) it.expiresAt((cookie.expires * 1000).toLong())
-                                if (!cookie.domain.startsWith('.')) it.hostOnlyDomain(cookie.domain.removePrefix("."))
+                                if (!cookie.domain.startsWith('.')) {
+                                    it.hostOnlyDomain(cookie.domain.removePrefix("."))
+                                }
                             }.build()
                     }.groupBy { it.domain }
                     .flatMap { (domain, cookies) ->
