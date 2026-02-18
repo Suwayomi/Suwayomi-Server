@@ -16,7 +16,7 @@ graphqlkotlin = "8.8.1"
 xmlserialization = "0.91.3"
 ktlint = "1.8.0"
 koin = "4.1.1"
-moko = "0.25.2"
+moko = "0.26.0"
 
 [libraries]
 # Kotlin
