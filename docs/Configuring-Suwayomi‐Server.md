@@ -52,6 +52,7 @@ server.webUIFlavor = "WebUI" # "WebUI" or "Custom"
 server.webUIChannel = preview # "BUNDLED" or "STABLE" or "PREVIEW"
 server.webUIUpdateCheckInterval = 23
 server.webUISubpath = ""
+server.kcefEnable = true
 ```
 - `server.webUIEnabled` controls if Suwayomi will serve `Suwayomi-WebUI` and if it downloads/updates it on startup.
 - `server.initialOpenInBrowserEnabled` controls if Suwayomi will attempt to open a brwoser/electron window on startup, disabling this on headless servers is recommended.
@@ -62,6 +63,20 @@ server.webUISubpath = ""
 - `server.webUIChannel` allows to choose which update channel to use (only valid when flavor is set to "WebUI"). Use `"BUNDLED"` to use the version included in the server download, `"STABLE"` to use the latest stable release or `"PREVIEW"` to use the latest preview release (potentially buggy).
 - `server.webUIUpdateCheckInterval` the interval time in hours at which to check for updates. Use `0` to disable update checking.
 - `server.webUISubpath` controls on which sub-path the UI is served; by default, it will be accessible on `/` (i.e. directly), with this setting it can also be set to appear at e.g. `/suwayomi`
+- `server.kcefEnable` controls if KCEF WebView provider is enabled.
+
+### webView
+```
+server.kcefEnable = true
+```
+- `server.kcefEnable` controls if KCEF WebView provider is enabled.
+
+### Network
+```
+server.enableCookieApi = true
+```
+- `server.enableCookieApi = true` enables the `/api/v1/cookie` endpoint for syncing cookies from external webviews. This is useful for sources that require login via webview, as it allows the webview to share cookies with Suwayomi-Server. Or bypassing Cloudflare challenges that require a webview to solve.
+
 
 ### Downloader
 ```
