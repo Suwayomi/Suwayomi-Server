@@ -63,6 +63,13 @@ server.webUISubpath = ""
 - `server.webUIUpdateCheckInterval` the interval time in hours at which to check for updates. Use `0` to disable update checking.
 - `server.webUISubpath` controls on which sub-path the UI is served; by default, it will be accessible on `/` (i.e. directly), with this setting it can also be set to appear at e.g. `/suwayomi`
 
+### webView
+```
+server.kcefEnable = true
+```
+- `server.kcefEnable` controls if KCEF WebView provider is enabled.
+
+
 ### Downloader
 ```
 server.downloadAsCbz = true
