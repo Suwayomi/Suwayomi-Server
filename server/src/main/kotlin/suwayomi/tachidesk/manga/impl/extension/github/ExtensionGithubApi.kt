@@ -44,14 +44,18 @@ object ExtensionGithubApi {
         val baseUrl: String,
     )
 
-    suspend fun findExtensions(repo: String): List<OnlineExtension> {
+    suspend fun findExtensions(
+        repo: String,
+        libVersionMin: Double = LIB_VERSION_MIN,
+        libVersionMax: Double = LIB_VERSION_MAX,
+    ): List<OnlineExtension> {
         val response =
             client.newCall(GET(repo)).awaitSuccess()
 
         return with(json) {
             response
                 .parseAs<List<ExtensionJsonObject>>()
-                .toExtensions(repo.substringBeforeLast('/') + '/')
+                .toExtensions(repo.substringBeforeLast('/') + '/', libVersionMin, libVersionMax)
         }
     }
 
@@ -73,11 +77,15 @@ object ExtensionGithubApi {
             }.build()
     }
 
-    private fun List<ExtensionJsonObject>.toExtensions(repo: String): List<OnlineExtension> =
+    private fun List<ExtensionJsonObject>.toExtensions(
+        repo: String,
+        libVersionMin: Double,
+        libVersionMax: Double,
+    ): List<OnlineExtension> =
         this
             .filter {
                 val libVersion = it.version.substringBeforeLast('.').toDouble()
-                libVersion in LIB_VERSION_MIN..LIB_VERSION_MAX
+                libVersion in libVersionMin..libVersionMax
             }.map {
                 OnlineExtension(
                     repo = repo,
