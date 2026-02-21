@@ -96,6 +96,7 @@ object Manga {
                 updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
                 freshData = true,
                 trackers = Track.getTrackRecordsByMangaId(mangaId),
+                version = mangaEntry[MangaTable.version],
             )
         }
     }
@@ -243,6 +244,7 @@ object Manga {
         updateStrategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy]),
         freshData = false,
         trackers = Track.getTrackRecordsByMangaId(mangaId),
+        version = mangaEntry[MangaTable.version],
     )
 
     fun getMangaMetaMap(mangaId: Int): Map<String, String> =
