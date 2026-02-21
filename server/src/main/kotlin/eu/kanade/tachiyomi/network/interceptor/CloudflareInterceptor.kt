@@ -205,7 +205,8 @@ object CFClearance {
                                             session = serverConfig.flareSolverrSessionName.value,
                                             sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
                                             cookies =
-                                                network.cookieStore.get(originalRequest.url)
+                                                network.cookieStore
+                                                    .get(originalRequest.url)
                                                     .groupBy { it.name }
                                                     .filter { it.key !in CloudflareInterceptor.COOKIE_NAMES }
                                                     .values
@@ -280,7 +281,8 @@ object CFClearance {
                     }
             logger.trace { "New cookies\n${cookies.joinToString("; ")}" }
             val finalCookies =
-                network.cookieStore.get(originalRequest.url)
+                network.cookieStore
+                    .get(originalRequest.url)
                     .groupBy { it.name }
                     .values
                     .map { cookies -> cookies.maxBy { it.expiresAt } }
