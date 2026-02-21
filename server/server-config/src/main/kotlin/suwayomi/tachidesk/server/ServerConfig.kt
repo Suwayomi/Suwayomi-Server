@@ -1016,6 +1016,15 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val opdsSkipChapterMetadataFeed: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 86,
+        group = SettingGroup.OPDS,
+        privacySafe = true,
+        defaultValue = false,
+        description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader. KoSync strategies are applied, but PROMPT conflicts are ignored (treating local progress as priority)."
+
+    )
+
 
 
     /** ****************************************************************** **/

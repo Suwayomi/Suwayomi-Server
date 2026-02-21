@@ -13,4 +13,5 @@ data class OpdsChapterMetadataAcqEntry(
     val downloaded: Boolean,
     val pageCount: Int,
     val url: String?,
+    val cbzFileSize: Long? = null,
 )
