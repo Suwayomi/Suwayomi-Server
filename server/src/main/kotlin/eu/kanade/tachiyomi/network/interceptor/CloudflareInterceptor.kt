@@ -211,10 +211,18 @@ object CFClearance {
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
                                             postData =
-                                                if (originalRequest.method == "POST" && originalRequest.body is FormBody) {
-                                                    Buffer()
-                                                        .also { (originalRequest.body as FormBody).writeTo(it) }
-                                                        .readUtf8()
+                                                if (originalRequest.method == "POST") {
+                                                    when (val body = originalRequest.body) {
+                                                        is FormBody -> {
+                                                            Buffer()
+                                                                .also { body.writeTo(it) }
+                                                                .readUtf8()
+                                                        }
+
+                                                        else -> {
+                                                            ""
+                                                        }
+                                                    }
                                                 } else {
                                                     null
                                                 },
