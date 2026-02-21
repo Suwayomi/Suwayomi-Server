@@ -215,10 +215,6 @@ object CFClearance {
                                             postData =
                                                 if (originalRequest.method == "POST") {
                                                     when (val body = originalRequest.body) {
-                                                        null -> {
-                                                            ""
-                                                        }
-
                                                         is FormBody -> {
                                                             Buffer()
                                                                 .also { body.writeTo(it) }
@@ -226,37 +222,7 @@ object CFClearance {
                                                         }
 
                                                         else -> {
-                                                            val jsonElement =
-                                                                try {
-                                                                    Buffer()
-                                                                        .also { body.writeTo(it) }
-                                                                        .readUtf8()
-                                                                        .let(json::parseToJsonElement)
-                                                                } catch (_: Exception) {
-                                                                    null
-                                                                }
-
-                                                            if (jsonElement is JsonObject) {
-                                                                val formBuilder = FormBody.Builder()
-                                                                for ((key, value) in jsonElement) {
-                                                                    val stringValue =
-                                                                        when (value) {
-                                                                            is JsonPrimitive -> value.content
-
-                                                                            // url-encoded form doesn't officially support nested objects
-                                                                            else -> value.toString()
-                                                                        }
-                                                                    formBuilder.add(key, stringValue)
-                                                                }
-                                                                Buffer()
-                                                                    .also {
-                                                                        formBuilder.build().writeTo(it)
-                                                                    }.readUtf8()
-                                                            } else {
-                                                                // Fallback for failed parsing or non-object JSON
-                                                                // The FlareSolverr docs don't mention the latter case
-                                                                ""
-                                                            }
+                                                            ""
                                                         }
                                                     }
                                                 } else {
