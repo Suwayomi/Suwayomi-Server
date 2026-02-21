@@ -67,6 +67,7 @@ public class Paint {
     private int             mFlags;
     private Style           mStyle = Style.FILL;
     private float           mStrokeWidth = 1.0f;
+    private Cap             mStrokeCap = Cap.BUTT;
     private Typeface        mTypeface = Typeface.DEFAULT;
 
     private static final Object sCacheLock = new Object();
@@ -280,6 +281,7 @@ public class Paint {
 
         mStyle = Style.FILL;
         mStrokeWidth = 1.0f;
+        mStrokeCap = Cap.BUTT;
         mTypeface = Typeface.DEFAULT;
         setFlags(ANTI_ALIAS_FLAG);
     }
@@ -316,6 +318,7 @@ public class Paint {
         mFlags = paint.mFlags;
         mStyle = paint.mStyle;
         mStrokeWidth = paint.mStrokeWidth;
+        mStrokeCap = paint.mStrokeCap;
         mTypeface = paint.mTypeface;
     }
 
@@ -526,11 +529,11 @@ public class Paint {
     }
 
     public Cap getStrokeCap() {
-        throw new RuntimeException("Stub!");
+        return mStrokeCap;
     }
 
     public void setStrokeCap(Cap cap) {
-        throw new RuntimeException("Stub!");
+        mStrokeCap = cap;
     }
 
     public Join getStrokeJoin() {

@@ -111,4 +111,15 @@
     <string name="webview_label_init">Инициализируется... Пожалуйста подождите</string>
     <string name="webview_label_copy_description">Не удалось выполнить автоматическое копирование из буфера обмена, пожалуйста, используйте приведенные ниже данные для копирования значения вручную.</string>
     <string name="login_label_title">Авторизация в Suwayomi</string>
+    <string name="opds_feeds_explore_entry_content">Изучайте новые тайтлы из ваших источников</string>
+    <string name="opds_feeds_all_series_in_library_title">Все тайтлы</string>
+    <string name="opds_feeds_all_series_in_library_entry_content">Просматривайте все тайтлы, сохранённые в вашей библиотеке</string>
+    <string name="opds_feeds_library_sources_entry_content">Просматривайте все тайтлы, сохранённые в вашей библиотеке, отфильтрованные по источнику</string>
+    <string name="opds_feeds_categories_entry_content">Просматривайте тайтлы, организованные по категориям</string>
+    <string name="opds_feeds_genres_entry_content">Просматривайте тайтлы, по жанрам</string>
+    <string name="opds_feeds_status_entry_content">Просматривайте тайтлы, по статусу публикации</string>
+    <string name="opds_feeds_languages_entry_content">Просматривайте тайтлы, по языку</string>
+    <string name="opds_search_description">Ищите тайтлы в каталоге.</string>
+    <string name="opds_error_manga_not_found">Тайтл с ID %1$d не найден.</string>
+    <string name="opds_chapter_details_base">Тайтл: %1$s | %2$s</string>
 </resources>

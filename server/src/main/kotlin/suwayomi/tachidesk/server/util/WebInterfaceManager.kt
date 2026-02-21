@@ -204,12 +204,12 @@ object WebInterfaceManager {
         val tempWebUIRoot = createServableDirectory()
         val orgIndexHtml = File("$tempWebUIRoot/index.html")
 
-        if (orgIndexHtml.exists()) {
+        if (ServerSubpath.isDefined() && orgIndexHtml.exists()) {
             val originalIndexHtml = orgIndexHtml.readText()
             val subpathInjectionScript =
                 """
                 <script>
-                    "// <<suwayomi-subpath-injection>>"
+                    // <<suwayomi-subpath-injection>>
                     const baseTag = document.createElement('base');
                     baseTag.href = location.origin + "${ServerSubpath.asRootPath()}";
                     document.head.appendChild(baseTag);
@@ -243,8 +243,9 @@ object WebInterfaceManager {
         return File(tempWebUIRoot).canonicalPath
     }
 
-    private fun setServedWebUIFlavor(flavor: WebUIFlavor) {
+    private fun updateServedWebUIInfo(flavor: WebUIFlavor) {
         preferences.edit().putString(SERVED_WEBUI_FLAVOR_KEY, flavor.uiName).apply()
+        preferences.edit().putLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()).apply()
     }
 
     private fun getServedWebUIFlavor(): WebUIFlavor =
@@ -436,7 +437,7 @@ object WebInterfaceManager {
     private suspend fun setupBundledWebUI() {
         try {
             extractBundledWebUI()
-            setServedWebUIFlavor(WebUIFlavor.default)
+            updateServedWebUIInfo(WebUIFlavor.default)
             return
         } catch (e: BundledWebUIMissing) {
             logger.warn(e) { "setupBundledWebUI: fallback to downloading the version of the bundled webUI" }
@@ -479,7 +480,6 @@ object WebInterfaceManager {
         log.info { "An update is available, starting download..." }
         try {
             downloadVersion(flavor, getLatestCompatibleVersion(flavor))
-            preferences.edit().putLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()).apply()
             serveWebUI()
         } catch (e: Exception) {
             log.warn(e) { "failed due to" }
@@ -750,7 +750,7 @@ object WebInterfaceManager {
             extractDownload(webUIZipPath, applicationDirs.webUIRoot)
             log.info { "Extracting WebUI zip Done." }
 
-            setServedWebUIFlavor(flavor)
+            updateServedWebUIInfo(flavor)
 
             emitStatus(version, FINISHED, 100, immediate = true)
         } catch (e: Exception) {
