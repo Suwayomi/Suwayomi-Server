@@ -14,6 +14,7 @@ import io.javalin.apibuilder.ApiBuilder.ws
 import suwayomi.tachidesk.global.controller.GlobalMetaController
 import suwayomi.tachidesk.global.controller.SettingsController
 import suwayomi.tachidesk.global.controller.WebViewController
+import suwayomi.tachidesk.server.serverConfig
 
 object GlobalAPI {
     fun defineEndpoints() {
@@ -25,9 +26,11 @@ object GlobalAPI {
             get("about", SettingsController.about)
             get("check-update", SettingsController.checkUpdate)
         }
-        path("webview") {
-            get("", WebViewController.webview)
-            ws("", WebViewController::webviewWS)
+        if (serverConfig.kcefEnable.value) {
+            path("webview") {
+                get("", WebViewController.webview)
+                ws("", WebViewController::webviewWS)
+            }
         }
     }
 }
