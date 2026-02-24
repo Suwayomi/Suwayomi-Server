@@ -8,6 +8,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.eclipse.jetty.websocket.api.CloseStatus
 import suwayomi.tachidesk.manga.impl.update.Websocket
+import suwayomi.tachidesk.server.serverConfig
 
 object WebView : Websocket<String>() {
     private val logger = KotlinLogging.logger {}
@@ -19,7 +20,7 @@ object WebView : Websocket<String>() {
             clients.forEach { it.value.closeSession(CloseStatus(1001, "Other client connected")) }
             clients.clear()
         }
-        if (driver == null) {
+        if (driver == null && serverConfig.kcefEnable.value) {
             driver = KcefWebView()
         }
         super.addClient(ctx)
