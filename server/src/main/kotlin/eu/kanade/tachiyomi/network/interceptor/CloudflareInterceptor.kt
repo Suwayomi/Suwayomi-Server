@@ -80,6 +80,8 @@ class CloudflareInterceptor(
         val host = originalRequest.url.host
 
         while (true) {
+            if (chain.call().isCanceled()) throw IOException("Canceled")
+
             val myFuture = CompletableFuture<CFClearance.Result>()
             val inflightRequest = CFClearance.inflightCalls.putIfAbsent(host, myFuture)
 
@@ -87,7 +89,7 @@ class CloudflareInterceptor(
             if (awaitInflightResult) {
                 logger.debug { "Waiting for inflight call for host $host" }
 
-                when (val result = awaitInflightResult(inflightRequest)) {
+                when (val result = awaitInflightResult(inflightRequest, chain)) {
                     is CFClearance.Result.CloudflareBypassed -> {
                         val request =
                             CFClearance.buildRequestWithStoredCookies(
@@ -185,10 +187,15 @@ class CloudflareInterceptor(
         return chain.proceed(request)
     }
 
-    private fun awaitInflightResult(future: CompletableFuture<CFClearance.Result>): CFClearance.Result {
+    private fun awaitInflightResult(
+        future: CompletableFuture<CFClearance.Result>,
+        chain: Interceptor.Chain,
+    ): CFClearance.Result {
         while (true) {
+            if (chain.call().isCanceled()) throw IOException("Canceled")
+
             try {
-                return future.get()
+                return future.get(500.milliseconds.inWholeMilliseconds, TimeUnit.MILLISECONDS)
             } catch (_: TimeoutException) {
                 continue
             } catch (e: ExecutionException) {
