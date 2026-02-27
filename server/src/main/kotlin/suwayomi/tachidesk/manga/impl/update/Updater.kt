@@ -64,7 +64,7 @@ class Updater : IUpdater {
     @Deprecated("Replaced with updates", replaceWith = ReplaceWith("updates"))
     override val status = statusFlow.onStart { emit(getStatusDeprecated(null)) }
 
-    private val failedMangaBySourceAndError = ConcurrentHashMap<MangaDataClass,String>()
+    private val failedMangaBySourceAndError = ConcurrentHashMap<MangaDataClass, String>()
 
     private val updatesFlow = MutableSharedFlow<UpdateUpdates>()
     override val updates = updatesFlow.onStart { emit(getUpdates(addInitial = true)) }
@@ -336,19 +336,19 @@ class Updater : IUpdater {
 
         if (wasLastJob) {
             updateStatus(isRunning = false)
-            writeUpdateErrorsToFile();
+            writeUpdateErrorsToFile()
         }
     }
 
     private fun writeUpdateErrorsToFile() {
         if (failedMangaBySourceAndError.isEmpty()) return
 
-        val mangaBySource = HashMap<String,HashMap<String, List<MangaDataClass>>>()
+        val mangaBySource = HashMap<String, HashMap<String, List<MangaDataClass>>>()
 
         failedMangaBySourceAndError.forEach { (manga, error) ->
             val sourceId = manga.sourceId.toLongOrNull()
             var sourceName = "Unknown Source"
-            if(sourceId != null) {
+            if (sourceId != null) {
                 sourceName = Source.getSource(sourceId)?.name ?: sourceName
             }
 
@@ -364,7 +364,7 @@ class Updater : IUpdater {
         mangaBySource.forEach { (source, errors) ->
             errorFile.appendText("Source: $source\n")
             errors.forEach { (error, manga) ->
-                val prettierError = error.replace("\r"," ").replace("\n", " ")
+                val prettierError = error.replace("\r", " ").replace("\n", " ")
                 errorFile.appendText("\tError: $prettierError\n")
                 manga.forEach {
                     errorFile.appendText("\t\t${it.title} (id: ${it.id})\n")
