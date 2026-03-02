@@ -22,6 +22,11 @@ object SystemTray {
     private var instance: SystemTray? = null
 
     fun create() {
+        if (!isSupportedEnvironment()) {
+            logger.warn { "System tray disabled on this environment" }
+            return
+        }
+
         instance =
             try {
                 // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
@@ -70,5 +75,17 @@ object SystemTray {
     fun remove() {
         instance?.remove()
         instance = null
+    }
+
+    private fun isSupportedEnvironment(): Boolean {
+        val osName = System.getProperty("os.name")?.lowercase() ?: ""
+        if (osName.contains("linux")) {
+            val sessionType = System.getenv("XDG_SESSION_TYPE")?.lowercase()
+            val waylandDisplay = System.getenv("WAYLAND_DISPLAY")
+            if (sessionType == "wayland" || !waylandDisplay.isNullOrEmpty()) {
+                return false
+            }
+        }
+        return true
     }
 }
