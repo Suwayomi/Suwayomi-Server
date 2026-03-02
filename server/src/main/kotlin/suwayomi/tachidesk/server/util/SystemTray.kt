@@ -33,8 +33,9 @@ object SystemTray {
 
                 CacheUtil.clear(BuildConfig.NAME)
 
-                if (System.getProperty("os.name").startsWith("Mac")) {
-                    SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
+                val forcedTrayType = resolveForcedTrayType()
+                if (forcedTrayType != null) {
+                    SystemTray.FORCE_TRAY_TYPE = forcedTrayType
                 }
 
                 val systemTray = SystemTray.get(BuildConfig.NAME)
@@ -70,5 +71,23 @@ object SystemTray {
     fun remove() {
         instance?.remove()
         instance = null
+    }
+
+    private fun resolveForcedTrayType(): SystemTray.TrayType? {
+        val osName = System.getProperty("os.name")?.lowercase() ?: ""
+
+        if (osName.startsWith("mac")) {
+            return SystemTray.TrayType.Awt
+        }
+
+        if (osName.contains("linux")) {
+            val sessionType = System.getenv("XDG_SESSION_TYPE")?.lowercase()
+            val waylandDisplay = System.getenv("WAYLAND_DISPLAY")
+            if (sessionType == "wayland" || !waylandDisplay.isNullOrEmpty()) {
+                return SystemTray.TrayType.Swing
+            }
+        }
+
+        return null
     }
 }
