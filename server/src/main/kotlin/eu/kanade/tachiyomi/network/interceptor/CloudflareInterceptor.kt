@@ -15,6 +15,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNames
 import okhttp3.Cookie
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -44,7 +45,19 @@ class CloudflareInterceptor(
         val originalResponse = chain.proceed(originalRequest)
 
         // Check if Cloudflare anti-bot is on
-        if (!(originalResponse.code in ERROR_CODES && originalResponse.header("Server") in SERVER_CHECK)) {
+        val isCloudflareChallenge =
+            originalResponse.code in ERROR_CODES && originalResponse.header("Server") in SERVER_CHECK
+
+        // Some sites serve bot challenges as HTTP 200 behind Cloudflare (e.g. vShield/BalooPow)
+        val isNonStandardChallenge =
+            !isCloudflareChallenge &&
+                originalResponse.code == 200 &&
+                originalResponse.header("Server") in SERVER_CHECK &&
+                originalResponse.peekBody(8192).string().let { body ->
+                    CHALLENGE_MARKERS.any { marker -> marker in body }
+                }
+
+        if (!isCloudflareChallenge && !isNonStandardChallenge) {
             return originalResponse
         }
 
@@ -76,7 +89,8 @@ class CloudflareInterceptor(
                     if (!isImage) {
                         logger.debug { "Falling back to FlareSolverr response" }
 
-                        setUserAgent(flareResponse.solution.userAgent)
+                        // Save cookies from FlareSolverr so subsequent requests can bypass
+                        CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
 
                         return originalResponse
                             .newBuilder()
@@ -105,6 +119,7 @@ class CloudflareInterceptor(
         private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
         private val COOKIE_NAMES = listOf("cf_clearance")
         private val CHROME_IMAGE_TEMPLATE_REGEX = Regex("""<title>(.*?) \(\d+×\d+\)</title>""")
+        private val CHALLENGE_MARKERS = listOf("_vShield_v=", "balooPow", "ddosmitigation")
     }
 }
 
@@ -157,6 +172,7 @@ object CFClearance {
         val value: String,
         val domain: String,
         val path: String? = null,
+        @JsonNames("expiry")
         val expires: Double? = null,
         val size: Int? = null,
         val httpOnly: Boolean? = null,
@@ -255,7 +271,11 @@ object CFClearance {
                                 if (cookie.secure != null && cookie.secure) it.secure()
                                 if (!cookie.path.isNullOrEmpty()) it.path(cookie.path)
                                 // We need to convert the expires time to milliseconds for the persistent cookie store
-                                if (cookie.expires != null && cookie.expires > 0) it.expiresAt((cookie.expires * 1000).toLong())
+                                if (cookie.expires != null && cookie.expires > 0) {
+                                    it.expiresAt((cookie.expires * 1000).toLong())
+                                } else {
+                                    it.expiresAt(Long.MAX_VALUE)
+                                }
                                 if (!cookie.domain.startsWith('.')) {
                                     it.hostOnlyDomain(cookie.domain.removePrefix("."))
                                 }
