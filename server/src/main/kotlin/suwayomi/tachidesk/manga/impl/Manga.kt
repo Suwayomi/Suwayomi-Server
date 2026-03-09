@@ -18,6 +18,7 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HttpStatus
+import kotlinx.coroutines.Dispatchers
 import okhttp3.CacheControl
 import okhttp3.Response
 import org.jetbrains.exposed.dao.id.EntityID
@@ -40,6 +41,7 @@ import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
+import suwayomi.tachidesk.manga.impl.util.storage.StorageScanner
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
@@ -51,15 +53,18 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
+import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger { }
 
 object Manga {
+    private val storageScanner = StorageScanner()
     suspend fun getManga(
         mangaId: Int,
         onlineFetch: Boolean = false,
@@ -176,6 +181,10 @@ object Manga {
         return sManga
     }
 
+    suspend fun getMangaStorageFolderStats(mangaId: Int): String = withContext(Dispatchers.IO) {
+        return@withContext storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
+    }
+
     suspend fun getMangaFull(
         mangaId: Int,
         onlineFetch: Boolean = false,
@@ -195,6 +204,8 @@ object Manga {
                     .where { (ChapterTable.manga eq mangaId) and (ChapterTable.isDownloaded eq true) }
                     .count()
 
+            val donwloadSize =  storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
+
             val chapterCount =
                 ChapterTable
                     .selectAll()
@@ -210,6 +221,7 @@ object Manga {
 
             mangaDaaClass.unreadCount = unreadCount
             mangaDaaClass.downloadCount = downloadCount
+            mangaDaaClass.donwloadSize = donwloadSize
             mangaDaaClass.chapterCount = chapterCount
             mangaDaaClass.lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) }
 
