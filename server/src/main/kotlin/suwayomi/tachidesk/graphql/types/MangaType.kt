@@ -44,6 +44,7 @@ class MangaType(
     val realUrl: String?,
     var lastFetchedAt: Long?, // todo
     var chaptersLastFetchedAt: Long?, // todo
+    var downloadSize: String?,
 ) : Node {
     companion object {
         fun clearCacheFor(
@@ -104,6 +105,7 @@ class MangaType(
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
         row[MangaTable.chaptersLastFetchedAt],
+        null,
     )
 
     constructor(dataClass: MangaDataClass) : this(
@@ -125,9 +127,13 @@ class MangaType(
         dataClass.realUrl,
         dataClass.lastFetchedAt,
         dataClass.chaptersLastFetchedAt,
+        dataClass.donwloadSize,
     )
 
     fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
+        dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
+
+    fun downloadSize(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<String> =
         dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
 
     fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
