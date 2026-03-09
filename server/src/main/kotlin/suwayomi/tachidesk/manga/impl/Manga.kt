@@ -18,7 +18,6 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HttpStatus
-import kotlinx.coroutines.Dispatchers
 import okhttp3.CacheControl
 import okhttp3.Response
 import org.jetbrains.exposed.dao.id.EntityID
@@ -59,7 +58,6 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
-import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger { }
 
@@ -181,8 +179,8 @@ object Manga {
         return sManga
     }
 
-    suspend fun getMangaStorageFolderStats(mangaId: Int): String = withContext(Dispatchers.IO) {
-        return@withContext storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
+    fun getMangaStorageFolderStats(mangaId: Int): String  {
+        return storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
     }
 
     suspend fun getMangaFull(

@@ -17,6 +17,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
@@ -44,7 +45,6 @@ class MangaType(
     val realUrl: String?,
     var lastFetchedAt: Long?, // todo
     var chaptersLastFetchedAt: Long?, // todo
-    var downloadSize: String?,
 ) : Node {
     companion object {
         fun clearCacheFor(
@@ -105,7 +105,6 @@ class MangaType(
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
         row[MangaTable.chaptersLastFetchedAt],
-        null,
     )
 
     constructor(dataClass: MangaDataClass) : this(
@@ -127,14 +126,16 @@ class MangaType(
         dataClass.realUrl,
         dataClass.lastFetchedAt,
         dataClass.chaptersLastFetchedAt,
-        dataClass.donwloadSize,
     )
 
     fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
 
-    fun downloadSize(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<String> =
-        dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
+    fun downloadSize(mangaId: Int): CompletableFuture<String> {
+        return CompletableFuture.supplyAsync {
+            Manga.getMangaStorageFolderStats(mangaId);
+        }
+    }
 
     fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader("UnreadChapterCountForMangaDataLoader", id)
