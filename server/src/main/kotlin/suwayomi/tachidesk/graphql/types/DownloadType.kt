@@ -46,8 +46,8 @@ data class DirectoryStats(
     val folderSize: Long,
     val folderSizePretty: String,
     val availableSpace: Long,
-    val availableSpacePretty: String
-){
+    val availableSpacePretty: String,
+) {
     constructor(directoryStats: DirectoryStats) : this(
         directoryStats.folderSize,
         directoryStats.folderSizePretty,
