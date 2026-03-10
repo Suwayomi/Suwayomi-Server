@@ -179,7 +179,7 @@ object Manga {
         return sManga
     }
 
-    fun getMangaStorageFolderStats(mangaId: Int): String  {
+    fun getMangaStorageFolderStats(mangaId: Int): String {
         return storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
     }
 
@@ -202,7 +202,7 @@ object Manga {
                     .where { (ChapterTable.manga eq mangaId) and (ChapterTable.isDownloaded eq true) }
                     .count()
 
-            val donwloadSize =  storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
+            val donwloadSize = storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
 
             val chapterCount =
                 ChapterTable

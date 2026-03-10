@@ -133,7 +133,7 @@ class MangaType(
 
     fun downloadSize(mangaId: Int): CompletableFuture<String> {
         return CompletableFuture.supplyAsync {
-            Manga.getMangaStorageFolderStats(mangaId);
+            Manga.getMangaStorageFolderStats(mangaId)
         }
     }
 
