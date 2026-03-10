@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.manga.impl.download.model
 
+import suwayomi.tachidesk.manga.impl.util.storage.DirectoryStats
+
 /*
  * Copyright (C) Contributors to the Suwayomi project
  *
@@ -20,6 +22,7 @@ data class OldDownloadStatus(
 data class DownloadStatus(
     val status: Status,
     val queue: List<DownloadQueueItem>,
+    val directoryStats: DirectoryStats,
 )
 
 data class DownloadUpdates(
