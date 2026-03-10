@@ -23,12 +23,14 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.model.Status
+import suwayomi.tachidesk.manga.impl.util.storage.DirectoryStats
 import java.util.concurrent.CompletableFuture
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownloadState
 
 data class DownloadStatus(
     val state: DownloaderState,
     val queue: List<DownloadType>,
+    val directoryStats: DirectoryStats,
 ) {
     constructor(downloadStatus: DownloadStatus) : this(
         when (downloadStatus.status) {
@@ -36,6 +38,7 @@ data class DownloadStatus(
             Status.Started -> DownloaderState.STARTED
         },
         downloadStatus.queue.map { DownloadType(it) },
+        directoryStats = downloadStatus.directoryStats,
     )
 }
 
