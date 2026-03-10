@@ -46,8 +46,11 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.manga.impl.util.storage.StorageScanner
+import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CopyOnWriteArraySet
@@ -63,6 +66,8 @@ object DownloadManager {
     private val downloadQueue = CopyOnWriteArrayList<DownloadQueueItem>()
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
     private val downloaders = ConcurrentHashMap<Long, Downloader>()
+    private val storageScanner = StorageScanner()
+    private val applicationDirs: ApplicationDirs by injectLazy()
 
     private const val DOWNLOAD_QUEUE_KEY = "downloadQueueKey"
     private val sharedPreferences =
@@ -222,6 +227,7 @@ object DownloadManager {
                 Status.Stopped
             },
             downloadQueue.toList(),
+            directoryStats = storageScanner.getDirectoryStats(applicationDirs.downloadsRoot),
         )
 
     fun getOldStatus(status: DownloadStatus): OldDownloadStatus =

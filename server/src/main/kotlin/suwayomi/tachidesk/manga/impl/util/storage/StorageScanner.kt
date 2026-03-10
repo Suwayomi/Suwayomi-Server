@@ -5,7 +5,6 @@ import okio.Path
 import okio.Path.Companion.toPath
 
 class StorageScanner(private val fileSystem: FileSystem = FileSystem.SYSTEM) {
-
     /**
      * Devuelve un par con (Tamaño de carpeta, Espacio disponible en disco) en Bytes.
      */
@@ -25,7 +24,6 @@ class StorageScanner(private val fileSystem: FileSystem = FileSystem.SYSTEM) {
     fun getFolderSize(directoryPath: String): Long = calculateSize(directoryPath.toPath())
 
     fun getFolderSizePretty(directoryPath: String): String = formatBytes(getFolderSize(directoryPath))
-
 
     private fun calculateSize(path: Path): Long {
         return try {
