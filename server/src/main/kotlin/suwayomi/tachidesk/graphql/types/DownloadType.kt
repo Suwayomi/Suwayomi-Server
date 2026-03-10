@@ -30,7 +30,7 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownlo
 data class DownloadStatus(
     val state: DownloaderState,
     val queue: List<DownloadType>,
-    val directoryStats: DirectoryStats,
+    val directoryStats: suwayomi.tachidesk.graphql.types.DirectoryStats,
 ) {
     constructor(downloadStatus: DownloadStatus) : this(
         when (downloadStatus.status) {
@@ -38,7 +38,21 @@ data class DownloadStatus(
             Status.Started -> DownloaderState.STARTED
         },
         downloadStatus.queue.map { DownloadType(it) },
-        directoryStats = downloadStatus.directoryStats,
+        DirectoryStats(downloadStatus.directoryStats),
+    )
+}
+
+data class DirectoryStats(
+    val folderSize: Long,
+    val folderSizePretty: String,
+    val availableSpace: Long,
+    val availableSpacePretty: String
+){
+    constructor(directoryStats: DirectoryStats) : this(
+        directoryStats.folderSize,
+        directoryStats.folderSizePretty,
+        directoryStats.availableSpace,
+        directoryStats.availableSpacePretty,
     )
 }
 
