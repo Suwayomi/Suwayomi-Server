@@ -22,6 +22,11 @@ object SystemTray {
     private var instance: SystemTray? = null
 
     fun create() {
+        if (!isSupportedEnvironment()) {
+            logger.warn { "System tray disabled on this environment" }
+            return
+        }
+
         instance =
             try {
                 // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
@@ -33,12 +38,15 @@ object SystemTray {
 
                 CacheUtil.clear(BuildConfig.NAME)
 
-                val forcedTrayType = resolveForcedTrayType()
-                if (forcedTrayType != null) {
-                    SystemTray.FORCE_TRAY_TYPE = forcedTrayType
+                if (System.getProperty("os.name").startsWith("Mac")) {
+                    SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
                 }
 
                 val systemTray = SystemTray.get(BuildConfig.NAME)
+                if (systemTray == null) {
+                    logger.warn { "System tray not supported; disabling tray" }
+                    return null
+                }
                 val mainMenu = systemTray.menu
 
                 mainMenu.add(
@@ -73,21 +81,15 @@ object SystemTray {
         instance = null
     }
 
-    private fun resolveForcedTrayType(): SystemTray.TrayType? {
+    private fun isSupportedEnvironment(): Boolean {
         val osName = System.getProperty("os.name")?.lowercase() ?: ""
-
-        if (osName.startsWith("mac")) {
-            return SystemTray.TrayType.Awt
-        }
-
         if (osName.contains("linux")) {
             val sessionType = System.getenv("XDG_SESSION_TYPE")?.lowercase()
             val waylandDisplay = System.getenv("WAYLAND_DISPLAY")
             if (sessionType == "wayland" || !waylandDisplay.isNullOrEmpty()) {
-                return SystemTray.TrayType.Swing
+                return false
             }
         }
-
-        return null
+        return true
     }
 }
