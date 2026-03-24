@@ -22,11 +22,6 @@ object SystemTray {
     private var instance: SystemTray? = null
 
     fun create() {
-        if (!isSupportedEnvironment()) {
-            logger.warn { "System tray disabled on this environment" }
-            return
-        }
-
         instance =
             try {
                 // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
@@ -38,8 +33,8 @@ object SystemTray {
 
                 CacheUtil.clear(BuildConfig.NAME)
 
-                if (System.getProperty("os.name").startsWith("Mac")) {
-                    SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
+                resolveForcedTrayType()?.let { forcedType ->
+                    SystemTray.FORCE_TRAY_TYPE = forcedType
                 }
 
                 val systemTray = SystemTray.get(BuildConfig.NAME)
@@ -81,15 +76,29 @@ object SystemTray {
         instance = null
     }
 
-    private fun isSupportedEnvironment(): Boolean {
+    private fun resolveForcedTrayType(): SystemTray.TrayType? {
         val osName = System.getProperty("os.name")?.lowercase() ?: ""
+
+        if (osName.startsWith("mac")) {
+            return SystemTray.TrayType.Awt
+        }
+
         if (osName.contains("linux")) {
             val sessionType = System.getenv("XDG_SESSION_TYPE")?.lowercase()
             val waylandDisplay = System.getenv("WAYLAND_DISPLAY")
-            if (sessionType == "wayland" || !waylandDisplay.isNullOrEmpty()) {
-                return false
+            val isWayland = sessionType == "wayland" || !waylandDisplay.isNullOrEmpty()
+
+            if (isWayland) {
+                val currentDesktop = System.getenv("XDG_CURRENT_DESKTOP")?.lowercase().orEmpty()
+                val desktopSession = System.getenv("DESKTOP_SESSION")?.lowercase().orEmpty()
+                val isGnome = currentDesktop.contains("gnome") || desktopSession.contains("gnome")
+
+                if (isGnome) {
+                    return SystemTray.TrayType.AppIndicator
+                }
             }
         }
-        return true
+
+        return null
     }
 }
