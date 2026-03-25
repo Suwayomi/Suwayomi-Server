@@ -8,7 +8,7 @@ package suwayomi.tachidesk.server.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import dorkbox.systemTray.MenuItem
-import dorkbox.systemTray.SystemTray
+import dorkbox.systemTray.SystemTray as DorkboxSystemTray
 import dorkbox.util.CacheUtil
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.server.ServerConfig
@@ -19,56 +19,56 @@ import suwayomi.tachidesk.server.util.ExitCode.Success
 
 object SystemTray {
     private val logger = KotlinLogging.logger { }
-    private var instance: SystemTray? = null
+    private var instance: DorkboxSystemTray? = null
 
     fun create() {
-        instance =
-            try {
-                // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
-                serverConfig.subscribeTo(
-                    serverConfig.debugLogsEnabled,
-                    { debugLogsEnabled -> SystemTray.DEBUG = debugLogsEnabled },
-                    ignoreInitialValue = false,
-                )
+        try {
+            // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
+            serverConfig.subscribeTo(
+                serverConfig.debugLogsEnabled,
+                { debugLogsEnabled -> DorkboxSystemTray.DEBUG = debugLogsEnabled },
+                ignoreInitialValue = false,
+            )
 
-                CacheUtil.clear(BuildConfig.NAME)
+            CacheUtil.clear(BuildConfig.NAME)
 
-                resolveForcedTrayType()?.let { forcedType ->
-                    SystemTray.FORCE_TRAY_TYPE = forcedType
-                }
+            val forcedTrayType = resolveForcedTrayType()
+            logger.debug { "SystemTray resolved tray type: ${forcedTrayType ?: "AutoDetect"}" }
+            forcedTrayType?.let { DorkboxSystemTray.FORCE_TRAY_TYPE = it }
 
-                val systemTray = SystemTray.get(BuildConfig.NAME)
-                if (systemTray == null) {
-                    logger.warn { "System tray not supported; disabling tray" }
-                    return null
-                }
-                val mainMenu = systemTray.menu
-
-                mainMenu.add(
-                    MenuItem(
-                        "Open Suwayomi",
-                    ) {
-                        openInBrowser()
-                    },
-                )
-
-                val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
-
-                // systemTray.setTooltip("Tachidesk")
-                systemTray.setImage(icon)
-                // systemTray.status = "No Mail"
-
-                mainMenu.add(
-                    MenuItem("Quit") {
-                        shutdownApp(Success)
-                    },
-                )
-
-                systemTray
-            } catch (e: Exception) {
-                logger.error(e) { "create: failed to create SystemTray due to" }
-                null
+            val systemTray = DorkboxSystemTray.get(BuildConfig.NAME)
+            if (systemTray == null) {
+                logger.warn { "System tray not supported; disabling tray" }
+                instance = null
+                return
             }
+            val mainMenu = systemTray.menu
+
+            mainMenu.add(
+                MenuItem(
+                    "Open Suwayomi",
+                ) {
+                    openInBrowser()
+                },
+            )
+
+            val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
+
+            // systemTray.setTooltip("Tachidesk")
+            systemTray.setImage(icon)
+            // systemTray.status = "No Mail"
+
+            mainMenu.add(
+                MenuItem("Quit") {
+                    shutdownApp(Success)
+                },
+            )
+
+            instance = systemTray
+        } catch (e: Exception) {
+            logger.error(e) { "create: failed to create SystemTray due to" }
+            instance = null
+        }
     }
 
     fun remove() {
@@ -76,11 +76,11 @@ object SystemTray {
         instance = null
     }
 
-    private fun resolveForcedTrayType(): SystemTray.TrayType? {
+    private fun resolveForcedTrayType(): DorkboxSystemTray.TrayType? {
         val osName = System.getProperty("os.name")?.lowercase() ?: ""
 
         if (osName.startsWith("mac")) {
-            return SystemTray.TrayType.Awt
+            return DorkboxSystemTray.TrayType.Awt
         }
 
         if (osName.contains("linux")) {
@@ -94,7 +94,7 @@ object SystemTray {
                 val isGnome = currentDesktop.contains("gnome") || desktopSession.contains("gnome")
 
                 if (isGnome) {
-                    return SystemTray.TrayType.AppIndicator
+                    return DorkboxSystemTray.TrayType.AppIndicator
                 }
             }
         }
