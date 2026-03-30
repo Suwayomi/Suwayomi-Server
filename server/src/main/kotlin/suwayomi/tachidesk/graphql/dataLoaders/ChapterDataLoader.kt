@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
@@ -94,15 +95,27 @@ class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val unreadChapterCountByMangaId =
+
+                    // Load excluded scanlators once per batch of manga IDs
+                    val excludedScanlatorsByMangaId = loadExcludedScanlators(ids)
+
+                    // Fetch all unread chapters for these manga and filter by scanlator
+                    val unreadChaptersByMangaId =
                         ChapterTable
-                            .select(ChapterTable.manga, ChapterTable.isRead.count())
+                            .selectAll()
                             .where {
                                 (ChapterTable.manga inList ids) and
                                     (ChapterTable.isRead eq false)
-                            }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isRead.count()] }
-                    ids.map { unreadChapterCountByMangaId[it]?.toInt() ?: 0 }
+                            }.groupBy { it[ChapterTable.manga].value }
+                            .mapValues { (mangaId, rows) ->
+                                val excluded = excludedScanlatorsByMangaId[mangaId].orEmpty()
+                                rows.count { row ->
+                                    val scanlator = row[ChapterTable.scanlator]
+                                    scanlator == null || scanlator !in excluded
+                                }
+                            }
+
+                    ids.map { mangaId -> unreadChaptersByMangaId[mangaId] ?: 0 }
                 }
             }
         }
@@ -245,13 +258,32 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?>
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val firstUnreadChaptersByMangaId =
+
+                    // Load excluded scanlators once per batch of manga IDs
+                    val excludedScanlatorsByMangaId = loadExcludedScanlators(ids)
+
+                    // Get unread chapters ordered by sourceOrder, grouped per manga
+                    val unreadChaptersByMangaId =
                         ChapterTable
                             .selectAll()
-                            .where { (ChapterTable.manga inList ids) and (ChapterTable.isRead eq false) }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
+                            .where {
+                                (ChapterTable.manga inList ids) and
+                                    (ChapterTable.isRead eq false)
+                            }.orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
                             .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> firstUnreadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+
+                    ids.map { mangaId ->
+                        val excluded = excludedScanlatorsByMangaId[mangaId].orEmpty()
+
+                        val firstRow =
+                            unreadChaptersByMangaId[mangaId]
+                                ?.firstOrNull { row ->
+                                    val scanlator = row[ChapterTable.scanlator]
+                                    scanlator == null || scanlator !in excluded
+                                }
+
+                        firstRow?.let { ChapterType(it) }
+                    }
                 }
             }
         }
@@ -279,4 +311,43 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
                 }
             }
         }
+}
+
+private const val EXCLUDED_SCANLATORS_KEY = "webUI_excludedScanlators"
+
+private fun loadExcludedScanlators(mangaIds: List<Int>): Map<Int, Set<String>> {
+    if (mangaIds.isEmpty()) return emptyMap()
+
+    val rowsByMangaId =
+        MangaMetaTable
+            .selectAll()
+            .where {
+                (MangaMetaTable.ref inList mangaIds) and
+                    (MangaMetaTable.key eq EXCLUDED_SCANLATORS_KEY)
+            }.groupBy { it[MangaMetaTable.ref].value }
+
+    return rowsByMangaId.mapValues { (_, rows) ->
+        rows
+            .flatMap { row -> parseExcludedScanlators(row[MangaMetaTable.value]).asIterable() }
+            .toSet()
+    }
+}
+
+//  Parse the JSON-encoded array of scanlator names written by the WebUI
+
+private fun parseExcludedScanlators(raw: String?): Set<String> {
+    if (raw.isNullOrBlank()) return emptySet()
+
+    val trimmed = raw.trim()
+    if (trimmed.length < 2 || trimmed.first() != '[' || trimmed.last() != ']') {
+        return emptySet()
+    }
+
+    return trimmed
+        .substring(1, trimmed.length - 1) // drop [ and ]
+        .split(',')
+        .mapNotNull { token ->
+            val value = token.trim().trim('"')
+            if (value.isNotEmpty()) value else null
+        }.toSet()
 }
