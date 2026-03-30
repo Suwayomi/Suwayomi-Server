@@ -76,6 +76,7 @@ class MangaType(
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestFetchedChapterForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestUploadedChapterForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("FirstUnreadChapterForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, List<String>>("ExcludedScanlatorsForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment
                 .getDataLoader<Int, ChapterNodeList>(
                     "ChaptersForMangaDataLoader",
@@ -174,6 +175,9 @@ class MangaType(
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<MangaMetaType>> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader", id)
 
+    fun excludedScanlators(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<String>> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, List<String>>("ExcludedScanlatorsForMangaDataLoader", id)
+    
     fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader", id)
 
@@ -183,6 +187,7 @@ class MangaType(
     fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForMangaIdDataLoader", id)
 }
+
 
 data class MangaNodeList(
     override val nodes: List<MangaType>,

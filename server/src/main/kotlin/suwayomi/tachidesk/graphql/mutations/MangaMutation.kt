@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import graphql.schema.DataFetchingEnvironment
 import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.sql.LikePattern
 import org.jetbrains.exposed.sql.Op
@@ -17,6 +18,7 @@ import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
+import suwayomi.tachidesk.graphql.dataLoaders.EXCLUDED_SCANLATORS_META_KEY
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -366,4 +368,40 @@ class MangaMutation {
             DeleteMangaMetasPayload(clientMutationId, allDeletedMetas, mangas)
         }
     }
+    data class SetMangaExcludedScanlatorsInput(
+        val clientMutationId: String? = null,
+        val id: Int,
+        val excludedScanlators: List<String>,
+    )
+
+    data class SetMangaExcludedScanlatorsPayload(
+        val clientMutationId: String?,
+        val manga: MangaType,
+    )
+
+    @RequireAuth
+    fun setMangaExcludedScanlators(
+        input: SetMangaExcludedScanlatorsInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<SetMangaExcludedScanlatorsPayload?> {
+        val (clientMutationId, id, excludedScanlators) = input
+
+        return asDataFetcherResult {
+            val value = buildString {
+                append('[')
+                append(excludedScanlators.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" })
+                append(']')
+            }
+
+            Manga.modifyMangaMeta(id, EXCLUDED_SCANLATORS_META_KEY, value)
+            MangaType.clearCacheFor(id, dataFetchingEnvironment)
+
+            val manga = transaction {
+                MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
+            }
+
+            SetMangaExcludedScanlatorsPayload(clientMutationId, manga)
+        }
+    }
 }
+
