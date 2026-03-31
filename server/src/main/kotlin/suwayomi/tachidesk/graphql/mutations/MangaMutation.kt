@@ -369,29 +369,65 @@ class MangaMutation {
         }
     }
 
-    data class SetMangaExcludedScanlatorsInput(
-        val clientMutationId: String? = null,
-        val id: Int,
-        val excludedScanlators: List<String>,
+    // ── Excluded Scanlators ──────────────────────────────────────────────────
+
+    data class UpdateMangaExcludedScanlatorsPatch(
+        val addExcludedScanlator: List<String>? = null,
+        val removeExcludedScanlator: List<String>? = null,
+        val clearExcludedScanlators: Boolean? = null,
     )
 
-    data class SetMangaExcludedScanlatorsPayload(
+    data class UpdateMangaExcludedScanlatorsInput(
+        val clientMutationId: String? = null,
+        val id: Int,
+        val patch: UpdateMangaExcludedScanlatorsPatch,
+    )
+
+    data class UpdateMangaExcludedScanlatorsPayload(
         val clientMutationId: String?,
         val manga: MangaType,
     )
 
     @RequireAuth
-    fun setMangaExcludedScanlators(
-        input: SetMangaExcludedScanlatorsInput,
+    fun updateMangaExcludedScanlators(
+        input: UpdateMangaExcludedScanlatorsInput,
         dataFetchingEnvironment: DataFetchingEnvironment,
-    ): DataFetcherResult<SetMangaExcludedScanlatorsPayload?> {
-        val (clientMutationId, id, excludedScanlators) = input
+    ): DataFetcherResult<UpdateMangaExcludedScanlatorsPayload?> {
+        val (clientMutationId, id, patch) = input
 
         return asDataFetcherResult {
+            // 1. Load current set from meta
+            val current =
+                transaction {
+                    MangaMetaTable
+                        .selectAll()
+                        .where { (MangaMetaTable.ref eq id) and (MangaMetaTable.key eq EXCLUDED_SCANLATORS_META_KEY) }
+                        .firstOrNull()
+                        ?.get(MangaMetaTable.value)
+                }.let { raw ->
+                    if (raw.isNullOrEmpty()) {
+                        mutableSetOf()
+                    } else {
+                        raw
+                            .trimStart('[')
+                            .trimEnd(']')
+                            .split(",")
+                            .map { it.trim().removeSurrounding("\"") }
+                            .filter { it.isNotEmpty() }
+                            .toMutableSet()
+                    }
+                }
+
+            // 2. Apply patch operations in order: clear → add → remove
+            if (patch.clearExcludedScanlators == true) current.clear()
+            patch.addExcludedScanlator?.let { current.addAll(it) }
+            patch.removeExcludedScanlator?.let { current.removeAll(it.toSet()) }
+
+            // 3. Serialize back to JSON array string and persist
             val value =
                 buildString {
                     append('[')
-                    append(excludedScanlators.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" })
+                    append(current.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" })
                     append(']')
                 }
 
@@ -403,7 +439,7 @@ class MangaMutation {
                     MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
                 }
 
-            SetMangaExcludedScanlatorsPayload(clientMutationId, manga)
+            UpdateMangaExcludedScanlatorsPayload(clientMutationId, manga)
         }
     }
 }
