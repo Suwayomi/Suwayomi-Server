@@ -177,7 +177,7 @@ class MangaType(
 
     fun excludedScanlators(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<String>> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, List<String>>("ExcludedScanlatorsForMangaDataLoader", id)
-    
+
     fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader", id)
 
@@ -187,7 +187,6 @@ class MangaType(
     fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForMangaIdDataLoader", id)
 }
-
 
 data class MangaNodeList(
     override val nodes: List<MangaType>,

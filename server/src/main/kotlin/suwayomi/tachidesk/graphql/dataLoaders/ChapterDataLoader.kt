@@ -102,8 +102,7 @@ class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
                             .where {
                                 (ChapterTable.manga inList ids) and
                                     (ChapterTable.isRead eq false)
-                            }
-                            .groupBy { it[ChapterTable.manga].value }
+                            }.groupBy { it[ChapterTable.manga].value }
                             .mapValues { (mangaId, rows) ->
                                 val excluded = excludedScanlatorsByMangaId[mangaId].orEmpty()
                                 rows.count { row ->
@@ -116,6 +115,7 @@ class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
             }
         }
 }
+
 class BookmarkedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "BookmarkedChapterCountForMangaDataLoader"
 
@@ -260,8 +260,7 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?>
                             .where {
                                 (ChapterTable.manga inList ids) and
                                     (ChapterTable.isRead eq false)
-                            }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
+                            }.orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
                             .groupBy { it[ChapterTable.manga].value }
                     ids.map { mangaId ->
                         val excluded = excludedScanlatorsByMangaId[mangaId].orEmpty()
@@ -314,8 +313,7 @@ class ExcludedScanlatorsForMangaDataLoader : KotlinDataLoader<Int, List<String>>
                             .where {
                                 (MangaMetaTable.ref inList ids) and
                                     (MangaMetaTable.key eq EXCLUDED_SCANLATORS_META_KEY)
-                            }
-                            .groupBy { it[MangaMetaTable.ref].value }
+                            }.groupBy { it[MangaMetaTable.ref].value }
                     ids.map { mangaId ->
                         rowsByMangaId[mangaId]
                             ?.flatMap { parseExcludedScanlators(it[MangaMetaTable.value]) }
@@ -336,8 +334,7 @@ internal fun loadExcludedScanlators(mangaIds: List<Int>): Map<Int, Set<String>> 
         .where {
             (MangaMetaTable.ref inList mangaIds) and
                 (MangaMetaTable.key eq EXCLUDED_SCANLATORS_META_KEY)
-        }
-        .groupBy { it[MangaMetaTable.ref].value }
+        }.groupBy { it[MangaMetaTable.ref].value }
         .mapValues { (_, rows) ->
             rows.flatMap { parseExcludedScanlators(it[MangaMetaTable.value]) }.toSet()
         }
