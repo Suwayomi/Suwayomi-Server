@@ -22,7 +22,7 @@ import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.manga.model.table.MangaMetaTable
+import suwayomi.tachidesk.manga.model.table.MangaExcludedScanlatorTable // <-- new import
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
@@ -150,10 +150,7 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
                         ChapterTable
                             .select(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
                             .where {
-                                (
-                                    ChapterTable.manga inList
-                                        ids
-                                ) and
+                                (ChapterTable.manga inList ids) and
                                     (ChapterTable.chapter_number greaterEq 0f)
                             }.groupBy(ChapterTable.manga, ChapterTable.chapter_number)
                             .having { ChapterTable.chapter_number.count() greater 1 }
@@ -299,6 +296,10 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
         }
 }
 
+// ─── Excluded Scanlators ────────────────────────────────────────────────────
+// Reads from MangaExcludedScanlatorTable — a first-class relational table,
+// NOT from manga_meta. This is intentional per server design requirements.
+
 class ExcludedScanlatorsForMangaDataLoader : KotlinDataLoader<Int, List<String>> {
     override val dataLoaderName = "ExcludedScanlatorsForMangaDataLoader"
 
@@ -308,16 +309,13 @@ class ExcludedScanlatorsForMangaDataLoader : KotlinDataLoader<Int, List<String>>
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val rowsByMangaId =
-                        MangaMetaTable
+                        MangaExcludedScanlatorTable
                             .selectAll()
-                            .where {
-                                (MangaMetaTable.ref inList ids) and
-                                    (MangaMetaTable.key eq EXCLUDED_SCANLATORS_META_KEY)
-                            }.groupBy { it[MangaMetaTable.ref].value }
+                            .where { MangaExcludedScanlatorTable.manga inList ids }
+                            .groupBy { it[MangaExcludedScanlatorTable.manga].value }
                     ids.map { mangaId ->
                         rowsByMangaId[mangaId]
-                            ?.flatMap { parseExcludedScanlators(it[MangaMetaTable.value]) }
-                            ?.distinct()
+                            ?.map { it[MangaExcludedScanlatorTable.scanlator] }
                             ?: emptyList()
                     }
                 }
@@ -325,30 +323,13 @@ class ExcludedScanlatorsForMangaDataLoader : KotlinDataLoader<Int, List<String>>
         }
 }
 
-internal const val EXCLUDED_SCANLATORS_META_KEY = "webUI_excludedScanlators"
-
 internal fun loadExcludedScanlators(mangaIds: List<Int>): Map<Int, Set<String>> {
     if (mangaIds.isEmpty()) return emptyMap()
-    return MangaMetaTable
+    return MangaExcludedScanlatorTable
         .selectAll()
-        .where {
-            (MangaMetaTable.ref inList mangaIds) and
-                (MangaMetaTable.key eq EXCLUDED_SCANLATORS_META_KEY)
-        }.groupBy { it[MangaMetaTable.ref].value }
+        .where { MangaExcludedScanlatorTable.manga inList mangaIds }
+        .groupBy { it[MangaExcludedScanlatorTable.manga].value }
         .mapValues { (_, rows) ->
-            rows.flatMap { parseExcludedScanlators(it[MangaMetaTable.value]) }.toSet()
-        }
-}
-
-private fun parseExcludedScanlators(raw: String?): List<String> {
-    if (raw.isNullOrBlank()) return emptyList()
-    val trimmed = raw.trim()
-    if (trimmed.length < 2 || trimmed.first() != '[' || trimmed.last() != ']') return emptyList()
-    return trimmed
-        .substring(1, trimmed.length - 1)
-        .split(',')
-        .mapNotNull { token ->
-            val value = token.trim().trim('"')
-            value.ifEmpty { null }
+            rows.map { it[MangaExcludedScanlatorTable.scanlator] }.toSet()
         }
 }

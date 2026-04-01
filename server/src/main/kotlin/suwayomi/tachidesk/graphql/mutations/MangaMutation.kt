@@ -14,13 +14,13 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.dataLoaders.EXCLUDED_SCANLATORS_META_KEY
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.MangaExcludedScanlator
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -80,7 +80,6 @@ class MangaMutation {
         }.apply {
             if (patch.inLibrary != null) {
                 transaction {
-                    // try to initialize uninitialized in library manga to ensure that the expected data is available (chapter list, metadata, ...)
                     val mangas =
                         transaction {
                             MangaTable
@@ -396,42 +395,17 @@ class MangaMutation {
         val (clientMutationId, id, patch) = input
 
         return asDataFetcherResult {
-            // 1. Load current set from meta
-            val current =
-                transaction {
-                    MangaMetaTable
-                        .selectAll()
-                        .where { (MangaMetaTable.ref eq id) and (MangaMetaTable.key eq EXCLUDED_SCANLATORS_META_KEY) }
-                        .firstOrNull()
-                        ?.get(MangaMetaTable.value)
-                }.let { raw ->
-                    if (raw.isNullOrEmpty()) {
-                        mutableSetOf()
-                    } else {
-                        raw
-                            .trimStart('[')
-                            .trimEnd(']')
-                            .split(",")
-                            .map { it.trim().removeSurrounding("\"") }
-                            .filter { it.isNotEmpty() }
-                            .toMutableSet()
-                    }
-                }
+            // 1. Load current set from dedicated table
+            val current = MangaExcludedScanlator.getExcludedScanlators(id).toMutableSet()
 
-            // 2. Apply patch operations in order: clear → add → remove
+            // 2. Apply patch: clear → add → remove
             if (patch.clearExcludedScanlators == true) current.clear()
             patch.addExcludedScanlator?.let { current.addAll(it) }
             patch.removeExcludedScanlator?.let { current.removeAll(it.toSet()) }
 
-            // 3. Serialize back to JSON array string and persist
-            val value =
-                buildString {
-                    append('[')
-                    append(current.joinToString(",") { "\"${it.replace("\"", "\\\"")}\"" })
-                    append(']')
-                }
+            // 3. Persist to dedicated table (diff-based insert/delete)
+            MangaExcludedScanlator.setExcludedScanlators(id, current)
 
-            Manga.modifyMangaMeta(id, EXCLUDED_SCANLATORS_META_KEY, value)
             MangaType.clearCacheFor(id, dataFetchingEnvironment)
 
             val manga =
