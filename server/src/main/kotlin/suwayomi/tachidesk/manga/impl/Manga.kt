@@ -63,6 +63,7 @@ private val logger = KotlinLogging.logger { }
 
 object Manga {
     private val storageScanner = StorageScanner()
+
     suspend fun getManga(
         mangaId: Int,
         onlineFetch: Boolean = false,
@@ -179,9 +180,7 @@ object Manga {
         return sManga
     }
 
-    fun getMangaStorageFolderStats(mangaId: Int): String {
-        return storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
-    }
+    fun getMangaStorageFolderStats(mangaId: Int): String = storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
 
     suspend fun getMangaFull(
         mangaId: Int,
