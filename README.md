@@ -3,7 +3,7 @@
 |-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
 | ![CI](https://github.com/vtorres-t/Suwayomi-Server/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Suwayomi-Server.svg?maxAge=3600&label=download)](https://github.com/vtorres-t/Suwayomi-Server/releases) | 
 
-## Table of Content
+## Table of Contents
 - [What is Suwayomi?](#what-is-suwayomi)
   - [Features](#features)
 - [Suwayomi client projects](#suwayomi-client-projects)
@@ -73,6 +73,7 @@ Here's a list of known clients/user interfaces for Suwayomi-Server (checkout the
 - [Suwayomi-WebUI](https://github.com/vtorres-t/Suwayomi-WebUI): The web front-end that Suwayomi-Server ships with by default.
 - [Suwayomi-VUI](https://github.com/vtorres-t/Suwayomi-VUI): A Suwayomi-Server preview focused web frontend built with svelte
 - [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): A Web front-end for Suwayomi-Server built with Vaadin.
+- [Moku](https://github.com/Youwes09/Moku): A fast, minimal Tauri + Svelte desktop client with clean and minimal UI.
 ##### Inactive Clients (functional but outdated)
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Suwayomi-Server.
 - [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Mihon (Tachiyomi).
@@ -92,10 +93,8 @@ Download the latest `win64`(Windows 64-bit) release from [the releases section](
 
 Unzip the downloaded file and double-click on one of the launcher scripts.
 
-Unzip the downloaded file and double-click on one of the launcher scripts.
-
 ### GNU/Linux
-Download the latest `linux-x64`(x86_64) release from [the releases section](https://github.com/vtorres-t/Suwayomi-Server/releases).
+Download the latest `linux-x64`(x86_64) release from [the releases section](https://github.com/Suwayomi/Suwayomi-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Suwayomi-Server-preview/releases).
 
 `tar xvf` the downloaded file and double-click on one of the launcher scripts or run them using the terminal.
 
