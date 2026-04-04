@@ -1,6 +1,11 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import eu.kanade.tachiyomi.source.local.LocalSource
+import eu.kanade.tachiyomi.source.local.image.LocalCoverManager
+import eu.kanade.tachiyomi.source.local.io.LocalSourceFileSystem
+import eu.kanade.tachiyomi.source.model.SManga
 import graphql.execution.DataFetcherResult
+import io.javalin.http.UploadedFile
 import org.jetbrains.exposed.sql.LikePattern
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -18,13 +23,20 @@ import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Library
+import suwayomi.tachidesk.manga.impl.LocalMangaDetailsService
 import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.impl.util.getThumbnailDownloadPath
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
+import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.JavalinSetup.future
 import uy.kohesive.injekt.injectLazy
+import java.io.File
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -93,6 +105,172 @@ class MangaMutation {
                 ids.forEach {
                     Library.handleMangaThumbnail(it, patch.inLibrary)
                 }
+            }
+        }
+    }
+
+    // --- Manga Details Editing ---
+
+    data class UpdateMangaDetailsPatch(
+        val title: String? = null,
+        val author: String? = null,
+        val artist: String? = null,
+        val description: String? = null,
+        val genre: List<String>? = null,
+        val status: MangaStatus? = null,
+    )
+
+    data class UpdateMangaDetailsInput(
+        val clientMutationId: String? = null,
+        val id: Int,
+        val patch: UpdateMangaDetailsPatch,
+    )
+
+    data class UpdateMangaDetailsPayload(
+        val clientMutationId: String?,
+        val manga: MangaType,
+    )
+
+    private val applicationDirs: ApplicationDirs by injectLazy()
+    private val localMangaDetailsService = LocalMangaDetailsService()
+
+    @RequireAuth
+    fun updateMangaDetails(input: UpdateMangaDetailsInput): CompletableFuture<DataFetcherResult<UpdateMangaDetailsPayload?>> {
+        val (clientMutationId, id, patch) = input
+
+        return future {
+            asDataFetcherResult {
+                // Step 1: Update database (skip if no fields to update)
+                val hasUpdates =
+                    patch.title != null ||
+                        patch.author != null ||
+                        patch.artist != null ||
+                        patch.description != null ||
+                        patch.genre != null ||
+                        patch.status != null
+
+                if (hasUpdates) {
+                    transaction {
+                        MangaTable.update({ MangaTable.id eq id }) { update ->
+                            patch.title?.let { update[title] = it }
+                            patch.author?.let { update[author] = it }
+                            patch.artist?.let { update[artist] = it }
+                            patch.description?.let { update[description] = it }
+                            patch.genre?.let { update[genre] = it.joinToString(", ") }
+                            patch.status?.let { update[status] = it.value }
+                        }
+                    }
+                }
+
+                // Step 2: Write details.json for local source manga
+                val row =
+                    transaction {
+                        MangaTable.selectAll().where { MangaTable.id eq id }.firstOrNull()
+                            ?: throw IllegalArgumentException("Manga with id $id not found")
+                    }
+
+                val sourceId = row[MangaTable.sourceReference]
+                if (sourceId == LocalSource.ID) {
+                    val mangaUrl = row[MangaTable.url]
+                    val fileSystem = LocalSourceFileSystem(applicationDirs)
+                    val mangaDir = fileSystem.getMangaDirectory(mangaUrl)
+
+                    if (mangaDir != null) {
+                        val existing = localMangaDetailsService.readDetails(mangaDir)
+                        val merged =
+                            localMangaDetailsService.mergeDetails(
+                                existing = existing,
+                                title = patch.title,
+                                author = patch.author,
+                                artist = patch.artist,
+                                description = patch.description,
+                                genre = patch.genre,
+                                status = patch.status?.value,
+                            )
+                        localMangaDetailsService.writeDetailsWithLock(mangaDir, merged)
+                    }
+                }
+
+                // Step 3: Return updated manga
+                val manga =
+                    transaction {
+                        MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
+                    }
+
+                UpdateMangaDetailsPayload(
+                    clientMutationId = clientMutationId,
+                    manga = manga,
+                )
+            }
+        }
+    }
+
+    // --- Cover Image Upload ---
+
+    data class UploadMangaCoverInput(
+        val clientMutationId: String? = null,
+        val id: Int,
+        val cover: UploadedFile,
+    )
+
+    data class UploadMangaCoverPayload(
+        val clientMutationId: String?,
+        val manga: MangaType,
+    )
+
+    @RequireAuth
+    fun uploadMangaCover(input: UploadMangaCoverInput): CompletableFuture<DataFetcherResult<UploadMangaCoverPayload?>> {
+        val (clientMutationId, id, cover) = input
+
+        return future {
+            asDataFetcherResult {
+                // Buffer the uploaded file so we can read it multiple times
+                val imageBytes = cover.content().use { it.readBytes() }
+                val mimeType = cover.contentType()
+
+                val row =
+                    transaction {
+                        MangaTable.selectAll().where { MangaTable.id eq id }.firstOrNull()
+                            ?: throw IllegalArgumentException("Manga with id $id not found")
+                    }
+
+                // Step 1: Clear old cached thumbnail
+                Manga.clearThumbnail(id)
+
+                // Step 2: Save to thumbnail cache
+                val thumbnailDir = applicationDirs.thumbnailDownloadsRoot
+                File(thumbnailDir).let { if (!it.exists()) it.mkdir() }
+                val filePath = getThumbnailDownloadPath(id)
+                ImageResponse.saveImage(filePath, imageBytes.inputStream(), mimeType)
+
+                // Step 3: Update DB with proxy URL and cache-bust timestamp
+                transaction {
+                    MangaTable.update({ MangaTable.id eq id }) { update ->
+                        update[thumbnail_url] = MangaList.proxyThumbnailUrl(id)
+                        update[thumbnailUrlLastFetched] = System.currentTimeMillis()
+                    }
+                }
+
+                // Step 4: Write cover.jpg for local source manga
+                val sourceId = row[MangaTable.sourceReference]
+                if (sourceId == LocalSource.ID) {
+                    val mangaUrl = row[MangaTable.url]
+                    val fileSystem = LocalSourceFileSystem(applicationDirs)
+                    val coverManager = LocalCoverManager(fileSystem)
+                    val sManga = SManga.create().apply { url = mangaUrl }
+                    coverManager.update(sManga, imageBytes.inputStream())
+                }
+
+                // Step 5: Return updated manga
+                val manga =
+                    transaction {
+                        MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
+                    }
+
+                UploadMangaCoverPayload(
+                    clientMutationId = clientMutationId,
+                    manga = manga,
+                )
             }
         }
     }

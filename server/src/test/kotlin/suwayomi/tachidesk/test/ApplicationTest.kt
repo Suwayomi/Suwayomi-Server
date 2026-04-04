@@ -157,7 +157,7 @@ open class ApplicationTest {
             // in-memory database, don't discard database between connections/transactions
             val db = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver")
 
-            databaseUp(db)
+            databaseUp()
 
             LocalSource.register()
         }
