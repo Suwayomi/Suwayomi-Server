@@ -176,6 +176,7 @@ object ChapterRepository {
             mangaId = chapterDataClass.mangaId,
             name = chapterDataClass.name,
             uploadDate = chapterDataClass.uploadDate,
+            chapterNumber = chapterDataClass.chapterNumber,
             scanlator = chapterDataClass.scanlator,
             read = chapterDataClass.read,
             lastPageRead = chapterDataClass.lastPageRead,
