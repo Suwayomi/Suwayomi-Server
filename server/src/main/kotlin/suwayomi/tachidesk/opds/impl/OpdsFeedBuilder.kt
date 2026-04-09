@@ -17,6 +17,7 @@ import suwayomi.tachidesk.opds.repository.ChapterRepository
 import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
+import suwayomi.tachidesk.opds.util.OpdsStringUtil
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
@@ -96,7 +97,8 @@ object OpdsFeedBuilder {
         val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
         builder.entries.addAll(
             historyItems.map { item ->
-                val mangaDetails = OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
+                val mangaDetails =
+                    OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
                 OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale, skipMetadata)
             },
         )
@@ -330,20 +332,21 @@ object OpdsFeedBuilder {
         locale: Locale,
     ): String {
         val (mangaEntries, hasNextPage) = MangaRepository.getMangaBySource(sourceId, pageNum, sort)
-        val sourceNavEntry = NavigationRepository.getExploreSources(1).first.find { it.id == sourceId }
-        val sourceNameOrId = sourceNavEntry?.name ?: sourceId.toString()
+        val sourceInfo = NavigationRepository.getSourceDetails(sourceId)
+        val sourceName = sourceInfo?.first ?: sourceId.toString()
         val titleRes =
-            if (sort == "latest") {
+            if (sort ==
+                "latest"
+            ) {
                 MR.strings.opds_feeds_source_specific_latest_title
             } else {
                 MR.strings.opds_feeds_source_specific_popular_title
             }
-        val feedTitle = titleRes.localized(locale, sourceNameOrId)
-        val feedUrl = "source/$sourceId"
+        val feedTitle = titleRes.localized(locale, sourceName)
         val builder =
             FeedBuilderInternal(
                 baseUrl,
-                feedUrl,
+                "source/$sourceId",
                 feedTitle,
                 locale,
                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
@@ -354,14 +357,10 @@ object OpdsFeedBuilder {
             if (hasNextPage) {
                 (pageNum * serverConfig.opdsItemsPerPage.value + 1).toLong()
             } else {
-                (
-                    (pageNum - 1) *
-                        serverConfig.opdsItemsPerPage.value +
-                        mangaEntries.size
-                ).toLong()
+                ((pageNum - 1) * serverConfig.opdsItemsPerPage.value + mangaEntries.size).toLong()
             }
-        builder.icon = sourceNavEntry?.iconUrl
-        OpdsEntryBuilder.addSourceSortFacets(builder, "$baseUrl/$feedUrl", sort, locale)
+        builder.icon = sourceInfo?.second
+        OpdsEntryBuilder.addSourceSortFacets(builder, "$baseUrl/source/$sourceId", sort, locale)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(it, baseUrl, locale) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -570,7 +569,8 @@ object OpdsFeedBuilder {
         val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
         builder.entries.addAll(
             updateItems.map { item ->
-                val mangaDetails = OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor)
+                val mangaDetails =
+                    OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
                 OpdsEntryBuilder.createChapterListEntry(item.chapter, mangaDetails, baseUrl, true, locale, skipMetadata)
             },
         )

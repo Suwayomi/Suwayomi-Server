@@ -14,7 +14,9 @@ import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.andWhere
+import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.wrapAsExpression
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.chapter.refreshChapterPageList
@@ -207,21 +209,38 @@ object ChapterRepository {
 
             val totalCount = query.count()
 
-            val items =
+            val rawItems =
                 query
                     .orderBy(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
                     .limit(opdsItemsPerPageBounded)
                     .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
-                    .map {
-                        OpdsLibraryUpdateAcqEntry(
-                            chapter = it.toOpdsChapterListAcqEntry(),
-                            mangaTitle = it[MangaTable.title],
-                            mangaAuthor = it[MangaTable.author],
-                            mangaId = it[MangaTable.id].value,
-                            mangaSourceLang = it[SourceTable.lang],
-                            mangaThumbnailUrl = it[MangaTable.thumbnail_url],
-                        )
-                    }
+                    .toList()
+
+            val mangaIds = rawItems.map { it[MangaTable.id].value }.distinct()
+            val chapterCounts =
+                if (mangaIds.isNotEmpty()) {
+                    ChapterTable
+                        .select(ChapterTable.manga, ChapterTable.id.count())
+                        .where { ChapterTable.manga inList mangaIds }
+                        .groupBy(ChapterTable.manga)
+                        .associate { it[ChapterTable.manga].value to it[ChapterTable.id.count()] }
+                } else {
+                    emptyMap()
+                }
+
+            val items =
+                rawItems.map {
+                    val mId = it[MangaTable.id].value
+                    OpdsLibraryUpdateAcqEntry(
+                        chapter = it.toOpdsChapterListAcqEntry(),
+                        mangaTitle = it[MangaTable.title],
+                        mangaAuthor = it[MangaTable.author],
+                        mangaId = mId,
+                        mangaSourceLang = it[SourceTable.lang],
+                        mangaThumbnailUrl = it[MangaTable.thumbnail_url],
+                        mangaTotalChapters = chapterCounts[mId] ?: 0L,
+                    )
+                }
             Pair(items, totalCount)
         }
 
@@ -238,21 +257,38 @@ object ChapterRepository {
 
             val totalCount = query.count()
 
-            val items =
+            val rawItems =
                 query
                     .orderBy(ChapterTable.lastReadAt to SortOrder.DESC)
                     .limit(opdsItemsPerPageBounded)
                     .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
-                    .map {
-                        OpdsHistoryAcqEntry(
-                            chapter = it.toOpdsChapterListAcqEntry(),
-                            mangaTitle = it[MangaTable.title],
-                            mangaAuthor = it[MangaTable.author],
-                            mangaId = it[MangaTable.id].value,
-                            mangaSourceLang = it[SourceTable.lang],
-                            mangaThumbnailUrl = it[MangaTable.thumbnail_url],
-                        )
-                    }
+                    .toList()
+
+            val mangaIds = rawItems.map { it[MangaTable.id].value }.distinct()
+            val chapterCounts =
+                if (mangaIds.isNotEmpty()) {
+                    ChapterTable
+                        .select(ChapterTable.manga, ChapterTable.id.count())
+                        .where { ChapterTable.manga inList mangaIds }
+                        .groupBy(ChapterTable.manga)
+                        .associate { it[ChapterTable.manga].value to it[ChapterTable.id.count()] }
+                } else {
+                    emptyMap()
+                }
+
+            val items =
+                rawItems.map {
+                    val mId = it[MangaTable.id].value
+                    OpdsHistoryAcqEntry(
+                        chapter = it.toOpdsChapterListAcqEntry(),
+                        mangaTitle = it[MangaTable.title],
+                        mangaAuthor = it[MangaTable.author],
+                        mangaId = mId,
+                        mangaSourceLang = it[SourceTable.lang],
+                        mangaThumbnailUrl = it[MangaTable.thumbnail_url],
+                        mangaTotalChapters = chapterCounts[mId] ?: 0L,
+                    )
+                }
             Pair(items, totalCount)
         }
 
