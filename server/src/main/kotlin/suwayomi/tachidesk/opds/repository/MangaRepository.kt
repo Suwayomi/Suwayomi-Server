@@ -36,6 +36,7 @@ import suwayomi.tachidesk.opds.dto.OpdsMangaDetails
 import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.dto.PrimaryFilterType
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
 import suwayomi.tachidesk.server.serverConfig
 
 /**
@@ -114,10 +115,10 @@ object MangaRepository {
                     PrimaryFilterType.SOURCE -> {
                         criteria.sourceId?.let {
                             SourceTable
-                                .select(SourceTable.name)
+                                .select(SourceTable.name, SourceTable.lang)
                                 .where { SourceTable.id eq it }
                                 .firstOrNull()
-                                ?.get(SourceTable.name)
+                                ?.let { formatSourceName(it[SourceTable.name], it[SourceTable.lang]) }
                         }
                     }
 
@@ -245,6 +246,7 @@ object MangaRepository {
      */
     fun getMangaDetails(mangaId: Int): OpdsMangaDetails? =
         transaction {
+            val chapterCount = ChapterTable.select(ChapterTable.id).where { ChapterTable.manga eq mangaId }.count()
             MangaTable
                 .select(MangaTable.id, MangaTable.title, MangaTable.thumbnail_url, MangaTable.author)
                 .where { MangaTable.id eq mangaId }
@@ -255,6 +257,7 @@ object MangaRepository {
                         title = it[MangaTable.title],
                         thumbnailUrl = it[MangaTable.thumbnail_url],
                         author = it[MangaTable.author],
+                        totalChapters = chapterCount,
                     )
                 }
         }

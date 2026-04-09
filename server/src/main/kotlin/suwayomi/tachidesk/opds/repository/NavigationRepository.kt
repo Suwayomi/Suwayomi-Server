@@ -25,6 +25,7 @@ import suwayomi.tachidesk.opds.dto.OpdsRootNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsSourceNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsStatusNavEntry
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
 
@@ -184,6 +185,20 @@ object NavigationRepository {
                         )
                     }
             Pair(sources, totalCount)
+        }
+
+    fun getSourceDetails(sourceId: Long): Pair<String, String?>? =
+        transaction {
+            SourceTable
+                .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
+                .select(SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
+                .where { SourceTable.id eq sourceId }
+                .firstOrNull()
+                ?.let {
+                    val name = formatSourceName(it[SourceTable.name], it[SourceTable.lang])
+                    val icon = Extension.getExtensionIconUrl(it[ExtensionTable.apkName])
+                    Pair(name, icon)
+                }
         }
 
     fun getCategories(pageNum: Int): Pair<List<OpdsCategoryNavEntry>, Long> =

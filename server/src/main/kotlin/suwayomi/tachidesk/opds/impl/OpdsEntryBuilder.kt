@@ -2,7 +2,6 @@ package suwayomi.tachidesk.opds.impl
 
 import dev.icerock.moko.resources.StringResource
 import suwayomi.tachidesk.i18n.MR
-import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -151,6 +150,34 @@ object OpdsEntryBuilder {
     }
 
     /**
+     * Resolves the display title for a chapter, ensuring an empty name falls back to
+     * a generic "Chapter X" or "Oneshot" to keep the OPDS feed clean and usable.
+     */
+    private fun resolveChapterTitle(
+        chapterName: String,
+        chapterNumber: Float,
+        sourceOrder: Int,
+        totalChapters: Long,
+        locale: Locale,
+    ): String {
+        val trimmedName = chapterName.trim()
+        if (trimmedName.isNotEmpty()) {
+            return trimmedName
+        }
+        return if (totalChapters <= 1L) {
+            MR.strings.opds_chapter_title_oneshot.localized(locale)
+        } else {
+            val formatNumber =
+                if (chapterNumber >= 0f) {
+                    if (chapterNumber % 1 == 0f) chapterNumber.toInt().toString() else chapterNumber.toString()
+                } else {
+                    sourceOrder.toString()
+                }
+            MR.strings.opds_chapter_title_fallback.localized(locale, formatNumber)
+        }
+    }
+
+    /**
      * Creates an OPDS entry for a chapter, including acquisition and streaming links.
      * @param chapter The chapter data object.
      * @param manga The parent manga's details.
@@ -191,10 +218,11 @@ object OpdsEntryBuilder {
                 else -> MR.strings.opds_chapter_status_unread
             }
         val titlePrefix = statusKey.localized(locale)
-        val entryTitle = titlePrefix + (if (addMangaTitle) " ${manga.title}:" else "") + " ${chapter.name}"
+        val chapterName = resolveChapterTitle(chapter.name, chapter.chapterNumber, chapter.sourceOrder, manga.totalChapters, locale)
+        val entryTitle = titlePrefix + (if (addMangaTitle) " ${manga.title}:" else "") + " $chapterName"
         val details =
             buildString {
-                append(MR.strings.opds_chapter_details_base.localized(locale, manga.title, chapter.name))
+                append(MR.strings.opds_chapter_details_base.localized(locale, manga.title, chapterName))
                 chapter.scanlator?.takeIf { it.isNotBlank() }?.let {
                     append(MR.strings.opds_chapter_details_scanlator.localized(locale, it))
                 }
