@@ -131,11 +131,10 @@ class MangaType(
     fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
 
-    fun downloadSize(mangaId: Int): CompletableFuture<String> {
-        return CompletableFuture.supplyAsync {
+    fun downloadSize(mangaId: Int): CompletableFuture<String> =
+        CompletableFuture.supplyAsync {
             Manga.getMangaStorageFolderStats(mangaId)
         }
-    }
 
     fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader("UnreadChapterCountForMangaDataLoader", id)

@@ -29,26 +29,28 @@ class StorageScanner(
 
     fun getFolderSizePretty(directoryPath: String): String = formatBytes(getFolderSize(directoryPath))
 
-    private fun calculateSize(path: Path): Long = try {
-        fileSystem.listRecursively(path).sumOf { file ->
-            fileSystem.metadataOrNull(file)?.size ?: 0L
-        }
-    } catch (e: Exception) {
-        0L
-    }
-
-    private fun getAvailableDiskSpace(path: Path): Long = try {
-            path.toFile().usableSpace
+    private fun calculateSize(path: Path): Long =
+        try {
+            fileSystem.listRecursively(path).sumOf { file ->
+                fileSystem.metadataOrNull(file)?.size ?: 0L
+            }
         } catch (e: Exception) {
-        -1L
-    }
+            0L
+        }
+
+    private fun getAvailableDiskSpace(path: Path): Long =
+        try {
+            path.toNioPath().toFile().usableSpace
+        } catch (e: Exception) {
+            -1L
+        }
 
     private fun formatBytes(bytes: Long): String {
         if (bytes < 0) return "Desconocido"
         if (bytes < 1024) return "$bytes B"
 
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        val exp = (ln(bytes.toDouble()) / ln(1024.0)).toInt().coerceAtMost(units.size - 1)
+        val exp = (ln(bytes.toDouble()) / ln(1024.0)).toInt().coerceIn(0, units.size - 1)
         val size = bytes / 1024.0.pow(exp.toDouble())
 
         return "%.2f %s".format(size, units[exp])
