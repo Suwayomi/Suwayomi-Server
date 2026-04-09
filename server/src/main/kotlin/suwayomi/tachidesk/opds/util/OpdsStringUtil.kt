@@ -34,6 +34,19 @@ object OpdsStringUtil {
     }
 
     /**
+     * Formats the source name appending the language code if applicable.
+     */
+    fun formatSourceName(
+        name: String,
+        lang: String?,
+    ): String =
+        if (lang.isNullOrBlank() || lang == "all") {
+            name
+        } else {
+            "$name (${lang.uppercase()})"
+        }
+
+    /**
      * Formats a size in bytes to a human-readable representation.
      * Uses binary (KiB, MiB, GiB, TiB) or decimal (KB, MB, GB, TB) units based on server configuration.
      *
