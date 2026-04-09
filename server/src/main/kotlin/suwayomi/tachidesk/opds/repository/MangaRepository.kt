@@ -60,7 +60,7 @@ object MangaRepository {
             sourceLang = this[SourceTable.lang],
             inLibrary = this[MangaTable.inLibrary],
             status = this[MangaTable.status],
-            sourceName = this[SourceTable.name],
+            sourceName = formatSourceName(this[SourceTable.name], this[SourceTable.lang]),
             lastFetchedAt = this[MangaTable.lastFetchedAt],
             url = this[MangaTable.realUrl],
         )

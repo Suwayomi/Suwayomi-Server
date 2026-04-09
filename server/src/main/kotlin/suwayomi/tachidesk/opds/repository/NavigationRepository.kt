@@ -131,15 +131,14 @@ object NavigationRepository {
             )
         }
 
-    // ... (El resto del archivo permanece sin cambios)
     fun getExploreSources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
             val query =
                 SourceTable
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
                     .where { ExtensionTable.isInstalled eq true }
-                    .groupBy(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
 
             val totalCount = query.count()
@@ -150,7 +149,7 @@ object NavigationRepository {
                     .map {
                         OpdsSourceNavEntry(
                             id = it[SourceTable.id].value,
-                            name = it[SourceTable.name],
+                            name = formatSourceName(it[SourceTable.name], it[SourceTable.lang]),
                             iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
                             mangaCount = null,
                         )
@@ -166,9 +165,9 @@ object NavigationRepository {
                 SourceTable
                     .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName, mangaCount)
+                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName, mangaCount)
                     .where { MangaTable.inLibrary eq true }
-                    .groupBy(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
 
             val totalCount = query.count()
@@ -179,7 +178,7 @@ object NavigationRepository {
                     .map {
                         OpdsSourceNavEntry(
                             id = it[SourceTable.id].value,
-                            name = it[SourceTable.name],
+                            name = formatSourceName(it[SourceTable.name], it[SourceTable.lang]),
                             iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
                             mangaCount = it[mangaCount],
                         )
