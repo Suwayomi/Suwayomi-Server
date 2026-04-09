@@ -33,6 +33,7 @@ import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.Source.getSource
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
 import suwayomi.tachidesk.manga.impl.track.Track
+import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -52,7 +53,6 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
-import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException

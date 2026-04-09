@@ -3,6 +3,8 @@ package suwayomi.tachidesk.manga.impl.util.storage
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
+import kotlin.math.ln
+import kotlin.math.pow
 
 class StorageScanner(
     private val fileSystem: FileSystem = FileSystem.SYSTEM,
@@ -46,8 +48,8 @@ class StorageScanner(
         if (bytes < 1024) return "$bytes B"
 
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        val exp = (Math.log(bytes.toDouble()) / Math.log(1024.0)).toInt().coerceAtMost(units.size - 1)
-        val size = bytes / Math.pow(1024.0, exp.toDouble())
+        val exp = (ln(bytes.toDouble()) / ln(1024.0)).toInt().coerceAtMost(units.size - 1)
+        val size = bytes / 1024.0.pow(exp.toDouble())
 
         return "%.2f %s".format(size, units[exp])
     }

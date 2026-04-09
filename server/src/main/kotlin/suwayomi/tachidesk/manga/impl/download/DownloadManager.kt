@@ -40,14 +40,14 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.model.OldDownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.Status
+import suwayomi.tachidesk.manga.impl.util.storage.StorageScanner
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import suwayomi.tachidesk.server.serverConfig
-import suwayomi.tachidesk.manga.impl.util.storage.StorageScanner
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
