@@ -3,6 +3,7 @@ package suwayomi.tachidesk.server.database.trigger
 import org.h2.tools.TriggerAdapter
 import java.sql.Connection
 import java.sql.ResultSet
+import kotlin.time.Clock
 
 @Suppress("unused")
 class UpdateMangaVersionTrigger : TriggerAdapter() {
@@ -65,6 +66,28 @@ class UpdateChapterAndMangaVersionTrigger : TriggerAdapter() {
                     it.executeUpdate()
                 }
         }
+    }
+}
+
+@Suppress("unused")
+class UpdateMangaLastModifiedAtTrigger : TriggerAdapter() {
+    override fun fire(
+        conn: Connection,
+        oldRow: ResultSet?,
+        newRow: ResultSet,
+    ) {
+        newRow.updateLong("last_modified_at", Clock.System.now().epochSeconds)
+    }
+}
+
+@Suppress("unused")
+class UpdateChapterLastModifiedAtTrigger : TriggerAdapter() {
+    override fun fire(
+        conn: Connection,
+        oldRow: ResultSet?,
+        newRow: ResultSet,
+    ) {
+        newRow.updateLong("last_modified_at", Clock.System.now().epochSeconds)
     }
 }
 

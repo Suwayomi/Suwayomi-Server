@@ -73,6 +73,7 @@ object BackupMangaHandler {
                         dateAdded = mangaRow[MangaTable.inLibraryAt].seconds.inWholeMilliseconds,
                         viewer = 0, // not supported in Tachidesk
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
+                        lastModifiedAt = mangaRow[MangaTable.lastModifiedAt],
                         version = mangaRow[MangaTable.version],
                     )
 
@@ -109,6 +110,7 @@ object BackupMangaHandler {
                                     it.uploadDate,
                                     it.chapterNumber,
                                     chapters.size - it.index,
+                                    it.lastModifiedAt,
                                     it.version,
                                 ).apply {
                                     if (flags.includeClientData) {
@@ -233,6 +235,7 @@ object BackupMangaHandler {
 
                                 it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
 
+                                it[lastModifiedAt] = manga.lastModifiedAt
                                 it[version] = manga.version
                             }.value
                     } else {
@@ -254,6 +257,7 @@ object BackupMangaHandler {
 
                             it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
 
+                            it[lastModifiedAt] = manga.lastModifiedAt
                             it[version] = manga.version
                         }
 
@@ -344,6 +348,7 @@ object BackupMangaHandler {
                                 historyByChapter[chapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0
                         }
 
+                        this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
                         this[ChapterTable.version] = chapter.version
                     }.map { it[ChapterTable.id].value }
             } else {

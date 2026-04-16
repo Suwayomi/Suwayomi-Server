@@ -22,7 +22,7 @@ import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
-import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -249,6 +249,8 @@ object SyncYomiSyncService {
                     },
             )
 
+        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp", 0).milliseconds.inWholeSeconds
+
         val mergedList =
             (localMangaMap.keys + remoteMangaMap.keys).distinct().mapNotNull { compositeKey ->
                 val local = localMangaMap[compositeKey]
@@ -257,11 +259,21 @@ object SyncYomiSyncService {
                 // New version comparison logic
                 when {
                     local != null && remote == null -> {
-                        updateCategories(local, localCategoriesMapByOrder)
+                        if (lastSyncTime == 0L || local.lastModifiedAt > lastSyncTime) {
+                            updateCategories(local, localCategoriesMapByOrder)
+                        } else {
+                            logger.debug { "Dropping local manga deleted on remote: ${local.title}." }
+                            null
+                        }
                     }
 
                     local == null && remote != null -> {
-                        updateCategories(remote, remoteCategoriesMapByOrder)
+                        if (lastSyncTime == 0L || remote.lastModifiedAt > lastSyncTime) {
+                            updateCategories(remote, remoteCategoriesMapByOrder)
+                        } else {
+                            logger.debug { "Dropping deleted remote manga: ${remote.title}." }
+                            null
+                        }
                     }
 
                     local != null && remote != null -> {
@@ -269,13 +281,29 @@ object SyncYomiSyncService {
                         if (local.version >= remote.version) {
                             logger.debug { "Keeping local version of ${local.title} with merged chapters." }
                             updateCategories(
-                                local.copy(chapters = mergeChapters(local.chapters, remote.chapters)),
+                                local.copy(
+                                    chapters =
+                                        mergeChapters(
+                                            local.chapters,
+                                            remote.chapters,
+                                            lastSyncTime,
+                                            serverConfig.syncDataChapters.value,
+                                        ),
+                                ),
                                 localCategoriesMapByOrder,
                             )
                         } else {
                             logger.debug { "Keeping remote version of ${remote.title} with merged chapters." }
                             updateCategories(
-                                remote.copy(chapters = mergeChapters(local.chapters, remote.chapters)),
+                                remote.copy(
+                                    chapters =
+                                        mergeChapters(
+                                            local.chapters,
+                                            remote.chapters,
+                                            lastSyncTime,
+                                            serverConfig.syncDataChapters.value,
+                                        ),
+                                ),
                                 remoteCategoriesMapByOrder,
                             )
                         }
@@ -300,7 +328,13 @@ object SyncYomiSyncService {
     private fun mergeChapters(
         localChapters: List<BackupChapter>,
         remoteChapters: List<BackupChapter>,
+        lastSyncTime: Long,
+        syncingChapters: Boolean,
     ): List<BackupChapter> {
+        if (!syncingChapters) {
+            return remoteChapters // If not syncing chapters, keep remote untouched
+        }
+
         fun chapterCompositeKey(chapter: BackupChapter): String = "${chapter.url}|${chapter.name}|${chapter.chapterNumber}"
 
         val localChapterMap = localChapters.associateBy { chapterCompositeKey(it) }
@@ -320,13 +354,23 @@ object SyncYomiSyncService {
 
                 when {
                     localChapter != null && remoteChapter == null -> {
-                        logger.debug { "Keeping local chapter: ${localChapter.name}." }
-                        localChapter
+                        if (lastSyncTime == 0L || localChapter.lastModifiedAt > lastSyncTime) {
+                            logger.debug { "Keeping local chapter: ${localChapter.name}." }
+                            localChapter
+                        } else {
+                            logger.debug { "Dropping local chapter deleted on remote: ${localChapter.name}." }
+                            null
+                        }
                     }
 
                     localChapter == null && remoteChapter != null -> {
-                        logger.debug { "Taking remote chapter: ${remoteChapter.name}." }
-                        remoteChapter
+                        if (lastSyncTime == 0L || remoteChapter.lastModifiedAt > lastSyncTime) {
+                            logger.debug { "Taking remote chapter: ${remoteChapter.name}." }
+                            remoteChapter
+                        } else {
+                            logger.debug { "Dropping deleted remote chapter: ${remoteChapter.name}." }
+                            null
+                        }
                     }
 
                     localChapter != null && remoteChapter != null -> {

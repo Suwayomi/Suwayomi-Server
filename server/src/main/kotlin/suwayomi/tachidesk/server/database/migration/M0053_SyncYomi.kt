@@ -17,9 +17,11 @@ class M0053_SyncYomi : SQLMigration() {
         """
         ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
         ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
+        ALTER TABLE manga ADD COLUMN last_modified_at BIGINT DEFAULT 0;
 
         ALTER TABLE chapter ADD COLUMN version BIGINT DEFAULT 0;
         ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
+        ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT DEFAULT 0;
 
 
         CREATE OR REPLACE FUNCTION update_manga_version()
@@ -66,6 +68,34 @@ class M0053_SyncYomi : SQLMigration() {
         EXECUTE FUNCTION update_chapter_and_manga_version();
 
 
+        CREATE OR REPLACE FUNCTION update_manga_last_modified_at()
+        RETURNS trigger AS $$
+        BEGIN
+            NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        
+        CREATE TRIGGER update_manga_last_modified_at
+        BEFORE UPDATE OR INSERT ON manga
+        FOR EACH ROW
+        EXECUTE FUNCTION update_manga_last_modified_at();
+        
+        
+        CREATE OR REPLACE FUNCTION update_chapter_last_modified_at()
+        RETURNS trigger AS $$
+        BEGIN
+            NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        
+        CREATE TRIGGER update_chapter_last_modified_at
+        BEFORE UPDATE OR INSERT ON chapter
+        FOR EACH ROW
+        EXECUTE FUNCTION update_chapter_last_modified_at();
+
+
         CREATE OR REPLACE FUNCTION insert_manga_category_update_version()
         RETURNS trigger AS $$
         BEGIN
@@ -86,9 +116,11 @@ class M0053_SyncYomi : SQLMigration() {
         """
         ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
         ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
+        ALTER TABLE manga ADD COLUMN last_modified_at BIGINT DEFAULT 0;
 
         ALTER TABLE chapter ADD COLUMN version BIGINT DEFAULT 0;
         ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
+        ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT DEFAULT 0;
         
         CREATE TRIGGER update_manga_version 
         AFTER UPDATE ON manga
@@ -99,6 +131,26 @@ class M0053_SyncYomi : SQLMigration() {
         AFTER UPDATE ON chapter
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterAndMangaVersionTrigger";
+        
+        CREATE TRIGGER update_manga_last_modified_at
+        BEFORE UPDATE ON manga
+        FOR EACH ROW
+        CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaLastModifiedAtTrigger";
+        
+        CREATE TRIGGER insert_manga_last_modified_at
+        BEFORE INSERT ON manga
+        FOR EACH ROW
+        CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaLastModifiedAtTrigger";
+        
+        CREATE TRIGGER update_chapter_last_modified_at
+        BEFORE UPDATE ON chapter
+        FOR EACH ROW
+        CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterLastModifiedAtTrigger";
+        
+        CREATE TRIGGER insert_chapter_last_modified_at
+        BEFORE INSERT ON chapter
+        FOR EACH ROW
+        CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterLastModifiedAtTrigger";
         
         CREATE TRIGGER insert_manga_category_update_version
         AFTER INSERT ON categorymanga
