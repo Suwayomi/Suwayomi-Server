@@ -22,12 +22,6 @@ abstract class Tracker(
 
     open val supportsPrivateTracking: Boolean = false
 
-    // Optional labels for the credential login form. When null, the client should
-    // fall back to its default "Username" / "Password" strings.
-    open val loginUsernameLabel: String? = null
-
-    open val loginPasswordLabel: String? = null
-
     override fun toString() = "$name ($id) (isLoggedIn= $isLoggedIn, isAuthExpired= ${getIfAuthExpired()})"
 
     abstract fun getLogo(): String
