@@ -24,6 +24,8 @@ class TrackerType(
     val supportsTrackDeletion: Boolean,
     val supportsReadingDates: Boolean,
     val supportsPrivateTracking: Boolean,
+    val loginUsernameLabel: String?,
+    val loginPasswordLabel: String?,
 ) : Node {
     constructor(tracker: Tracker) : this(
         tracker.isLoggedIn,
@@ -43,6 +45,8 @@ class TrackerType(
         tracker is DeletableTracker,
         tracker.supportsReadingDates,
         tracker.supportsPrivateTracking,
+        tracker.loginUsernameLabel,
+        tracker.loginPasswordLabel,
     )
 
     fun statuses(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<TrackStatusType>> =

@@ -17,6 +17,10 @@ class Yamtrack(
     DeletableTracker {
     override val supportsReadingDates: Boolean = true
 
+    override val loginUsernameLabel: String = "Server URL"
+
+    override val loginPasswordLabel: String = "API Key"
+
     companion object {
         const val PLANNING = 1
         const val READING = 2
