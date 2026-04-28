@@ -11,6 +11,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.ScanlatorAlias
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -42,11 +43,13 @@ private fun getChapterDir(
         // Get chapter data and build chapter-specific directory name
         val chapterEntry = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
 
+        val rawScanlator = chapterEntry[ChapterTable.scanlator]
+        val resolvedScanlator = ScanlatorAlias.resolve(rawScanlator)
         val chapterDir =
             SafePath.buildValidFilename(
                 when {
-                    chapterEntry[ChapterTable.scanlator] != null -> {
-                        "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
+                    resolvedScanlator != null -> {
+                        "${resolvedScanlator}_${chapterEntry[ChapterTable.name]}"
                     }
 
                     else -> {

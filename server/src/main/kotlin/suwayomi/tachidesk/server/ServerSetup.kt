@@ -511,7 +511,11 @@ fun applicationSetup() {
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
 
-    GlobalScope.launch {
+    val kcefDisabled = System.getenv("SUWAYOMI_DISABLE_KCEF") == "1"
+    if (kcefDisabled) {
+        KotlinLogging.logger("KCEF").info { "KCEF disabled via SUWAYOMI_DISABLE_KCEF=1" }
+    }
+    if (!kcefDisabled) GlobalScope.launch {
         val logger = KotlinLogging.logger("KCEF")
         KCEF.init(
             builder = {
@@ -555,12 +559,14 @@ fun applicationSetup() {
         )
     }
 
-    Runtime.getRuntime().addShutdownHook(
-        thread(start = false) {
-            val logger = KotlinLogging.logger("KCEF")
-            logger.debug { "Shutting down KCEF" }
-            KCEF.disposeBlocking()
-            logger.debug { "KCEF shutdown complete" }
-        },
-    )
+    if (!kcefDisabled) {
+        Runtime.getRuntime().addShutdownHook(
+            thread(start = false) {
+                val logger = KotlinLogging.logger("KCEF")
+                logger.debug { "Shutting down KCEF" }
+                KCEF.disposeBlocking()
+                logger.debug { "KCEF shutdown complete" }
+            },
+        )
+    }
 }
