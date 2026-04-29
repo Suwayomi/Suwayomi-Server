@@ -27,4 +27,21 @@ class ScanlatorAliasQuery {
     @RequireAuth
     fun scanlatorAliasByScanlator(scanlator: String): ScanlatorAliasType? =
         ScanlatorAlias.getByScanlator(scanlator)?.let { ScanlatorAliasType(it) }
+
+    data class DistinctScanlatorEntry(
+        val scanlator: String,
+        val chapterCount: Long,
+        val currentAlias: String?,
+    )
+
+    /**
+     * Lists every scanlator string currently present in the chapter database,
+     * with its usage count and any configured alias. Drives the "Manage
+     * scanlator aliases" settings page in the WebUI.
+     */
+    @RequireAuth
+    fun distinctScanlators(inLibraryOnly: Boolean? = null): List<DistinctScanlatorEntry> =
+        ScanlatorAlias
+            .listDistinctScanlators(inLibraryOnly ?: false)
+            .map { DistinctScanlatorEntry(it.scanlator, it.chapterCount, it.currentAlias) }
 }

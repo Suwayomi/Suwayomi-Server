@@ -8,12 +8,17 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.alias
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.manga.model.dataclass.ScanlatorAliasDataClass
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.ScanlatorAliasTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.util.concurrent.ConcurrentHashMap
@@ -122,6 +127,48 @@ object ScanlatorAlias {
         }
         invalidateCache()
         return get(id) ?: error("Failed to reload updated scanlator alias")
+    }
+
+    data class DistinctScanlator(
+        val scanlator: String,
+        val chapterCount: Long,
+        val currentAlias: String?,
+    )
+
+    /**
+     * Lists every distinct, non-blank scanlator currently present in the
+     * Chapter table, with chapter counts and the configured alias if any.
+     * Useful for building a "configure aliases" settings UI without making
+     * the user know exact scanlator strings up front.
+     */
+    fun listDistinctScanlators(inLibraryOnly: Boolean = false): List<DistinctScanlator> {
+        ensureCache()
+        val countCol = ChapterTable.id.count()
+        return transaction {
+            val rows =
+                if (inLibraryOnly) {
+                    (ChapterTable innerJoin MangaTable)
+                        .select(ChapterTable.scanlator, countCol)
+                        .where { (ChapterTable.scanlator neq null) and (MangaTable.inLibrary eq true) }
+                        .groupBy(ChapterTable.scanlator)
+                        .toList()
+                } else {
+                    ChapterTable
+                        .select(ChapterTable.scanlator, countCol)
+                        .where { ChapterTable.scanlator neq null }
+                        .groupBy(ChapterTable.scanlator)
+                        .toList()
+                }
+            rows
+                .mapNotNull { row ->
+                    val scan = row[ChapterTable.scanlator]?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    DistinctScanlator(
+                        scanlator = scan,
+                        chapterCount = row[countCol],
+                        currentAlias = cache[scan],
+                    )
+                }.sortedByDescending { it.chapterCount }
+        }
     }
 
     fun delete(id: Int): Boolean {
