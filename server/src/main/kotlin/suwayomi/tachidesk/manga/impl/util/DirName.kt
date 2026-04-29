@@ -40,23 +40,22 @@ private fun getChapterDir(
     chapterId: Int,
 ): String =
     transaction {
-        // Get chapter data and build chapter-specific directory name
         val chapterEntry = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
+        val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
 
-        val rawScanlator = chapterEntry[ChapterTable.scanlator]
-        val resolvedScanlator = ScanlatorAlias.resolve(rawScanlator)
-        val chapterDir =
-            SafePath.buildValidFilename(
-                when {
-                    resolvedScanlator != null -> {
-                        "${resolvedScanlator}_${chapterEntry[ChapterTable.name]}"
-                    }
+        val mangaTitle = mangaEntry[MangaTable.title]
+        val chapterName = chapterEntry[ChapterTable.name]
+        val resolvedScanlator = ScanlatorAlias.resolve(chapterEntry[ChapterTable.scanlator])
 
-                    else -> {
-                        chapterEntry[ChapterTable.name]
-                    }
-                },
-            )
+        // Format: "{Manga Title} ({Scanlator}) - {Chapter Name}"
+        // The scanlator segment is omitted entirely when the source did not provide one.
+        val rawName =
+            if (!resolvedScanlator.isNullOrBlank()) {
+                "$mangaTitle ($resolvedScanlator) - $chapterName"
+            } else {
+                "$mangaTitle - $chapterName"
+            }
+        val chapterDir = SafePath.buildValidFilename(rawName)
 
         // Get manga directory and combine with chapter directory
         // Note: This creates a nested transaction, but Exposed handles this with useNestedTransactions=true
