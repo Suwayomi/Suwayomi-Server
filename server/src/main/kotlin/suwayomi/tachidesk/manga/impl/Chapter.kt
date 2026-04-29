@@ -143,11 +143,19 @@ object Chapter {
                 val manga = getManga(mangaId)
                 val source = getCatalogueSourceOrStub(manga.sourceId.toLong())
 
+                // Build the SManga from the RAW row so the user's metadata
+                // override never reaches the extension. Sources virtually only
+                // need `url` to list chapters, but we keep title/description
+                // sourced from the original DB values defensively.
+                val rawRow =
+                    transaction {
+                        MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
+                    }
                 val sManga =
                     SManga.create().apply {
-                        title = manga.title
-                        url = manga.url
-                        description = manga.description
+                        title = rawRow[MangaTable.title]
+                        url = rawRow[MangaTable.url]
+                        description = rawRow[MangaTable.description]
                     }
 
                 val currentLatestChapterNumber = Manga.getLatestChapter(mangaId)?.chapterNumber ?: 0f
