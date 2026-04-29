@@ -32,6 +32,62 @@ object MangaUserOverride {
     private val applicationDirs: ApplicationDirs by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
+    /**
+     * In-memory cache of overrides keyed by mangaId. Populated lazily and
+     * invalidated whenever an override is written. Keeps the per-row merge
+     * in toDataClass / MangaType O(1) instead of doing a SELECT per manga
+     * when rendering library lists.
+     */
+    private val cache = java.util.concurrent.ConcurrentHashMap<Int, MangaUserOverrideDataClass>()
+    private val cacheMissing = java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
+    @Volatile private var cacheLoaded = false
+
+    private fun ensureCache() {
+        if (cacheLoaded) return
+        synchronized(this) {
+            if (cacheLoaded) return
+            transaction {
+                MangaUserOverrideTable.selectAll().forEach { row ->
+                    val dc = MangaUserOverrideTable.toDataClass(row)
+                    cache[dc.mangaId] = dc
+                }
+            }
+            cacheLoaded = true
+        }
+    }
+
+    private fun invalidate(mangaId: Int) {
+        cache.remove(mangaId)
+        cacheMissing.remove(mangaId)
+    }
+
+    /**
+     * Cheap lookup used by MangaType / MangaTable.toDataClass to apply the
+     * override at render time. Returns null when the manga has no override.
+     */
+    fun cachedOverride(mangaId: Int): MangaUserOverrideDataClass? {
+        ensureCache()
+        cache[mangaId]?.let { return it }
+        if (cacheMissing.contains(mangaId)) return null
+        // Fall back to a single row fetch the first time we see a manga,
+        // then memoize the absence so we don't hit the DB again.
+        val row =
+            transaction {
+                MangaUserOverrideTable
+                    .selectAll()
+                    .where { MangaUserOverrideTable.mangaRef eq mangaId }
+                    .firstOrNull()
+            }
+        return if (row != null) {
+            val dc = MangaUserOverrideTable.toDataClass(row)
+            cache[mangaId] = dc
+            dc
+        } else {
+            cacheMissing.add(mangaId)
+            null
+        }
+    }
+
     /** Patch with nullable fields. `null` means "leave the existing value as-is". */
     data class Patch(
         val title: String? = null,
@@ -98,6 +154,7 @@ object MangaUserOverride {
                 }
             }
         }
+        invalidate(mangaId)
         return get(mangaId) ?: error("Failed to load override after upsert")
     }
 
@@ -107,7 +164,12 @@ object MangaUserOverride {
                 MangaUserOverrideTable.deleteWhere { MangaUserOverrideTable.mangaRef eq mangaId }
             }
         // Also remove the custom cover file when fully clearing the override
-        if (removed > 0) customCoverFile(mangaId).delete()
+        if (removed > 0) {
+            customCoverFile(mangaId).delete()
+            invalidate(mangaId)
+            runCatching { Manga.clearThumbnail(mangaId) }
+            bumpThumbnailFetchedAt(mangaId)
+        }
         return removed > 0
     }
 
@@ -162,6 +224,7 @@ object MangaUserOverride {
         // cover. We clear the on-disk thumbnail cache AND bump
         // thumbnailUrlLastFetched so the WebUI's cache-busting query
         // string changes and the browser re-requests the image.
+        invalidate(mangaId)
         runCatching { Manga.clearThumbnail(mangaId) }
         bumpThumbnailFetchedAt(mangaId)
         return get(mangaId) ?: error("Failed to load override after cover upload")
@@ -175,6 +238,7 @@ object MangaUserOverride {
                 it[updatedAt] = System.currentTimeMillis()
             }
         }
+        invalidate(mangaId)
         runCatching { Manga.clearThumbnail(mangaId) }
         bumpThumbnailFetchedAt(mangaId)
         return deleted

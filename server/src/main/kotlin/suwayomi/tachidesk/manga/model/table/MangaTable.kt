@@ -13,6 +13,7 @@ import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ResultRow
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
+import suwayomi.tachidesk.manga.impl.MangaUserOverride
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
@@ -51,32 +52,38 @@ object MangaTable : IntIdTable() {
 fun MangaTable.toDataClass(
     mangaEntry: ResultRow,
     includeMangaMeta: Boolean = true,
-) = MangaDataClass(
-    id = mangaEntry[this.id].value,
-    sourceId = mangaEntry[sourceReference].toString(),
-    url = mangaEntry[url],
-    title = mangaEntry[title],
-    thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
-    thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
-    initialized = mangaEntry[initialized],
-    artist = mangaEntry[artist],
-    author = mangaEntry[author],
-    description = mangaEntry[description],
-    genre = mangaEntry[genre].toGenreList(),
-    status = Companion.valueOf(mangaEntry[status]).name,
-    inLibrary = mangaEntry[inLibrary],
-    inLibraryAt = mangaEntry[inLibraryAt],
-    meta =
-        if (includeMangaMeta) {
-            getMangaMetaMap(mangaEntry[id].value)
-        } else {
-            emptyMap()
-        },
-    realUrl = mangaEntry[realUrl],
-    lastFetchedAt = mangaEntry[lastFetchedAt],
-    chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
-    updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
-)
+): MangaDataClass {
+    val mangaId = mangaEntry[this.id].value
+    val override = MangaUserOverride.cachedOverride(mangaId)
+    return MangaDataClass(
+        id = mangaId,
+        sourceId = mangaEntry[sourceReference].toString(),
+        url = mangaEntry[url],
+        title = override?.title?.takeIf { it.isNotBlank() } ?: mangaEntry[title],
+        thumbnailUrl = proxyThumbnailUrl(mangaId),
+        thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
+        initialized = mangaEntry[initialized],
+        artist = override?.artist?.takeIf { it.isNotBlank() } ?: mangaEntry[artist],
+        author = override?.author?.takeIf { it.isNotBlank() } ?: mangaEntry[author],
+        description =
+            override?.description?.takeIf { it.isNotBlank() } ?: mangaEntry[description],
+        genre =
+            override?.genre?.takeIf { it.isNotEmpty() } ?: mangaEntry[genre].toGenreList(),
+        status = Companion.valueOf(mangaEntry[status]).name,
+        inLibrary = mangaEntry[inLibrary],
+        inLibraryAt = mangaEntry[inLibraryAt],
+        meta =
+            if (includeMangaMeta) {
+                getMangaMetaMap(mangaId)
+            } else {
+                emptyMap()
+            },
+        realUrl = mangaEntry[realUrl],
+        lastFetchedAt = mangaEntry[lastFetchedAt],
+        chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
+        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
+    )
+}
 
 enum class MangaStatus(
     val value: Int,

@@ -18,6 +18,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.MangaList
+import suwayomi.tachidesk.manga.impl.MangaUserOverride
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -86,24 +87,53 @@ class MangaType(
     }
 
     constructor(row: ResultRow) : this(
-        row[MangaTable.id].value,
-        row[MangaTable.sourceReference],
-        row[MangaTable.url],
-        row[MangaTable.title],
-        row[MangaTable.thumbnail_url]?.let { MangaList.proxyThumbnailUrl(row[MangaTable.id].value) },
-        row[MangaTable.thumbnailUrlLastFetched],
-        row[MangaTable.initialized],
-        row[MangaTable.artist],
-        row[MangaTable.author],
-        row[MangaTable.description],
-        row[MangaTable.genre].toGenreList(),
-        MangaStatus.valueOf(row[MangaTable.status]),
-        row[MangaTable.inLibrary],
-        row[MangaTable.inLibraryAt],
-        UpdateStrategy.valueOf(row[MangaTable.updateStrategy]),
-        row[MangaTable.realUrl],
-        row[MangaTable.lastFetchedAt],
-        row[MangaTable.chaptersLastFetchedAt],
+        id = row[MangaTable.id].value,
+        sourceId = row[MangaTable.sourceReference],
+        url = row[MangaTable.url],
+        // Apply MangaUserOverride at render time so cards / detail views
+        // pick up the user's edits without each component needing to know
+        // about the override service.
+        title =
+            MangaUserOverride
+                .cachedOverride(row[MangaTable.id].value)
+                ?.title
+                ?.takeIf { it.isNotBlank() }
+                ?: row[MangaTable.title],
+        thumbnailUrl =
+            row[MangaTable.thumbnail_url]?.let { MangaList.proxyThumbnailUrl(row[MangaTable.id].value) },
+        thumbnailUrlLastFetched = row[MangaTable.thumbnailUrlLastFetched],
+        initialized = row[MangaTable.initialized],
+        artist =
+            MangaUserOverride
+                .cachedOverride(row[MangaTable.id].value)
+                ?.artist
+                ?.takeIf { it.isNotBlank() }
+                ?: row[MangaTable.artist],
+        author =
+            MangaUserOverride
+                .cachedOverride(row[MangaTable.id].value)
+                ?.author
+                ?.takeIf { it.isNotBlank() }
+                ?: row[MangaTable.author],
+        description =
+            MangaUserOverride
+                .cachedOverride(row[MangaTable.id].value)
+                ?.description
+                ?.takeIf { it.isNotBlank() }
+                ?: row[MangaTable.description],
+        genre =
+            MangaUserOverride
+                .cachedOverride(row[MangaTable.id].value)
+                ?.genre
+                ?.takeIf { it.isNotEmpty() }
+                ?: row[MangaTable.genre].toGenreList(),
+        status = MangaStatus.valueOf(row[MangaTable.status]),
+        inLibrary = row[MangaTable.inLibrary],
+        inLibraryAt = row[MangaTable.inLibraryAt],
+        updateStrategy = UpdateStrategy.valueOf(row[MangaTable.updateStrategy]),
+        realUrl = row[MangaTable.realUrl],
+        lastFetchedAt = row[MangaTable.lastFetchedAt],
+        chaptersLastFetchedAt = row[MangaTable.chaptersLastFetchedAt],
     )
 
     constructor(dataClass: MangaDataClass) : this(
