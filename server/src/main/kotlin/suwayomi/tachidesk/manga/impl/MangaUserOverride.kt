@@ -119,6 +119,20 @@ object MangaUserOverride {
         val now = System.currentTimeMillis()
         val genreJoined = patch.genre?.joinToString(", ")
 
+        // Snapshot the current effective title BEFORE we touch the override
+        // table, so we can rename the on-disk download folder if the title
+        // is changing.
+        val previousEffectiveTitle =
+            transaction {
+                val row = MangaTable.selectAll().where { MangaTable.id eq mangaId }.firstOrNull()
+                if (row == null) {
+                    null
+                } else {
+                    cachedOverride(mangaId)?.title?.takeIf { it.isNotBlank() }
+                        ?: row[MangaTable.title]
+                }
+            }
+
         transaction {
             val mangaExists =
                 MangaTable.selectAll().where { MangaTable.id eq mangaId }.empty().not()
@@ -155,20 +169,91 @@ object MangaUserOverride {
             }
         }
         invalidate(mangaId)
+
+        // If the title changed, rename the on-disk manga folder so that
+        // already-downloaded chapters keep working with the new effective
+        // title and so future downloads land in the same folder.
+        val newEffectiveTitle =
+            cachedOverride(mangaId)?.title?.takeIf { it.isNotBlank() }
+                ?: transaction {
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.id eq mangaId }
+                        .first()[MangaTable.title]
+                }
+        if (previousEffectiveTitle != null && previousEffectiveTitle != newEffectiveTitle) {
+            runCatching { renameMangaFolder(mangaId, previousEffectiveTitle, newEffectiveTitle) }
+                .onFailure { /* best-effort, not fatal */ }
+        }
+
         return get(mangaId) ?: error("Failed to load override after upsert")
     }
 
+    private fun renameMangaFolder(
+        mangaId: Int,
+        oldTitle: String,
+        newTitle: String,
+    ) {
+        val sourceName =
+            transaction {
+                val sourceId =
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.id eq mangaId }
+                        .first()[MangaTable.sourceReference]
+                suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+                    .getCatalogueSourceOrStub(sourceId)
+                    .toString()
+            }
+        val sourceDir = xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(sourceName)
+        val oldDir =
+            File(
+                applicationDirs.downloadsRoot +
+                    "/mangas/" +
+                    sourceDir +
+                    "/" +
+                    xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(oldTitle),
+            )
+        val newDir =
+            File(
+                applicationDirs.downloadsRoot +
+                    "/mangas/" +
+                    sourceDir +
+                    "/" +
+                    xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(newTitle),
+            )
+        if (!oldDir.exists() || oldDir.absolutePath == newDir.absolutePath) return
+        newDir.parentFile.mkdirs()
+        Files.move(oldDir.toPath(), newDir.toPath())
+    }
+
     fun clear(mangaId: Int): Boolean {
+        // Snapshot effective title BEFORE clearing so we can rename back.
+        val previousEffectiveTitle = cachedOverride(mangaId)?.title?.takeIf { it.isNotBlank() }
+        val rawTitle =
+            transaction {
+                MangaTable
+                    .selectAll()
+                    .where { MangaTable.id eq mangaId }
+                    .firstOrNull()
+                    ?.get(MangaTable.title)
+            }
+
         val removed =
             transaction {
                 MangaUserOverrideTable.deleteWhere { MangaUserOverrideTable.mangaRef eq mangaId }
             }
-        // Also remove the custom cover file when fully clearing the override
         if (removed > 0) {
             customCoverFile(mangaId).delete()
             invalidate(mangaId)
             runCatching { Manga.clearThumbnail(mangaId) }
             bumpThumbnailFetchedAt(mangaId)
+            if (previousEffectiveTitle != null &&
+                rawTitle != null &&
+                previousEffectiveTitle != rawTitle
+            ) {
+                runCatching { renameMangaFolder(mangaId, previousEffectiveTitle, rawTitle) }
+            }
         }
         return removed > 0
     }

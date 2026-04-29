@@ -70,7 +70,12 @@ object ChapterDownloadHelper {
                     .where { ChapterTable.id eq chapterId }
                     .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
             val chapter = ChapterTable.toDataClass(row)
-            val mangaTitle = row[MangaTable.title]
+            val mangaTitle =
+                MangaUserOverride
+                    .cachedOverride(chapter.mangaId)
+                    ?.title
+                    ?.takeIf { it.isNotBlank() }
+                    ?: row[MangaTable.title]
 
             // Match the on-disk download folder format used by DirName.getChapterDir:
             //   "{Title} ({Scanlator}) - {Chapter}"

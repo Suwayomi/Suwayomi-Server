@@ -11,6 +11,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.MangaUserOverride
 import suwayomi.tachidesk.manga.impl.ScanlatorAlias
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -30,8 +31,18 @@ private fun getMangaDir(mangaId: Int): String =
         val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
         val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
+        // Prefer the user's title override so on-disk folders match what the
+        // user sees in the library / detail screen. Falls back to the raw
+        // source title when no override is set.
+        val effectiveTitle =
+            MangaUserOverride
+                .cachedOverride(mangaId)
+                ?.title
+                ?.takeIf { it.isNotBlank() }
+                ?: mangaEntry[MangaTable.title]
+
         val sourceDir = SafePath.buildValidFilename(source.toString())
-        val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
+        val mangaDir = SafePath.buildValidFilename(effectiveTitle)
         "$sourceDir/$mangaDir"
     }
 
@@ -43,7 +54,12 @@ private fun getChapterDir(
         val chapterEntry = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
         val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
 
-        val mangaTitle = mangaEntry[MangaTable.title]
+        val mangaTitle =
+            MangaUserOverride
+                .cachedOverride(mangaId)
+                ?.title
+                ?.takeIf { it.isNotBlank() }
+                ?: mangaEntry[MangaTable.title]
         val chapterName = chapterEntry[ChapterTable.name]
         val resolvedScanlator = ScanlatorAlias.resolve(chapterEntry[ChapterTable.scanlator])
 
