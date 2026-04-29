@@ -20,6 +20,7 @@ import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
 import suwayomi.tachidesk.manga.controller.MangaController
+import suwayomi.tachidesk.manga.controller.MangaCustomCoverController
 import suwayomi.tachidesk.manga.controller.SourceController
 import suwayomi.tachidesk.manga.controller.TrackController
 import suwayomi.tachidesk.manga.controller.UpdateController
@@ -59,6 +60,7 @@ object MangaAPI {
             get("{mangaId}", MangaController.retrieve)
             get("{mangaId}/full", MangaController.retrieveFull)
             get("{mangaId}/thumbnail", MangaController.thumbnail)
+            get("{mangaId}/custom-cover", MangaCustomCoverController.serve)
 
             get("{mangaId}/category", MangaController.categoryList)
             get("{mangaId}/category/{categoryId}", MangaController.addToCategory)

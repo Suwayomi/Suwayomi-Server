@@ -14,6 +14,7 @@ import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.impl.CategoryManga
+import suwayomi.tachidesk.manga.impl.MangaDuplicates
 import suwayomi.tachidesk.manga.impl.MangaUrlResolver
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -41,6 +42,7 @@ class MangaUrlMutation {
         val manga: MangaType?,
         val installedExtensionPkgName: String?,
         val message: String?,
+        val duplicates: List<MangaType>,
     )
 
     @RequireAuth
@@ -76,12 +78,18 @@ class MangaUrlMutation {
                         }
                     }
 
+                val duplicates =
+                    mangaId?.let { id ->
+                        MangaDuplicates.findDuplicates(id).map { MangaType(it) }
+                    }.orEmpty()
+
                 AddMangaFromUrlPayload(
                     clientMutationId = clientMutationId,
                     status = AddMangaFromUrlStatus.valueOf(result.status.name),
                     manga = mangaType,
                     installedExtensionPkgName = result.installedExtensionPkgName,
                     message = result.message,
+                    duplicates = duplicates,
                 )
             }
         }

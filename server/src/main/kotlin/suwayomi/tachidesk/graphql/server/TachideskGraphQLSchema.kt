@@ -25,6 +25,7 @@ import suwayomi.tachidesk.graphql.mutations.InfoMutation
 import suwayomi.tachidesk.graphql.mutations.KoreaderSyncMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MangaUrlMutation
+import suwayomi.tachidesk.graphql.mutations.MangaUserOverrideMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.ScanlatorAliasMutation
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
@@ -39,7 +40,10 @@ import suwayomi.tachidesk.graphql.queries.DownloadQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.InfoQuery
 import suwayomi.tachidesk.graphql.queries.KoreaderSyncQuery
+import suwayomi.tachidesk.graphql.queries.LibrarySearchQuery
+import suwayomi.tachidesk.graphql.queries.MangaDuplicatesQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
+import suwayomi.tachidesk.graphql.queries.MangaUserOverrideQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.ScanlatorAliasQuery
 import suwayomi.tachidesk.graphql.queries.SettingsQuery
@@ -98,6 +102,9 @@ val schema =
                 TopLevelObject(InfoQuery()),
                 TopLevelObject(KoreaderSyncQuery()),
                 TopLevelObject(MangaQuery()),
+                TopLevelObject(MangaDuplicatesQuery()),
+                TopLevelObject(MangaUserOverrideQuery()),
+                TopLevelObject(LibrarySearchQuery()),
                 TopLevelObject(MetaQuery()),
                 TopLevelObject(ScanlatorAliasQuery()),
                 TopLevelObject(SettingsQuery()),
@@ -117,6 +124,7 @@ val schema =
                 TopLevelObject(KoreaderSyncMutation()),
                 TopLevelObject(MangaMutation()),
                 TopLevelObject(MangaUrlMutation()),
+                TopLevelObject(MangaUserOverrideMutation()),
                 TopLevelObject(MetaMutation()),
                 TopLevelObject(ScanlatorAliasMutation()),
                 TopLevelObject(SettingsMutation()),
