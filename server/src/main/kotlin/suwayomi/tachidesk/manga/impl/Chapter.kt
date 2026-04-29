@@ -327,6 +327,11 @@ object Chapter {
 
                 if (manga.inLibrary) {
                     downloadNewChapters(mangaId, currentLatestChapterNumber, numberOfCurrentChapters, insertedChapters)
+                    // Fire-and-forget Telegram (and any future) notifications when
+                    // we just inserted brand-new chapters into a library entry.
+                    if (insertedChapters.isNotEmpty()) {
+                        NotificationService.notifyNewChapters(manga, insertedChapters)
+                    }
                 }
 
                 uniqueChapters

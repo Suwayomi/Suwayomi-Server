@@ -23,10 +23,12 @@ import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
 import suwayomi.tachidesk.graphql.mutations.ImageMutation
 import suwayomi.tachidesk.graphql.mutations.InfoMutation
 import suwayomi.tachidesk.graphql.mutations.KoreaderSyncMutation
+import suwayomi.tachidesk.graphql.mutations.LocalSourceMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MangaUrlMutation
 import suwayomi.tachidesk.graphql.mutations.MangaUserOverrideMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
+import suwayomi.tachidesk.graphql.mutations.NotificationMutation
 import suwayomi.tachidesk.graphql.mutations.ScanlatorAliasMutation
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
@@ -41,8 +43,10 @@ import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.InfoQuery
 import suwayomi.tachidesk.graphql.queries.KoreaderSyncQuery
 import suwayomi.tachidesk.graphql.queries.LibrarySearchQuery
+import suwayomi.tachidesk.graphql.queries.LocalSourceQuery
 import suwayomi.tachidesk.graphql.queries.MangaDuplicatesQuery
 import suwayomi.tachidesk.graphql.queries.MangaQuery
+import suwayomi.tachidesk.graphql.queries.MangaRecommendationsQuery
 import suwayomi.tachidesk.graphql.queries.MangaUserOverrideQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.ScanlatorAliasQuery
@@ -103,8 +107,10 @@ val schema =
                 TopLevelObject(KoreaderSyncQuery()),
                 TopLevelObject(MangaQuery()),
                 TopLevelObject(MangaDuplicatesQuery()),
+                TopLevelObject(MangaRecommendationsQuery()),
                 TopLevelObject(MangaUserOverrideQuery()),
                 TopLevelObject(LibrarySearchQuery()),
+                TopLevelObject(LocalSourceQuery()),
                 TopLevelObject(MetaQuery()),
                 TopLevelObject(ScanlatorAliasQuery()),
                 TopLevelObject(SettingsQuery()),
@@ -122,10 +128,12 @@ val schema =
                 TopLevelObject(ImageMutation()),
                 TopLevelObject(InfoMutation()),
                 TopLevelObject(KoreaderSyncMutation()),
+                TopLevelObject(LocalSourceMutation()),
                 TopLevelObject(MangaMutation()),
                 TopLevelObject(MangaUrlMutation()),
                 TopLevelObject(MangaUserOverrideMutation()),
                 TopLevelObject(MetaMutation()),
+                TopLevelObject(NotificationMutation()),
                 TopLevelObject(ScanlatorAliasMutation()),
                 TopLevelObject(SettingsMutation()),
                 TopLevelObject(SourceMutation()),

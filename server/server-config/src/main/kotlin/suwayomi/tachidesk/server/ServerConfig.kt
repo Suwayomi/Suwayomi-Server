@@ -1056,6 +1056,27 @@ class ServerConfig(
         setMigrated = { authPassword.value = it },
     )
 
+    val telegramNotificationsEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 200,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = false,
+    )
+
+    val telegramBotToken: MutableStateFlow<String> by StringSetting(
+        protoNumber = 201,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = false,
+        defaultValue = "",
+    )
+
+    val telegramChatId: MutableStateFlow<String> by StringSetting(
+        protoNumber = 202,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = false,
+        defaultValue = "",
+    )
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(
         flow: Flow<T>,
