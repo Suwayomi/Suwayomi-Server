@@ -7,6 +7,9 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.awaitSuccess
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
@@ -27,6 +30,7 @@ import java.nio.file.StandardCopyOption
 
 object MangaUserOverride {
     private val applicationDirs: ApplicationDirs by injectLazy()
+    private val network: NetworkHelper by injectLazy()
 
     /** Patch with nullable fields. `null` means "leave the existing value as-is". */
     data class Patch(
@@ -105,6 +109,18 @@ object MangaUserOverride {
         // Also remove the custom cover file when fully clearing the override
         if (removed > 0) customCoverFile(mangaId).delete()
         return removed > 0
+    }
+
+    suspend fun setCustomCoverFromUrl(
+        mangaId: Int,
+        url: String,
+    ): MangaUserOverrideDataClass {
+        require(url.isNotBlank()) { "'url' must not be blank" }
+        val response = network.client.newCall(GET(url)).awaitSuccess()
+        val body = response.body
+        body.byteStream().use { stream ->
+            return setCustomCover(mangaId, stream)
+        }
     }
 
     fun setCustomCover(
