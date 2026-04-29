@@ -413,6 +413,15 @@ object Manga {
     }
 
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+        // If the user uploaded / linked a custom cover, prefer it over the
+        // source-provided thumbnail so cards and the manga detail screen
+        // pick it up automatically.
+        val customCover = MangaUserOverride.customCoverPath(mangaId)
+        if (customCover != null) {
+            val mime = java.nio.file.Files.probeContentType(customCover) ?: "image/jpeg"
+            return java.nio.file.Files.newInputStream(customCover) to mime
+        }
+
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
 
         if (mangaEntry[MangaTable.inLibrary] && mangaEntry[MangaTable.sourceReference] != LocalSource.ID) {

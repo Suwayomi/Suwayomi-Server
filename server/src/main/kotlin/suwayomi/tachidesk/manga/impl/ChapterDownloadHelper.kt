@@ -72,8 +72,17 @@ object ChapterDownloadHelper {
             val chapter = ChapterTable.toDataClass(row)
             val mangaTitle = row[MangaTable.title]
 
-            val scanlatorPart = chapter.scanlator?.let { "[$it] " } ?: ""
-            val fileName = "$mangaTitle - $scanlatorPart${chapter.name}.cbz"
+            // Match the on-disk download folder format used by DirName.getChapterDir:
+            //   "{Title} ({Scanlator}) - {Chapter}"
+            // and apply the user's scanlator alias mapping when one exists.
+            val resolvedScanlator = ScanlatorAlias.resolve(chapter.scanlator)
+            val baseName =
+                if (!resolvedScanlator.isNullOrBlank()) {
+                    "$mangaTitle ($resolvedScanlator) - ${chapter.name}"
+                } else {
+                    "$mangaTitle - ${chapter.name}"
+                }
+            val fileName = "$baseName.cbz"
 
             Pair(chapter, fileName)
         }

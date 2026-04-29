@@ -158,6 +158,9 @@ object MangaUserOverride {
                 }
             }
         }
+        // Invalidate the cached thumbnail so the next /thumbnail hit picks
+        // up the freshly uploaded cover.
+        runCatching { Manga.clearThumbnail(mangaId) }
         return get(mangaId) ?: error("Failed to load override after cover upload")
     }
 
@@ -169,6 +172,7 @@ object MangaUserOverride {
                 it[updatedAt] = System.currentTimeMillis()
             }
         }
+        runCatching { Manga.clearThumbnail(mangaId) }
         return deleted
     }
 
