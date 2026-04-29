@@ -151,6 +151,11 @@ object MangaUrlResolver {
         runCatching { Manga.fetchManga(mangaId) }
             .onFailure { logger.warn(it) { "Failed to fetch manga details for id=$mangaId from URL=$url" } }
 
+        // Eagerly fetch chapter list too so the manga is immediately useful in the UI
+        // (without this, the library entry shows 0 chapters until "Reload from source").
+        runCatching { Chapter.fetchChapterList(mangaId) }
+            .onFailure { logger.warn(it) { "Failed to fetch chapter list for id=$mangaId from URL=$url" } }
+
         if (addToLibrary) {
             Library.addMangaToLibrary(mangaId)
         }
