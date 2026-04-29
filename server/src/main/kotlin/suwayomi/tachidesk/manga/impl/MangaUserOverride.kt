@@ -158,9 +158,12 @@ object MangaUserOverride {
                 }
             }
         }
-        // Invalidate the cached thumbnail so the next /thumbnail hit picks
-        // up the freshly uploaded cover.
+        // Invalidate caches so the next thumbnail fetch returns the new
+        // cover. We clear the on-disk thumbnail cache AND bump
+        // thumbnailUrlLastFetched so the WebUI's cache-busting query
+        // string changes and the browser re-requests the image.
         runCatching { Manga.clearThumbnail(mangaId) }
+        bumpThumbnailFetchedAt(mangaId)
         return get(mangaId) ?: error("Failed to load override after cover upload")
     }
 
@@ -173,7 +176,16 @@ object MangaUserOverride {
             }
         }
         runCatching { Manga.clearThumbnail(mangaId) }
+        bumpThumbnailFetchedAt(mangaId)
         return deleted
+    }
+
+    private fun bumpThumbnailFetchedAt(mangaId: Int) {
+        transaction {
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                it[thumbnailUrlLastFetched] = java.time.Instant.now().epochSecond
+            }
+        }
     }
 
     fun customCoverPath(mangaId: Int): Path? {
