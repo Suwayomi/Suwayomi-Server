@@ -89,6 +89,7 @@ object MangaAPI {
             get("{chapterId}/download", MangaController.downloadChapter)
             head("{chapterId}/download", MangaController.downloadChapter)
             get("{chapterId}/download.epub", EbookController.downloadChapterEpub)
+            post("bulk-archive", EbookController::bulkArchive)
         }
 
         path("category") {

@@ -7,9 +7,11 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.javalin.http.Context
 import io.javalin.http.HttpStatus
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import suwayomi.tachidesk.manga.impl.ebook.BulkArchiveBuilder
 import suwayomi.tachidesk.manga.impl.ebook.EpubBuilder
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -91,4 +93,59 @@ object EbookController {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
+
+    /**
+     * Bulk archive endpoint. POST a JSON body with chapterIds + format
+     * ("CBZ" or "EPUB") and the server returns a single ZIP containing
+     * one CBZ/EPUB per chapter, with override-aware filenames.
+     *
+     * Used by the WebUI "Save CBZ/EPUB to this device" bulk action so
+     * the user gets one download instead of N (which browsers throttle).
+     */
+    data class BulkArchiveBody(
+        val chapterIds: List<Int> = emptyList(),
+        val format: String = "CBZ",
+    )
+
+    fun bulkArchive(ctx: Context) {
+        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+
+        val body =
+            try {
+                ctx.bodyAsClass(BulkArchiveBody::class.java)
+            } catch (e: Exception) {
+                ctx.status(HttpStatus.BAD_REQUEST)
+                ctx.result("Invalid body: ${e.message}")
+                return
+            }
+        if (body.chapterIds.isEmpty()) {
+            ctx.status(HttpStatus.BAD_REQUEST)
+            ctx.result("chapterIds is required")
+            return
+        }
+        val format =
+            runCatching { BulkArchiveBuilder.Format.valueOf(body.format.uppercase()) }
+                .getOrElse {
+                    ctx.status(HttpStatus.BAD_REQUEST)
+                    ctx.result("format must be CBZ or EPUB")
+                    return
+                }
+
+        val result =
+            try {
+                BulkArchiveBuilder.build(body.chapterIds, format)
+            } catch (e: Exception) {
+                ctx.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                ctx.result(e.message ?: e.toString())
+                return
+            }
+
+        ctx.disableCompression()
+        ctx.header("Content-Type", "application/zip")
+        ctx.header("Content-Disposition", "attachment; filename=\"${result.filename}\"")
+        ctx.header("Content-Length", result.bytes.size.toString())
+        // Allow JS to read the filename when the WebUI is on a different origin.
+        ctx.header("Access-Control-Expose-Headers", "Content-Disposition")
+        ctx.result(java.io.ByteArrayInputStream(result.bytes))
+    }
 }
