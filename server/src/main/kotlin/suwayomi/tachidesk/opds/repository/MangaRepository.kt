@@ -46,13 +46,16 @@ object MangaRepository {
      * Maps a database [ResultRow] to an [OpdsMangaAcqEntry] data transfer object.
      * @return The mapped [OpdsMangaAcqEntry].
      */
-    private fun ResultRow.toOpdsMangaAcqEntry(): OpdsMangaAcqEntry =
-        OpdsMangaAcqEntry(
-            id = this[MangaTable.id].value,
-            title = this[MangaTable.title],
-            author = this[MangaTable.author],
-            genres = this[MangaTable.genre].toGenreList(),
-            description = this[MangaTable.description],
+    private fun ResultRow.toOpdsMangaAcqEntry(): OpdsMangaAcqEntry {
+        val mangaId = this[MangaTable.id].value
+        // Apply MangaUserOverride so OPDS feeds reflect the user's edits.
+        val override = suwayomi.tachidesk.manga.impl.MangaUserOverride.cachedOverride(mangaId)
+        return OpdsMangaAcqEntry(
+            id = mangaId,
+            title = override?.title?.takeIf { it.isNotBlank() } ?: this[MangaTable.title],
+            author = override?.author?.takeIf { it.isNotBlank() } ?: this[MangaTable.author],
+            genres = override?.genre?.takeIf { it.isNotEmpty() } ?: this[MangaTable.genre].toGenreList(),
+            description = override?.description?.takeIf { it.isNotBlank() } ?: this[MangaTable.description],
             thumbnailUrl = this[MangaTable.thumbnail_url],
             sourceLang = this[SourceTable.lang],
             inLibrary = this[MangaTable.inLibrary],
@@ -61,6 +64,7 @@ object MangaRepository {
             lastFetchedAt = this[MangaTable.lastFetchedAt],
             url = this[MangaTable.realUrl],
         )
+    }
 
     /**
      * Centralized function to retrieve paginated, sorted, and filtered manga from the library.
@@ -247,11 +251,12 @@ object MangaRepository {
                 .where { MangaTable.id eq mangaId }
                 .firstOrNull()
                 ?.let {
+                    val override = suwayomi.tachidesk.manga.impl.MangaUserOverride.cachedOverride(mangaId)
                     OpdsMangaDetails(
                         id = it[MangaTable.id].value,
-                        title = it[MangaTable.title],
+                        title = override?.title?.takeIf { t -> t.isNotBlank() } ?: it[MangaTable.title],
                         thumbnailUrl = it[MangaTable.thumbnail_url],
-                        author = it[MangaTable.author],
+                        author = override?.author?.takeIf { a -> a.isNotBlank() } ?: it[MangaTable.author],
                     )
                 }
         }

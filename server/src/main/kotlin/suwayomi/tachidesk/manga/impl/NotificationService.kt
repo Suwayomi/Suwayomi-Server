@@ -46,6 +46,36 @@ object NotificationService {
     }
 
     /**
+     * Notify when a chapter has been successfully shipped to Kindle.
+     * Fire-and-forget like notifyNewChapters.
+     */
+    fun notifyKindleSent(
+        manga: MangaDataClass,
+        chapterName: String,
+    ) {
+        if (!serverConfig.telegramNotificationsEnabled.value) return
+        scope.launch {
+            runCatching {
+                sendTelegramRaw("📧 Sent to Kindle: *${manga.title}* — $chapterName")
+            }.onFailure { logger.warn(it) { "Failed Telegram kindle-success message" } }
+        }
+    }
+
+    /** Inverse of [notifyKindleSent] — for failures the user should see. */
+    fun notifyKindleFailed(
+        manga: MangaDataClass,
+        chapterName: String,
+        reason: String,
+    ) {
+        if (!serverConfig.telegramNotificationsEnabled.value) return
+        scope.launch {
+            runCatching {
+                sendTelegramRaw("⚠️ Kindle send failed: *${manga.title}* — $chapterName\n$reason")
+            }.onFailure { logger.warn(it) { "Failed Telegram kindle-failure message" } }
+        }
+    }
+
+    /**
      * Send a one-shot test message so the user can verify their bot
      * credentials without waiting for an actual chapter update.
      */

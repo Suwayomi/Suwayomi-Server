@@ -1077,6 +1077,113 @@ class ServerConfig(
         defaultValue = "",
     )
 
+    // ---- Send-to-Kindle / SMTP (Suwayomi-Enhanced) ----
+
+    val smtpProvider: MutableStateFlow<String> by StringSetting(
+        protoNumber = 210,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = "NONE", // NONE | GMAIL | OUTLOOK | YAHOO | ICLOUD | CUSTOM
+    )
+
+    val smtpHost: MutableStateFlow<String> by StringSetting(
+        protoNumber = 211,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = "",
+    )
+
+    val smtpPort: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 212,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = 587,
+        min = 1,
+        max = 65535,
+    )
+
+    val smtpUseStartTls: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 213,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = true,
+    )
+
+    val smtpUsername: MutableStateFlow<String> by StringSetting(
+        protoNumber = 214,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = false,
+        defaultValue = "",
+    )
+
+    val smtpPasswordEncrypted: MutableStateFlow<String> by StringSetting(
+        protoNumber = 215,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = false,
+        defaultValue = "",
+        excludeFromBackup = true,
+    )
+
+    val smtpFromEmail: MutableStateFlow<String> by StringSetting(
+        protoNumber = 216,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = false,
+        defaultValue = "",
+    )
+
+    val smtpAttachmentLimitBytes: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 217,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = 24_000_000, // 24 MB - leaves margin under Gmail's 25 MB cap
+        min = 1_000_000,
+        max = 100_000_000,
+    )
+
+    val kindleEmail: MutableStateFlow<String> by StringSetting(
+        protoNumber = 218,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = false,
+        defaultValue = "",
+    )
+
+    val ebookFormat: MutableStateFlow<String> by StringSetting(
+        protoNumber = 219,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = "EPUB", // EPUB only in MVP, PDF reserved for future
+    )
+
+    val ebookRtl: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 220,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = true,
+    )
+
+    val kindleSendIntervalSeconds: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 221,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = 90,
+        min = 30,
+        max = 600,
+    )
+
+    val kindleAutoSendEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 222,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = false,
+    )
+
+    val notifyOnKindleSend: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 223,
+        group = SettingGroup.NOTIFICATIONS,
+        privacySafe = true,
+        defaultValue = true,
+    )
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T> subscribeTo(
         flow: Flow<T>,

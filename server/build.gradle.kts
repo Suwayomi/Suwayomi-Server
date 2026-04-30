@@ -109,6 +109,9 @@ dependencies {
 
     implementation(libs.jwt)
 
+    implementation(libs.jakarta.mail.api)
+    implementation(libs.angus.mail)
+
     compileOnly(libs.kte)
 }
 

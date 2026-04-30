@@ -511,6 +511,9 @@ fun applicationSetup() {
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
 
+    // start the Send-to-Kindle worker so queued chapters get dispatched
+    suwayomi.tachidesk.manga.impl.kindle.KindleSendWorker.start()
+
     val kcefDisabled = System.getenv("SUWAYOMI_DISABLE_KCEF") == "1"
     if (kcefDisabled) {
         KotlinLogging.logger("KCEF").info { "KCEF disabled via SUWAYOMI_DISABLE_KCEF=1" }

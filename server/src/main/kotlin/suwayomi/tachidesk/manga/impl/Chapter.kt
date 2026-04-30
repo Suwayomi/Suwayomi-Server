@@ -339,6 +339,12 @@ object Chapter {
                     // we just inserted brand-new chapters into a library entry.
                     if (insertedChapters.isNotEmpty()) {
                         NotificationService.notifyNewChapters(manga, insertedChapters)
+                        // Auto-enqueue Send-to-Kindle for mangas the user opted into,
+                        // OR for everything when the global toggle is on.
+                        suwayomi.tachidesk.manga.impl.kindle.KindleAutoSend.maybeEnqueue(
+                            mangaId,
+                            insertedChapters.map { it.id },
+                        )
                     }
                 }
 

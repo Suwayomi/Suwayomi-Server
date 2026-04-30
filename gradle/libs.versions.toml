@@ -160,6 +160,10 @@ kcef = "dev.datlag:kcef:2024.04.20.4"
 # User
 jwt = "com.auth0:java-jwt:4.5.1"
 
+# E-mail (Send-to-Kindle / SMTP)
+jakarta-mail-api = "jakarta.mail:jakarta.mail-api:2.1.3"
+angus-mail = "org.eclipse.angus:angus-mail:2.0.3"
+
 # lint - used for renovate to update ktlint version
 ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 

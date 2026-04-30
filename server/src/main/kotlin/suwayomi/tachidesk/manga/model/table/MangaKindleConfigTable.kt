@@ -1,0 +1,22 @@
+package suwayomi.tachidesk.manga.model.table
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+import org.jetbrains.exposed.dao.id.IntIdTable
+import org.jetbrains.exposed.sql.ReferenceOption
+
+object MangaKindleConfigTable : IntIdTable() {
+    val mangaRef = reference("manga_ref", MangaTable, ReferenceOption.CASCADE).uniqueIndex()
+    val autoSend = bool("auto_send").default(false)
+
+    /** Optional per-manga override of the destination kindle email. */
+    val destination = varchar("destination", 320).nullable()
+
+    val createdAt = long("created_at")
+    val updatedAt = long("updated_at")
+}

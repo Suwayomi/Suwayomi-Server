@@ -20,6 +20,7 @@ import suwayomi.tachidesk.manga.controller.CategoryController
 import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
 import suwayomi.tachidesk.manga.controller.MangaController
+import suwayomi.tachidesk.manga.controller.EbookController
 import suwayomi.tachidesk.manga.controller.MangaCustomCoverController
 import suwayomi.tachidesk.manga.controller.SourceController
 import suwayomi.tachidesk.manga.controller.TrackController
@@ -87,6 +88,7 @@ object MangaAPI {
             post("batch", MangaController.anyChapterBatch)
             get("{chapterId}/download", MangaController.downloadChapter)
             head("{chapterId}/download", MangaController.downloadChapter)
+            get("{chapterId}/download.epub", EbookController.downloadChapterEpub)
         }
 
         path("category") {

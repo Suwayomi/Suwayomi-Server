@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.mutations.DownloadMutation
 import suwayomi.tachidesk.graphql.mutations.ExtensionMutation
 import suwayomi.tachidesk.graphql.mutations.ImageMutation
 import suwayomi.tachidesk.graphql.mutations.InfoMutation
+import suwayomi.tachidesk.graphql.mutations.KindleMutation
 import suwayomi.tachidesk.graphql.mutations.KoreaderSyncMutation
 import suwayomi.tachidesk.graphql.mutations.LocalSourceMutation
 import suwayomi.tachidesk.graphql.mutations.MangaMutation
@@ -42,6 +43,7 @@ import suwayomi.tachidesk.graphql.queries.DownloadQuery
 import suwayomi.tachidesk.graphql.queries.ExtensionQuery
 import suwayomi.tachidesk.graphql.queries.InfoQuery
 import suwayomi.tachidesk.graphql.queries.KoreaderSyncQuery
+import suwayomi.tachidesk.graphql.queries.KindleQuery
 import suwayomi.tachidesk.graphql.queries.LibrarySearchQuery
 import suwayomi.tachidesk.graphql.queries.LocalSourceQuery
 import suwayomi.tachidesk.graphql.queries.MangaDuplicatesQuery
@@ -109,6 +111,7 @@ val schema =
                 TopLevelObject(MangaDuplicatesQuery()),
                 TopLevelObject(MangaRecommendationsQuery()),
                 TopLevelObject(MangaUserOverrideQuery()),
+                TopLevelObject(KindleQuery()),
                 TopLevelObject(LibrarySearchQuery()),
                 TopLevelObject(LocalSourceQuery()),
                 TopLevelObject(MetaQuery()),
@@ -127,6 +130,7 @@ val schema =
                 TopLevelObject(ExtensionMutation()),
                 TopLevelObject(ImageMutation()),
                 TopLevelObject(InfoMutation()),
+                TopLevelObject(KindleMutation()),
                 TopLevelObject(KoreaderSyncMutation()),
                 TopLevelObject(LocalSourceMutation()),
                 TopLevelObject(MangaMutation()),
