@@ -203,7 +203,11 @@ object KindleSendService {
             try {
                 EpubBuilder.pagesFromChapter(mangaId, chapterId)
             } catch (e: Exception) {
-                markFailed(queueId, "Could not read chapter pages: ${e.message}")
+                // Most likely the auto-download for this freshly-detected
+                // chapter hasn't finished yet. Re-park the queue row 30 s in
+                // the future without consuming a real attempt so we keep
+                // polling until the CBZ / folder appears, up to 24 h.
+                rescheduleWaitingForDownload(queueId, e.message ?: e.toString())
                 return
             }
 
@@ -268,6 +272,46 @@ object KindleSendService {
             KindleSendQueueTable.update({ KindleSendQueueTable.id eq queueId }) {
                 it[status] = Status.SENT.name
                 it[lastError] = null
+            }
+        }
+    }
+
+    /**
+     * Park this queue row a short while into the future without burning
+     * a retry attempt. Used while we are waiting for the chapter's CBZ /
+     * folder to be downloaded by the regular DownloadManager path. After
+     * 24 h with no pages we give up and mark FAILED so the row doesn't
+     * loop forever.
+     */
+    private fun rescheduleWaitingForDownload(
+        queueId: Int,
+        reason: String,
+    ) {
+        val now = Instant.now().toEpochMilli()
+        val maxWaitMillis = 24L * 60 * 60 * 1000
+        transaction {
+            val row =
+                KindleSendQueueTable
+                    .selectAll()
+                    .where { KindleSendQueueTable.id eq queueId }
+                    .first()
+            val enqueued = row[KindleSendQueueTable.enqueuedAt]
+            if (now - enqueued > maxWaitMillis) {
+                KindleSendQueueTable.update({ KindleSendQueueTable.id eq queueId }) {
+                    it[status] = Status.FAILED.name
+                    it[lastError] =
+                        "Pages never became available within 24h. Original error: ${reason.take(800)}"
+                }
+                return@transaction
+            }
+            // Roll back the attempt counter we incremented in reserveNext()
+            // so backoff retries are reserved for actual failures.
+            val attemptsBefore = row[KindleSendQueueTable.attempts]
+            KindleSendQueueTable.update({ KindleSendQueueTable.id eq queueId }) {
+                it[status] = Status.PENDING.name
+                it[attempts] = (attemptsBefore - 1).coerceAtLeast(0)
+                it[lastError] = "Waiting for chapter download: ${reason.take(800)}"
+                it[nextAttemptAt] = now + 30_000L
             }
         }
     }
