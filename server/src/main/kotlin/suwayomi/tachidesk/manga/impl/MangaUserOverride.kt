@@ -206,25 +206,27 @@ object MangaUserOverride {
                     .toString()
             }
         val sourceDir = xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(sourceName)
-        val oldDir =
-            File(
-                applicationDirs.downloadsRoot +
-                    "/mangas/" +
-                    sourceDir +
-                    "/" +
-                    xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(oldTitle),
-            )
-        val newDir =
-            File(
-                applicationDirs.downloadsRoot +
-                    "/mangas/" +
-                    sourceDir +
-                    "/" +
-                    xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(newTitle),
-            )
-        if (!oldDir.exists() || oldDir.absolutePath == newDir.absolutePath) return
-        newDir.parentFile.mkdirs()
-        Files.move(oldDir.toPath(), newDir.toPath())
+        val safeOld = xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(oldTitle)
+        val safeNew = xyz.nulldev.androidcompat.util.SafePath.buildValidFilename(newTitle)
+        val oldDir = File(applicationDirs.downloadsRoot + "/mangas/" + sourceDir + "/" + safeOld)
+        val newDir = File(applicationDirs.downloadsRoot + "/mangas/" + sourceDir + "/" + safeNew)
+        if (oldDir.exists() && oldDir.absolutePath != newDir.absolutePath) {
+            newDir.parentFile.mkdirs()
+            Files.move(oldDir.toPath(), newDir.toPath())
+        }
+        // The chapter files inside still embed the old title in their own
+        // names ("OldTitle (Scanlator) - Chapter X.cbz"). Rename each so
+        // ChapterDownloadHelper / EpubBuilder can find them after the change.
+        val finalDir = if (oldDir.absolutePath == newDir.absolutePath) oldDir else newDir
+        if (!finalDir.exists() || !finalDir.isDirectory) return
+        val oldPrefix = "$safeOld "
+        val newPrefix = "$safeNew "
+        finalDir.listFiles().orEmpty().forEach { child ->
+            if (child.name.startsWith(oldPrefix)) {
+                val renamed = File(finalDir, newPrefix + child.name.removePrefix(oldPrefix))
+                runCatching { Files.move(child.toPath(), renamed.toPath()) }
+            }
+        }
     }
 
     fun clear(mangaId: Int): Boolean {
