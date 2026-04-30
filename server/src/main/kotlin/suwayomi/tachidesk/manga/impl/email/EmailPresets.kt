@@ -16,12 +16,12 @@ object EmailPresets {
         val useStartTls: Boolean,
     )
 
+    // Only Gmail is exposed as a one-click preset. Other providers use
+    // 'Custom' to fill host/port manually because their SMTP basic-auth
+    // posture varies (Outlook killed it for personal accounts, etc).
     val presets: List<Preset> =
         listOf(
             Preset("GMAIL", "Gmail", "smtp.gmail.com", 587, true),
-            Preset("OUTLOOK", "Outlook / Hotmail", "smtp-mail.outlook.com", 587, true),
-            Preset("YAHOO", "Yahoo", "smtp.mail.yahoo.com", 587, true),
-            Preset("ICLOUD", "iCloud", "smtp.mail.me.com", 587, true),
         )
 
     fun byId(id: String): Preset? = presets.firstOrNull { it.id == id }

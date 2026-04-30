@@ -110,8 +110,11 @@ class KindleMutation {
     @RequireAuth
     fun setSmtpPassword(input: SetSmtpPasswordInput): DataFetcherResult<SetSmtpPasswordPayload?> =
         asDataFetcherResult {
-            val encrypted =
-                if (input.password.isBlank()) "" else SecretBox.encrypt(input.password)
+            // App passwords / SMTP credentials never legitimately contain
+            // whitespace. Strip aggressively so paste-from-Google ('abcd efgh
+            // ijkl mnop' grouped output) doesn't bite the user.
+            val sanitized = input.password.replace("\\s".toRegex(), "")
+            val encrypted = if (sanitized.isBlank()) "" else SecretBox.encrypt(sanitized)
             serverConfig.smtpPasswordEncrypted.value = encrypted
             SetSmtpPasswordPayload(input.clientMutationId, true)
         }
@@ -132,6 +135,16 @@ class KindleMutation {
         asDataFetcherResult {
             val to = input.destination?.takeIf { it.isNotBlank() } ?: serverConfig.kindleEmail.value
             require(to.isNotBlank()) { "No destination email" }
+
+            // Diagnostic: include the decrypted password length in the
+            // error path so the user can confirm what's actually saved
+            // (Google App Passwords are 16 chars). We never include the
+            // value itself.
+            val savedPwLen =
+                runCatching {
+                    SecretBox.decrypt(serverConfig.smtpPasswordEncrypted.value).length
+                }.getOrDefault(-1)
+
             val (sent, message) =
                 runCatching {
                     EmailSender.send(
@@ -141,7 +154,10 @@ class KindleMutation {
                     )
                 }.fold(
                     onSuccess = { true to null },
-                    onFailure = { false to (it.message ?: it.toString()) },
+                    onFailure = {
+                        val raw = it.message ?: it.toString()
+                        false to "$raw\n\nDiagnostic: stored password length=$savedPwLen (Gmail app password = 16)."
+                    },
                 )
             SendTestEmailPayload(input.clientMutationId, sent, message)
         }
