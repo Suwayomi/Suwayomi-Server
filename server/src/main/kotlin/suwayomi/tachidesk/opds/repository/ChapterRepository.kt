@@ -36,6 +36,7 @@ object ChapterRepository {
             lastReadAt = this[ChapterTable.lastReadAt],
             sourceOrder = this[ChapterTable.sourceOrder],
             pageCount = this[ChapterTable.pageCount],
+            downloaded = this[ChapterTable.isDownloaded],
         )
 
     fun getChaptersForManga(

@@ -211,20 +211,37 @@ object OpdsEntryBuilder {
                 ),
             summary = OpdsSummaryXml(value = details),
             link =
-                listOf(
-                    OpdsLinkXml(
-                        rel = OpdsConstants.LINK_REL_SUBSECTION,
-                        href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
-                        type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
-                        title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
-                    ),
-                    OpdsLinkXml(
-                        rel = "alternate",
-                        href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/mark-read?read=${!chapter.read}&lang=${locale.toLanguageTag()}",
-                        type = "text/html",
-                        title = if (chapter.read) "Mark unread" else "Mark read",
-                    ),
-                ),
+                buildList {
+                    // Direct CBZ download so OPDS clients render the
+                    // chapter as a one-tap download instead of nesting
+                    // it under an extra "details" subfeed.
+                    if (chapter.downloaded) {
+                        add(
+                            OpdsLinkXml(
+                                rel = OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
+                                href = "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
+                                type = serverConfig.opdsCbzMimetype.value.mediaType,
+                                title = MR.strings.opds_linktitle_download_cbz.localized(locale),
+                            ),
+                        )
+                    }
+                    add(
+                        OpdsLinkXml(
+                            rel = OpdsConstants.LINK_REL_SUBSECTION,
+                            href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
+                            type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
+                            title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
+                        ),
+                    )
+                    add(
+                        OpdsLinkXml(
+                            rel = "alternate",
+                            href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/mark-read?read=${!chapter.read}&lang=${locale.toLanguageTag()}",
+                            type = "text/html",
+                            title = if (chapter.read) "Mark unread" else "Mark read",
+                        ),
+                    )
+                },
         )
     }
 

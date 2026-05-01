@@ -12,4 +12,5 @@ data class OpdsChapterListAcqEntry(
     val lastReadAt: Long,
     val sourceOrder: Int,
     val pageCount: Int, // Can be -1 if not known
+    val downloaded: Boolean = false,
 )
