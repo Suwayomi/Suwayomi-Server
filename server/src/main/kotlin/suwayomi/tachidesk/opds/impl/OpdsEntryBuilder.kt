@@ -129,6 +129,28 @@ object OpdsEntryBuilder {
             links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE, it, OpdsConstants.TYPE_IMAGE_JPEG))
             links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE_THUMBNAIL, it, OpdsConstants.TYPE_IMAGE_JPEG))
         }
+        // N: add/remove from library action so the user can manage their
+        // library straight from an OPDS reader (KOReader, Moon+, etc.)
+        // when browsing source feeds.
+        if (entry.inLibrary) {
+            links.add(
+                OpdsLinkXml(
+                    rel = "alternate",
+                    href = "$baseUrl/manga/${entry.id}/remove-from-library?lang=${locale.toLanguageTag()}",
+                    type = "text/html",
+                    title = "Remove from library",
+                ),
+            )
+        } else {
+            links.add(
+                OpdsLinkXml(
+                    rel = "alternate",
+                    href = "$baseUrl/manga/${entry.id}/add-to-library?lang=${locale.toLanguageTag()}",
+                    type = "text/html",
+                    title = "Add to library",
+                ),
+            )
+        }
 
         val summaryText = buildMangaSummary(entry, locale)
         return OpdsEntryXml(

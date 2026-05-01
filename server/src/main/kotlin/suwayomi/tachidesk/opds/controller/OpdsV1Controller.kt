@@ -582,6 +582,72 @@ object OpdsV1Controller {
         )
 
     /**
+     * N: add a manga from an explore (source) feed to the user's library.
+     * Triggers Manga.fetchManga + Chapter.fetchChapterList in the
+     * background and 302-redirects to the manga's chapter list so the
+     * OPDS reader navigates somewhere usable.
+     */
+    val addMangaToLibrary =
+        handler(
+            pathParam<Int>("mangaId"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Add Manga to Library")
+                    description("Add a manga shown in an explore feed to the user's library.")
+                }
+            },
+            behaviorOf = { ctx, mangaId, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                ctx.future {
+                    future {
+                        runCatching { suwayomi.tachidesk.manga.impl.Library.addMangaToLibrary(mangaId) }
+                        runCatching { suwayomi.tachidesk.manga.impl.Manga.fetchManga(mangaId) }
+                        runCatching { suwayomi.tachidesk.manga.impl.Chapter.fetchChapterList(mangaId) }
+                    }.thenAccept {
+                        ctx.redirect("/api/opds/v1.2/series/$mangaId/chapters?lang=${locale.toLanguageTag()}")
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    /**
+     * Inverse of [addMangaToLibrary]. Sets MangaTable.inLibrary = false
+     * and redirects back to the catalog root.
+     */
+    val removeMangaFromLibrary =
+        handler(
+            pathParam<Int>("mangaId"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Remove Manga from Library")
+                    description("Toggle MangaTable.inLibrary off for the given manga.")
+                }
+            },
+            behaviorOf = { ctx, mangaId, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                ctx.future {
+                    future {
+                        runCatching { suwayomi.tachidesk.manga.impl.Library.removeMangaFromLibrary(mangaId) }
+                    }.thenAccept {
+                        ctx.redirect("/api/opds/v1.2/?lang=${locale.toLanguageTag()}")
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    /**
      * Mark every chapter of a series read or unread (Suwayomi-Enhanced).
      */
     val markSeriesRead =

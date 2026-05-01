@@ -88,6 +88,14 @@ object OpdsAPI {
                 get(OpdsV1Controller.markSeriesUpTo)
             }
 
+            // N: add/remove a manga to/from the user's library
+            path("manga/{mangaId}/add-to-library") {
+                get(OpdsV1Controller.addMangaToLibrary)
+            }
+            path("manga/{mangaId}/remove-from-library") {
+                get(OpdsV1Controller.removeMangaFromLibrary)
+            }
+
             // Category-Specific Series Acquisition Feed (Library)
             path("category/{categoryId}") {
                 get(OpdsV1Controller.categoryFeed)
