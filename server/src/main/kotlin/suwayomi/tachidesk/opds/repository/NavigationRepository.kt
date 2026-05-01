@@ -115,7 +115,17 @@ object NavigationRepository {
                 )
             }
 
-        return libraryItems + otherRootItems
+        // H: "Recently added" virtual nav entry pointing at the existing
+        // library/series sort facet. Title is hardcoded since the upstream
+        // string catalog has no specific resource for this.
+        val recentlyAdded =
+            OpdsRootNavEntry(
+                id = "library/series?sort=date_added_desc",
+                title = "Recently added",
+                description = "Library mangas sorted by the date you added them.",
+                linkType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+            )
+        return libraryItems + otherRootItems + recentlyAdded
     }
 
     fun getLibraryNavigationItems(locale: Locale): List<OpdsRootNavEntry> =

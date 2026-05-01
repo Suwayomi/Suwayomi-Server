@@ -2,6 +2,10 @@ package suwayomi.tachidesk.opds.controller
 
 import io.javalin.http.Context
 import io.javalin.http.HttpStatus
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.update
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.opds.constants.OpdsConstants
@@ -573,6 +577,76 @@ object OpdsV1Controller {
             },
             withResults = {
                 httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    /**
+     * Mark every chapter of a series read or unread (Suwayomi-Enhanced).
+     */
+    val markSeriesRead =
+        handler(
+            pathParam<Int>("seriesId"),
+            queryParam<Boolean?>("read"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Mark Whole Series Read/Unread")
+                    description("Flips ChapterTable.isRead for every chapter of the series.")
+                }
+            },
+            behaviorOf = { ctx, seriesId, read, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                val newRead = read ?: true
+                org.jetbrains.exposed.sql.transactions.transaction {
+                    val ct = suwayomi.tachidesk.manga.model.table.ChapterTable
+                    ct.update({ ct.manga eq seriesId }) {
+                        it[ct.isRead] = newRead
+                        if (!newRead) it[ct.lastPageRead] = 0
+                    }
+                }
+                ctx.redirect("/api/opds/v1.2/series/$seriesId/chapters?lang=${locale.toLanguageTag()}")
+            },
+            withResults = {
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    /**
+     * Mark every chapter older than the given chapter (sourceOrder >=
+     * chapterIndex; OPDS feeds list newest first so 'older' = higher
+     * sourceOrder) read or unread. Lets the user catch up by tapping
+     * one entry instead of N.
+     */
+    val markSeriesUpTo =
+        handler(
+            pathParam<Int>("seriesId"),
+            pathParam<Int>("chapterIndex"),
+            queryParam<Boolean?>("read"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Mark Series Up To Chapter")
+                    description("Sets isRead for every chapter with sourceOrder >= the given chapter.")
+                }
+            },
+            behaviorOf = { ctx, seriesId, chapterIndex, read, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                val newRead = read ?: true
+                org.jetbrains.exposed.sql.transactions.transaction {
+                    val ct = suwayomi.tachidesk.manga.model.table.ChapterTable
+                    ct.update({ (ct.manga eq seriesId) and (ct.sourceOrder greaterEq chapterIndex) }) {
+                        it[ct.isRead] = newRead
+                        if (!newRead) it[ct.lastPageRead] = 0
+                    }
+                }
+                ctx.redirect("/api/opds/v1.2/series/$seriesId/chapters?lang=${locale.toLanguageTag()}")
+            },
+            withResults = {
+                httpCode(HttpStatus.FOUND)
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )

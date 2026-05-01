@@ -241,6 +241,28 @@ object OpdsEntryBuilder {
                             title = if (chapter.read) "Mark unread" else "Mark read",
                         ),
                     )
+                    // C: catch-up — mark this chapter and every older one
+                    // (sourceOrder >= this) as read in a single tap.
+                    add(
+                        OpdsLinkXml(
+                            rel = "alternate",
+                            href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/mark-up-to?read=true&lang=${locale.toLanguageTag()}",
+                            type = "text/html",
+                            title = "Mark this and older as read",
+                        ),
+                    )
+                    // F: also expose the EPUB acquisition link so OPDS
+                    // readers that prefer EPUB can grab it directly.
+                    if (chapter.downloaded) {
+                        add(
+                            OpdsLinkXml(
+                                rel = OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
+                                href = "/api/v1/chapter/${chapter.id}/download.epub",
+                                type = "application/epub+zip",
+                                title = "Download EPUB",
+                            ),
+                        )
+                    }
                 },
         )
     }

@@ -50,6 +50,7 @@ object OpdsFeedBuilder {
         builder.totalResults = navItems.size.toLong()
         builder.entries.addAll(
             navItems.map { item ->
+                val joinChar = if (item.id.contains('?')) '&' else '?'
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:root:${item.id}",
                     title = item.title,
@@ -58,7 +59,7 @@ object OpdsFeedBuilder {
                         listOf(
                             OpdsLinkXml(
                                 rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                href = "$baseUrl/${item.id}?lang=${locale.toLanguageTag()}",
+                                href = "$baseUrl/${item.id}${joinChar}lang=${locale.toLanguageTag()}",
                                 type = item.linkType,
                                 title = item.title,
                             ),
@@ -673,6 +674,45 @@ object OpdsFeedBuilder {
             currentFilter,
             locale,
             filterCounts,
+        )
+        // A/B: synthetic action entries at top of the chapter list so
+        // OPDS readers can mark the entire series read or unread in
+        // one tap. Listed before the actual chapters.
+        val now = currentFormattedTime()
+        val tag = locale.toLanguageTag()
+        builder.entries.add(
+            OpdsEntryXml(
+                id = "urn:suwayomi:action:mark-series-read:$mangaId",
+                title = "★ Mark whole series as read",
+                updated = now,
+                content = OpdsContentXml(type = "text", value = "Sets every chapter of this series to read."),
+                link =
+                    listOf(
+                        OpdsLinkXml(
+                            rel = "alternate",
+                            href = "$baseUrl/series/$mangaId/mark-all?read=true&lang=$tag",
+                            type = "text/html",
+                            title = "Mark whole series as read",
+                        ),
+                    ),
+            ),
+        )
+        builder.entries.add(
+            OpdsEntryXml(
+                id = "urn:suwayomi:action:mark-series-unread:$mangaId",
+                title = "☆ Mark whole series as unread",
+                updated = now,
+                content = OpdsContentXml(type = "text", value = "Resets every chapter of this series to unread."),
+                link =
+                    listOf(
+                        OpdsLinkXml(
+                            rel = "alternate",
+                            href = "$baseUrl/series/$mangaId/mark-all?read=false&lang=$tag",
+                            type = "text/html",
+                            title = "Mark whole series as unread",
+                        ),
+                    ),
+            ),
         )
         builder.entries.addAll(
             chapterEntries.map { chapter ->

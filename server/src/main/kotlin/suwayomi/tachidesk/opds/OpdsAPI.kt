@@ -77,6 +77,17 @@ object OpdsAPI {
                 get(OpdsV1Controller.markChapterRead)
             }
 
+            // Mark whole series read or unread (A/B)
+            path("series/{seriesId}/mark-all") {
+                get(OpdsV1Controller.markSeriesRead)
+            }
+
+            // Mark every chapter older-or-equal (sourceOrder >=) the
+            // given index as read or unread (C)
+            path("series/{seriesId}/chapter/{chapterIndex}/mark-up-to") {
+                get(OpdsV1Controller.markSeriesUpTo)
+            }
+
             // Category-Specific Series Acquisition Feed (Library)
             path("category/{categoryId}") {
                 get(OpdsV1Controller.categoryFeed)
