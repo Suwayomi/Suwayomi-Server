@@ -576,4 +576,46 @@ object OpdsV1Controller {
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )
+
+    /**
+     * GET endpoint that toggles a chapter's read flag from an OPDS reader.
+     * E-reader apps surface the link as a tappable entry; tapping flips
+     * the read status and returns to the chapter list. read=true|false
+     * query param controls the value (default true).
+     */
+    val markChapterRead =
+        handler(
+            pathParam<Int>("seriesId"),
+            pathParam<Int>("chapterIndex"),
+            queryParam<Boolean?>("read"),
+            queryParam<String?>("lang"),
+            documentWith = {
+                withOperation {
+                    summary("OPDS Mark Chapter Read")
+                    description(
+                        "Sets the chapter's read flag. read=false flips it back to unread.",
+                    )
+                }
+            },
+            behaviorOf = { ctx, seriesId, chapterIndex, read, lang ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
+                val newRead = read ?: true
+                suwayomi.tachidesk.manga.impl.Chapter.modifyChapter(
+                    mangaId = seriesId,
+                    chapterIndex = chapterIndex,
+                    isRead = newRead,
+                    isBookmarked = null,
+                    markPrevRead = null,
+                    lastPageRead = if (newRead) null else 0,
+                )
+                // Redirect back to the chapter list so the e-reader UX
+                // navigates back without showing a blank page.
+                ctx.redirect("/api/opds/v1.2/series/$seriesId/chapters?lang=${locale.toLanguageTag()}")
+            },
+            withResults = {
+                httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
 }

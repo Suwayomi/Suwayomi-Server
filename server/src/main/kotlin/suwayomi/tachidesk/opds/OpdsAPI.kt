@@ -72,6 +72,11 @@ object OpdsAPI {
                 get(OpdsV1Controller.chapterMetadataFeed)
             }
 
+            // Mark chapter read/unread (Suwayomi-Enhanced)
+            path("series/{seriesId}/chapter/{chapterIndex}/mark-read") {
+                get(OpdsV1Controller.markChapterRead)
+            }
+
             // Category-Specific Series Acquisition Feed (Library)
             path("category/{categoryId}") {
                 get(OpdsV1Controller.categoryFeed)

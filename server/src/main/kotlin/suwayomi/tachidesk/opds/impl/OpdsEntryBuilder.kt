@@ -175,7 +175,21 @@ object OpdsEntryBuilder {
                 else -> MR.strings.opds_chapter_status_unread
             }
         val titlePrefix = statusKey.localized(locale)
-        val entryTitle = titlePrefix + (if (addMangaTitle) " ${manga.title}:" else "") + " ${chapter.name}"
+        // Match the on-disk download filename format so OPDS entries read
+        // the same as what users get when they save the chapter:
+        //   "{Manga Title} ({Scanlator}) - {Chapter Name}"
+        // with scanlator alias resolved through ScanlatorAlias. Manga
+        // title is always included so the entry reads identically to the
+        // saved CBZ filename in any feed context.
+        val resolvedScanlator =
+            suwayomi.tachidesk.manga.impl.ScanlatorAlias.resolve(chapter.scanlator)
+        val nameSegment =
+            if (!resolvedScanlator.isNullOrBlank()) {
+                "${manga.title} ($resolvedScanlator) - ${chapter.name}"
+            } else {
+                "${manga.title} - ${chapter.name}"
+            }
+        val entryTitle = "$titlePrefix $nameSegment"
         val details =
             buildString {
                 append(MR.strings.opds_chapter_details_base.localized(locale, manga.title, chapter.name))
@@ -203,6 +217,12 @@ object OpdsEntryBuilder {
                         href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/metadata?lang=${locale.toLanguageTag()}",
                         type = OpdsConstants.TYPE_ATOM_XML_ENTRY_PROFILE_OPDS,
                         title = MR.strings.opds_linktitle_view_chapter_details.localized(locale),
+                    ),
+                    OpdsLinkXml(
+                        rel = "alternate",
+                        href = "$baseUrl/series/${manga.id}/chapter/${chapter.sourceOrder}/mark-read?read=${!chapter.read}&lang=${locale.toLanguageTag()}",
+                        type = "text/html",
+                        title = if (chapter.read) "Mark unread" else "Mark read",
                     ),
                 ),
         )
@@ -336,7 +356,14 @@ object OpdsEntryBuilder {
                 append(MR.strings.opds_chapter_details_progress.localized(locale, progressSource.lastPageRead, pageCountDisplay))
             }
 
-        val entryTitle = "$titlePrefix ${chapter.name}"
+        val resolvedScanlatorMeta =
+            suwayomi.tachidesk.manga.impl.ScanlatorAlias.resolve(chapter.scanlator)
+        val entryTitle =
+            if (!resolvedScanlatorMeta.isNullOrBlank()) {
+                "$titlePrefix ${manga.title} ($resolvedScanlatorMeta) - ${chapter.name}"
+            } else {
+                "$titlePrefix ${manga.title} - ${chapter.name}"
+            }
         val cbzFileSize =
             if (chapter.downloaded) {
                 withContext(Dispatchers.IO) {
