@@ -1,3 +1,61 @@
+# Suwayomi-Enhanced
+
+Personal fork of [Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server) for self-hosted use. Pairs with [Suwayomi-Enhanced-WebUI](https://github.com/sebastianov92/Suwayomi-Enhanced-WebUI).
+
+## Fork additions
+
+**Library / metadata**
+- Custom scanlator alias table — rewrite ugly group names per-series; affects download folder names.
+- Per-manga metadata override — title / author / artist / description / genres / custom cover. Override-aware folder + CBZ rename on title change without breaking source link.
+- Duplicate detection on add (normalized title + author).
+- Advanced library search with combined filters (genre/author/status/scanlator/rating/source).
+- Add manga from URL (auto-installs missing extension when available).
+- Recommendations from AniList (cross-series + library-wide).
+
+**Reading / delivery**
+- Send-to-Kindle: per-manga config, queue with throttle + backoff, EPUB 3 RTL, JPEG quality fallback, Gmail App Password preset, AES-GCM at-rest SMTP password encryption, "wait-for-download" auto-send that doesn't burn retries.
+- Bulk client download — single ZIP server-side (`/api/v1/chapter/bulk-archive`) so browsers receive one file with the manga name.
+- Per-chapter EPUB download (`/api/v1/chapter/{id}/download.epub`).
+
+**OPDS 1.2 extensions**
+- Series-level mark all read / unread.
+- Mark up-to-chapter read.
+- Direct CBZ + EPUB acquisition links per chapter.
+- Add / remove series from library via OPDS reader.
+- Recently-added virtual feed.
+- Override-aware entry titles + filenames.
+- Catalog URL exposed in WebUI Server settings.
+
+**Notifications**
+- Telegram bot push on chapter updates (per-manga opt-in).
+- Optional Kindle-send notifications.
+
+**Other**
+- WebUI flavor locked to this fork (no flavor selector in settings).
+- KCEF gated behind `SUWAYOMI_DISABLE_KCEF=1` (default off in Docker — KCEF crashes JVM on macOS aarch64).
+
+## Docker
+
+```bash
+git clone https://github.com/sebastianov92/Suwayomi-Enhanced.git
+cd Suwayomi-Enhanced
+docker compose up --build
+```
+
+Exposes `http://localhost:4567`. Data persists in `./data`. Override JVM heap via `JAVA_OPTS` env (default `-Xms256m -Xmx1g`).
+
+The server fetches the WebUI bundle from `sebastianov92/Suwayomi-Enhanced-WebUI` GitHub releases on first boot — make sure that repo has at least one published release with `Suwayomi-WebUI-rXXX.zip`.
+
+## Migrations added by this fork
+
+- `M0055` ScanlatorAlias
+- `M0056` MangaUserOverride
+- `M0057` KindleSendQueue
+- `M0058` MangaKindleConfig
+
+---
+
+# Upstream README
 
 | Build                                                                                         | Stable                                                                                                                                                                   | Preview                                                                                                                                                                                                                                           | Support Server |
 |-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
