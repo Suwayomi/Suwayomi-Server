@@ -14,6 +14,8 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.dongliu.apk.parser.ApkFile
+import net.dongliu.apk.parser.bean.Icon
 import okhttp3.CacheControl
 import okio.buffer
 import okio.sink
@@ -37,7 +39,9 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -155,6 +159,7 @@ object Extension {
 
             dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
             extractAssetsFromApk(apkFilePath, jarFilePath)
+            extractAndCacheApkIcon(apkFilePath, apkName)
 
             // clean up
             File(apkFilePath).delete()
@@ -225,6 +230,33 @@ object Extension {
             return 201 // we installed successfully
         } else {
             return 302 // extension was already installed
+        }
+    }
+
+    private fun extractAndCacheApkIcon(
+        apkFilePath: String,
+        apkName: String,
+    ) {
+        val iconCacheDir = "${applicationDirs.extensionsRoot}/icon"
+        try {
+            val iconData =
+                ApkFile(File(apkFilePath)).use { apk ->
+                    apk.allIcons
+                        .filterIsInstance<Icon>()
+                        .mapNotNull { it.data?.let { data -> data to it.density } }
+                        .maxByOrNull { (_, density) -> density }
+                        ?.first
+                }
+            if (iconData == null) {
+                logger.warn { "No icon found in APK $apkName" }
+                return
+            }
+
+            File(iconCacheDir).mkdirs()
+            clearCachedImage(iconCacheDir, apkName)
+            saveImage("$iconCacheDir/$apkName", iconData.inputStream(), null)
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to extract icon from APK $apkName" }
         }
     }
 
