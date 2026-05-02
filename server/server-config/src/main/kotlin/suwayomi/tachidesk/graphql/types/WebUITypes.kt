@@ -25,22 +25,19 @@ enum class WebUIFlavor(
     val latestReleaseInfoUrl: String,
     val baseFileName: String,
 ) {
+    // Suwayomi-Enhanced ships a single WebUI flavor — our own fork.
+    // Releases on github.com/sebastianov92/Suwayomi-Enhanced-WebUI must
+    // tag a build with the standard Suwayomi-WebUI-rXXX.zip filename.
     WEBUI(
         "WebUI",
-        "https://github.com/Suwayomi/Suwayomi-WebUI-preview",
-        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-WebUI/master/versionToServerVersionMapping.json",
-        "https://api.github.com/repos/Suwayomi/Suwayomi-WebUI-preview/releases/latest",
+        "https://github.com/sebastianov92/Suwayomi-Enhanced-WebUI",
+        "https://raw.githubusercontent.com/sebastianov92/Suwayomi-Enhanced-WebUI/main/versionToServerVersionMapping.json",
+        "https://api.github.com/repos/sebastianov92/Suwayomi-Enhanced-WebUI/releases/latest",
         "Suwayomi-WebUI",
     ),
 
-    VUI(
-        "VUI",
-        "https://github.com/Suwayomi/Suwayomi-VUI",
-        "https://raw.githubusercontent.com/Suwayomi/Suwayomi-VUI/main/versionToServerVersionMapping.json",
-        "https://api.github.com/repos/Suwayomi/Suwayomi-VUI/releases/latest",
-        "Suwayomi-VUI-Web",
-    ),
-
+    // CUSTOM kept as a fallback for power users who want to point at a
+    // local build, but it's hidden from the WebUI settings dropdown.
     CUSTOM(
         "Custom",
         "repoURL",

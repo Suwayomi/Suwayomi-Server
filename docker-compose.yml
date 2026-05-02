@@ -1,0 +1,16 @@
+services:
+  suwayomi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: suwayomi-enhanced:latest
+    container_name: suwayomi-enhanced
+    restart: unless-stopped
+    ports:
+      - "4567:4567"
+    environment:
+      JAVA_OPTS: "-Xms256m -Xmx1g"
+      SUWAYOMI_DISABLE_KCEF: "1"
+      TZ: "America/Guayaquil"
+    volumes:
+      - ./data:/data

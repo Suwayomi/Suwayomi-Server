@@ -1,0 +1,12 @@
+.git
+.gitignore
+.idea
+.vscode
+**/build
+**/.gradle
+**/node_modules
+data
+*.log
+README.md
+CHANGELOG.md
+docs
