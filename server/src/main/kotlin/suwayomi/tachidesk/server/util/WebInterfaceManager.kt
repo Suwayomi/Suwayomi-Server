@@ -206,20 +206,12 @@ object WebInterfaceManager {
 
         if (ServerSubpath.isDefined() && orgIndexHtml.exists()) {
             val originalIndexHtml = orgIndexHtml.readText()
-            val subpathInjectionScript =
-                """
-                <script>
-                    // <<suwayomi-subpath-injection>>
-                    const baseTag = document.createElement('base');
-                    baseTag.href = location.origin + "${ServerSubpath.asRootPath()}";
-                    document.head.appendChild(baseTag);
-                </script>
-                """.trimIndent()
+            val subpathInjectionBaseTag = "<base href=\"${ServerSubpath.asRootPath()}\">"
 
             val indexHtmlWithSubpathInjection =
                 originalIndexHtml.replace(
                     "<head>",
-                    "<head>$subpathInjectionScript",
+                    "<head>$subpathInjectionBaseTag",
                 )
 
             orgIndexHtml.writeText(indexHtmlWithSubpathInjection)
