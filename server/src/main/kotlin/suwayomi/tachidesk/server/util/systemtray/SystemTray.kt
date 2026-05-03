@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.server.util
+package suwayomi.tachidesk.server.util.systemtray
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

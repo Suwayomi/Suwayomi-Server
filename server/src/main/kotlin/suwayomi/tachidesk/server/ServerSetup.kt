@@ -51,7 +51,7 @@ import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.ConfigTypeRegistration
 import suwayomi.tachidesk.server.util.ExitCode
-import suwayomi.tachidesk.server.util.SystemTray
+import suwayomi.tachidesk.server.util.systemtray.SystemTray
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get

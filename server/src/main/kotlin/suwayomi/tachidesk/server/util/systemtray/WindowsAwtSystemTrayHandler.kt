@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.server.util
+package suwayomi.tachidesk.server.util.systemtray
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -8,22 +8,24 @@ package suwayomi.tachidesk.server.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
-import suwayomi.tachidesk.server.ServerConfig
-import suwayomi.tachidesk.server.generated.BuildConfig
-import suwayomi.tachidesk.server.util.Browser.openInBrowser
-import suwayomi.tachidesk.server.util.ExitCode.Success
 import java.awt.AWTException
 import java.awt.MenuItem
 import java.awt.PopupMenu
 import java.awt.SystemTray
 import java.awt.TrayIcon
 import javax.imageio.ImageIO
+import suwayomi.tachidesk.server.ServerConfig
+import suwayomi.tachidesk.server.generated.BuildConfig
+import suwayomi.tachidesk.server.util.Browser.openInBrowser
+import suwayomi.tachidesk.server.util.ExitCode.Success
 
 class WindowsAwtSystemTrayHandler : SystemTrayHandler {
-    private val logger = KotlinLogging.logger { }
+    private val logger = KotlinLogging.logger {}
     private var trayIcon: TrayIcon? = null
 
     override fun create() {
+        if (trayIcon != null) return
+
         if (!SystemTray.isSupported()) {
             logger.error { "create: SystemTray is not supported on this platform" }
             return
@@ -31,12 +33,13 @@ class WindowsAwtSystemTrayHandler : SystemTrayHandler {
 
         try {
             val image =
-                ServerConfig::class.java.getResourceAsStream("/icon/faviconlogo.png")
-                    ?.let { ImageIO.read(it) }
-                    ?: run {
-                        logger.error { "create: could not load tray icon image" }
-                        return
+                    ServerConfig::class.java.getResourceAsStream("/icon/faviconlogo.png")?.let {
+                        ImageIO.read(it)
                     }
+                            ?: run {
+                                logger.error { "create: could not load tray icon image" }
+                                return
+                            }
 
             val popup = PopupMenu()
 

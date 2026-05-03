@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.server.util
+package suwayomi.tachidesk.server.util.systemtray
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -22,6 +22,8 @@ class DorkboxSystemTrayHandler : SystemTrayHandler {
     private var instance: SystemTray? = null
 
     override fun create() {
+        if (instance != null) return
+
         instance =
             try {
                 serverConfig.subscribeTo(
