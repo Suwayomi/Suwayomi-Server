@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension/Android**) Add Main dispatcher implementation
 - (**Extension/Android**) Add LruCache implementation
 - (**Extension/Android**) Support basic BitmapFactory options
-- (**Extension/Android**) Support Bitmap pixel-based access
+- (**Extension/Android**) Support Bitmap pixel-based access and modification
 - (**Extension/Android**) Add Rect.set functionality
 - (**OPDS**) Add reading progress synchronization for KOReader
 - (**WebView**) Support copy & paste
