@@ -119,7 +119,6 @@ object Extension {
 
         val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
         val jarFilePath = "$dirPathWithoutType.jar"
-        val dexFilePath = "$dirPathWithoutType.dex"
 
         val packageInfo = getPackageInfo(apkFilePath)
         val pkgName = packageInfo.packageName
@@ -163,71 +162,79 @@ object Extension {
 
             // clean up
             File(apkFilePath).delete()
-            File(dexFilePath).delete()
 
-            // collect sources from the extension
-            val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
-            val sources: List<CatalogueSource> =
-                when (extensionMainClassInstance) {
-                    is Source -> listOf(extensionMainClassInstance)
-                    is SourceFactory -> extensionMainClassInstance.createSources()
-                    else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
-                }.map { it as CatalogueSource }
+            try {
+                // collect sources from the extension
+                val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
+                val sources: List<CatalogueSource> =
+                    when (extensionMainClassInstance) {
+                        is Source -> listOf(extensionMainClassInstance)
+                        is SourceFactory -> extensionMainClassInstance.createSources()
+                        else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
+                    }.map { it as CatalogueSource }
 
-            val langs = sources.map { it.lang }.toSet()
-            val extensionLang =
-                when (langs.size) {
-                    0 -> ""
-                    1 -> langs.first()
-                    else -> "all"
-                }
+                val langs = sources.map { it.lang }.toSet()
+                val extensionLang =
+                    when (langs.size) {
+                        0 -> ""
+                        1 -> langs.first()
+                        else -> "all"
+                    }
 
-            val extensionName =
-                packageInfo.applicationInfo.nonLocalizedLabel
-                    .toString()
-                    .substringAfter("Tachiyomi: ")
+                val extensionName =
+                    packageInfo.applicationInfo.nonLocalizedLabel
+                        .toString()
+                        .substringAfter("Tachiyomi: ")
 
-            // update extension info
-            transaction {
-                if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
-                    ExtensionTable.insert {
+                // update extension info
+                transaction {
+                    if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
+                        ExtensionTable.insert {
+                            it[this.apkName] = apkName
+                            it[name] = extensionName
+                            it[this.pkgName] = packageInfo.packageName
+                            it[versionName] = packageInfo.versionName
+                            it[versionCode] = packageInfo.versionCode
+                            it[lang] = extensionLang
+                            it[this.isNsfw] = isNsfw
+                        }
+                    }
+
+                    ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
                         it[this.apkName] = apkName
-                        it[name] = extensionName
-                        it[this.pkgName] = packageInfo.packageName
+                        it[this.isInstalled] = true
+                        it[this.classFQName] = className
                         it[versionName] = packageInfo.versionName
                         it[versionCode] = packageInfo.versionCode
-                        it[lang] = extensionLang
-                        it[this.isNsfw] = isNsfw
+                    }
+
+                    val extensionId =
+                        ExtensionTable
+                            .selectAll()
+                            .where { ExtensionTable.pkgName eq pkgName }
+                            .first()[ExtensionTable.id]
+                            .value
+
+                    sources.forEach { httpSource ->
+                        SourceTable.insert {
+                            it[id] = httpSource.id
+                            it[name] = httpSource.name
+                            it[lang] = httpSource.lang
+                            it[extension] = extensionId
+                            it[SourceTable.isNsfw] = isNsfw
+                        }
+                        logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
                     }
                 }
+                return 201 // we installed successfully
+            } catch (e: Throwable) {
+                // free up the file descriptor if exists
+                PackageTools.jarLoaderMap.remove(jarFilePath)?.close()
+                File(jarFilePath).delete()
 
-                ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
-                    it[this.apkName] = apkName
-                    it[this.isInstalled] = true
-                    it[this.classFQName] = className
-                    it[versionName] = packageInfo.versionName
-                    it[versionCode] = packageInfo.versionCode
-                }
-
-                val extensionId =
-                    ExtensionTable
-                        .selectAll()
-                        .where { ExtensionTable.pkgName eq pkgName }
-                        .first()[ExtensionTable.id]
-                        .value
-
-                sources.forEach { httpSource ->
-                    SourceTable.insert {
-                        it[id] = httpSource.id
-                        it[name] = httpSource.name
-                        it[lang] = httpSource.lang
-                        it[extension] = extensionId
-                        it[SourceTable.isNsfw] = isNsfw
-                    }
-                    logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
-                }
+                uninstallExtension(pkgName)
+                throw e
             }
-            return 201 // we installed successfully
         } else {
             return 302 // extension was already installed
         }
