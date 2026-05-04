@@ -61,7 +61,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-import java.util.Date
+import java.util.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
@@ -203,20 +203,12 @@ object WebInterfaceManager {
 
         if (ServerSubpath.isDefined() && orgIndexHtml.exists()) {
             val originalIndexHtml = orgIndexHtml.readText()
-            val subpathInjectionScript =
-                """
-                <script>
-                    // <<suwayomi-subpath-injection>>
-                    const baseTag = document.createElement('base');
-                    baseTag.href = location.origin + "${ServerSubpath.asRootPath()}";
-                    document.head.appendChild(baseTag);
-                </script>
-                """.trimIndent()
+            val subpathInjectionBaseTag = "<base href=\"${ServerSubpath.asRootPath()}\">"
 
             val indexHtmlWithSubpathInjection =
                 originalIndexHtml.replace(
                     "<head>",
-                    "<head>$subpathInjectionScript",
+                    "<head>$subpathInjectionBaseTag",
                 )
 
             orgIndexHtml.writeText(indexHtmlWithSubpathInjection)
