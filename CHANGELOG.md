@@ -50,6 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Source/API**) Fix handling of nullable preference keys (TYPE "preferences")
 - (**Source**) Fix local manga thumbnails handling
 - (**Extension**) Fix missing icon for manually installed source
+- (**Extension**) Fixed a java.lang.VerifyError when installing an extension that has ProGuard enabled.
 - (**Backup**) Fix importing of backups with missing server settings
 - (**Backup**) Fix importing of backups with invalid server settings
 - (**Backup/API**) Fix missing backup creation flags (MUTATION "createBackup")
