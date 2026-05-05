@@ -6,7 +6,62 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased] (Preview)
 
-- /
+### Added
+- (**Source/API**) Expose "baseUrl" (TYPE "SourceType")
+- (**Extension**) Support author notes
+- (**Extension/Android**) Add Main dispatcher implementation
+- (**Extension/Android**) Add LruCache implementation
+- (**Extension/Android**) Support basic BitmapFactory options
+- (**Extension/Android**) Support Bitmap pixel-based access
+- (**Extension/Android**) Add Rect.set functionality
+- (**OPDS**) Add reading progress synchronization for KOReader
+- (**WebView**) Support copy & paste
+- (**Authentication/API**) Add new "UI Login" authentication method (basic JWT implementation) (MUTATIONS "login", "refreshToken")
+- (**Database**) Support PostgreSQL
+- (**Wiki**) Add wiki to main repo to allow pull requests for improvements
+- (**WebUI**) Add support to serve webUI on a subpath
+- (**WebUI**) Support symlinks
+- (**WebUI/API**) Expose update timestamp (TYPE "AboutWebUI")
+- (**Backup/API**) Support backup flags during import (MUTATION "restoreBackup")
+- (**Backup/Settings/API**) Support backup flags for automated backups (TYPE, MUTATIONS "settings")
+- (**Image conversion/API**) Support image conversion during serve (TYPE, MUTATIONS "settings")
+- (**Image conversion/API**) Support remote image conversion (TYPE, MUTATIONS "settings")
+- (**Tracker**) Add Shikimori tracker
+- (**Meta/API**) Add functionality for bulk meta updates/deletions (MUTATIONS "meta")
+- (**Image**) Support JXL container format
+
+### Changed
+- (**OPDS**) Overhaule feeds for discovery, filtering and enhance UX
+- (**OPDS**) Align feed generation with RFC5005 and OpenSearch specs
+- (**Downloads**) Improve handling of valid existing downloads
+- (**Downloads**) Optimize download queue
+- (**Database**) Optimize database performance with HikariCP and transaction batching
+- (**Java/JRE**) Move to Zulu JRE
+- (**Java**) Update to JDK 25
+
+### Fixed
+- (**General**) Fix logging sensitive config data in cleartext
+- (**Localization**) Fix falling back to the default locale in case no matching locale was found
+- (**Authentication**) Fix serving page icons with set-up authentication
+- (**Authentication**) Fix header/cookie based websocket authentication
+- (**Authentication**) Fix "simple login" redirect causing protocol downgrade (https -> http)
+- (**Downloads/API**) Fix CBZ download HEAD requests performance (HEAD "/chapter/:chapterId/download")
+- (**WebView**) Fix alt key handling
+- (**Source/API**) Fix handling of nullable preference keys (TYPE "preferences")
+- (**Source**) Fix local manga thumbnails handling
+- (**Extension**) Fix missing icon for manually installed source
+- (**Backup**) Fix importing of backups with missing server settings
+- (**Backup**) Fix importing of backups with invalid server settings
+- (**Backup/API**) Fix missing backup creation flags (MUTATION "createBackup")
+- (**Config**) Fix server startup config update failure handling
+- (**WebUI**) Fix webUI setup blocking the server startup on internet connection issues
+- (**WebUI**) Fix race condition in webUI update status updates
+- (**WebUI**) Fix the missing webUI static folder causing a server crash on startup
+- (**Chapter**) Fix out-of-order chapter pages
+- (**API**) Fix graphql double values handling
+- (**Tracker**) Fix Kitsu tracker to conform to tracker data structure properly
+- (**Library update**) Fix stale manga data in update subscription status events
+- (**Cloudflare/flaresolverr**) Fix sending POST requests as GET to flaresolverr
 
 ## [v2.1.1867] + [WebUI: v20250703.01] - 2025-07-31
 
