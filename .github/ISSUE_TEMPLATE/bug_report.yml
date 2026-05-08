@@ -42,7 +42,7 @@ body:
       label: Suwayomi-Server version
       description: You can find your Suwayomi-Server version in **More → About**.
       placeholder: |
-        Example: "v2.1.1867"
+        Example: "v2.2.2100"
     validations:
       required: true
 

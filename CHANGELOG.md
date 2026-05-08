@@ -7,6 +7,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased] (Preview)
 
 ### Added
+- .
+
+### Changed
+- .
+
+### Fixed
+- .
+
+## [v2.2.2100] + [WebUI: v20260508.01] - 2026-05-08
+
+### Major Changes
+
+#### Added UI Login Auth Method!
+We now have another alternative login type! This is our most flexable option as it allows clients and the server to handle it together, it's not an all or nothing authentication method like the others. For example the web-based clients can now use thier own login pages, and the server can add data to the tokens it gives to the clients, improving performance while keeping the security standard high.
+
+#### PostgreSQL Support!
+We finally support alternative database types! H2 is a great database, but it has its issues. Using a more widespread database like PostgreSQL can avoid them while keeping the performance high! Note that PostgreSQL will need to be run externally. See our example [docker-compose.yml](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/ffc7f6990e889d0a257efe3d94db085d5e73f420/docker-compose-postgresql.yml)
+
+#### Remote Image Modification/Conversion
+We now support remote image modification! This will allow you to use an external server that can change your images however you want, such as converting to JXL or WebP, or applying some upscaling or sharpening to them! This pairs well with our new option to convert images before it serves them to the client.
+See our [conversion server](https://github.com/Suwayomi/Suwayomi-converter) for an example.
+
+### Added
 - (**Source/API**) Expose "baseUrl" (TYPE "SourceType")
 - (**Extension**) Support author notes
 - (**Extension/Android**) Add Main dispatcher implementation
@@ -64,6 +87,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Tracker**) Fix Kitsu tracker to conform to tracker data structure properly
 - (**Library update**) Fix stale manga data in update subscription status events
 - (**Cloudflare/flaresolverr**) Fix sending POST requests as GET to flaresolverr
+
+### WebUI
+- [See WebUI changes here][WebUI: v20250703.01]
+
+### Contributors
+@cpiber, @Syer10, @lamaxama, @schroda, @AwkwardPeak7, @ItsGlassPlus1, @manti-X, @Youwes09, @renovate[bot], @D-Brox, @weblate, @Micka149, @TheRay82, @UnknownSkyrimPasserby, @KaceyKoo-gif, @333fred, @KolbyML, @Robonau, @ornaras, @SpicyCatGames, @FadedSociety, @ginocic, @zeedif, @CzechuPL, @mrintrepide, @renjfk, @thiagoalcr, @Smileskun, @dejavui, @allrobot
 
 ## [v2.1.1867] + [WebUI: v20250703.01] - 2025-07-31
 
@@ -166,7 +195,7 @@ This release has been working on the long awaited tracking support! With the las
 
 @schroda, @Syer10, @RatCornu, @FumoVite
 
-## [v1.0.0] + [WebUI: r1409] - 2024-02-23
+## [v1.0.0] + [WebUI: v1.0.0] - 2024-02-23
 
 We've done a lot since our last release over a year ago.
 
@@ -379,6 +408,7 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 
 <!-- WEBUI LINKS -->
 
+[WebUI: v20260508.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026050801-r3136---2026-05-08
 [WebUI: v20251230.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025123001-r2937---2025-12-30
 [WebUI: v20250801.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025080101-r2717---2025-08-01
 [WebUI: v20250731.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025073101-r2715---2025-07-31
@@ -404,7 +434,8 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 
 <!-- SERVER LINKS -->
 
-[unreleased]: https://github.com/suwayomi/suwayomi-server/compare/v2.1.1867...HEAD
+[unreleased]: https://github.com/suwayomi/suwayomi-server/compare/v2.2.2100...HEAD
+[v2.2.2100]: https://github.com/suwayomi/suwayomi-server/compare/v2.1.1867...v2.2.2100
 [v2.1.1867]: https://github.com/suwayomi/suwayomi-server/compare/v2.0.1727...v2.1.1867
 [v2.0.1727]: https://github.com/suwayomi/suwayomi-server/compare/v1.1.1...v2.0.1727
 [v1.1.1]: https://github.com/suwayomi/suwayomi-server/compare/v1.1.0...v1.1.1
