@@ -89,7 +89,7 @@ See our [conversion server](https://github.com/Suwayomi/Suwayomi-converter) for 
 - (**Cloudflare/flaresolverr**) Fix sending POST requests as GET to flaresolverr
 
 ### WebUI
-- [See WebUI changes here][WebUI: v20250703.01]
+- [See WebUI changes here][WebUI: v20260508.01]
 
 ### Contributors
 @cpiber, @Syer10, @lamaxama, @schroda, @AwkwardPeak7, @ItsGlassPlus1, @manti-X, @Youwes09, @renovate[bot], @D-Brox, @weblate, @Micka149, @TheRay82, @UnknownSkyrimPasserby, @KaceyKoo-gif, @333fred, @KolbyML, @Robonau, @ornaras, @SpicyCatGames, @FadedSociety, @ginocic, @zeedif, @CzechuPL, @mrintrepide, @renjfk, @thiagoalcr, @Smileskun, @dejavui, @allrobot
