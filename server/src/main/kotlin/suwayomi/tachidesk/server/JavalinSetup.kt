@@ -13,12 +13,14 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.after
 import io.javalin.apibuilder.ApiBuilder.path
+import io.javalin.config.RoutesConfig
 import io.javalin.http.Context
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
 import io.javalin.http.NotFoundResponse
 import io.javalin.http.RedirectResponse
 import io.javalin.http.UnauthorizedResponse
+import io.javalin.json.JavalinJackson3
 import io.javalin.rendering.template.JavalinJte
 import io.javalin.websocket.WsContext
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +49,7 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
+import kotlin.text.get
 import kotlin.time.Duration.Companion.days
 
 object JavalinSetup {
@@ -58,9 +61,11 @@ object JavalinSetup {
 
     fun javalinSetup() {
         val app =
-            Javalin.create { config ->
+            Javalin.start { config ->
                 val templateEngine = TemplateEngine.createPrecompiled(ContentType.Html)
                 config.fileRenderer(JavalinJte(templateEngine))
+
+                config.jsonMapper(JavalinJackson3())
 
                 WebInterfaceManager.setup(config)
 
@@ -104,7 +109,8 @@ object JavalinSetup {
                     }
                 }
 
-                config.router.apiBuilder {
+                config.routes.defineCore()
+                config.routes.apiBuilder {
                     path(ServerSubpath.maybeAddAsPrefix("api/")) {
                         path("v1/") {
                             GlobalAPI.defineEndpoints()
@@ -117,17 +123,32 @@ object JavalinSetup {
                         after { ctx ->
                             // If not matched, the request was for an invalid endpoint
                             // Return a 404 instead of redirecting to the UI for usability
-                            if (ctx.endpointHandlerPath() == "*") {
+                            if (ctx.endpoints().lastHttpEndpoint()?.path == "*") {
                                 throw NotFoundResponse()
                             }
                         }
                     }
                 }
+
+                config.events.serverStarted {
+                    if (serverConfig.initialOpenInBrowserEnabled.value) {
+                        Browser.openInBrowser()
+                    }
+                }
             }
 
+        // when JVM is prompted to shutdown, stop javalin gracefully
+        Runtime.getRuntime().addShutdownHook(
+            thread(start = false) {
+                app.stop()
+            },
+        )
+    }
+
+    fun RoutesConfig.defineCore() {
         val loginPath = ServerSubpath.maybeAddAsPrefix("/login.html")
 
-        app.get(loginPath) { ctx ->
+        get(loginPath) { ctx ->
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             val httpCacheSeconds = 1.days.inWholeSeconds
@@ -141,7 +162,7 @@ object JavalinSetup {
             )
         }
 
-        app.post(loginPath) { ctx ->
+        post(loginPath) { ctx ->
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
             val isValid =
@@ -174,7 +195,7 @@ object JavalinSetup {
             )
         }
 
-        app.beforeMatched { ctx ->
+        beforeMatched { ctx ->
             val isWebManifest =
                 listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
             val isPageIcon =
@@ -219,60 +240,43 @@ object JavalinSetup {
             ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
         }
 
-        app.events { event ->
-            event.serverStarted {
-                if (serverConfig.initialOpenInBrowserEnabled.value) {
-                    Browser.openInBrowser()
-                }
-            }
-        }
-
-        app.wsBefore {
+        wsBefore {
             it.onConnect { ctx ->
                 ctx.setAttribute(Attribute.TachideskUser, getUserFromWsContext(ctx))
             }
         }
 
-        // when JVM is prompted to shutdown, stop javalin gracefully
-        Runtime.getRuntime().addShutdownHook(
-            thread(start = false) {
-                app.stop()
-            },
-        )
-
-        app.exception(NullPointerException::class.java) { e, ctx ->
+        exception(NullPointerException::class.java) { e, ctx ->
             logger.error(e) { "NullPointerException while handling the request" }
             ctx.status(404)
         }
-        app.exception(NoSuchElementException::class.java) { e, ctx ->
+        exception(NoSuchElementException::class.java) { e, ctx ->
             logger.error(e) { "NoSuchElementException while handling the request" }
             ctx.status(404)
         }
-        app.exception(IOException::class.java) { e, ctx ->
+        exception(IOException::class.java) { e, ctx ->
             logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
         }
 
-        app.exception(IllegalArgumentException::class.java) { e, ctx ->
+        exception(IllegalArgumentException::class.java) { e, ctx ->
             logger.error(e) { "IllegalArgumentException while handling the request" }
             ctx.status(400)
             ctx.result(e.message ?: "Bad Request")
         }
 
-        app.exception(UnauthorizedException::class.java) { e, ctx ->
+        exception(UnauthorizedException::class.java) { e, ctx ->
             logger.error(e) { "UnauthorizedException while handling the request" }
             ctx.status(HttpStatus.UNAUTHORIZED)
             ctx.result(e.message ?: "Unauthorized")
         }
 
-        app.exception(ForbiddenException::class.java) { e, ctx ->
+        exception(ForbiddenException::class.java) { e, ctx ->
             logger.error(e) { "ForbiddenException while handling the request" }
             ctx.status(HttpStatus.FORBIDDEN)
             ctx.result(e.message ?: "Forbidden")
         }
-
-        app.start()
     }
 
     // private fun getOpenApiOptions(): OpenApiOptions {

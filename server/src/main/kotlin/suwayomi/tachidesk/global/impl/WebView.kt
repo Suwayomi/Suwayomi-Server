@@ -6,7 +6,7 @@ import io.javalin.websocket.WsMessageContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.eclipse.jetty.websocket.api.CloseStatus
+import org.eclipse.jetty.websocket.core.CloseStatus
 import suwayomi.tachidesk.manga.impl.update.Websocket
 
 object WebView : Websocket<String>() {
