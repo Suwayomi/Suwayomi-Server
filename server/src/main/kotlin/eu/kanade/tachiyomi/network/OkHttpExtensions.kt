@@ -141,19 +141,16 @@ fun OkHttpClient.newCachelessCallWithProgress(
 }
 
 context(_: Json)
-inline fun <reified T> Response.parseAs(): T {
-    return decodeFromJsonResponse(serializer(), this)
-}
+inline fun <reified T> Response.parseAs(): T = decodeFromJsonResponse(serializer(), this)
 
 context(json: Json)
 fun <T> decodeFromJsonResponse(
     deserializer: DeserializationStrategy<T>,
     response: Response,
-): T {
-    return response.body.source().use {
+): T =
+    response.body.source().use {
         json.decodeFromBufferedSource(deserializer, it)
     }
-}
 
 class HttpException(
     val code: Int,
