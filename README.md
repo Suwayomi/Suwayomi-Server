@@ -76,9 +76,9 @@ These clients are built-in options, and the server can keep them automatically u
 - [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): Web app, PWA
 - [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): Web app, PWA
 
-##### Other clients (potentially inactive or abondend)
+##### Other clients (potentially inactive or abandoned)
 - [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): Desktop app (windows, linux, mac); UI in the browser, manages its own suwayomi server instance
-- [Moku](https://github.com/Youwes09/Moku): Desktop app (windows, linux, mac), requires access to a running server
+- [Moku](https://github.com/Youwes09/Moku): Desktop app (windows, linux, mac), can manage its own suwayomi server instance
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): Desktop app (windows, linux, mac); can manage its own suwayomi server instance
 - [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): Web app; Desktop app (windows, linux, mac); Android app; requires access to a running server
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): Android app; iOS app Desktop app (linux); requires access to a running server
