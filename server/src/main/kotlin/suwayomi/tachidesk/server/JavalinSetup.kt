@@ -27,7 +27,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.future.future
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -51,6 +54,7 @@ import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.text.get
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -132,7 +136,12 @@ object JavalinSetup {
 
                 config.events.serverStarted {
                     if (serverConfig.initialOpenInBrowserEnabled.value) {
-                        Browser.openInBrowser()
+                        scope.launch {
+                            withTimeoutOrNull(10.seconds) {
+                                WebInterfaceManager.isSetupComplete.first { it }
+                            }
+                            Browser.openInBrowser()
+                        }
                     }
                 }
             }

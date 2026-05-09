@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - (WebUI) Handle serving non-default webui with "bundled"
+- (WebUI) Wait until WebUI is ready to open in browser
 
 ## [v2.2.2100] + [WebUI: v20260508.01] - 2026-05-08
 

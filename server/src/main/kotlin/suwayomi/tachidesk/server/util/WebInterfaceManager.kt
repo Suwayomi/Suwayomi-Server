@@ -27,6 +27,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.sample
@@ -90,7 +91,7 @@ object WebInterfaceManager {
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
-    private var isSetupComplete = false
+    val isSetupComplete = MutableStateFlow(false)
 
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
@@ -196,7 +197,7 @@ object WebInterfaceManager {
         @OptIn(DelicateCoroutinesApi::class)
         GlobalScope.launchIO {
             setupWebUI()
-            isSetupComplete = true
+            isSetupComplete.value = true
         }
     }
 
@@ -260,7 +261,7 @@ object WebInterfaceManager {
         val lastAutomatedUpdate = preferences.getLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
 
         val task = {
-            if (isSetupComplete) {
+            if (isSetupComplete.value) {
                 val log =
                     KotlinLogging.logger(
                         "${logger.name}::scheduleWebUIUpdateCheck(" +
