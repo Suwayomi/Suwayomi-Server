@@ -240,7 +240,7 @@ jobs:
           git push origin $TAG
 
       - name: Upload Preview Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
           repository: "Suwayomi/Suwayomi-Server-preview"
