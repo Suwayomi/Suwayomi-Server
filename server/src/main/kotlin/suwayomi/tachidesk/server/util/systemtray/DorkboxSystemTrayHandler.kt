@@ -16,6 +16,7 @@ import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.Browser.openInBrowser
 import suwayomi.tachidesk.server.util.ExitCode.Success
+import suwayomi.tachidesk.server.util.shutdownApp
 
 class DorkboxSystemTrayHandler : SystemTrayHandler {
     private val logger = KotlinLogging.logger { }

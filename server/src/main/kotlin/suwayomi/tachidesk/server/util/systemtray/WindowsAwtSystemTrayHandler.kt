@@ -18,6 +18,7 @@ import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.util.Browser.openInBrowser
 import suwayomi.tachidesk.server.util.ExitCode.Success
+import suwayomi.tachidesk.server.util.shutdownApp
 
 class WindowsAwtSystemTrayHandler : SystemTrayHandler {
     private val logger = KotlinLogging.logger {}
