@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
-import org.eclipse.jetty.websocket.api.CloseStatus
+import org.eclipse.jetty.websocket.core.CloseStatus
 import suwayomi.tachidesk.graphql.server.TachideskGraphQLContextFactory
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.GQL_CONNECTION_INIT
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.ClientMessages.GQL_SUBSCRIBE

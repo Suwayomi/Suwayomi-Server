@@ -17,6 +17,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import io.javalin.config.JavalinConfig
+import io.javalin.http.staticfiles.AliasCheck
 import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -39,7 +40,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.lingala.zip4j.ZipFile
-import org.eclipse.jetty.server.handler.ContextHandler
 import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
@@ -180,7 +180,7 @@ object WebInterfaceManager {
             // Use canonical path to avoid Jetty alias issues
             staticFiles.directory = File(applicationDirs.webUIServe).canonicalPath
             staticFiles.location = Location.EXTERNAL
-            staticFiles.aliasCheck = ContextHandler.ApproveAliases()
+            staticFiles.aliasCheck = AliasCheck { _, _ -> true }
         }
 
         serveWebUI = {
