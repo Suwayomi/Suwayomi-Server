@@ -139,8 +139,8 @@ object JavalinSetup {
                         scope.launch {
                             withTimeoutOrNull(10.seconds) {
                                 WebInterfaceManager.isSetupComplete.first { it }
-                                Browser.openInBrowser()
                             }
+                            Browser.openInBrowser()
                         }
                     }
                 }
