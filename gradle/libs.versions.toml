@@ -15,7 +15,7 @@ twelvemonkeys = "3.13.1"
 graphqlkotlin = "8.8.1"
 xmlserialization = "0.91.3"
 ktlint = "1.8.0"
-koin = "4.1.1"
+koin = "4.2.1"
 moko = "0.26.0"
 
 [libraries]
