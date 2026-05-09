@@ -43,7 +43,7 @@ dependencies {
 
     // Javalin api
     implementation(libs.bundles.javalin)
-    //implementation(libs.bundles.jackson)
+    implementation(libs.bundles.jackson)
 
     // GraphQL
     implementation(libs.graphql.kotlin.server)

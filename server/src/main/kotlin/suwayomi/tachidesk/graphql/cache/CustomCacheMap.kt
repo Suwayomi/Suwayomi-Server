@@ -32,7 +32,5 @@ class CustomCacheMap<K : Any, V : Any> : CacheMap<K, V> {
         return this
     }
 
-    override fun size(): Int {
-        return cache.size
-    }
+    override fun size(): Int = cache.size
 }
