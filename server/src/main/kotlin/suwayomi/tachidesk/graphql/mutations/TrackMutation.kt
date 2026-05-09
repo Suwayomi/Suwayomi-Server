@@ -222,7 +222,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun trackProgress(input: TrackProgressInput): CompletableFuture<DataFetcherResult<TrackProgressPayload?>> {
+    fun trackProgress(input: TrackProgressInput): CompletableFuture<DataFetcherResult<TrackProgressPayload>> {
         val (clientMutationId, mangaId) = input
 
         return future {

@@ -25,10 +25,10 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
+class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
     override val dataLoaderName = "MangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
@@ -122,6 +122,6 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
                     }
                 }
             },
-            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()),
+            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()).build(),
         )
 }

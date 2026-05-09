@@ -26,7 +26,7 @@ class InfoMutation {
     )
 
     @RequireAuth
-    fun updateWebUI(input: WebUIUpdateInput): CompletableFuture<DataFetcherResult<WebUIUpdatePayload?>> {
+    fun updateWebUI(input: WebUIUpdateInput): CompletableFuture<DataFetcherResult<WebUIUpdatePayload>> {
         return future {
             asDataFetcherResult {
                 withTimeout(30.seconds) {
@@ -62,7 +62,7 @@ class InfoMutation {
     }
 
     @RequireAuth
-    fun resetWebUIUpdateStatus(): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
+    fun resetWebUIUpdateStatus(): CompletableFuture<DataFetcherResult<WebUIUpdateStatus>> =
         future {
             asDataFetcherResult {
                 withTimeout(30.seconds) {

@@ -75,7 +75,7 @@ class ExtensionMutation {
     }
 
     @RequireAuth
-    fun updateExtension(input: UpdateExtensionInput): CompletableFuture<DataFetcherResult<UpdateExtensionPayload?>> {
+    fun updateExtension(input: UpdateExtensionInput): CompletableFuture<DataFetcherResult<UpdateExtensionPayload>> {
         val (clientMutationId, id, patch) = input
 
         return future {
@@ -100,7 +100,7 @@ class ExtensionMutation {
     }
 
     @RequireAuth
-    fun updateExtensions(input: UpdateExtensionsInput): CompletableFuture<DataFetcherResult<UpdateExtensionsPayload?>> {
+    fun updateExtensions(input: UpdateExtensionsInput): CompletableFuture<DataFetcherResult<UpdateExtensionsPayload>> {
         val (clientMutationId, ids, patch) = input
 
         return future {
@@ -133,7 +133,7 @@ class ExtensionMutation {
     )
 
     @RequireAuth
-    fun fetchExtensions(input: FetchExtensionsInput): CompletableFuture<DataFetcherResult<FetchExtensionsPayload?>> {
+    fun fetchExtensions(input: FetchExtensionsInput): CompletableFuture<DataFetcherResult<FetchExtensionsPayload>> {
         val (clientMutationId) = input
 
         return future {
@@ -169,7 +169,7 @@ class ExtensionMutation {
     @RequireAuth
     fun installExternalExtension(
         input: InstallExternalExtensionInput,
-    ): CompletableFuture<DataFetcherResult<InstallExternalExtensionPayload?>> {
+    ): CompletableFuture<DataFetcherResult<InstallExternalExtensionPayload>> {
         val (clientMutationId, extensionFile) = input
 
         return future {

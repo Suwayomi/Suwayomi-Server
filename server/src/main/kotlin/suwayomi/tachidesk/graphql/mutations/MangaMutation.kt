@@ -98,7 +98,7 @@ class MangaMutation {
     }
 
     @RequireAuth
-    fun updateManga(input: UpdateMangaInput): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
+    fun updateManga(input: UpdateMangaInput): CompletableFuture<DataFetcherResult<UpdateMangaPayload>> {
         val (clientMutationId, id, patch) = input
 
         return future {
@@ -119,7 +119,7 @@ class MangaMutation {
     }
 
     @RequireAuth
-    fun updateMangas(input: UpdateMangasInput): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
+    fun updateMangas(input: UpdateMangasInput): CompletableFuture<DataFetcherResult<UpdateMangasPayload>> {
         val (clientMutationId, ids, patch) = input
 
         return future {
@@ -150,7 +150,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun fetchManga(input: FetchMangaInput): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
+    fun fetchManga(input: FetchMangaInput): CompletableFuture<DataFetcherResult<FetchMangaPayload>> {
         val (clientMutationId, id) = input
 
         return future {
@@ -180,7 +180,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun setMangaMeta(input: SetMangaMetaInput): DataFetcherResult<SetMangaMetaPayload?> {
+    fun setMangaMeta(input: SetMangaMetaInput): DataFetcherResult<SetMangaMetaPayload> {
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
@@ -203,7 +203,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun deleteMangaMeta(input: DeleteMangaMetaInput): DataFetcherResult<DeleteMangaMetaPayload?> {
+    fun deleteMangaMeta(input: DeleteMangaMetaInput): DataFetcherResult<DeleteMangaMetaPayload> {
         val (clientMutationId, mangaId, key) = input
 
         return asDataFetcherResult {
@@ -250,7 +250,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun setMangaMetas(input: SetMangaMetasInput): DataFetcherResult<SetMangaMetasPayload?> {
+    fun setMangaMetas(input: SetMangaMetasInput): DataFetcherResult<SetMangaMetasPayload> {
         val (clientMutationId, items) = input
 
         return asDataFetcherResult {
@@ -307,7 +307,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun deleteMangaMetas(input: DeleteMangaMetasInput): DataFetcherResult<DeleteMangaMetasPayload?> {
+    fun deleteMangaMetas(input: DeleteMangaMetasInput): DataFetcherResult<DeleteMangaMetasPayload> {
         val (clientMutationId, items) = input
 
         return asDataFetcherResult {

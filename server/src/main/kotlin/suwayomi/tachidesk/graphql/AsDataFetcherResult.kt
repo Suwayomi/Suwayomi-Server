@@ -6,7 +6,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 
 val logger = KotlinLogging.logger { }
 
-inline fun <T> asDataFetcherResult(block: () -> T): DataFetcherResult<T?> {
+inline fun <T : Any> asDataFetcherResult(block: () -> T): DataFetcherResult<T> {
     val result =
         runCatching {
             block()
@@ -15,13 +15,13 @@ inline fun <T> asDataFetcherResult(block: () -> T): DataFetcherResult<T?> {
     if (result.isFailure) {
         logger.error(result.exceptionOrNull()) { "asDataFetcherResult: failed due to" }
         return DataFetcherResult
-            .newResult<T?>()
-            .error(result.exceptionOrNull()?.toGraphQLError())
+            .newResult<T>()
+            .error(result.exceptionOrNull()!!.toGraphQLError())
             .build()
     }
 
     return DataFetcherResult
-        .newResult<T?>()
+        .newResult<T>()
         .data(result.getOrNull())
         .build()
 }

@@ -20,11 +20,11 @@ import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType?> {
+class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType> {
     override val dataLoaderName = "GlobalMetaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, GlobalMetaType?> =
-        DataLoaderFactory.newDataLoader<String, GlobalMetaType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, GlobalMetaType> =
+        DataLoaderFactory.newDataLoader<String, GlobalMetaType> { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)

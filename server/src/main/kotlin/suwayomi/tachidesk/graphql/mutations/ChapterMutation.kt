@@ -120,7 +120,7 @@ class ChapterMutation {
     }
 
     @RequireAuth
-    fun updateChapter(input: UpdateChapterInput): DataFetcherResult<UpdateChapterPayload?> =
+    fun updateChapter(input: UpdateChapterInput): DataFetcherResult<UpdateChapterPayload> =
         asDataFetcherResult {
             val (clientMutationId, id, patch) = input
 
@@ -138,7 +138,7 @@ class ChapterMutation {
         }
 
     @RequireAuth
-    fun updateChapters(input: UpdateChaptersInput): DataFetcherResult<UpdateChaptersPayload?> =
+    fun updateChapters(input: UpdateChaptersInput): DataFetcherResult<UpdateChaptersPayload> =
         asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
 
@@ -166,7 +166,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun fetchChapters(input: FetchChaptersInput): CompletableFuture<DataFetcherResult<FetchChaptersPayload?>> {
+    fun fetchChapters(input: FetchChaptersInput): CompletableFuture<DataFetcherResult<FetchChaptersPayload>> {
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -201,7 +201,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun setChapterMeta(input: SetChapterMetaInput): DataFetcherResult<SetChapterMetaPayload?> =
+    fun setChapterMeta(input: SetChapterMetaInput): DataFetcherResult<SetChapterMetaPayload> =
         asDataFetcherResult {
             val (clientMutationId, meta) = input
 
@@ -223,7 +223,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun deleteChapterMeta(input: DeleteChapterMetaInput): DataFetcherResult<DeleteChapterMetaPayload?> =
+    fun deleteChapterMeta(input: DeleteChapterMetaInput): DataFetcherResult<DeleteChapterMetaPayload> =
         asDataFetcherResult {
             val (clientMutationId, chapterId, key) = input
 
@@ -269,7 +269,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun setChapterMetas(input: SetChapterMetasInput): DataFetcherResult<SetChapterMetasPayload?> =
+    fun setChapterMetas(input: SetChapterMetasInput): DataFetcherResult<SetChapterMetasPayload> =
         asDataFetcherResult {
             val (clientMutationId, items) = input
 
@@ -325,7 +325,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun deleteChapterMetas(input: DeleteChapterMetasInput): DataFetcherResult<DeleteChapterMetasPayload?> =
+    fun deleteChapterMetas(input: DeleteChapterMetasInput): DataFetcherResult<DeleteChapterMetasPayload> =
         asDataFetcherResult {
             val (clientMutationId, items) = input
 
@@ -405,7 +405,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload?>> {
+    fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<DataFetcherResult<FetchChapterPagesPayload>> {
         val (clientMutationId, chapterId) = input
         val paramsMap = input.toParams()
 

@@ -29,7 +29,7 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun setGlobalMeta(input: SetGlobalMetaInput): DataFetcherResult<SetGlobalMetaPayload?> {
+    fun setGlobalMeta(input: SetGlobalMetaInput): DataFetcherResult<SetGlobalMetaPayload> {
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
@@ -50,7 +50,7 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun deleteGlobalMeta(input: DeleteGlobalMetaInput): DataFetcherResult<DeleteGlobalMetaPayload?> {
+    fun deleteGlobalMeta(input: DeleteGlobalMetaInput): DataFetcherResult<DeleteGlobalMetaPayload> {
         val (clientMutationId, key) = input
 
         return asDataFetcherResult {
@@ -86,7 +86,7 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun setGlobalMetas(input: SetGlobalMetasInput): DataFetcherResult<SetGlobalMetasPayload?> {
+    fun setGlobalMetas(input: SetGlobalMetasInput): DataFetcherResult<SetGlobalMetasPayload> {
         val (clientMutationId, metas) = input
 
         return asDataFetcherResult {
@@ -117,7 +117,7 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun deleteGlobalMetas(input: DeleteGlobalMetasInput): DataFetcherResult<DeleteGlobalMetasPayload?> {
+    fun deleteGlobalMetas(input: DeleteGlobalMetasInput): DataFetcherResult<DeleteGlobalMetasPayload> {
         val (clientMutationId, keys, prefixes) = input
 
         return asDataFetcherResult {

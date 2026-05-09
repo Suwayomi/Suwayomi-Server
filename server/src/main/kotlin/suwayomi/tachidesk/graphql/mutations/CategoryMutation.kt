@@ -42,7 +42,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun setCategoryMeta(input: SetCategoryMetaInput): DataFetcherResult<SetCategoryMetaPayload?> =
+    fun setCategoryMeta(input: SetCategoryMetaInput): DataFetcherResult<SetCategoryMetaPayload> =
         asDataFetcherResult {
             val (clientMutationId, meta) = input
 
@@ -64,7 +64,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DataFetcherResult<DeleteCategoryMetaPayload?> =
+    fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DataFetcherResult<DeleteCategoryMetaPayload> =
         asDataFetcherResult {
             val (clientMutationId, categoryId, key) = input
 
@@ -110,7 +110,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun setCategoryMetas(input: SetCategoryMetasInput): DataFetcherResult<SetCategoryMetasPayload?> =
+    fun setCategoryMetas(input: SetCategoryMetasInput): DataFetcherResult<SetCategoryMetasPayload> =
         asDataFetcherResult {
             val (clientMutationId, items) = input
 
@@ -166,7 +166,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategoryMetas(input: DeleteCategoryMetasInput): DataFetcherResult<DeleteCategoryMetasPayload?> =
+    fun deleteCategoryMetas(input: DeleteCategoryMetasInput): DataFetcherResult<DeleteCategoryMetasPayload> =
         asDataFetcherResult {
             val (clientMutationId, items) = input
 
@@ -291,7 +291,7 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateCategory(input: UpdateCategoryInput): DataFetcherResult<UpdateCategoryPayload?> =
+    fun updateCategory(input: UpdateCategoryInput): DataFetcherResult<UpdateCategoryPayload> =
         asDataFetcherResult {
             val (clientMutationId, id, patch) = input
 
@@ -309,7 +309,7 @@ class CategoryMutation {
         }
 
     @RequireAuth
-    fun updateCategories(input: UpdateCategoriesInput): DataFetcherResult<UpdateCategoriesPayload?> =
+    fun updateCategories(input: UpdateCategoriesInput): DataFetcherResult<UpdateCategoriesPayload> =
         asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
 
@@ -338,7 +338,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun updateCategoryOrder(input: UpdateCategoryOrderInput): DataFetcherResult<UpdateCategoryOrderPayload?> =
+    fun updateCategoryOrder(input: UpdateCategoryOrderInput): DataFetcherResult<UpdateCategoryOrderPayload> =
         asDataFetcherResult {
             val (clientMutationId, categoryId, position) = input
             require(position > 0) {
@@ -397,7 +397,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun createCategory(input: CreateCategoryInput): DataFetcherResult<CreateCategoryPayload?> =
+    fun createCategory(input: CreateCategoryInput): DataFetcherResult<CreateCategoryPayload> =
         asDataFetcherResult {
             val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
             transaction {
@@ -457,7 +457,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategory(input: DeleteCategoryInput): DataFetcherResult<DeleteCategoryPayload?> {
+    fun deleteCategory(input: DeleteCategoryInput): DataFetcherResult<DeleteCategoryPayload> {
         return asDataFetcherResult {
             val (clientMutationId, categoryId) = input
             if (categoryId == 0) { // Don't delete default category
@@ -547,7 +547,7 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateMangaCategories(input: UpdateMangaCategoriesInput): DataFetcherResult<UpdateMangaCategoriesPayload?> =
+    fun updateMangaCategories(input: UpdateMangaCategoriesInput): DataFetcherResult<UpdateMangaCategoriesPayload> =
         asDataFetcherResult {
             val (clientMutationId, id, patch) = input
 
@@ -565,7 +565,7 @@ class CategoryMutation {
         }
 
     @RequireAuth
-    fun updateMangasCategories(input: UpdateMangasCategoriesInput): DataFetcherResult<UpdateMangasCategoriesPayload?> =
+    fun updateMangasCategories(input: UpdateMangasCategoriesInput): DataFetcherResult<UpdateMangasCategoriesPayload> =
         asDataFetcherResult {
             val (clientMutationId, ids, patch) = input
 

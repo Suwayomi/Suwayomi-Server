@@ -30,7 +30,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): DataFetcherResult<DeleteDownloadedChaptersPayload?> {
+    fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): DataFetcherResult<DeleteDownloadedChaptersPayload> {
         val (clientMutationId, chapters) = input
 
         return asDataFetcherResult {
@@ -60,7 +60,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): DataFetcherResult<DeleteDownloadedChapterPayload?> {
+    fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): DataFetcherResult<DeleteDownloadedChapterPayload> {
         val (clientMutationId, chapter) = input
 
         return asDataFetcherResult {
@@ -89,7 +89,7 @@ class DownloadMutation {
     @RequireAuth
     fun enqueueChapterDownloads(
         input: EnqueueChapterDownloadsInput,
-    ): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadsPayload?>> {
+    ): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadsPayload>> {
         val (clientMutationId, chapters) = input
 
         return future {
@@ -123,7 +123,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun enqueueChapterDownload(input: EnqueueChapterDownloadInput): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadPayload?>> {
+    fun enqueueChapterDownload(input: EnqueueChapterDownloadInput): CompletableFuture<DataFetcherResult<EnqueueChapterDownloadPayload>> {
         val (clientMutationId, chapter) = input
 
         return future {
@@ -158,7 +158,7 @@ class DownloadMutation {
     @RequireAuth
     fun dequeueChapterDownloads(
         input: DequeueChapterDownloadsInput,
-    ): CompletableFuture<DataFetcherResult<DequeueChapterDownloadsPayload?>> {
+    ): CompletableFuture<DataFetcherResult<DequeueChapterDownloadsPayload>> {
         val (clientMutationId, chapters) = input
 
         return future {
@@ -194,7 +194,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun dequeueChapterDownload(input: DequeueChapterDownloadInput): CompletableFuture<DataFetcherResult<DequeueChapterDownloadPayload?>> {
+    fun dequeueChapterDownload(input: DequeueChapterDownloadInput): CompletableFuture<DataFetcherResult<DequeueChapterDownloadPayload>> {
         val (clientMutationId, chapter) = input
 
         return future {
@@ -229,7 +229,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun startDownloader(input: StartDownloaderInput): CompletableFuture<DataFetcherResult<StartDownloaderPayload?>> =
+    fun startDownloader(input: StartDownloaderInput): CompletableFuture<DataFetcherResult<StartDownloaderPayload>> =
         future {
             asDataFetcherResult {
                 DownloadManager.start()
@@ -258,7 +258,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun stopDownloader(input: StopDownloaderInput): CompletableFuture<DataFetcherResult<StopDownloaderPayload?>> =
+    fun stopDownloader(input: StopDownloaderInput): CompletableFuture<DataFetcherResult<StopDownloaderPayload>> =
         future {
             asDataFetcherResult {
                 DownloadManager.stop()
@@ -287,7 +287,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun clearDownloader(input: ClearDownloaderInput): CompletableFuture<DataFetcherResult<ClearDownloaderPayload?>> =
+    fun clearDownloader(input: ClearDownloaderInput): CompletableFuture<DataFetcherResult<ClearDownloaderPayload>> =
         future {
             asDataFetcherResult {
                 DownloadManager.clear()
@@ -318,7 +318,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun reorderChapterDownload(input: ReorderChapterDownloadInput): CompletableFuture<DataFetcherResult<ReorderChapterDownloadPayload?>> {
+    fun reorderChapterDownload(input: ReorderChapterDownloadInput): CompletableFuture<DataFetcherResult<ReorderChapterDownloadPayload>> {
         val (clientMutationId, chapter, to) = input
 
         return future {

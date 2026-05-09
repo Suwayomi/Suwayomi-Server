@@ -71,7 +71,7 @@ private class GraphqlDurationAsStringCoercing : Coercing<Duration, String> {
             )
         }
         return try {
-            Duration.parse(input.value)
+            Duration.parse(input.value!!)
         } catch (e: IllegalArgumentException) {
             throw CoercingParseLiteralException(
                 "Invalid duration format: ${input.value}. Expected ISO-8601 duration string (e.g., 'PT30M', 'P1D')",

@@ -47,7 +47,7 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMeta(input: SetSourceMetaInput): DataFetcherResult<SetSourceMetaPayload?> {
+    fun setSourceMeta(input: SetSourceMetaInput): DataFetcherResult<SetSourceMetaPayload> {
         val (clientMutationId, meta) = input
 
         return asDataFetcherResult {
@@ -70,7 +70,7 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMeta(input: DeleteSourceMetaInput): DataFetcherResult<DeleteSourceMetaPayload?> {
+    fun deleteSourceMeta(input: DeleteSourceMetaInput): DataFetcherResult<DeleteSourceMetaPayload> {
         val (clientMutationId, sourceId, key) = input
 
         return asDataFetcherResult {
@@ -121,7 +121,7 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMetas(input: SetSourceMetasInput): DataFetcherResult<SetSourceMetasPayload?> {
+    fun setSourceMetas(input: SetSourceMetasInput): DataFetcherResult<SetSourceMetasPayload> {
         val (clientMutationId, items) = input
 
         return asDataFetcherResult {
@@ -178,7 +178,7 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMetas(input: DeleteSourceMetasInput): DataFetcherResult<DeleteSourceMetasPayload?> {
+    fun deleteSourceMetas(input: DeleteSourceMetasInput): DataFetcherResult<DeleteSourceMetasPayload> {
         val (clientMutationId, items) = input
 
         return asDataFetcherResult {
@@ -260,7 +260,7 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload?>> {
+    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<DataFetcherResult<FetchSourceMangaPayload>> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
@@ -329,7 +329,7 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun updateSourcePreference(input: UpdateSourcePreferenceInput): DataFetcherResult<UpdateSourcePreferencePayload?> {
+    fun updateSourcePreference(input: UpdateSourcePreferenceInput): DataFetcherResult<UpdateSourcePreferencePayload> {
         val (clientMutationId, sourceId, change) = input
 
         return asDataFetcherResult {
