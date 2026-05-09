@@ -14,7 +14,6 @@ import com.expediagroup.graphql.server.types.GraphQLServerRequest
 import io.javalin.http.Context
 import io.javalin.http.UploadedFile
 import io.javalin.json.JavalinJackson
-import io.javalin.json.JavalinJackson3
 import io.javalin.json.fromJsonStream
 import io.javalin.json.fromJsonString
 import java.io.IOException
