@@ -207,9 +207,7 @@ object CFClearance {
                                             cookies =
                                                 network.cookieStore
                                                     .get(originalRequest.url)
-                                                    .groupBy { it.name }
-                                                    .filter { it.key !in CloudflareInterceptor.COOKIE_NAMES }
-                                                    .values
+                                                    .filter { it.name !in CloudflareInterceptor.COOKIE_NAMES }
                                                     .map { cookies ->
                                                         val cookie = cookies.maxBy { it.expiresAt }
                                                         FlareSolverCookie(cookie.name, cookie.value)
@@ -281,14 +279,9 @@ object CFClearance {
                     }
             logger.trace { "New cookies\n${cookies.joinToString("; ")}" }
             val finalCookies =
-                network.cookieStore
-                    .get(originalRequest.url)
-                    .groupBy { it.name }
-                    .values
-                    .map { cookies -> cookies.maxBy { it.expiresAt } }
-                    .joinToString("; ", postfix = "; ") {
-                        "${it.name}=${it.value}"
-                    }
+                network.cookieStore.get(originalRequest.url).joinToString("; ", postfix = "; ") {
+                    "${it.name}=${it.value}"
+                }
             logger.trace { "Final cookies\n$finalCookies" }
             return originalRequest
                 .newBuilder()
