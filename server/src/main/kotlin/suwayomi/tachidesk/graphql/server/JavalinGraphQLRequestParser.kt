@@ -11,6 +11,7 @@ import com.expediagroup.graphql.server.execution.GraphQLRequestParser
 import com.expediagroup.graphql.server.types.GraphQLBatchRequest
 import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.expediagroup.graphql.server.types.GraphQLServerRequest
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.Context
 import io.javalin.http.UploadedFile
 import io.javalin.json.JavalinJackson
@@ -19,11 +20,12 @@ import io.javalin.json.fromJsonString
 import java.io.IOException
 
 class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
-    val jsonMapper = JavalinJackson()
+    private val logger = KotlinLogging.logger {}
 
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     override suspend fun parseRequest(context: Context): GraphQLServerRequest? {
         return try {
+            val jsonMapper = context.jsonMapper()
             val contentType = context.contentType()
             val formParam =
                 if (
@@ -77,7 +79,8 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                     )
                 }
             }
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            logger.error(e) { "Error when parsing request" }
             null
         }
     }

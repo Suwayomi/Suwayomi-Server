@@ -9,9 +9,6 @@ package suwayomi.tachidesk.graphql.server.subscriptions
 
 import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.types.GraphQLRequest
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.convertValue
-import com.fasterxml.jackson.module.kotlin.readValue
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.Header
 import io.javalin.websocket.WsContext
@@ -41,6 +38,9 @@ import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.getAttributeOrSet
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.getUserFromToken
+import tools.jackson.databind.ObjectMapper
+import tools.jackson.module.kotlin.convertValue
+import tools.jackson.module.kotlin.readValue
 
 /**
  * Implementation of the `graphql-transport-ws` protocol defined by Denis Badurina
