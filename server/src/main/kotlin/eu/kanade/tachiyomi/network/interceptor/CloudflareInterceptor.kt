@@ -208,8 +208,7 @@ object CFClearance {
                                                 network.cookieStore
                                                     .get(originalRequest.url)
                                                     .filter { it.name !in CloudflareInterceptor.COOKIE_NAMES }
-                                                    .map { cookies ->
-                                                        val cookie = cookies.maxBy { it.expiresAt }
+                                                    .map { cookie ->
                                                         FlareSolverCookie(cookie.name, cookie.value)
                                                     },
                                             returnOnlyCookies = onlyCookies,
