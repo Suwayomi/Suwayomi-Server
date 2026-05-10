@@ -415,6 +415,16 @@ object Manga {
     suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
 
+        // Check thumbnail cache for user-uploaded covers (any source)
+        val hasUserUploadedCover = mangaEntry[MangaTable.thumbnailUrlLastFetched] > 0
+        if (hasUserUploadedCover) {
+            try {
+                return ThumbnailDownloadHelper.getImage(mangaId)
+            } catch (_: MissingThumbnailException) {
+                // fall through to original logic
+            }
+        }
+
         if (mangaEntry[MangaTable.inLibrary] && mangaEntry[MangaTable.sourceReference] != LocalSource.ID) {
             return try {
                 ThumbnailDownloadHelper.getImage(mangaId)
