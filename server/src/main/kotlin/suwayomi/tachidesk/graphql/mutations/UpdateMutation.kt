@@ -1,9 +1,10 @@
+@file:Suppress("RedundantNullableReturnType", "unused")
+
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
-import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.LibraryUpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdateStatus
@@ -28,7 +29,7 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<DataFetcherResult<UpdateLibraryPayload>> {
+    fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<UpdateLibraryPayload?> {
         updater.addCategoriesToUpdateQueue(
             Category.getCategoryList().filter { input.categories?.contains(it.id) ?: true },
             clear = true,
@@ -36,17 +37,15 @@ class UpdateMutation {
         )
 
         return future {
-            asDataFetcherResult {
-                UpdateLibraryPayload(
-                    input.clientMutationId,
-                    updateStatus =
-                        withTimeout(30.seconds) {
-                            LibraryUpdateStatus(
-                                updater.updates.first(),
-                            )
-                        },
-                )
-            }
+            UpdateLibraryPayload(
+                input.clientMutationId,
+                updateStatus =
+                    withTimeout(30.seconds) {
+                        LibraryUpdateStatus(
+                            updater.updates.first(),
+                        )
+                    },
+            )
         }
     }
 
@@ -60,7 +59,7 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<DataFetcherResult<UpdateLibraryMangaPayload>> {
+    fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<UpdateLibraryMangaPayload?> {
         updateLibrary(
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
@@ -69,15 +68,13 @@ class UpdateMutation {
         )
 
         return future {
-            asDataFetcherResult {
-                UpdateLibraryMangaPayload(
-                    input.clientMutationId,
-                    updateStatus =
-                        withTimeout(30.seconds) {
-                            UpdateStatus(updater.status.first())
-                        },
-                )
-            }
+            UpdateLibraryMangaPayload(
+                input.clientMutationId,
+                updateStatus =
+                    withTimeout(30.seconds) {
+                        UpdateStatus(updater.status.first())
+                    },
+            )
         }
     }
 
@@ -92,7 +89,7 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<DataFetcherResult<UpdateCategoryMangaPayload>> {
+    fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<UpdateCategoryMangaPayload?> {
         updateLibrary(
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
@@ -101,15 +98,13 @@ class UpdateMutation {
         )
 
         return future {
-            asDataFetcherResult {
-                UpdateCategoryMangaPayload(
-                    input.clientMutationId,
-                    updateStatus =
-                        withTimeout(30.seconds) {
-                            UpdateStatus(updater.status.first())
-                        },
-                )
-            }
+            UpdateCategoryMangaPayload(
+                input.clientMutationId,
+                updateStatus =
+                    withTimeout(30.seconds) {
+                        UpdateStatus(updater.status.first())
+                    },
+            )
         }
     }
 
