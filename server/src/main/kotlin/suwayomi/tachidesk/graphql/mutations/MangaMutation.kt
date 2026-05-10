@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.execution.DataFetcherResult
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.sql.LikePattern
 import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -19,6 +20,7 @@ import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.MangaExcludedScanlator
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -78,7 +80,6 @@ class MangaMutation {
         }.apply {
             if (patch.inLibrary != null) {
                 transaction {
-                    // try to initialize uninitialized in library manga to ensure that the expected data is available (chapter list, metadata, ...)
                     val mangas =
                         transaction {
                             MangaTable
@@ -364,6 +365,55 @@ class MangaMutation {
                 }
 
             DeleteMangaMetasPayload(clientMutationId, allDeletedMetas, mangas)
+        }
+    }
+
+    // ── Excluded Scanlators ──────────────────────────────────────────────────
+
+    data class UpdateMangaExcludedScanlatorsPatch(
+        val addExcludedScanlator: List<String>? = null,
+        val removeExcludedScanlator: List<String>? = null,
+        val clearExcludedScanlators: Boolean? = null,
+    )
+
+    data class UpdateMangaExcludedScanlatorsInput(
+        val clientMutationId: String? = null,
+        val id: Int,
+        val patch: UpdateMangaExcludedScanlatorsPatch,
+    )
+
+    data class UpdateMangaExcludedScanlatorsPayload(
+        val clientMutationId: String?,
+        val manga: MangaType,
+    )
+
+    @RequireAuth
+    fun updateMangaExcludedScanlators(
+        input: UpdateMangaExcludedScanlatorsInput,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+    ): DataFetcherResult<UpdateMangaExcludedScanlatorsPayload?> {
+        val (clientMutationId, id, patch) = input
+
+        return asDataFetcherResult {
+            // 1. Load current set from dedicated table
+            val current = MangaExcludedScanlator.getExcludedScanlators(id).toMutableSet()
+
+            // 2. Apply patch: clear → add → remove
+            if (patch.clearExcludedScanlators == true) current.clear()
+            patch.addExcludedScanlator?.let { current.addAll(it) }
+            patch.removeExcludedScanlator?.let { current.removeAll(it.toSet()) }
+
+            // 3. Persist to dedicated table (diff-based insert/delete)
+            MangaExcludedScanlator.setExcludedScanlators(id, current)
+
+            MangaType.clearCacheFor(id, dataFetchingEnvironment)
+
+            val manga =
+                transaction {
+                    MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
+                }
+
+            UpdateMangaExcludedScanlatorsPayload(clientMutationId, manga)
         }
     }
 }

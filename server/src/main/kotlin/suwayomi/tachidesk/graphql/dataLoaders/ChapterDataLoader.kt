@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.MangaExcludedScanlatorTable // <-- new import
 import suwayomi.tachidesk.server.JavalinSetup.future
 
 class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
@@ -94,15 +95,22 @@ class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val unreadChapterCountByMangaId =
+                    val excludedScanlatorsByMangaId = loadExcludedScanlators(ids)
+                    val unreadChaptersByMangaId =
                         ChapterTable
-                            .select(ChapterTable.manga, ChapterTable.isRead.count())
+                            .selectAll()
                             .where {
                                 (ChapterTable.manga inList ids) and
                                     (ChapterTable.isRead eq false)
-                            }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isRead.count()] }
-                    ids.map { unreadChapterCountByMangaId[it]?.toInt() ?: 0 }
+                            }.groupBy { it[ChapterTable.manga].value }
+                            .mapValues { (mangaId, rows) ->
+                                val excluded = excludedScanlatorsByMangaId[mangaId].orEmpty()
+                                rows.count { row ->
+                                    val scanlator = row[ChapterTable.scanlator]
+                                    scanlator == null || scanlator !in excluded
+                                }
+                            }
+                    ids.map { mangaId -> unreadChaptersByMangaId[mangaId] ?: 0 }
                 }
             }
         }
@@ -142,10 +150,7 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
                         ChapterTable
                             .select(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
                             .where {
-                                (
-                                    ChapterTable.manga inList
-                                        ids
-                                ) and
+                                (ChapterTable.manga inList ids) and
                                     (ChapterTable.chapter_number greaterEq 0f)
                             }.groupBy(ChapterTable.manga, ChapterTable.chapter_number)
                             .having { ChapterTable.chapter_number.count() greater 1 }
@@ -245,13 +250,23 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?>
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val firstUnreadChaptersByMangaId =
+                    val excludedScanlatorsByMangaId = loadExcludedScanlators(ids)
+                    val unreadChaptersByMangaId =
                         ChapterTable
                             .selectAll()
-                            .where { (ChapterTable.manga inList ids) and (ChapterTable.isRead eq false) }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
+                            .where {
+                                (ChapterTable.manga inList ids) and
+                                    (ChapterTable.isRead eq false)
+                            }.orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
                             .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> firstUnreadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                    ids.map { mangaId ->
+                        val excluded = excludedScanlatorsByMangaId[mangaId].orEmpty()
+                        unreadChaptersByMangaId[mangaId]
+                            ?.firstOrNull { row ->
+                                val scanlator = row[ChapterTable.scanlator]
+                                scanlator == null || scanlator !in excluded
+                            }?.let { ChapterType(it) }
+                    }
                 }
             }
         }
@@ -278,5 +293,43 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
                     }
                 }
             }
+        }
+}
+
+// ─── Excluded Scanlators ────────────────────────────────────────────────────
+// Reads from MangaExcludedScanlatorTable — a first-class relational table,
+// NOT from manga_meta. This is intentional per server design requirements.
+
+class ExcludedScanlatorsForMangaDataLoader : KotlinDataLoader<Int, List<String>> {
+    override val dataLoaderName = "ExcludedScanlatorsForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<String>> =
+        DataLoaderFactory.newDataLoader<Int, List<String>> { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val rowsByMangaId =
+                        MangaExcludedScanlatorTable
+                            .selectAll()
+                            .where { MangaExcludedScanlatorTable.manga inList ids }
+                            .groupBy { it[MangaExcludedScanlatorTable.manga].value }
+                    ids.map { mangaId ->
+                        rowsByMangaId[mangaId]
+                            ?.map { it[MangaExcludedScanlatorTable.scanlator] }
+                            ?: emptyList()
+                    }
+                }
+            }
+        }
+}
+
+internal fun loadExcludedScanlators(mangaIds: List<Int>): Map<Int, Set<String>> {
+    if (mangaIds.isEmpty()) return emptyMap()
+    return MangaExcludedScanlatorTable
+        .selectAll()
+        .where { MangaExcludedScanlatorTable.manga inList mangaIds }
+        .groupBy { it[MangaExcludedScanlatorTable.manga].value }
+        .mapValues { (_, rows) ->
+            rows.map { it[MangaExcludedScanlatorTable.scanlator] }.toSet()
         }
 }
