@@ -153,4 +153,7 @@
     <string name="login_label_login">Log In</string>
     <string name="login_placeholder_username">Type username...</string>
     <string name="login_placeholder_password">Secret...</string>
+
+    <string name="opds_chapter_title_oneshot">Oneshot</string>
+    <string name="opds_chapter_title_fallback">Chapter %1$s</string>
 </resources>

@@ -23,6 +23,7 @@ import suwayomi.tachidesk.opds.dto.OpdsRootNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsSourceNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsStatusNavEntry
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
 
@@ -129,15 +130,14 @@ object NavigationRepository {
             )
         }
 
-    // ... (El resto del archivo permanece sin cambios)
     fun getExploreSources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
             val query =
                 SourceTable
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
                     .where { ExtensionTable.isInstalled eq true }
-                    .groupBy(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
 
             val totalCount = query.count()
@@ -148,7 +148,7 @@ object NavigationRepository {
                     .map {
                         OpdsSourceNavEntry(
                             id = it[SourceTable.id].value,
-                            name = it[SourceTable.name],
+                            name = formatSourceName(it[SourceTable.name], it[SourceTable.lang]),
                             iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
                             mangaCount = null,
                         )
@@ -164,9 +164,9 @@ object NavigationRepository {
                 SourceTable
                     .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .select(SourceTable.id, SourceTable.name, ExtensionTable.apkName, mangaCount)
+                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName, mangaCount)
                     .where { MangaTable.inLibrary eq true }
-                    .groupBy(SourceTable.id, SourceTable.name, ExtensionTable.apkName)
+                    .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
 
             val totalCount = query.count()
@@ -177,12 +177,26 @@ object NavigationRepository {
                     .map {
                         OpdsSourceNavEntry(
                             id = it[SourceTable.id].value,
-                            name = it[SourceTable.name],
+                            name = formatSourceName(it[SourceTable.name], it[SourceTable.lang]),
                             iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
                             mangaCount = it[mangaCount],
                         )
                     }
             Pair(sources, totalCount)
+        }
+
+    fun getSourceDetails(sourceId: Long): Pair<String, String?>? =
+        transaction {
+            SourceTable
+                .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
+                .select(SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
+                .where { SourceTable.id eq sourceId }
+                .firstOrNull()
+                ?.let {
+                    val name = formatSourceName(it[SourceTable.name], it[SourceTable.lang])
+                    val icon = Extension.getExtensionIconUrl(it[ExtensionTable.apkName])
+                    Pair(name, icon)
+                }
         }
 
     fun getCategories(pageNum: Int): Pair<List<OpdsCategoryNavEntry>, Long> =
