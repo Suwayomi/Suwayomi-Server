@@ -34,9 +34,8 @@ class WindowsAwtSystemTrayHandler : SystemTrayHandler {
 
         try {
             val image =
-                ServerConfig::class.java.getResourceAsStream("/icon/faviconlogo.png")?.let {
-                    ImageIO.read(it)
-                }
+                ServerConfig::class.java.getResourceAsStream("/icon/faviconlogo.png")
+                    ?.let { ImageIO.read(it) }
                     ?: run {
                         logger.error { "create: could not load tray icon image" }
                         return
