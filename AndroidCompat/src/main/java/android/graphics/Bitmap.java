@@ -345,6 +345,57 @@ public final class Bitmap {
         return image.getRGB(x, y);
     }
 
+    /**
+     * <p>Write the specified {@link Color} into the bitmap (assuming it is
+     * mutable) at the x,y coordinate. The color must be a
+     * non-premultiplied ARGB value in the {@link ColorSpace.Named#SRGB sRGB}
+     * color space.</p>
+     *
+     * @param x     The x coordinate of the pixel to replace (0...width-1)
+     * @param y     The y coordinate of the pixel to replace (0...height-1)
+     * @param color The ARGB color to write into the bitmap
+     *
+     * @throws IllegalStateException if the bitmap is not mutable
+     * @throws IllegalArgumentException if x, y are outside of the bitmap's
+     *         bounds.
+     */
+    public void setPixel(int x, int y, @ColorInt int color) {
+        checkPixelAccess(x, y);
+        image.setRGB(x, y, color);
+    }
+
+    /**
+     * <p>Replace pixels in the bitmap with the colors in the array. Each element
+     * in the array is a packed int representing a non-premultiplied ARGB
+     * {@link Color} in the {@link ColorSpace.Named#SRGB sRGB} color space.</p>
+     *
+     * @param pixels   The colors to write to the bitmap
+     * @param offset   The index of the first color to read from pixels[]
+     * @param stride   The number of colors in pixels[] to skip between rows.
+     *                 Normally this value will be the same as the width of
+     *                 the bitmap, but it can be larger (or negative).
+     * @param x        The x coordinate of the first pixel to write to in
+     *                 the bitmap.
+     * @param y        The y coordinate of the first pixel to write to in
+     *                 the bitmap.
+     * @param width    The number of colors to copy from pixels[] per row
+     * @param height   The number of rows to write to the bitmap
+     *
+     * @throws IllegalStateException if the bitmap is not mutable
+     * @throws IllegalArgumentException if x, y, width, height are outside of
+     *         the bitmap's bounds.
+     * @throws ArrayIndexOutOfBoundsException if the pixels array is too small
+     *         to receive the specified number of pixels.
+     */
+    public void setPixels(@NonNull @ColorInt int[] pixels, int offset, int stride,
+            int x, int y, int width, int height) {
+        if (width == 0 || height == 0) {
+            return; // nothing to do
+        }
+        checkPixelsAccess(x, y, width, height, offset, stride, pixels);
+        image.setRGB(x, y, width, height, pixels, offset, stride);
+    }
+
     public void eraseColor(int c) {
         java.awt.Color color = Color.valueOf(c).toJavaColor();
         Graphics2D graphics = image.createGraphics();
