@@ -8,17 +8,17 @@ package suwayomi.tachidesk.server.util.systemtray
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import suwayomi.tachidesk.server.ServerConfig
+import suwayomi.tachidesk.server.generated.BuildConfig
+import suwayomi.tachidesk.server.util.Browser.openInBrowser
+import suwayomi.tachidesk.server.util.ExitCode.Success
+import suwayomi.tachidesk.server.util.shutdownApp
 import java.awt.AWTException
 import java.awt.MenuItem
 import java.awt.PopupMenu
 import java.awt.SystemTray
 import java.awt.TrayIcon
 import javax.imageio.ImageIO
-import suwayomi.tachidesk.server.ServerConfig
-import suwayomi.tachidesk.server.generated.BuildConfig
-import suwayomi.tachidesk.server.util.Browser.openInBrowser
-import suwayomi.tachidesk.server.util.ExitCode.Success
-import suwayomi.tachidesk.server.util.shutdownApp
 
 class WindowsAwtSystemTrayHandler : SystemTrayHandler {
     private val logger = KotlinLogging.logger {}
@@ -34,13 +34,13 @@ class WindowsAwtSystemTrayHandler : SystemTrayHandler {
 
         try {
             val image =
-                    ServerConfig::class.java.getResourceAsStream("/icon/faviconlogo.png")?.let {
-                        ImageIO.read(it)
+                ServerConfig::class.java.getResourceAsStream("/icon/faviconlogo.png")?.let {
+                    ImageIO.read(it)
+                }
+                    ?: run {
+                        logger.error { "create: could not load tray icon image" }
+                        return
                     }
-                            ?: run {
-                                logger.error { "create: could not load tray icon image" }
-                                return
-                            }
 
             val popup = PopupMenu()
 
