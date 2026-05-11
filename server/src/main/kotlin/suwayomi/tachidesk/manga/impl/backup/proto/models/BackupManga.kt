@@ -34,6 +34,9 @@ data class BackupManga(
     @ProtoNumber(103) var viewer_flags: Int? = null,
     @ProtoNumber(104) var history: List<BackupHistory> = emptyList(),
     @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
+    // syncyomi
+    @ProtoNumber(106) var lastModifiedAt: Long = 0,
+    @ProtoNumber(109) var version: Long = 0,
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 )

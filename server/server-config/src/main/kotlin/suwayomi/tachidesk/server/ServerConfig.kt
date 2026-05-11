@@ -1016,7 +1016,68 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val syncYomiEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 86,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true
+    )
 
+    val syncYomiHost: MutableStateFlow<String> by StringSetting(
+        protoNumber = 87,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncYomiApiKey: MutableStateFlow<String> by StringSetting(
+        protoNumber = 88,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = false,
+    )
+
+    val syncDataManga: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 89,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 90,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataTracking: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 91,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataHistory: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 92,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataCategories: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 93,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncInterval: MutableStateFlow<Duration> by DurationSetting(
+        protoNumber = 94,
+        defaultValue = 0.seconds,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
 
     /** ****************************************************************** **/
     /**                                                                    **/
