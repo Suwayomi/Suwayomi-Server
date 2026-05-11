@@ -17,17 +17,21 @@ import io.github.reactivecircus.cache4k.Cache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
@@ -306,18 +310,19 @@ object Chapter {
                     }
 
                     if (chaptersToUpdate.isNotEmpty()) {
-                        BatchUpdateStatement(ChapterTable).apply {
-                            chaptersToUpdate.forEach {
-                                addBatch(EntityID(it.id, ChapterTable))
-                                this[ChapterTable.name] = it.name
-                                this[ChapterTable.date_upload] = it.uploadDate
-                                this[ChapterTable.chapter_number] = it.chapterNumber
-                                this[ChapterTable.scanlator] = it.scanlator
-                                this[ChapterTable.sourceOrder] = it.index
-                                this[ChapterTable.realUrl] = it.realUrl
-                            }
-                            execute(this@transaction)
-                        }
+                        BatchUpdateStatement(ChapterTable)
+                            .apply {
+                                chaptersToUpdate.forEach {
+                                    addBatch(EntityID(it.id, ChapterTable))
+                                    this[ChapterTable.name] = it.name
+                                    this[ChapterTable.date_upload] = it.uploadDate
+                                    this[ChapterTable.chapter_number] = it.chapterNumber
+                                    this[ChapterTable.scanlator] = it.scanlator
+                                    this[ChapterTable.sourceOrder] = it.index
+                                    this[ChapterTable.realUrl] = it.realUrl
+                                }
+                            }.toExecutable()
+                            .execute(this@transaction)
                     }
 
                     MangaTable.update({ MangaTable.id eq mangaId }) {
@@ -517,11 +522,11 @@ object Chapter {
                     // mangaId is not null, scope query under manga
                     when {
                         input.chapterIds != null -> {
-                            Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
+                            (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds)
                         }
 
                         input.chapterIndexes != null -> {
-                            Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
+                            (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes)
                         }
 
                         else -> {
@@ -534,7 +539,7 @@ object Chapter {
                     // mangaId is null, only chapterIndexes is valid for this case
                     when {
                         input.chapterIds != null -> {
-                            Op.build { (ChapterTable.id inList input.chapterIds) }
+                            (ChapterTable.id inList input.chapterIds)
                         }
 
                         else -> {
@@ -650,13 +655,14 @@ object Chapter {
                 }
 
             if (existingMetaByMetaId.isNotEmpty()) {
-                BatchUpdateStatement(ChapterMetaTable).apply {
-                    existingMetaByMetaId.forEach { (metaId, entry) ->
-                        addBatch(EntityID(metaId, ChapterMetaTable))
-                        this[ChapterMetaTable.value] = entry.value
-                    }
-                    execute(this@transaction)
-                }
+                BatchUpdateStatement(ChapterMetaTable)
+                    .apply {
+                        existingMetaByMetaId.forEach { (metaId, entry) ->
+                            addBatch(EntityID(metaId, ChapterMetaTable))
+                            this[ChapterMetaTable.value] = entry.value
+                        }
+                    }.toExecutable()
+                    .execute(this@transaction)
             }
 
             if (newMetaByChapterId.isNotEmpty()) {

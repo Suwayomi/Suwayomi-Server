@@ -4,8 +4,6 @@ package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
 import suwayomi.tachidesk.graphql.types.DatabaseType
-import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
-import suwayomi.tachidesk.server.database.migration.helpers.UNLIMITED_TEXT
 import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
 import suwayomi.tachidesk.server.serverConfig
 

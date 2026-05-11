@@ -8,8 +8,6 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
 import java.util.prefs.Preferences
-import kotlin.collections.isNotEmpty
-import kotlin.collections.orEmpty
 
 private fun migratePreferences(
     parent: String?,

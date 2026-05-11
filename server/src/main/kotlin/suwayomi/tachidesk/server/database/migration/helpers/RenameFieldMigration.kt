@@ -1,7 +1,7 @@
 package suwayomi.tachidesk.server.database.migration.helpers
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
-import org.jetbrains.exposed.sql.transactions.TransactionManager
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.serverConfig
 

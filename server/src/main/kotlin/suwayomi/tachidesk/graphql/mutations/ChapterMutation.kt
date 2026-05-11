@@ -4,19 +4,21 @@ package suwayomi.tachidesk.graphql.mutations
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.LikePattern
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.or
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.LikePattern
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -90,22 +92,23 @@ class ChapterMutation {
             if (patch.isRead != null || patch.isBookmarked != null || patch.lastPageRead != null) {
                 val now = Instant.now().epochSecond
 
-                BatchUpdateStatement(ChapterTable).apply {
-                    ids.forEach { chapterId ->
-                        addBatch(EntityID(chapterId, ChapterTable))
-                        patch.isRead?.also {
-                            this[ChapterTable.isRead] = it
+                BatchUpdateStatement(ChapterTable)
+                    .apply {
+                        ids.forEach { chapterId ->
+                            addBatch(EntityID(chapterId, ChapterTable))
+                            patch.isRead?.also {
+                                this[ChapterTable.isRead] = it
+                            }
+                            patch.isBookmarked?.also {
+                                this[ChapterTable.isBookmarked] = it
+                            }
+                            patch.lastPageRead?.also {
+                                this[ChapterTable.lastPageRead] = it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
+                                this[ChapterTable.lastReadAt] = now
+                            }
                         }
-                        patch.isBookmarked?.also {
-                            this[ChapterTable.isBookmarked] = it
-                        }
-                        patch.lastPageRead?.also {
-                            this[ChapterTable.lastPageRead] = it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
-                            this[ChapterTable.lastReadAt] = now
-                        }
-                    }
-                    execute(this@transaction)
-                }
+                    }.toExecutable()
+                    .execute(this@transaction)
             }
         }
 
