@@ -70,11 +70,11 @@ exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "e
 exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
 exposed-kotlintime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
 postgres = "org.postgresql:postgresql:42.7.11"
-h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v2 without sql migration
+h2 = "com.h2database:h2:2.4.240"
 hikaricp = "com.zaxxer:HikariCP:7.0.2"
 
 # Exposed Migrations
-exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.10.0"
+exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.10.1"
 
 # Dependency Injection
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }

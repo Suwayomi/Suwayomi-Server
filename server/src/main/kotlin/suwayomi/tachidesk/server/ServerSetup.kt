@@ -391,6 +391,8 @@ fun applicationSetup() {
         "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}"
     }
 
+    runMigrations(applicationDirs)
+
     databaseUp()
 
     LocalSource.register()
@@ -439,8 +441,6 @@ fun applicationSetup() {
         },
         ignoreInitialValue = false,
     )
-
-    runMigrations(applicationDirs)
 
     setLogLevelFor("org.eclipse.jetty", Level.OFF)
     setLogLevelFor("com.zaxxer.hikari", Level.WARN)
