@@ -71,15 +71,14 @@ fun <T> getParam(
                     is Param.FormParam -> ctx.formParamAsClass(param.key, clazz)
                     is Param.PathParam -> ctx.pathParamAsClass(param.key, clazz)
                     is Param.QueryParam -> ctx.queryParamAsClass(param.key, clazz)
-                    else -> throw IllegalStateException("Invalid param")
                 }.let {
                     if (param.nullable) {
-                        it.allowNullable().get() ?: param.defaultValue
+                        it.getOrNull() ?: param.defaultValue
                     } else {
                         if (param.defaultValue != null) {
                             it.getOrDefault(param.defaultValue!!)
                         } else {
-                            it.get()
+                            it.required().get()
                         }
                     }
                 }

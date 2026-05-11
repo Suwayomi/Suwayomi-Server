@@ -22,10 +22,10 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
+class SourceDataLoader : KotlinDataLoader<Long, SourceType> {
     override val dataLoaderName = "SourceDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, SourceType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, SourceType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {

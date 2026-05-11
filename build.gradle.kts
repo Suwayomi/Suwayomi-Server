@@ -53,7 +53,7 @@ subprojects {
             }
             compilerOptions {
                 jvmTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
-                freeCompilerArgs.add("-Xcontext-receivers")
+                freeCompilerArgs.add("-Xcontext-parameters")
             }
         }
     }

@@ -7,8 +7,8 @@
 - [What is Suwayomi?](#what-is-suwayomi)
   - [Features](#features)
 - [Suwayomi client projects](#suwayomi-client-projects)
-    - [Integrated clients](#integrated-clients)
-    - [Other clients](#other-clients-potentially-inactive-or-abondend)
+  - [Integrated clients](#integrated-clients)
+  - [Other clients](#other-clients-potentially-inactive-or-abondend)
 - [Downloading and Running the app](#downloading-and-running-the-app)
   - [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
     - [Windows](#windows)
@@ -76,17 +76,12 @@ These clients are built-in options, and the server can keep them automatically u
 - [Suwayomi-WebUI](https://github.com/vtorres-t/Suwayomi-WebUI): Web app, PWA
 - [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): Web app, PWA
 
-##### Other clients (potentially inactive or abondend)
-
-- [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): Desktop app (windows, linux, mac); UI in the
-  browser, manages its own suwayomi server instance
-- [Moku](https://github.com/Youwes09/Moku): Desktop app (windows, linux, mac), requires access to a running server
-- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): Desktop app (windows, linux, mac); can manage its own
-  suwayomi server instance
-- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): Web app; Desktop app (windows, linux, mac);
-  Android app; requires access to a running server
-- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): Android app; iOS app Desktop app (linux); requires
-  access to a running server
+##### Other clients (potentially inactive or abandoned)
+- [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): Desktop app (windows, linux, mac); UI in the browser, manages its own suwayomi server instance
+- [Moku](https://github.com/Youwes09/Moku): Desktop app (windows, linux, mac), can manage its own suwayomi server instance
+- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): Desktop app (windows, linux, mac); can manage its own suwayomi server instance
+- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): Web app; Desktop app (windows, linux, mac); Android app; requires access to a running server
+- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): Android app; iOS app Desktop app (linux); requires access to a running server
 
 # Downloading and Running the app
 ## Using Operating System Specific Bundles

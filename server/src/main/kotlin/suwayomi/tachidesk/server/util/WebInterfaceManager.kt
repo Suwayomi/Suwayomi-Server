@@ -17,6 +17,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import io.javalin.config.JavalinConfig
+import io.javalin.http.staticfiles.AliasCheck
 import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -26,6 +27,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.sample
@@ -37,7 +39,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.lingala.zip4j.ZipFile
-import org.eclipse.jetty.server.handler.ContextHandler
 import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
@@ -87,7 +88,7 @@ object WebInterfaceManager {
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
-    private var isSetupComplete = false
+    val isSetupComplete = MutableStateFlow(false)
 
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
@@ -177,7 +178,7 @@ object WebInterfaceManager {
             // Use canonical path to avoid Jetty alias issues
             staticFiles.directory = File(applicationDirs.webUIServe).canonicalPath
             staticFiles.location = Location.EXTERNAL
-            staticFiles.aliasCheck = ContextHandler.ApproveAliases()
+            staticFiles.aliasCheck = AliasCheck { _, _ -> true }
         }
 
         serveWebUI = {
@@ -193,7 +194,7 @@ object WebInterfaceManager {
         @OptIn(DelicateCoroutinesApi::class)
         GlobalScope.launchIO {
             setupWebUI()
-            isSetupComplete = true
+            isSetupComplete.value = true
         }
     }
 
@@ -257,7 +258,7 @@ object WebInterfaceManager {
         val lastAutomatedUpdate = preferences.getLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
 
         val task = {
-            if (isSetupComplete) {
+            if (isSetupComplete.value) {
                 val log =
                     KotlinLogging.logger(
                         "${logger.name}::scheduleWebUIUpdateCheck(" +
@@ -301,11 +302,25 @@ object WebInterfaceManager {
             return
         }
 
-        val flavor = WebUIFlavor.current
         val servedFlavor = getServedWebUIFlavor()
 
         val log =
-            KotlinLogging.logger("${logger.name} setupWebUI(flavor= ${flavor.uiName}, servedFlavor= ${servedFlavor.uiName})")
+            KotlinLogging.logger(
+                "${logger.name} setupWebUI(flavor= ${WebUIFlavor.current.uiName}, servedFlavor= ${servedFlavor.uiName}, channel= ${serverConfig.webUIChannel})",
+            )
+
+        val flavor =
+            if (serverConfig.webUIChannel.value == WebUIChannel.BUNDLED) {
+                if (serverConfig.webUIFlavor.value != WebUIFlavor.default) {
+                    log.warn {
+                        "Changed flavor to ${WebUIFlavor.default.uiName}. Channel \"${WebUIChannel.BUNDLED}\" only works with the default flavor"
+                    }
+                }
+
+                WebUIFlavor.default
+            } else {
+                WebUIFlavor.current
+            }
 
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
             val currentVersion = getLocalVersion()
