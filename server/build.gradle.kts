@@ -170,6 +170,7 @@ tasks {
                 "Implementation-Vendor" to "The Suwayomi Project",
                 "Specification-Version" to getTachideskVersion(),
                 "Implementation-Version" to getTachideskRevision(),
+                "Multi-Release" to true, // needed for polyglot
             )
         }
         archiveBaseName.set(rootProject.name)

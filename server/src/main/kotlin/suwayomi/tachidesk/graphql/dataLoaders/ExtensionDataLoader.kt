@@ -20,10 +20,10 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
+class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType> {
     override val dataLoaderName = "ExtensionDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
@@ -40,10 +40,10 @@ class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType?> {
         }
 }
 
-class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType?> {
+class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType> {
     override val dataLoaderName = "ExtensionForSourceDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, ExtensionType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, ExtensionType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {

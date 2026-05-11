@@ -7,6 +7,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased] (Preview)
 
 ### Added
+- .
+
+### Changed
+- .
+
+### Fixed
+- (CloudFlareInterceptor) Don't send the `cf_clearance` cookie back to Flaresolverr
+- (WebUI) Handle serving non-default webui with "bundled"
+- (WebUI) Wait until WebUI is ready to open in browser
+- (Downloads) Truncate filenames by byte length to prevent "File name too long" IO errors
+
+## [v2.2.2100] + [WebUI: v20260508.01] - 2026-05-08
+
+### Major Changes
+
+#### Added UI Login Auth Method!
+We now have another alternative login type! This is our most flexable option as it allows clients and the server to handle it together, it's not an all or nothing authentication method like the others. For example the web-based clients can now use thier own login pages, and the server can add data to the tokens it gives to the clients, improving performance while keeping the security standard high.
+
+#### PostgreSQL Support!
+We finally support alternative database types! H2 is a great database, but it has its issues. Using a more widespread database like PostgreSQL can avoid them while keeping the performance high! Note that PostgreSQL will need to be run externally. See our example [docker-compose.yml](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/ffc7f6990e889d0a257efe3d94db085d5e73f420/docker-compose-postgresql.yml)
+
+#### Remote Image Modification/Conversion
+We now support remote image modification! This will allow you to use an external server that can change your images however you want, such as converting to JXL or WebP, or applying some upscaling or sharpening to them! This pairs well with our new option to convert images before it serves them to the client.
+See our [conversion server](https://github.com/Suwayomi/Suwayomi-converter) for an example.
+
+### Added
 
 - (**Source/API**) Expose "baseUrl" (TYPE "SourceType")
 - (**Extension**) Support author notes
@@ -17,8 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension/Android**) Add Rect.set functionality
 - (**OPDS**) Add reading progress synchronization for KOReader
 - (**WebView**) Support copy & paste
-- (**Authentication/API**) Add new "UI Login" authentication method (basic JWT implementation) (MUTATIONS "login", "
-  refreshToken")
+- (**Authentication/API**) Add new "UI Login" authentication method (basic JWT implementation) (MUTATIONS "login", "refreshToken")
 - (**Database**) Support PostgreSQL
 - (**Wiki**) Add wiki to main repo to allow pull requests for improvements
 - (**WebUI**) Add support to serve webUI on a subpath
@@ -72,20 +97,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [v2.1.1867] + [WebUI: v20250703.01] - 2025-07-31
 
 ### Webview!
-
-We now have support for Webviews! The Webview uses KCEF, a variation of the widely supported JCEF and CEF. This allows
-us to provide the extension a background webview when it needs it, and allows us to provide users a way to login to
-websites in Suwayomi! This does not bypass Cloudflare though, it is easily detected as a Webview.
+We now have support for Webviews! The Webview uses KCEF, a variation of the widely supported JCEF and CEF. This allows us to provide the extension a background webview when it needs it, and allows us to provide users a way to login to websites in Suwayomi! This does not bypass Cloudflare though, it is easily detected as a Webview.
 
 ### Simple Login Menu
-
-We have added an option to use a simple login menu instead of basic auth! This allows you to login to Suwayomi in places
-where Basic Auth is inconvenient, providing a measure of security.
+We have added an option to use a simple login menu instead of basic auth! This allows you to login to Suwayomi in places where Basic Auth is inconvenient, providing a measure of security.
 
 ### Image conversion on download
-
-We now provide a simple image conversion setting that tells Suwayomi-Server to convert specific image types or
-everything it can on download. It supports the most common image formats, with more coming later.
+We now provide a simple image conversion setting that tells Suwayomi-Server to convert specific image types or everything it can on download. It supports the most common image formats, with more coming later.
 
 ### Backups
 - Support history in backups
@@ -127,31 +145,20 @@ everything it can on download. It supports the most common image formats, with m
 ## [v2.0.1727] + [WebUI: v1.5.1] - 2025-04-21
 
 > [!Caution]
->
-> If you previously used the MSI Installer, uninstall all Suwayomi-Server versions you have installed before installing
-> the latest release! All your data will be untouched.
+> 
+> If you previously used the MSI Installer, uninstall all Suwayomi-Server versions you have installed before installing the latest release! All your data will be untouched.
 
 ### Update to Java 21
-
-This has been a long time coming! This release we focused on getting the server more stable and improving performance.
-With this we decided to finally move past Java 8 and into the future! We will continue updating to the latest Java LTS
-release from here on out. Make sure to update your runtimes!
+This has been a long time coming! This release we focused on getting the server more stable and improving performance. With this we decided to finally move past Java 8 and into the future! We will continue updating to the latest Java LTS release from here on out. Make sure to update your runtimes!
 
 ### Add OPDS API
-
-We have added API endpoints for OPDS and OPDS-PSE! With this your favourite mobile book readers will be able to download
-and read manga directly from your server! A little tip, it works best if you pre-download the chapters on
-Suwayomi-Server!
+We have added API endpoints for OPDS and OPDS-PSE! With this your favourite mobile book readers will be able to download and read manga directly from your server! A little tip, it works best if you pre-download the chapters on Suwayomi-Server!
 
 ### More Tracking!
-
 We have added support for the Bangumi and Kitsu Trackers. We hope you enjoy them, there is more to come later!
 
 ### Changing Version Scheme
-
-We have decided to move to a major.minor.revision versioning scheme to improve compatibility on a few platforms between
-Stable and Preview. This shouldn't have any impact on how you use the app though, you will receive update notifications
-based on if you have preview or stable installed!
+We have decided to move to a major.minor.revision versioning scheme to improve compatibility on a few platforms between Stable and Preview. This shouldn't have any impact on how you use the app though, you will receive update notifications based on if you have preview or stable installed!
 
 ### More Changes!
 - Fix MSI Installer
@@ -162,8 +169,7 @@ based on if you have preview or stable installed!
 
 ### Contributors
 
-@schroda, @kaaass, @Syer10, @renovate[bot], @shirishsaxena, @showyee, @cpiber, @zeedif, @Robonau, @dejavui, @Belphemur,
-@AeonLucid
+@schroda, @kaaass, @Syer10, @renovate[bot], @shirishsaxena, @showyee, @cpiber, @zeedif, @Robonau, @dejavui, @Belphemur, @AeonLucid
 
 ## [v1.1.1] + [WebUI: v1.1.0] - 2024-06-15
 
@@ -178,10 +184,7 @@ based on if you have preview or stable installed!
 With 1.1.0, we have been working on a few things that resolves bugs found in 1.0.0 and finalizes the tracking API.
 
 ### Tracking
-
-This release has been working on the long awaited tracking support! With the last release we had a partial tracking api,
-which gave our client developers to decide what parts they liked, and what they didn't. With this feedback, we were able
-to finalize a API that resolves most needs of our client developers.
+This release has been working on the long awaited tracking support! With the last release we had a partial tracking api, which gave our client developers to decide what parts they liked, and what they didn't. With this feedback, we were able to finalize a API that resolves most needs of our client developers.
 
 ### And other things
 - Update Manga Info in browse
@@ -198,20 +201,13 @@ to finalize a API that resolves most needs of our client developers.
 We've done a lot since our last release over a year ago.
 
 ### GraphQL API
-
-- We have redone our whole API in GraphQL. We are excited to get this out there so more Suwayomi clients like JUI and
-  Sorayomi can use it! GraphQL is a great technology and provides much more flexibility then our previous REST API.
+- We have redone our whole API in GraphQL. We are excited to get this out there so more Suwayomi clients like JUI and Sorayomi can use it! GraphQL is a great technology and provides much more flexibility then our previous REST API.
 
 ### Rename to Suwayomi
-
-- We've had the rename in the works for a while, we wanted to have a better branding. Tachidesk doesn't actually make
-  sense, its a mix of 2 languages, and Tachi means standing. We ended up deciding on Suwayomi, which is a shorthand for
-  Suwariyomi(sitting reading).
+- We've had the rename in the works for a while, we wanted to have a better branding. Tachidesk doesn't actually make sense, its a mix of 2 languages, and Tachi means standing. We ended up deciding on Suwayomi, which is a shorthand for Suwariyomi(sitting reading).
 
 ### New Launcher for Suwayomi
-
-- We needed a better experience when launching the application, a launcher was a great idea. We've got all the settings
-  available in the launcher so you can configure everything you need before launching!
+- We needed a better experience when launching the application, a launcher was a great idea. We've got all the settings available in the launcher so you can configure everything you need before launching!
 
 ### More Changes!
 - Automatic WebUI Updates
@@ -229,8 +225,7 @@ We've done a lot since our last release over a year ago.
 
 ### Contributors
 
-@Syer10, @AriaMoradi, @schroda, @chancez, @Mercenar, @Robonau, @tachimanga, @brianmakesthings, @alexandrejournet,
-@aless2003, @vuhe, @MangaCrushTeam, @martinek, @akabhirav, @DattatreyaReddy
+@Syer10, @AriaMoradi, @schroda, @chancez, @Mercenar, @Robonau, @tachimanga, @brianmakesthings, @alexandrejournet, @aless2003, @vuhe, @MangaCrushTeam, @martinek, @akabhirav, @DattatreyaReddy
 
 ## [v0.7.0] + [WebUI: r983] - 2023-02-12
 
@@ -239,7 +234,7 @@ We've done a lot since our last release over a year ago.
 - Fixed compatibility with some chinese extensions
 - Support for Tachiyomi extensions lib 1.4
 - WebUI changes:
-    - Uhh, idk, find out yourself...
+  - Uhh, idk, find out yourself...
 
 ## [v0.6.6] + [WebUI: r963] - 2022-11-26
 
@@ -248,9 +243,9 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 - Batch actions for chapters
 - Improved the downloader
 - WebUI changes:
-    - Support for chapter actions
-    - a lot of code cleanup
-    - some bugfixes
+  - Support for chapter actions
+  - a lot of code cleanup 
+  - some bugfixes
 
 ## [v0.6.5] + [WebUI: r946] - 2022-09-18
 
@@ -260,32 +255,31 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 ## [v0.6.4] + [WebUI: r946] - 2022-08-18
 
 - This release brings all new AI-assisted upscaled textures
-    - Don't pay attention to the new game breaking bugs, we put them there intentionally
-    - The product is half-finished and rushed out, we hope to fix it in upcoming paid patches and DLCs
+  - Don't pay attention to the new game breaking bugs, we put them there intentionally
+  - The product is half-finished and rushed out, we hope to fix it in upcoming paid patches and DLCs
 - There are No new major features
 - Added a few bug "fixes" and introduced even more bugs (features)
-- Back ported some totally unnecessary community loved functionality from Tachidesk 2: Despicable Drafts and Tachidesk:
-  Unpublished Stories
+- Back ported some totally unnecessary community loved functionality from Tachidesk 2: Despicable Drafts and Tachidesk: Unpublished Stories
 
 ## [v0.6.3] + [WebUI: r942] - 2022-03-10
 
 - Changes in Server
-    - Support for array search filter changes list
-    - Support for Tachiyomi extensions lib 1.3
+  - Support for array search filter changes list
+  - Support for Tachiyomi extensions lib 1.3
 - Changes in WebUI
-    - Better search filter support
-    - Fluid manga grid
-    - Library comfortable grid
-    - Sources view layouts
-    - Various other changes...
+  - Better search filter support
+  - Fluid manga grid
+  - Library comfortable grid
+  - Sources view layouts 
+  - Various other changes...
 
 ## [v0.6.2] + [WebUI: r929] - 2022-03-04
 
 - Changes in WebUI
-    - Moved search to Browse
-    - Support for Source Filters
-    - Better visuals for Download Queue
-    - A live version of WebUI is now available [at this link](https://tachidesk-webui-preview.github.io/).
+  - Moved search to Browse
+  - Support for Source Filters
+  - Better visuals for Download Queue
+  - A live version of WebUI is now available [at this link](https://tachidesk-webui-preview.github.io/).
 
 ## [v0.6.1] + [WebUI: r911] - 2022-02-19
 
@@ -295,10 +289,10 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 ## [v0.6.0] + [WebUI: r893] - 2021-12-29
 
 - WebUI design went through a whole lot of changes, including
-    - Got rid of hamburger menu, now we have a custom mobile navbar
-    - Unread and Download count badges
-    - Back button so better electron experience
-    - There's a whole lot more that I'm too lazy to explore.
+  - Got rid of hamburger menu, now we have a custom mobile navbar
+  - Unread and Download count badges
+  - Back button so better electron experience
+  - There's a whole lot more that I'm too lazy to explore.
 - Completely removed anime support
 - Fixed category reordering
 - Added support for search filters(Server side only)
@@ -403,8 +397,7 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 
 ##### Bug fixes
 - Fixed a bug where backup restore reversed chapter order
-- Open Site feature now works
-  properly ([Suwayomi/Suwayomi-WebUI#19](https://github.com/Suwayomi/Suwayomi-WebUI/issues/19))
+- Open Site feature now works properly ([Suwayomi/Suwayomi-WebUI#19](https://github.com/Suwayomi/Suwayomi-WebUI/issues/19))
 
 #### Private API
 
@@ -417,9 +410,7 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 - Better reader title, next, prev buttons
 
 #### Bug fixes
-
-- Open Site feature now works
-  properly ([Suwayomi/Suwayomi-WebUI#19](https://github.com/Suwayomi/Suwayomi-WebUI/issues/19))
+- Open Site feature now works properly ([Suwayomi/Suwayomi-WebUI#19](https://github.com/Suwayomi/Suwayomi-WebUI/issues/19))
 - Re-ordering categories now works
 
 #### Internal changes
@@ -427,92 +418,52 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 
 <!-- WEBUI LINKS -->
 
+[WebUI: v20260508.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026050801-r3136---2026-05-08
 [WebUI: v20251230.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025123001-r2937---2025-12-30
-
 [WebUI: v20250801.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025080101-r2717---2025-08-01
-
 [WebUI: v20250731.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025073101-r2715---2025-07-31
-
 [WebUI: v20250703.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025070301-r2643---2025-07-03
-
 [WebUI: v1.5.1]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#151-r2467---2025-04-07
-
 [WebUI: v1.5.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#150-r2461---2025-04-05
-
 [WebUI: v1.1.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#110-r1689---2024-06-14
-
 [WebUI: v1.0.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#100-r1411---2024-02-23
-
 [WebUI: r983]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/7312e92d07215c6a184577dd2779dcb7d887f889...ad9a12b2ec76fba0658d45d2d6c280caeaf046f7
-
 [WebUI: r963]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/14a9ffa55828a401e1f5ed4b7e6c574062c137bb...7312e92d07215c6a184577dd2779dcb7d887f889
-
 [WebUI: r946]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/13e6456190f3b344e51c1161b9e6088d2a74291a...14a9ffa55828a401e1f5ed4b7e6c574062c137bb
-
 [WebUI: r942]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/bdd03f6698d0f65c3b861612af0750d1e6aff8bb...13e6456190f3b344e51c1161b9e6088d2a74291a
-
 [WebUI: r929]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/aaaadebfb3f5e206543dc010dc2b90ae66c47286...bdd03f6698d0f65c3b861612af0750d1e6aff8bb
-
 [WebUI: r911]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/a3fe748c90f04e84169b8ddd008e8e2bc3281201...aaaadebfb3f5e206543dc010dc2b90ae66c47286
-
 [WebUI: r893]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/1ed001a8d8eb2af1126731bec01ebeb4ffb3707a...a3fe748c90f04e84169b8ddd008e8e2bc3281201
-
 [WebUI: r820]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/08980982e23a25feb365df6bba25645c16506c91...1ed001a8d8eb2af1126731bec01ebeb4ffb3707a
-
 [WebUI: r809]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/9a89346c01d2d2bcfc27acd34a538ee1c83ec320...08980982e23a25feb365df6bba25645c16506c91
-
 [WebUI: r807]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/03e7d4976a0334fcf9c99111202cd2066a83ce11...9a89346c01d2d2bcfc27acd34a538ee1c83ec320
-
 [WebUI: r803]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/3d3c2a29ca9955de64852a6dcf9740f5b280bde2...03e7d4976a0334fcf9c99111202cd2066a83ce11
-
 [WebUI: r789]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/ba26d852dc658aa899d0b8590d08197c77b1cde1...3d3c2a29ca9955de64852a6dcf9740f5b280bde2
-
 [WebUI: r769]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/f20c51c558d87b1124b49fd906865e5976c6a3b3...ba26d852dc658aa899d0b8590d08197c77b1cde1
-
 [WebUI: r41]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/960ffd222ecd4ae768aa86fd6c1b39c09d8f9469...f20c51c558d87b1124b49fd906865e5976c6a3b3
 
 <!-- SERVER LINKS -->
 
-[unreleased]: https://github.com/suwayomi/suwayomi-server/compare/v2.1.1867...HEAD
-
+[unreleased]: https://github.com/suwayomi/suwayomi-server/compare/v2.2.2100...HEAD
+[v2.2.2100]: https://github.com/suwayomi/suwayomi-server/compare/v2.1.1867...v2.2.2100
 [v2.1.1867]: https://github.com/suwayomi/suwayomi-server/compare/v2.0.1727...v2.1.1867
-
 [v2.0.1727]: https://github.com/suwayomi/suwayomi-server/compare/v1.1.1...v2.0.1727
-
 [v1.1.1]: https://github.com/suwayomi/suwayomi-server/compare/v1.1.0...v1.1.1
-
 [v1.1.0]: https://github.com/suwayomi/suwayomi-server/compare/v1.0.0...v1.1.0
-
 [v1.0.0]: https://github.com/suwayomi/suwayomi-server/compare/v0.7.0...v1.0.0
-
 [v0.7.0]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.6...v0.7.0
-
 [v0.6.6]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.5...v0.6.6
-
 [v0.6.5]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.4...v0.6.5
-
 [v0.6.4]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.3...v0.6.4
-
 [v0.6.3]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.2...v0.6.3
-
 [v0.6.2]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.1...v0.6.2
-
 [v0.6.1]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.0...v0.6.1
-
 [v0.6.0]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.4...v0.6.0
-
 [v0.5.4]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.4...v0.5.4
-
 [v0.5.4]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.3...v0.5.4
-
 [v0.5.3]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.2...v0.5.3
-
 [v0.5.2]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.1...v0.5.2
-
 [v0.5.1]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.0...v0.5.1
-
 [v0.5.0]: https://github.com/suwayomi/suwayomi-server/compare/v0.4.9...v0.5.0
-
 [v0.4.9]: https://github.com/suwayomi/suwayomi-server/compare/v0.4.8...v0.4.9
-
 [v0.4.8]: https://github.com/suwayomi/suwayomi-server/releases/tag/v0.4.8
