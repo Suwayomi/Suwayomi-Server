@@ -27,7 +27,6 @@ import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.sql.SQLException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -184,7 +183,7 @@ fun databaseUp() {
         }
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
         runMigrations(migrations)
-    } catch (e: SQLException) {
+    } catch (e: Exception) {
         logger.error(e) { "Error up-to-database migration" }
         if (System.getProperty("crashOnFailedMigration").toBoolean()) {
             shutdownApp(ExitCode.DbMigrationFailure)
