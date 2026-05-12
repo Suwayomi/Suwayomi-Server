@@ -10,14 +10,12 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import suwayomi.tachidesk.graphql.types.DownloadConversion
-import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import uy.kohesive.injekt.injectLazy
 import java.awt.image.BufferedImage
 import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
 import javax.imageio.ImageIO
-import kotlin.getValue
 
 object ConversionUtil {
     val logger = KotlinLogging.logger {}

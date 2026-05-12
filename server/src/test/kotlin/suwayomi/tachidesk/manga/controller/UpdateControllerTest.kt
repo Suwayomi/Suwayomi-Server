@@ -8,8 +8,8 @@ import suwayomi.tachidesk.test.ApplicationTest
 // import io.mockk.mockk
 // import io.mockk.verify
 // import kotlinx.coroutines.runBlocking
-// import org.jetbrains.exposed.sql.insertAndGetId
-// import org.jetbrains.exposed.sql.transactions.transaction
+// import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+// import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 // import org.junit.jupiter.api.AfterEach
 // import org.junit.jupiter.api.Assertions.assertEquals
 // import org.junit.jupiter.api.Test

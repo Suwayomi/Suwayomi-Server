@@ -11,15 +11,16 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.extension.github.ExtensionGithubApi
 import suwayomi.tachidesk.manga.impl.extension.github.OnlineExtension
@@ -125,57 +126,59 @@ object ExtensionsList {
                             .groupBy { it.second[ExtensionTable.isInstalled] }
                     val installedExtensionsToUpdate = extensionsInstalled[true].orEmpty()
                     if (installedExtensionsToUpdate.isNotEmpty()) {
-                        BatchUpdateStatement(ExtensionTable).apply {
-                            installedExtensionsToUpdate.forEach { (foundExtension, extensionRecord) ->
-                                addBatch(EntityID(extensionRecord[ExtensionTable.id].value, ExtensionTable))
-                                // Always update icon url and repo
-                                this[ExtensionTable.iconUrl] = foundExtension.iconUrl
-                                this[ExtensionTable.repo] = foundExtension.repo
+                        BatchUpdateStatement(ExtensionTable)
+                            .apply {
+                                installedExtensionsToUpdate.forEach { (foundExtension, extensionRecord) ->
+                                    addBatch(EntityID(extensionRecord[ExtensionTable.id].value, ExtensionTable))
+                                    // Always update icon url and repo
+                                    this[ExtensionTable.iconUrl] = foundExtension.iconUrl
+                                    this[ExtensionTable.repo] = foundExtension.repo
 
-                                // add these because batch updates need matching columns
-                                this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
-                                this[ExtensionTable.isObsolete] = extensionRecord[ExtensionTable.isObsolete]
+                                    // add these because batch updates need matching columns
+                                    this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
+                                    this[ExtensionTable.isObsolete] = extensionRecord[ExtensionTable.isObsolete]
 
-                                // a previously removed extension is now available again
-                                if (extensionRecord[ExtensionTable.isObsolete] &&
-                                    foundExtension.versionCode >= extensionRecord[ExtensionTable.versionCode]
-                                ) {
-                                    this[ExtensionTable.isObsolete] = false
-                                }
-
-                                when {
-                                    foundExtension.versionCode > extensionRecord[ExtensionTable.versionCode] -> {
-                                        // there is an update
-                                        this[ExtensionTable.hasUpdate] = true
-                                        updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
+                                    // a previously removed extension is now available again
+                                    if (extensionRecord[ExtensionTable.isObsolete] &&
+                                        foundExtension.versionCode >= extensionRecord[ExtensionTable.versionCode]
+                                    ) {
+                                        this[ExtensionTable.isObsolete] = false
                                     }
 
-                                    foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode] -> {
-                                        // somehow the user installed an invalid version
-                                        this[ExtensionTable.isObsolete] = true
+                                    when {
+                                        foundExtension.versionCode > extensionRecord[ExtensionTable.versionCode] -> {
+                                            // there is an update
+                                            this[ExtensionTable.hasUpdate] = true
+                                            updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
+                                        }
+
+                                        foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode] -> {
+                                            // somehow the user installed an invalid version
+                                            this[ExtensionTable.isObsolete] = true
+                                        }
                                     }
                                 }
-                            }
-                            execute(this@transaction)
-                        }
+                            }.toExecutable()
+                            .execute(this@transaction)
                     }
                     val extensionsToFullyUpdate = extensionsInstalled[false].orEmpty()
                     if (extensionsToFullyUpdate.isNotEmpty()) {
-                        BatchUpdateStatement(ExtensionTable).apply {
-                            extensionsToFullyUpdate.forEach { (foundExtension, extensionRecord) ->
-                                addBatch(EntityID(extensionRecord[ExtensionTable.id].value, ExtensionTable))
-                                // extension is not installed, so we can overwrite the data without a care
-                                this[ExtensionTable.repo] = foundExtension.repo
-                                this[ExtensionTable.name] = foundExtension.name
-                                this[ExtensionTable.versionName] = foundExtension.versionName
-                                this[ExtensionTable.versionCode] = foundExtension.versionCode
-                                this[ExtensionTable.lang] = foundExtension.lang
-                                this[ExtensionTable.isNsfw] = foundExtension.isNsfw
-                                this[ExtensionTable.apkName] = foundExtension.apkName
-                                this[ExtensionTable.iconUrl] = foundExtension.iconUrl
-                            }
-                            execute(this@transaction)
-                        }
+                        BatchUpdateStatement(ExtensionTable)
+                            .apply {
+                                extensionsToFullyUpdate.forEach { (foundExtension, extensionRecord) ->
+                                    addBatch(EntityID(extensionRecord[ExtensionTable.id].value, ExtensionTable))
+                                    // extension is not installed, so we can overwrite the data without a care
+                                    this[ExtensionTable.repo] = foundExtension.repo
+                                    this[ExtensionTable.name] = foundExtension.name
+                                    this[ExtensionTable.versionName] = foundExtension.versionName
+                                    this[ExtensionTable.versionCode] = foundExtension.versionCode
+                                    this[ExtensionTable.lang] = foundExtension.lang
+                                    this[ExtensionTable.isNsfw] = foundExtension.isNsfw
+                                    this[ExtensionTable.apkName] = foundExtension.apkName
+                                    this[ExtensionTable.iconUrl] = foundExtension.iconUrl
+                                }
+                            }.toExecutable()
+                            .execute(this@transaction)
                     }
                 }
                 if (extensionsToInsert.isNotEmpty()) {

@@ -15,7 +15,6 @@ import graphql.GraphQL
 import graphql.execution.AsyncExecutionStrategy
 import graphql.execution.DataFetcherExceptionHandler
 import graphql.execution.DataFetcherExceptionHandlerResult
-import graphql.schema.idl.RuntimeWiring
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
