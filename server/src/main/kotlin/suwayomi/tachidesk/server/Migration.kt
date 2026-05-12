@@ -75,7 +75,7 @@ private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
     }
 }
 
-fun migrateDatabaseToV24240(applicationDirs: ApplicationDirs) {
+fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
     H2Migration.migrate(
         applicationDirs.dataRoot,
         "1.4.200",
@@ -92,8 +92,8 @@ private val MIGRATIONS =
         "FixGlobalUpdateScheduling" to {
             Injekt.get<IUpdater>().deleteLastAutomatedUpdateTimestamp()
         },
-        "MigrateDatabaseToV2.4.240" to { applicationDirs ->
-            migrateDatabaseToV24240(applicationDirs)
+        "MigrateH2DatabaseToV2.4.240" to { applicationDirs ->
+            migrateH2DatabaseToV24240(applicationDirs)
         },
     )
 

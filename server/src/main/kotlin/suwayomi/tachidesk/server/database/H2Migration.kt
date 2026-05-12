@@ -77,6 +77,8 @@ object H2Migration {
             libsDir = libsDir,
             mvStore = mvStore,
             script = script,
+            h2Old = h2Old,
+            h2New = h2New,
         )
 
         // Move database to proper path
@@ -121,6 +123,8 @@ object H2Migration {
         libsDir: Path,
         mvStore: Path,
         script: Path,
+        h2Old: String,
+        h2New: String,
     ) {
         URLClassLoader(
             arrayOf(migrationJar.toUri().toURL()),
@@ -140,10 +144,10 @@ object H2Migration {
                     libsDir.absolutePathString(),
                     // from version
                     "-f",
-                    "1.4.200",
+                    h2Old,
                     // to version
                     "-t",
-                    "2.4.240",
+                    h2New,
                     // user
                     "-u",
                     "",
