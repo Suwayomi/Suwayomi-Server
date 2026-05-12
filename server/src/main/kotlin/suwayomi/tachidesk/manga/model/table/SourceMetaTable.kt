@@ -14,7 +14,7 @@ import suwayomi.tachidesk.manga.model.table.SourceMetaTable.ref
  * Metadata storage for clients, about Source with id == [ref].
  */
 object SourceMetaTable : IntIdTable() {
-    val key = varchar("key", 256)
+    val key = varchar("meta_key", 256)
     val value = varchar("value", 4096)
     val ref = long("source_ref")
 }

@@ -15,7 +15,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryMetaTable.ref
  * Metadata storage for clients, about Category with id == [ref].
  */
 object CategoryMetaTable : IntIdTable() {
-    val key = varchar("key", 256)
+    val key = varchar("meta_key", 256)
     val value = varchar("value", 4096)
     val ref = reference("category_ref", CategoryTable, ReferenceOption.CASCADE)
 }

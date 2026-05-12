@@ -26,7 +26,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterMetaTable.ref
  * }
  */
 object ChapterMetaTable : IntIdTable() {
-    val key = varchar("key", 256)
+    val key = varchar("meta_key", 256)
     val value = varchar("value", 4096)
     val ref = reference("chapter_ref", ChapterTable, ReferenceOption.CASCADE)
 }
