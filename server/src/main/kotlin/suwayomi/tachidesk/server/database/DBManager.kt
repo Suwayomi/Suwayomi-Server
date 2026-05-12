@@ -185,8 +185,6 @@ fun databaseUp() {
         runMigrations(migrations)
     } catch (e: Exception) {
         logger.error(e) { "Error up-to-database migration" }
-        if (System.getProperty("crashOnFailedMigration").toBoolean()) {
-            shutdownApp(ExitCode.DbMigrationFailure)
-        }
+        shutdownApp(ExitCode.DbMigrationFailure)
     }
 }

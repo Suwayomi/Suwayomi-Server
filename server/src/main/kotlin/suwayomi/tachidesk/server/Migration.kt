@@ -5,6 +5,8 @@ import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.server.database.H2Migration
+import suwayomi.tachidesk.server.util.ExitCode
+import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
@@ -99,31 +101,35 @@ private val MIGRATIONS =
 
 fun runMigrations(applicationDirs: ApplicationDirs) {
     val logger = KotlinLogging.logger("Migration")
+    try {
+        val migrationPreferences =
+            Injekt
+                .get<Application>()
+                .getSharedPreferences(
+                    "migrations",
+                    Context.MODE_PRIVATE,
+                )
+        val version = migrationPreferences.getInt("version", 0)
 
-    val migrationPreferences =
-        Injekt
-            .get<Application>()
-            .getSharedPreferences(
-                "migrations",
-                Context.MODE_PRIVATE,
-            )
-    val version = migrationPreferences.getInt("version", 0)
+        logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
 
-    logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
+        MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
+            val migrationVersion = index + 1
 
-    MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
-        val migrationVersion = index + 1
+            val isMigrationRequired = version < migrationVersion
+            if (!isMigrationRequired) {
+                logger.info { "Skipping migration version $migrationVersion: $migrationName" }
+                return@forEachIndexed
+            }
 
-        val isMigrationRequired = version < migrationVersion
-        if (!isMigrationRequired) {
-            logger.info { "Skipping migration version $migrationVersion: $migrationName" }
-            return@forEachIndexed
+            logger.info { "Running migration version $migrationVersion: $migrationName" }
+
+            migrationFunction(applicationDirs)
+
+            migrationPreferences.edit().putInt("version", migrationVersion).apply()
         }
-
-        logger.info { "Running migration version $migrationVersion: $migrationName" }
-
-        migrationFunction(applicationDirs)
-
-        migrationPreferences.edit().putInt("version", migrationVersion).apply()
+    } catch (e: Exception) {
+        logger.error(e) { "Failed to run migrations" }
+        shutdownApp(ExitCode.MigrationsRunFailure)
     }
 }
