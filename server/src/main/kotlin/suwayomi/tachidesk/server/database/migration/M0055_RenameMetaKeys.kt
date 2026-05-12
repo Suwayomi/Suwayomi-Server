@@ -16,11 +16,11 @@ import suwayomi.tachidesk.server.serverConfig
 class M0055_RenameMetaKeys : SQLMigration() {
     fun postgresRename(table: String): String =
         "ALTER TABLE $table " +
-            "RENAME COLUMN \"KEY\" TO META_KEY;"
+            "RENAME COLUMN " + "KEY".toSqlName() + " TO META_KEY;"
 
     fun h2Rename(table: String): String =
         "ALTER TABLE $table " +
-            "ALTER COLUMN \"KEY\" RENAME TO META_KEY;"
+            "ALTER COLUMN " + "KEY".toSqlName() + " RENAME TO META_KEY;"
 
     fun createRenameMigration(table: String): String =
         when (serverConfig.databaseType.value) {
