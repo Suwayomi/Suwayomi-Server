@@ -92,7 +92,7 @@ open class ApplicationTest {
             handleAppMutex()
 
             // Load Android compatibility dependencies
-            AndroidCompatInitializer().init()
+            AndroidCompatInitializer().init(serverConfig.kcefEnable.value)
             // start app
             androidCompat.startApp(app)
 

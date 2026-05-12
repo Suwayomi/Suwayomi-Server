@@ -11,7 +11,7 @@ import xyz.nulldev.ts.config.GlobalConfigManager
  * Initializes the Android compatibility module
  */
 class AndroidCompatInitializer {
-    fun init() {
+    fun init(kcefEnabled: Boolean) {
         // Register config modules
         GlobalConfigManager.registerModules(
             FilesConfigModule.register(GlobalConfigManager.config),
@@ -19,7 +19,9 @@ class AndroidCompatInitializer {
             SystemConfigModule.register(GlobalConfigManager.config),
         )
 
-        WebView.setProviderFactory({ view: WebView -> KcefWebViewProvider(view) })
+        if (kcefEnabled) {
+            WebView.setProviderFactory({ view: WebView -> KcefWebViewProvider(view) })
+        }
 
         // Set some properties extensions use
         System.setProperty(
