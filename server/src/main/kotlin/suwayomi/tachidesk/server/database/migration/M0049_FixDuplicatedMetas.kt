@@ -15,7 +15,7 @@ class M0049_FixDuplicatedMetas : SQLMigration() {
         table: String,
         refColumn: String? = null,
     ): String {
-        val groupBy = listOfNotNull(refColumn, "KEY").joinToString(", ")
+        val groupBy = listOfNotNull(refColumn, "\"KEY\"").joinToString(", ")
 
         return """
             DELETE FROM $table
