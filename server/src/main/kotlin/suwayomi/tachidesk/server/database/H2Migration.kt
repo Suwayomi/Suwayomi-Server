@@ -9,9 +9,12 @@ import java.net.URLClassLoader
 import java.nio.file.Path
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.bufferedReader
+import kotlin.io.path.bufferedWriter
 import kotlin.io.path.copyTo
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteExisting
+import kotlin.io.path.deleteIfExists
 import kotlin.io.path.div
 import kotlin.io.path.exists
 import kotlin.io.path.name
@@ -46,6 +49,10 @@ object H2Migration {
         }
 
         val script = Path("$dbBase.${h2Old.substringAfterLast('.')}.sql")
+        script.deleteIfExists()
+
+        val modifiedScript = Path("$dbBase.${h2Old.substringAfterLast('.')}.modified.sql")
+        modifiedScript.deleteIfExists()
 
         // Backup original database.
         val backup = Path("$dbBase.mv.db.${h2Old.substringAfterLast('.')}.backup")
@@ -72,19 +79,32 @@ object H2Migration {
             libsDir.resolve("h2-$h2New.bin"),
         )
 
+        // Delete attempted migration if failed previously
+        val newDatabase = Path(rootDir, "database.${h2New.substringAfterLast('.')}.mv.db")
+        newDatabase.deleteIfExists()
+
+        val modifiedNewDatabase = Path(rootDir, "database.${h2Old.substringAfterLast('.')}.modified.${h2New.substringAfterLast('.')}.mv.db")
+        modifiedNewDatabase.deleteIfExists()
+
         runMigrationTool(
             migrationJar = migrationJar,
             libsDir = libsDir,
             mvStore = mvStore,
             script = script,
+            modifiedScript = modifiedScript,
             h2Old = h2Old,
             h2New = h2New,
         )
 
         // Move database to proper path
-        val newDatabase = Path(rootDir, "database.${h2New.substringAfterLast('.')}.mv.db")
-        newDatabase.copyTo(mvStore, overwrite = true)
-        newDatabase.deleteExisting()
+        if (modifiedNewDatabase.exists()) {
+            modifiedNewDatabase.copyTo(mvStore, overwrite = true)
+            modifiedNewDatabase.deleteExisting()
+            newDatabase.deleteIfExists()
+        } else {
+            newDatabase.copyTo(mvStore, overwrite = true)
+            newDatabase.deleteExisting()
+        }
 
         logger.info { "H2 migration completed successfully." }
     }
@@ -123,6 +143,7 @@ object H2Migration {
         libsDir: Path,
         mvStore: Path,
         script: Path,
+        modifiedScript: Path,
         h2Old: String,
         h2New: String,
     ) {
@@ -136,32 +157,77 @@ object H2Migration {
             val main =
                 clazz.getMethod("main", Array<String>::class.java)
 
-            main.invoke(
-                null,
-                arrayOf(
-                    // h2 driver dir
-                    "-l",
-                    libsDir.absolutePathString(),
-                    // from version
-                    "-f",
-                    h2Old,
-                    // to version
-                    "-t",
-                    h2New,
-                    // user
-                    "-u",
-                    "",
-                    // password
-                    "-p",
-                    "",
-                    // database.mv.db
-                    "-d",
-                    mvStore.absolutePathString(),
-                    // database backup in SQL
-                    "-s",
-                    script.absolutePathString(),
-                ),
-            )
+            try {
+                main.invoke(
+                    null,
+                    arrayOf(
+                        // h2 driver dir
+                        "-l",
+                        libsDir.absolutePathString(),
+                        // from version
+                        "-f",
+                        h2Old,
+                        // to version
+                        "-t",
+                        h2New,
+                        // user
+                        "-u",
+                        "",
+                        // password
+                        "-p",
+                        "",
+                        // database.mv.db
+                        "-d",
+                        mvStore.absolutePathString(),
+                        // database backup in SQL
+                        "-s",
+                        script.absolutePathString(),
+                    ),
+                )
+            } catch (e: Exception) {
+                // Modify raw .sql file as needed for compatibility
+                if (e.stackTraceToString().contains("Unknown data type: \"DATETIME\"; SQL statement:") && script.exists()) {
+                    script.bufferedReader().use { reader ->
+                        modifiedScript.bufferedWriter().use { writer ->
+                            reader.forEachLine { line ->
+                                writer.write(
+                                    line.replace(
+                                        "    \"EXECUTED_AT\" DATETIME(9) NOT NULL",
+                                        "    \"EXECUTED_AT\" TIMESTAMP(9) NOT NULL",
+                                    ),
+                                )
+                                writer.newLine()
+                            }
+                        }
+                    }
+
+                    main.invoke(
+                        null,
+                        arrayOf(
+                            // h2 driver dir
+                            "-l",
+                            libsDir.absolutePathString(),
+                            // from version
+                            "-f",
+                            h2Old,
+                            // to version
+                            "-t",
+                            h2New,
+                            // user
+                            "-u",
+                            "",
+                            // password
+                            "-p",
+                            "",
+                            // database.mv.db
+                            "-d",
+                            modifiedScript.absolutePathString(),
+                        ),
+                    )
+                } else {
+                    throw e
+                }
+            }
         }
     }
 }
