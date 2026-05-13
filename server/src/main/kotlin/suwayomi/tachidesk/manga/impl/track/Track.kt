@@ -228,7 +228,7 @@ object Track {
                 TrackRecordTable.selectAll().where { TrackRecordTable.id eq recordId }.first()
             }
 
-        val tracker = TrackerManager.getTracker(recordDb[trackerId])!!
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
 
         val track = recordDb.toTrack()
         tracker.refresh(track)
@@ -244,7 +244,7 @@ object Track {
                 TrackRecordTable.selectAll().where { TrackRecordTable.id eq recordId }.first()
             }
 
-        val tracker = TrackerManager.getTracker(recordDb[trackerId])
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])
 
         if (deleteRemoteTrack == true && tracker is DeletableTracker) {
             tracker.delete(recordDb.toTrack())
@@ -265,27 +265,27 @@ object Track {
                 TrackRecordTable.selectAll().where { TrackRecordTable.id eq input.recordId }.first()
             }
 
-        val tracker = TrackerManager.getTracker(recordDb[trackerId])!!
+        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
 
         if (input.status != null) {
-            recordDb[status] = input.status
-            if (input.status == tracker.getCompletionStatus() && recordDb[totalChapters] != 0) {
-                recordDb[lastChapterRead] = recordDb[totalChapters]
+            recordDb[TrackRecordTable.status] = input.status
+            if (input.status == tracker.getCompletionStatus() && recordDb[TrackRecordTable.totalChapters] != 0) {
+                recordDb[TrackRecordTable.lastChapterRead] = recordDb[TrackRecordTable.totalChapters]
             }
         }
         if (input.lastChapterRead != null) {
-            if (recordDb[lastChapterRead] == 0.0 &&
-                recordDb[lastChapterRead] < input.lastChapterRead &&
-                recordDb[status] != tracker.getRereadingStatus()
+            if (recordDb[TrackRecordTable.lastChapterRead] == 0.0 &&
+                recordDb[TrackRecordTable.lastChapterRead] < input.lastChapterRead &&
+                recordDb[TrackRecordTable.status] != tracker.getRereadingStatus()
             ) {
-                recordDb[status] = tracker.getReadingStatus()
+                recordDb[TrackRecordTable.status] = tracker.getReadingStatus()
             }
-            recordDb[lastChapterRead] = input.lastChapterRead
-            if (recordDb[totalChapters] != 0 &&
-                input.lastChapterRead.toInt() == recordDb[totalChapters]
+            recordDb[TrackRecordTable.lastChapterRead] = input.lastChapterRead
+            if (recordDb[TrackRecordTable.totalChapters] != 0 &&
+                input.lastChapterRead.toInt() == recordDb[TrackRecordTable.totalChapters]
             ) {
-                recordDb[status] = tracker.getCompletionStatus()
-                recordDb[finishDate] = System.currentTimeMillis()
+                recordDb[TrackRecordTable.status] = tracker.getCompletionStatus()
+                recordDb[TrackRecordTable.finishDate] = System.currentTimeMillis()
             }
         }
         if (input.scoreString != null) {
@@ -293,13 +293,13 @@ object Track {
             recordDb[TrackRecordTable.score] = score
         }
         if (input.startDate != null) {
-            recordDb[startDate] = input.startDate
+            recordDb[TrackRecordTable.startDate] = input.startDate
         }
         if (input.finishDate != null) {
-            recordDb[finishDate] = input.finishDate
+            recordDb[TrackRecordTable.finishDate] = input.finishDate
         }
         if (input.private != null) {
-            recordDb[private] = input.private
+            recordDb[TrackRecordTable.private] = input.private
         }
 
         val track = recordDb.toTrack()
@@ -369,7 +369,7 @@ object Track {
         it: ResultRow,
         chapterNumber: Double,
     ) {
-        val tracker = TrackerManager.getTracker(it[trackerId]) ?: return
+        val tracker = TrackerManager.getTracker(it[TrackRecordTable.trackerId]) ?: return
         val track = it.toTrack()
 
         val log =
@@ -378,7 +378,7 @@ object Track {
             }
         log.debug { "called for $tracker, ${track.title} (recordId= ${track.id}, mangaId= ${track.manga_id})" }
 
-        val localLastReadChapter = it[lastChapterRead]
+        val localLastReadChapter = it[TrackRecordTable.lastChapterRead]
 
         if (localLastReadChapter == chapterNumber) {
             log.debug { "new chapter is the same as the local last read chapter" }
@@ -410,8 +410,8 @@ object Track {
                 TrackRecordTable
                     .selectAll()
                     .where {
-                        (mangaId eq track.manga_id) and
-                            (trackerId eq track.tracker_id)
+                        (TrackRecordTable.mangaId eq track.manga_id) and
+                            (TrackRecordTable.trackerId eq track.tracker_id)
                     }.singleOrNull()
 
             if (existingRecord != null) {
