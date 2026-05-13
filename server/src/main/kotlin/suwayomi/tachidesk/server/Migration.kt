@@ -4,12 +4,11 @@ import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.server.database.H2Migration
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
 import java.util.prefs.Preferences
-import kotlin.collections.isNotEmpty
-import kotlin.collections.orEmpty
 
 private fun migratePreferences(
     parent: String?,
@@ -76,6 +75,14 @@ private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
     }
 }
 
+fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
+    H2Migration.migrate(
+        applicationDirs.dataRoot,
+        "1.4.200",
+        "2.4.240",
+    )
+}
+
 private val MIGRATIONS =
     listOf<Pair<String, (ApplicationDirs) -> Unit>>(
         "InitialMigration" to { applicationDirs ->
@@ -84,6 +91,9 @@ private val MIGRATIONS =
         },
         "FixGlobalUpdateScheduling" to {
             Injekt.get<IUpdater>().deleteLastAutomatedUpdateTimestamp()
+        },
+        "MigrateH2DatabaseToV2.4.240" to { applicationDirs ->
+            migrateH2DatabaseToV24240(applicationDirs)
         },
     )
 

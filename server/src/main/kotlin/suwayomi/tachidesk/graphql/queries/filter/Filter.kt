@@ -1,21 +1,33 @@
 package suwayomi.tachidesk.graphql.queries.filter
 
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.ComparisonOp
-import org.jetbrains.exposed.sql.Expression
-import org.jetbrains.exposed.sql.ExpressionWithColumnType
-import org.jetbrains.exposed.sql.LikePattern
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.Query
-import org.jetbrains.exposed.sql.QueryBuilder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.not
-import org.jetbrains.exposed.sql.or
-import org.jetbrains.exposed.sql.stringParam
-import org.jetbrains.exposed.sql.upperCase
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.ComparisonOp
+import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
+import org.jetbrains.exposed.v1.core.LikePattern
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.QueryBuilder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNotNull
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.not
+import org.jetbrains.exposed.v1.core.notInList
+import org.jetbrains.exposed.v1.core.notLike
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.stringParam
+import org.jetbrains.exposed.v1.core.upperCase
+import org.jetbrains.exposed.v1.core.wrap
+import org.jetbrains.exposed.v1.jdbc.Query
+import org.jetbrains.exposed.v1.jdbc.andWhere
 
 class ILikeEscapeOp(
     expr1: Expression<*>,
@@ -88,9 +100,7 @@ class DistinctFromOp(
         ): DistinctFromOp =
             DistinctFromOp(
                 expression,
-                with(SqlExpressionBuilder) {
-                    expression.wrap(t)
-                },
+                expression.wrap(t),
                 false,
             )
 
@@ -100,9 +110,7 @@ class DistinctFromOp(
         ): DistinctFromOp =
             DistinctFromOp(
                 expression,
-                with(SqlExpressionBuilder) {
-                    expression.wrap(t)
-                },
+                expression.wrap(t),
                 true,
             )
 
@@ -112,9 +120,7 @@ class DistinctFromOp(
         ): DistinctFromOp =
             DistinctFromOp(
                 expression,
-                with(SqlExpressionBuilder) {
-                    expression.wrap(t)
-                },
+                expression.wrap(t),
                 false,
             )
 
@@ -124,9 +130,7 @@ class DistinctFromOp(
         ): DistinctFromOp =
             DistinctFromOp(
                 expression,
-                with(SqlExpressionBuilder) {
-                    expression.wrap(t)
-                },
+                expression.wrap(t),
                 true,
             )
     }
@@ -505,26 +509,26 @@ class OpAnd(
 ) {
     fun <T> andWhere(
         value: T?,
-        andPart: SqlExpressionBuilder.(T & Any) -> Op<Boolean>,
+        andPart: (T & Any) -> Op<Boolean>,
     ) {
         value ?: return
-        val expr = Op.build { andPart(value) }
+        val expr = andPart(value)
         op = if (op == null) expr else (op!! and expr)
     }
 
     fun <T : Any> andWhere(
         values: List<T>?,
-        andPart: SqlExpressionBuilder.(List<T>) -> Op<Boolean>,
+        andPart: (List<T>) -> Op<Boolean>,
     ) {
         @Suppress("UNCHECKED_CAST")
-        return andWhere(values as T?, andPart as SqlExpressionBuilder.(Any) -> Op<Boolean>)
+        return andWhere(values as T?, andPart as (Any) -> Op<Boolean>)
     }
 
     fun <T : Any> andWhere(
         valueDefault: T?,
         valueAll: List<T>?,
         valueAny: List<T>?,
-        expr: SqlExpressionBuilder.(T) -> Op<Boolean>,
+        expr: (T) -> Op<Boolean>,
     ) {
         andWhere(valueDefault, expr)
         andWhereAll(valueAll, expr)
@@ -533,17 +537,17 @@ class OpAnd(
 
     fun <T : Any> andWhereAll(
         values: List<T>?,
-        andPart: SqlExpressionBuilder.(T) -> Op<Boolean>,
+        andPart: (T) -> Op<Boolean>,
     ) {
         values?.map { andWhere(it, andPart) }
     }
 
     fun <T : Any> andWhereAny(
         values: List<T>?,
-        andPart: SqlExpressionBuilder.(T) -> Op<Boolean>,
+        andPart: (T) -> Op<Boolean>,
     ) {
         values ?: return
-        val expr = values.map { Op.build { andPart(it) } }.reduce { acc, op -> acc or op }
+        val expr = values.map { andPart(it) }.reduce { acc, op -> acc or op }
         op = if (op == null) expr else (op!! and expr)
     }
 

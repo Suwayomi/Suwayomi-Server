@@ -8,16 +8,18 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
@@ -343,24 +345,25 @@ object BackupMangaHandler {
             }
 
         if (chaptersToUpdateToDbChapter.isNotEmpty()) {
-            BatchUpdateStatement(ChapterTable).apply {
-                chaptersToUpdateToDbChapter.forEach { (backupChapter, dbChapter) ->
-                    addBatch(EntityID(dbChapter[ChapterTable.id].value, ChapterTable))
-                    if (flags.includeChapters) {
-                        this[ChapterTable.isRead] = backupChapter.read || dbChapter[ChapterTable.isRead]
-                        this[ChapterTable.lastPageRead] =
-                            max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
-                        this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
-                    }
+            BatchUpdateStatement(ChapterTable)
+                .apply {
+                    chaptersToUpdateToDbChapter.forEach { (backupChapter, dbChapter) ->
+                        addBatch(EntityID(dbChapter[ChapterTable.id].value, ChapterTable))
+                        if (flags.includeChapters) {
+                            this[ChapterTable.isRead] = backupChapter.read || dbChapter[ChapterTable.isRead]
+                            this[ChapterTable.lastPageRead] =
+                                max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
+                            this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
+                        }
 
-                    if (flags.includeHistory) {
-                        this[ChapterTable.lastReadAt] =
-                            (historyByChapter[backupChapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0)
-                                .coerceAtLeast(dbChapter[ChapterTable.lastReadAt])
+                        if (flags.includeHistory) {
+                            this[ChapterTable.lastReadAt] =
+                                (historyByChapter[backupChapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0)
+                                    .coerceAtLeast(dbChapter[ChapterTable.lastReadAt])
+                        }
                     }
-                }
-                execute(this@dbTransaction)
-            }
+                }.toExecutable()
+                .execute(this@dbTransaction)
         }
 
         if (flags.includeClientData) {
