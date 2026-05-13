@@ -16,7 +16,6 @@ import java.io.File
 import java.io.InputStream
 import java.nio.file.Files
 import javax.imageio.ImageIO
-import kotlin.getValue
 
 object ConversionUtil {
     val logger = KotlinLogging.logger {}

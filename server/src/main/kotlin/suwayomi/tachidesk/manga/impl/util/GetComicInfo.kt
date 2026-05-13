@@ -4,10 +4,11 @@ import eu.kanade.tachiyomi.source.local.metadata.COMIC_INFO_FILE
 import eu.kanade.tachiyomi.source.local.metadata.ComicInfo
 import eu.kanade.tachiyomi.source.local.metadata.ComicInfoPublishingStatus
 import nl.adaptivity.xmlutil.serialization.XML
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable

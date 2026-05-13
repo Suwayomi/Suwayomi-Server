@@ -1,11 +1,9 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.model
 
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
-import suwayomi.tachidesk.manga.model.table.TrackRecordTable.lastChapterRead
-import suwayomi.tachidesk.manga.model.table.TrackRecordTable.remoteUrl
 import suwayomi.tachidesk.manga.model.table.TrackSearchTable
 
 fun ResultRow.toTrackRecordDataClass(): TrackRecordDataClass =

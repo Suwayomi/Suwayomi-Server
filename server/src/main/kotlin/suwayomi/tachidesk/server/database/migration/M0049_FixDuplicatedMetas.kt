@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
+import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
 
 @Suppress("ClassName", "unused")
 class M0049_FixDuplicatedMetas : SQLMigration() {
@@ -15,7 +16,7 @@ class M0049_FixDuplicatedMetas : SQLMigration() {
         table: String,
         refColumn: String? = null,
     ): String {
-        val groupBy = listOfNotNull(refColumn, "KEY").joinToString(", ")
+        val groupBy = listOfNotNull(refColumn, "KEY".toSqlName()).joinToString(", ")
 
         return """
             DELETE FROM $table
@@ -30,10 +31,11 @@ class M0049_FixDuplicatedMetas : SQLMigration() {
             """.trimIndent()
     }
 
-    override val sql: String =
+    override val sql: String by lazy {
         createMigrationForTable("CATEGORYMETA", "CATEGORY_REF") +
             createMigrationForTable("CHAPTERMETA", "CHAPTER_REF") +
             createMigrationForTable("GLOBALMETA") +
             createMigrationForTable("MANGAMETA", "MANGA_REF") +
             createMigrationForTable("SOURCEMETA", "SOURCE_REF")
+    }
 }

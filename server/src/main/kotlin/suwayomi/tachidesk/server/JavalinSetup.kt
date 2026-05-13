@@ -52,7 +52,6 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
-import kotlin.text.get
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
 
