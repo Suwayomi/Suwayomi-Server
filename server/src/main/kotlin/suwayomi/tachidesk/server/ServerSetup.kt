@@ -312,6 +312,7 @@ fun applicationSetup() {
                 single<KcefWebViewProvider.InitBrowserHandler> {
                     object : KcefWebViewProvider.InitBrowserHandler {
                         override fun init(provider: KcefWebViewProvider) {
+                            if (!serverConfig.kcefEnable.value) return
                             val networkHelper = Injekt.get<NetworkHelper>()
                             val logger = KotlinLogging.logger {}
                             logger.info { "Start loading cookies" }
@@ -342,7 +343,7 @@ fun applicationSetup() {
     handleAppMutex()
 
     // Load Android compatibility dependencies
-    AndroidCompatInitializer().init()
+    AndroidCompatInitializer().init(serverConfig.kcefEnable.value)
     // start app
     androidCompat.startApp(app)
 
@@ -511,56 +512,72 @@ fun applicationSetup() {
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
 
-    GlobalScope.launch {
-        val logger = KotlinLogging.logger("KCEF")
-        KCEF.init(
-            builder = {
-                progress {
-                    var lastNum = -1
-                    onDownloading {
-                        val num = it.roundToInt()
-                        if (num > lastNum) {
-                            lastNum = num
-                            logger.info { "KCEF download progress: $num%" }
+    if (serverConfig.kcefEnable.value) {
+        GlobalScope.launch {
+            val logger = KotlinLogging.logger("KCEF")
+            KCEF.init(
+                builder = {
+                    progress {
+                        var lastNum = -1
+                        onDownloading {
+                            val num = it.roundToInt()
+                            if (num > lastNum) {
+                                lastNum = num
+                                logger.info { "KCEF download progress: $num%" }
+                            }
                         }
                     }
-                }
-                download { github() }
-                settings {
-                    windowlessRenderingEnabled = true
-                    cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
-                    logSeverity = if (serverConfig.debugLogsEnabled.value) LogSeverity.Verbose else LogSeverity.Default
-                }
-                appHandler(
-                    KCEF.AppHandler(
-                        arrayOf(
-                            "--disable-gpu",
-                            // #1486 needed to be able to render without a window
-                            "--off-screen-rendering-enabled",
-                            // #1489 since /dev/shm is restricted in docker (OOM)
-                            "--disable-dev-shm-usage",
-                            // #1723 support Widevine (incomplete)
-                            "--enable-widevine-cdm",
-                            // #1736 JCEF does implement stack guards properly
-                            "--change-stack-guard-on-fork=disable",
+                    download { github() }
+                    settings {
+                        windowlessRenderingEnabled = true
+                        cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
+                        logSeverity = if (serverConfig.debugLogsEnabled.value) LogSeverity.Verbose else LogSeverity.Default
+                    }
+                    appHandler(
+                        KCEF.AppHandler(
+                            arrayOf(
+                                "--disable-gpu",
+                                // #1486 needed to be able to render without a window
+                                "--off-screen-rendering-enabled",
+                                // #1489 since /dev/shm is restricted in docker (OOM)
+                                "--disable-dev-shm-usage",
+                                // #1723 support Widevine (incomplete)
+                                "--enable-widevine-cdm",
+                                // #1736 JCEF does implement stack guards properly
+                                "--change-stack-guard-on-fork=disable",
+                            ),
                         ),
-                    ),
-                )
+                    )
 
-                val kcefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
-                kcefDir.createDirectories()
-                installDir(kcefDir.toFile())
+                    val kcefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
+                    kcefDir.createDirectories()
+                    installDir(kcefDir.toFile())
+                },
+                onError = { it?.printStackTrace() },
+            )
+        }
+
+        Runtime.getRuntime().addShutdownHook(
+            thread(start = false) {
+                val logger = KotlinLogging.logger("KCEF")
+                logger.debug { "Shutting down KCEF" }
+                KCEF.disposeBlocking()
+                logger.debug { "KCEF shutdown complete" }
             },
-            onError = { it?.printStackTrace() },
         )
-    }
+    } else {
+        // KCEF is disabled: Cleanup existing files to free space
+        val kcefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
+        val kcefCacheDir = Path(applicationDirs.dataRoot) / "cache/kcef"
 
-    Runtime.getRuntime().addShutdownHook(
-        thread(start = false) {
-            val logger = KotlinLogging.logger("KCEF")
-            logger.debug { "Shutting down KCEF" }
-            KCEF.disposeBlocking()
-            logger.debug { "KCEF shutdown complete" }
-        },
-    )
+        if (kcefDir.toFile().exists()) {
+            logger.info { "KCEF is disabled. Removing existing binaries at $kcefDir" }
+            kcefDir.toFile().deleteRecursively()
+        }
+
+        if (kcefCacheDir.toFile().exists()) {
+            logger.info { "KCEF is disabled. Removing existing cache at $kcefCacheDir" }
+            kcefCacheDir.toFile().deleteRecursively()
+        }
+    }
 }
