@@ -525,7 +525,7 @@ fun applicationSetup() {
                         }
                     }
                 }
-                download { github() }
+                download { github { release("jbr-release-21.0.10b1163.108") } }
                 settings {
                     windowlessRenderingEnabled = true
                     cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
