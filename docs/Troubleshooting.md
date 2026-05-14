@@ -14,7 +14,8 @@ In such cases, it will be helpful to have logs ready. You can find them in [The 
 
 - `failed due to
 org.jetbrains.exposed.exceptions.ExposedSQLException: org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "CATEGORY.SORT_ORDER" not found`
-- `org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "CATEGORY.ORDER" not found`
+- `org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "CHAPTER.KOREADER_HASH" not found`
+- `java.lang.IllegalStateException: Unable to read the page at position 96170708817765466`
 - Any other error text that includes "SQL Statement"
 
 Your database is either corrupted or incompatible.
