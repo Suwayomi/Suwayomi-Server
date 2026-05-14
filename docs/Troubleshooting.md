@@ -43,7 +43,7 @@ Solution: Use other/more sources, download less, and wait between request-heavy 
 - `Timed out waiting for page list`
 
 First, check if this is an extension issue or a Suwayomi issue.
-On the manga page of the problematic entry, click <svg style="width:1em;height:1em;display:inline-block;fill:currentcolor" focusable="false" aria-hidden="true" viewBox="0 0 24 24" aria-label="fontSize small"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h4v-2H5V8h14v10h-4v2h4c1.1 0 2-.9 2-2V6c0-1.1-.89-2-2-2m-7 6-4 4h3v6h2v-6h3z"></path></svg> "Open in WebView".
+On the manga page of the problematic entry, click "Open in WebView".
 
 Solutions:
 - If the WebView loads: The issue is with the extension. Search [the issues](https://github.com/Suwayomi/Suwayomi-Server/issues) and discord if there are known problems with that extension.
