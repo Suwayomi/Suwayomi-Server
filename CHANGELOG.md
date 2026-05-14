@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - (Database/H2) Use the latest H2 database engine
+- (Startup) Crash on startup if an unrecoverable error happens
 
 ### Fixed
 - (CloudFlareInterceptor) Don't send the `cf_clearance` cookie back to Flaresolverr

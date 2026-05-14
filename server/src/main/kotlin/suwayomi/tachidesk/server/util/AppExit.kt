@@ -21,6 +21,10 @@ enum class ExitCode(
     WebUISetupFailure(3),
     ConfigMigrationMisconfiguredFailure(4),
     DbMigrationFailure(5),
+    SetupConfFileFailed(6),
+    LocalSourceIconCopyFailure(7),
+    LocalSourceSetupFailure(8),
+    MigrationsRunFailure(9),
 }
 
 fun shutdownApp(exitCode: ExitCode) {
