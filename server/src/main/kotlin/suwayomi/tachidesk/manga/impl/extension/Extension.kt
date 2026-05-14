@@ -358,6 +358,7 @@ object Extension {
                 } else {
                     ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
                         it[isInstalled] = false
+                        it[hasUpdate] = false
                     }
                 }
 
