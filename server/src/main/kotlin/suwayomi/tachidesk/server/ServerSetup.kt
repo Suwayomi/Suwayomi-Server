@@ -366,6 +366,7 @@ fun applicationSetup() {
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }
+        shutdownApp(ExitCode.SetupConfFileFailed)
     }
 
     // copy local source icon
@@ -378,6 +379,7 @@ fun applicationSetup() {
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while copying Local source's icon" }
+        shutdownApp(ExitCode.LocalSourceIconCopyFailure)
     }
 
     // fixes #119 , ref:
@@ -395,7 +397,12 @@ fun applicationSetup() {
 
     databaseUp()
 
-    LocalSource.register()
+    try {
+        LocalSource.register()
+    } catch (e: Exception) {
+        logger.error(e) { "Failed to setup LocalSource" }
+        shutdownApp(ExitCode.LocalSourceSetupFailure)
+    }
 
     serverConfig.subscribeTo(
         combine<Any, DatabaseSettings>(
@@ -525,7 +532,7 @@ fun applicationSetup() {
                         }
                     }
                 }
-                download { github() }
+                download { github { release("jbr-release-21.0.10b1163.108") } }
                 settings {
                     windowlessRenderingEnabled = true
                     cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
