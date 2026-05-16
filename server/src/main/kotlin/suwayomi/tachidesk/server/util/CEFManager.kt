@@ -77,116 +77,120 @@ object CEFManager {
 
     fun init() = initAsync().launchIn(scope)
 
-    private fun initAsync(): Flow<CefApp> {
-        // TODO: Handle CEF not available on platform
+    private fun initAsync(): Flow<CefApp> =
+        try {
+            System.loadLibrary("jawt")
 
-        System.loadLibrary("jawt")
+            if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
 
-        if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
+            if (!isInstallationValid()) {
+                logger.info { "Downloading CEF from Github ($JBR_VERSION)" }
+                val installDir = cefDir.toFile()
+                installDir.deleteDir()
 
-        if (!isInstallationValid()) {
-            logger.info { "Downloading CEF from Github ($JBR_VERSION)" }
-            val installDir = cefDir.toFile()
-            installDir.deleteDir()
-
-            if (!installDir.mkdirs()) {
-                throw CefException("Failed to create installation directory")
-            }
-
-            val client = OkHttpClient.Builder().followRedirects(true).build()
-            val request =
-                Request
-                    .Builder()
-                    .url("https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/tags/$JBR_VERSION")
-                    .addHeader("Content-Type", GithubReleaseTransform.GITHUB_JSON)
-                    .build()
-
-            val downloadUrl =
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
-                    GithubReleaseTransform.transform(response)
+                if (!installDir.mkdirs()) {
+                    throw CefException("Failed to create installation directory")
                 }
 
-            val tempDownload = Files.createTempDirectory("cef").toFile()
-            try {
-                val downFile = File(tempDownload, "download.tar.gz")
-                val downloadRequest =
+                val client = OkHttpClient.Builder().followRedirects(true).build()
+                val request =
                     Request
                         .Builder()
-                        .url(downloadUrl)
+                        .url("https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/tags/$JBR_VERSION")
+                        .addHeader("Content-Type", GithubReleaseTransform.GITHUB_JSON)
                         .build()
 
-                // TODO: progress?
-                downFile.outputStream().use { output ->
-                    client.newCall(downloadRequest).execute().use { response ->
-                        response.body.byteStream().use { input -> input.copyTo(output) }
+                val downloadUrl =
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) throw IOException("Unexpected code $response")
+                        GithubReleaseTransform.transform(response)
+                    }
+
+                val tempDownload = Files.createTempDirectory("cef").toFile()
+                try {
+                    val downFile = File(tempDownload, "download.tar.gz")
+                    val downloadRequest =
+                        Request
+                            .Builder()
+                            .url(downloadUrl)
+                            .build()
+
+                    // TODO: progress?
+                    downFile.outputStream().use { output ->
+                        client.newCall(downloadRequest).execute().use { response ->
+                            response.body.byteStream().use { input -> input.copyTo(output) }
+                        }
+                    }
+
+                    logger.debug { "Extracting CEF..." }
+                    TarGzExtractor.extract(
+                        installDir,
+                        downFile,
+                        4096,
+                    )
+                    TarGzExtractor.move(
+                        installDir,
+                    )
+
+                    if (!isInstallationValid()) {
+                        throw CefException("Failed to provide a valid installation, this is a bug!")
+                    }
+                    logger.info { "Downloaded CEF successfully!" }
+                } finally {
+                    tempDownload.deleteDir()
+                }
+            }
+
+            val config =
+                JCefAppConfig.getInstance(cefDir.toString(), false).apply {
+                    appArgsAsList.addAll(
+                        arrayOf(
+                            "--disable-gpu",
+                            // #1486 needed to be able to render without a window
+                            "--off-screen-rendering-enabled",
+                            // #1489 since /dev/shm is restricted in docker (OOM)
+                            "--disable-dev-shm-usage",
+                            // #1723 support Widevine (incomplete)
+                            "--enable-widevine-cdm",
+                            // #1736 JCEF does implement stack guards properly
+                            "--change-stack-guard-on-fork=disable",
+                        ),
+                    )
+                    cefSettings.apply {
+                        windowless_rendering_enabled = true
+                        cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
+                        log_severity =
+                            if (serverConfig.debugLogsEnabled.value) LogSeverity.LOGSEVERITY_VERBOSE else LogSeverity.LOGSEVERITY_DEFAULT
                     }
                 }
-
-                logger.debug { "Extracting CEF..." }
-                TarGzExtractor.extract(
-                    installDir,
-                    downFile,
-                    4096,
-                )
-                TarGzExtractor.move(
-                    installDir,
-                )
-
-                if (!isInstallationValid()) {
-                    throw CefException("Failed to provide a valid installation, this is a bug!")
-                }
-            } finally {
-                tempDownload.deleteDir()
+            logger.debug {
+                "Attempting to initialize CEF: exe=${config.getServerExe()}, settings={${config.cefSettings.getDescription()}}, args=${
+                    config.getAppArgs().contentToString()
+                }"
             }
+
+            CefApp.setIsRemoteEnabled(config.isRemoteEnabled)
+            SystemBootstrap.setLoader(config.getLoader())
+            CefApp.startup(config.getAppArgs())
+
+            val app = CefApp.getInstance(config.getAppArgs(), config.cefSettings, config.getServerExe())
+            CefHelper.cefApp.value = Result.success(app)
+            logger.debug { "CEF app created" }
+
+            Runtime.getRuntime().addShutdownHook(
+                thread(start = false) {
+                    logger.debug { "Shutting down CEF" }
+                    app.dispose()
+                    logger.debug { "KCEF shutdown complete" }
+                },
+            )
+
+            CefHelper.waitForInit()
+        } catch (e: Throwable) {
+            logger.error(e) { "Failed to set up CEF" }
+            CefHelper.cefApp.value = Result.failure(e)
+            throw e
         }
-
-        val config =
-            JCefAppConfig.getInstance(cefDir.toString(), false).apply {
-                appArgsAsList.addAll(
-                    arrayOf(
-                        "--disable-gpu",
-                        // #1486 needed to be able to render without a window
-                        "--off-screen-rendering-enabled",
-                        // #1489 since /dev/shm is restricted in docker (OOM)
-                        "--disable-dev-shm-usage",
-                        // #1723 support Widevine (incomplete)
-                        "--enable-widevine-cdm",
-                        // #1736 JCEF does implement stack guards properly
-                        "--change-stack-guard-on-fork=disable",
-                    ),
-                )
-                cefSettings.apply {
-                    windowless_rendering_enabled = true
-                    cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
-                    log_severity =
-                        if (serverConfig.debugLogsEnabled.value) LogSeverity.LOGSEVERITY_VERBOSE else LogSeverity.LOGSEVERITY_DEFAULT
-                }
-            }
-        logger.debug {
-            "Attempting to initialize CEF: exe=${config.getServerExe()}, settings={${config.cefSettings.getDescription()}}, args=${
-                config.getAppArgs().contentToString()
-            }"
-        }
-
-        CefApp.setIsRemoteEnabled(config.isRemoteEnabled)
-        SystemBootstrap.setLoader(config.getLoader())
-        CefApp.startup(config.getAppArgs())
-
-        val app = CefApp.getInstance(config.getAppArgs(), config.cefSettings, config.getServerExe())
-        CefHelper.cefApp.value = app
-        logger.debug { "CEF app created" }
-
-        Runtime.getRuntime().addShutdownHook(
-            thread(start = false) {
-                logger.debug { "Shutting down CEF" }
-                app.dispose()
-                logger.debug { "KCEF shutdown complete" }
-            },
-        )
-
-        return CefHelper.waitForInit()
-    }
 
     private fun isInstallationValid(): Boolean {
         val releaseFile = (cefDir / "release").toFile()
@@ -244,7 +248,11 @@ object CEFManager {
                                 } && asset.downloadUrl.isNotBlank()
                             }.filter { asset ->
                                 platform.arch.values.any { arch ->
-                                    asset.name.contains(arch, ignoreCase = true) || asset.downloadUrl.contains(arch, true)
+                                    asset.name.contains(arch, ignoreCase = true) ||
+                                            asset.downloadUrl.contains(
+                                                arch,
+                                                true,
+                                            )
                                 } && asset.downloadUrl.isNotBlank()
                             }.map { it.downloadUrl }
                     }
@@ -333,10 +341,10 @@ object CEFManager {
             } else {
                 this == targetFile || runCatching {
                     sourceFile.absoluteFile == targetFile.absoluteFile ||
-                        Files.isSameFile(
-                            sourceFile.toPath(),
-                            targetFile.toPath(),
-                        )
+                            Files.isSameFile(
+                                sourceFile.toPath(),
+                                targetFile.toPath(),
+                            )
                 }.getOrNull() ?: false
             }
         }

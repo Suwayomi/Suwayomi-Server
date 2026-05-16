@@ -30,7 +30,7 @@ import kotlin.io.path.div
 private val logger = KotlinLogging.logger {}
 
 object CefHelper {
-    val cefApp = MutableStateFlow<CefApp?>(null)
+    val cefApp = MutableStateFlow<Result<CefApp?>>(Result.success(null))
 
     suspend fun createClient(): CefClient {
         val app = waitForInit().first()
@@ -41,7 +41,7 @@ object CefHelper {
 
     fun waitForInit() =
         callbackFlow<CefApp> {
-            val app = cefApp.first { it != null }!!
+            val app = cefApp.first { it.isFailure || it.getOrThrow() != null }.getOrThrow()!!
             app.onInitialization {
                 logger.debug { "CEF: Initialization state $it" }
                 when (it) {
