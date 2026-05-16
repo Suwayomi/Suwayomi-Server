@@ -287,6 +287,7 @@ object Chapter {
                                 this[ChapterTable.isRead] = false
                                 this[ChapterTable.isBookmarked] = false
                                 this[ChapterTable.isDownloaded] = false
+                                this[ChapterTable.pageCount] = -1
 
                                 // is recognized chapter number
                                 if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
