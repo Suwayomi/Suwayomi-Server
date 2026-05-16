@@ -247,11 +247,18 @@ class MangaQuery {
                     MangaTable
                         .leftJoin(CategoryMangaTable)
                         .select(MangaTable.columns)
-                        .withDistinctOn(MangaTable.id)
+
+                val applySorting = order != null || orderBy != null || (last != null || before != null)
+
+                if (applySorting) {
+                    res.withDistinctOn(MangaTable.id to SortOrder.ASC)
+                } else {
+                    res.withDistinctOn(MangaTable.id)
+                }
 
                 res.applyOps(condition, filter)
 
-                if (order != null || orderBy != null || (last != null || before != null)) {
+                if (applySorting) {
                     val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)

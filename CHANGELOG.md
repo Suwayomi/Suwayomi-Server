@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension**) Do not indicate an update is available when the extension is not installed
 - (**Chapter**) Fix losing chapter data on failed chapter list update
 - (**Chapter**) Fix database error when fetching chapter updates
+- (**Manga/API**) Fix "mangas" graphql query with active sorting and using a postgresql database (QUERY "mangas")
 
 ## [v2.2.2100] + [WebUI: v20260508.01] - 2026-05-08
 
