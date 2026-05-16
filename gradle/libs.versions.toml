@@ -156,7 +156,9 @@ cron4j = "it.sauronsoftware.cron4j:cron4j:2.2.5"
 cronUtils = "com.cronutils:cron-utils:9.2.1"
 
 # Webview
-kcef = "dev.datlag:kcef:2024.04.20.4"
+jcef = "org.jetbrains.intellij.deps.jcef:jcef:144.0.15-g72717cf-chromium-144.0.7559.172-api-1.21-262-b34"
+gluegen = "org.jogamp.gluegen:gluegen-rt:2.5.0"
+jogl = "org.jogamp.jogl:jogl-all:2.5.0"
 
 # User
 jwt = "com.auth0:java-jwt:4.5.2"
@@ -213,7 +215,7 @@ shared = [
     "dex2jar-tools",
     "apk-parser",
     "jackson-annotations",
-    "kcef"
+    "jcef",
 ]
 
 sharedTest = [
