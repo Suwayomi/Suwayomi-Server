@@ -163,6 +163,15 @@ buildConfig {
 
     buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Suwayomi-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
+
+    val jcefDep =
+        project.configurations
+            .getByName("implementation")
+            .allDependencies
+            .matching {
+                it.group.equals("org.jetbrains.intellij.deps.jcef") && it.name.equals("jcef")
+            }.firstOrNull()
+    buildConfigField("String", "JCEF_VERSION", quoteWrap(jcefDep?.version ?: ""))
 }
 
 tasks {

@@ -321,7 +321,7 @@ class KcefWebViewProvider(
             mappings
                 .find {
                     it.functionName == invoke.functionName &&
-                            it.interfaceName == invoke.interfaceName
+                        it.interfaceName == invoke.interfaceName
                 }?.let {
                     handler.post {
                         try {
@@ -496,8 +496,7 @@ class KcefWebViewProvider(
                 viewClient.onRenderProcessGone(
                     view,
                     object : RenderProcessGoneDetail() {
-                        override fun didCrash(): Boolean =
-                            status == CefRequestHandler.TerminationStatus.TS_PROCESS_CRASHED
+                        override fun didCrash(): Boolean = status == CefRequestHandler.TerminationStatus.TS_PROCESS_CRASHED
 
                         override fun rendererPriorityAtExit(): Int = -1
                     },
@@ -673,12 +672,12 @@ class KcefWebViewProvider(
         urlHttpMapping[url.trimEnd('/')] = data
 
         browser =
-            kcefClient!!.createBrowser(
-                url,
-                CefRendering.OFFSCREEN,
-                false,
-            )
-                .apply {
+            kcefClient!!
+                .createBrowser(
+                    url,
+                    CefRendering.OFFSCREEN,
+                    false,
+                ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
                     createImmediately()
                 }
@@ -692,10 +691,10 @@ class KcefWebViewProvider(
         browser!!.evaluateJavaScript(
             script.removePrefix("javascript:"),
         )
-        {
-            Log.v(TAG, "JS returned: $it")
-            it?.let { handler.post { resultCallback?.onReceiveValue(it) } }
-        }
+            {
+                Log.v(TAG, "JS returned: $it")
+                it?.let { handler.post { resultCallback?.onReceiveValue(it) } }
+            }
     }
 
     override fun saveWebArchive(filename: String): Unit = throw RuntimeException("Stub!")
@@ -745,8 +744,7 @@ class KcefWebViewProvider(
 
     override fun capturePicture(): Picture = throw RuntimeException("Stub!")
 
-    override fun createPrintDocumentAdapter(documentName: String): PrintDocumentAdapter =
-        throw RuntimeException("Stub!")
+    override fun createPrintDocumentAdapter(documentName: String): PrintDocumentAdapter = throw RuntimeException("Stub!")
 
     override fun getScale(): Float = throw RuntimeException("Stub!")
 
@@ -944,8 +942,7 @@ class KcefWebViewProvider(
     class KcefViewDelegate : ViewDelegate {
         override fun shouldDelayChildPressedState(): Boolean = throw RuntimeException("Stub!")
 
-        override fun onProvideVirtualStructure(structure: android.view.ViewStructure): Unit =
-            throw RuntimeException("Stub!")
+        override fun onProvideVirtualStructure(structure: android.view.ViewStructure): Unit = throw RuntimeException("Stub!")
 
         override fun onProvideAutofillVirtualStructure(
             @SuppressWarnings("unused") structure: android.view.ViewStructure,
@@ -972,8 +969,7 @@ class KcefWebViewProvider(
 
         override fun getAccessibilityNodeProvider(): AccessibilityNodeProvider = throw RuntimeException("Stub!")
 
-        override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo): Unit =
-            throw RuntimeException("Stub!")
+        override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo): Unit = throw RuntimeException("Stub!")
 
         override fun onInitializeAccessibilityEvent(event: AccessibilityEvent): Unit = throw RuntimeException("Stub!")
 
