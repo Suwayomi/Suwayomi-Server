@@ -262,16 +262,14 @@ object Chapter {
                         }
                     }
 
-                // we got some clean up due
-                if (chaptersIdsToDelete.isNotEmpty()) {
-                    DownloadManager.dequeue(chaptersIdsToDelete)
-                    transaction {
+                transaction {
+                    // we got some clean up due
+                    if (chaptersIdsToDelete.isNotEmpty()) {
+                        DownloadManager.dequeue(chaptersIdsToDelete)
                         PageTable.deleteWhere { chapter inList chaptersIdsToDelete }
                         ChapterTable.deleteWhere { id inList chaptersIdsToDelete }
                     }
-                }
 
-                transaction {
                     if (chaptersToInsert.isNotEmpty()) {
                         ChapterTable
                             .batchInsert(chaptersToInsert) { chapter ->
