@@ -53,6 +53,7 @@ import java.util.Arrays
 import kotlin.concurrent.thread
 import kotlin.io.path.Path
 import kotlin.io.path.div
+import kotlin.streams.asSequence
 
 private val logger = KotlinLogging.logger {}
 
@@ -425,12 +426,13 @@ object CEFManager {
 
         fun move(installDir: File) {
             val releaseFile =
-                installDir
-                    .listFiles()
-                    .firstNotNullOfOrNull { File(it, "release").let { f -> if (f.exists()) f else null } } ?: File(
-                    installDir,
-                    "release",
-                )
+                Files.walk(installDir.toPath()).use { s ->
+                    s
+                        .filter(Files::isRegularFile)
+                        .asSequence()
+                        .map { it.toFile() }
+                        .firstOrNull { it.name == "release" }
+                } ?: File(installDir, "release")
             val releaseFileContents = if (releaseFile.exists()) releaseFile.readText(Charsets.UTF_8) else ""
 
             val os = Platform.current.os
