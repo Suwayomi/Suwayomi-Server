@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.server.util
 
 import com.jetbrains.cef.JCefAppConfig
+import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.parseAs
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
@@ -75,9 +76,9 @@ object CEFManager {
     private val cefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
     private const val JBR_VERSION = "jbr-release-25.0.3b475.60"
 
-    fun init() = initAsync().launchIn(scope)
+    fun init() = scope.launch { initAsync() }
 
-    private fun initAsync(): Flow<CefApp> =
+    private suspend fun initAsync(): CefApp =
         try {
             System.loadLibrary("jawt")
 
@@ -101,7 +102,7 @@ object CEFManager {
                         .build()
 
                 val downloadUrl =
-                    client.newCall(request).execute().use { response ->
+                    client.newCall(request).awaitSuccess().use { response ->
                         if (!response.isSuccessful) throw IOException("Unexpected code $response")
                         GithubReleaseTransform.transform(response)
                     }
@@ -117,7 +118,7 @@ object CEFManager {
 
                     // TODO: progress?
                     downFile.outputStream().use { output ->
-                        client.newCall(downloadRequest).execute().use { response ->
+                        client.newCall(downloadRequest).awaitSuccess().use { response ->
                             response.body.byteStream().use { input -> input.copyTo(output) }
                         }
                     }
@@ -185,7 +186,7 @@ object CEFManager {
                 },
             )
 
-            CefHelper.waitForInit()
+            CefHelper.waitForInit().first()
         } catch (e: Throwable) {
             logger.error(e) { "Failed to set up CEF" }
             CefHelper.cefApp.value = Result.failure(e)
