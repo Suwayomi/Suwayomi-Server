@@ -17,6 +17,7 @@ xmlserialization = "0.91.3"
 ktlint = "1.8.0"
 koin = "4.2.1"
 moko = "0.26.4"
+jcef = "144.0.15-g72717cf-chromium-144.0.7559.172-api-1.21-262-b34"
 
 [libraries]
 # Kotlin
@@ -156,7 +157,7 @@ cron4j = "it.sauronsoftware.cron4j:cron4j:2.2.5"
 cronUtils = "com.cronutils:cron-utils:9.2.1"
 
 # Webview
-jcef = "org.jetbrains.intellij.deps.jcef:jcef:144.0.15-g72717cf-chromium-144.0.7559.172-api-1.21-262-b34"
+jcef = { module = "org.jetbrains.intellij.deps.jcef:jcef", version.ref = "jcef" }
 gluegen = "org.jogamp.gluegen:gluegen-rt:2.5.0"
 jogl = "org.jogamp.jogl:jogl-all:2.5.0"
 
