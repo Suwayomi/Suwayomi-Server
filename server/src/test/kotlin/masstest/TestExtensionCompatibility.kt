@@ -7,6 +7,7 @@ package masstest
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.os.Looper
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -17,9 +18,11 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.koin.core.context.stopKoin
 import suwayomi.tachidesk.manga.impl.Source.getSourceList
 import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
@@ -33,6 +36,7 @@ import suwayomi.tachidesk.test.setLoggingEnabled
 import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TestExtensionCompatibility {
@@ -51,6 +55,8 @@ class TestExtensionCompatibility {
     fun setup() {
         val dataRoot = File(BASE_PATH).absolutePath
         System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
+        Looper.clearMainLooperForTest()
+        SettingsRegistry.clear()
         applicationSetup()
         setLoggingEnabled(false)
 
@@ -76,6 +82,11 @@ class TestExtensionCompatibility {
         }
         setLoggingEnabled(true)
         File("$BASE_PATH/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.uppercase()} - ${it.id}" })
+    }
+
+    @AfterAll
+    fun teardown() {
+        stopKoin()
     }
 
     @Test

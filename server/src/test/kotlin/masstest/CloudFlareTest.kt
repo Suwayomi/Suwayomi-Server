@@ -1,12 +1,15 @@
 package masstest
 
+import android.os.Looper
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.koin.core.context.stopKoin
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
@@ -16,6 +19,7 @@ import suwayomi.tachidesk.test.BASE_PATH
 import suwayomi.tachidesk.test.setLoggingEnabled
 import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.io.File
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CloudFlareTest {
@@ -25,6 +29,8 @@ class CloudFlareTest {
     fun setup() {
         val dataRoot = File(BASE_PATH).absolutePath
         System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
+        Looper.clearMainLooperForTest()
+        SettingsRegistry.clear()
         applicationSetup()
         setLoggingEnabled(false)
 
@@ -46,6 +52,11 @@ class CloudFlareTest {
                     .let(GetCatalogueSource::getCatalogueSourceOrNull) as HttpSource
         }
         setLoggingEnabled(true)
+    }
+
+    @AfterAll
+    fun teardown() {
+        stopKoin()
     }
 
     private val logger = KotlinLogging.logger {}
