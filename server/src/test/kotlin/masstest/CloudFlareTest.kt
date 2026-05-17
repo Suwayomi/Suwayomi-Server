@@ -15,11 +15,11 @@ import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.server.applicationSetup
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.test.BASE_PATH
 import suwayomi.tachidesk.test.setLoggingEnabled
 import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.io.File
-import suwayomi.tachidesk.server.settings.SettingsRegistry
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CloudFlareTest {

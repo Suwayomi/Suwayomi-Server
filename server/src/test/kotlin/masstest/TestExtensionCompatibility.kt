@@ -31,12 +31,12 @@ import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.test.BASE_PATH
 import suwayomi.tachidesk.test.setLoggingEnabled
 import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
-import suwayomi.tachidesk.server.settings.SettingsRegistry
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TestExtensionCompatibility {
@@ -78,7 +78,12 @@ class TestExtensionCompatibility {
                     }
                 }
             }
-            sources = getSourceList().map { getCatalogueSourceOrNull(it.id.toLong())!! as HttpSource }
+            sources =
+                getSourceList()
+                    .filter {
+                        // filter local source
+                        it.id.toLong() != 0L
+                    }.map { getCatalogueSourceOrNull(it.id.toLong())!! as HttpSource }
         }
         setLoggingEnabled(true)
         File("$BASE_PATH/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.uppercase()} - ${it.id}" })

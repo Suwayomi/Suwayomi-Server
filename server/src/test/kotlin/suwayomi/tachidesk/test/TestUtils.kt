@@ -55,8 +55,9 @@ fun createChapters(
     mangaId: Int,
     amount: Int,
     read: Boolean,
+    start: Int = 1,
 ) {
-    val list = listOf((0 until amount)).flatten().map { 1 }
+    val list = listOf((0 until amount)).flatten().map { it + start }
     transaction {
         ChapterTable
             .batchInsert(list) {
