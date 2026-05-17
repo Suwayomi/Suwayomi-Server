@@ -30,6 +30,9 @@ import suwayomi.tachidesk.graphql.mutations.SourceMutation
 import suwayomi.tachidesk.graphql.mutations.TrackMutation
 import suwayomi.tachidesk.graphql.mutations.UpdateMutation
 import suwayomi.tachidesk.graphql.mutations.UserMutation
+import suwayomi.tachidesk.graphql.mutations.AnimeMutation
+import suwayomi.tachidesk.graphql.mutations.AnimeExtensionMutation
+import suwayomi.tachidesk.graphql.mutations.AnimeSourceMutation
 import suwayomi.tachidesk.graphql.queries.BackupQuery
 import suwayomi.tachidesk.graphql.queries.CategoryQuery
 import suwayomi.tachidesk.graphql.queries.ChapterQuery
@@ -41,6 +44,10 @@ import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SettingsQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
+import suwayomi.tachidesk.graphql.queries.AnimeQuery
+import suwayomi.tachidesk.graphql.queries.AnimeSourceQuery
+import suwayomi.tachidesk.graphql.queries.AnimeExtensionQuery
+import suwayomi.tachidesk.graphql.queries.EpisodeQuery
 import suwayomi.tachidesk.graphql.queries.TrackQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -88,9 +95,13 @@ val schema =
         queries =
             listOf(
                 TopLevelObject(BackupQuery()),
+                TopLevelObject(AnimeExtensionQuery()),
+                TopLevelObject(AnimeQuery()),
+                TopLevelObject(AnimeSourceQuery()),
                 TopLevelObject(CategoryQuery()),
                 TopLevelObject(ChapterQuery()),
                 TopLevelObject(DownloadQuery()),
+                TopLevelObject(EpisodeQuery()),
                 TopLevelObject(ExtensionQuery()),
                 TopLevelObject(InfoQuery()),
                 TopLevelObject(KoreaderSyncQuery()),
@@ -103,6 +114,9 @@ val schema =
             ),
         mutations =
             listOf(
+                TopLevelObject(AnimeMutation()),
+                TopLevelObject(AnimeExtensionMutation()),
+                TopLevelObject(AnimeSourceMutation()),
                 TopLevelObject(BackupMutation()),
                 TopLevelObject(CategoryMutation()),
                 TopLevelObject(ChapterMutation()),
