@@ -249,10 +249,10 @@ object CEFManager {
                             }.filter { asset ->
                                 platform.arch.values.any { arch ->
                                     asset.name.contains(arch, ignoreCase = true) ||
-                                            asset.downloadUrl.contains(
-                                                arch,
-                                                true,
-                                            )
+                                        asset.downloadUrl.contains(
+                                            arch,
+                                            true,
+                                        )
                                 } && asset.downloadUrl.isNotBlank()
                             }.map { it.downloadUrl }
                     }
@@ -341,10 +341,10 @@ object CEFManager {
             } else {
                 this == targetFile || runCatching {
                     sourceFile.absoluteFile == targetFile.absoluteFile ||
-                            Files.isSameFile(
-                                sourceFile.toPath(),
-                                targetFile.toPath(),
-                            )
+                        Files.isSameFile(
+                            sourceFile.toPath(),
+                            targetFile.toPath(),
+                        )
                 }.getOrNull() ?: false
             }
         }
