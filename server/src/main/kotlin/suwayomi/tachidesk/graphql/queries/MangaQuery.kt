@@ -15,9 +15,11 @@ import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
@@ -243,22 +245,18 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults =
             transaction {
-                val res =
+                val mangaIdsQuery =
                     MangaTable
                         .leftJoin(CategoryMangaTable)
-                        .select(MangaTable.columns)
+                        .select(MangaTable.id)
+                        .withDistinct()
 
-                val applySorting = order != null || orderBy != null || (last != null || before != null)
+                mangaIdsQuery.applyOps(condition, filter)
 
-                if (applySorting) {
-                    res.withDistinctOn(MangaTable.id to SortOrder.ASC)
-                } else {
-                    res.withDistinctOn(MangaTable.id)
-                }
+                val res =
+                    MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
 
-                res.applyOps(condition, filter)
-
-                if (applySorting) {
+                if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
