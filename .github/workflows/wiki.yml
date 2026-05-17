@@ -1,6 +1,7 @@
 name: GitHub Wiki upload
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
