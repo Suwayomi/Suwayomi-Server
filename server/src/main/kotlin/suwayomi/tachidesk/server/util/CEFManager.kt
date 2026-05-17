@@ -170,6 +170,23 @@ object CEFManager {
                 }"
             }
 
+            // this is essentially https://github.com/JetBrains/jcef/blob/5b93e5b916068316f1c8e7f8a59bf958d5ffd6e1/java/org/cef/CefApp.java#L777
+            // we do this here because JCEF has no mechanism to tell us that initalization failed, they just record in an inaccessible future
+            val os = Platform.current.os
+            when {
+                os.isLinux -> {
+                    config.getLoader().loadLibrary("cef")
+                }
+
+                os.isWindows -> {
+                    config.getLoader().loadLibrary("chrome_elf")
+                    config.getLoader().loadLibrary("libcef")
+                }
+
+                else -> {}
+            }
+            config.getLoader().loadLibrary("jcef")
+
             CefApp.setIsRemoteEnabled(config.isRemoteEnabled)
             SystemBootstrap.setLoader(config.getLoader())
             CefApp.startup(config.getAppArgs())
