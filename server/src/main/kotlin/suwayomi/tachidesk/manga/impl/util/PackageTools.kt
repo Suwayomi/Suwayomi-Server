@@ -105,24 +105,61 @@ object PackageTools {
             applicationInfo.metaData =
                 Bundle().apply {
                     val appTag = doc.getElementsByTagName("application").item(0)
+                    val intents = mutableListOf<Bundle>()
 
                     appTag
                         ?.childNodes
                         ?.toList()
                         .orEmpty()
                         .asSequence()
-                        .filter {
-                            it.nodeType == Node.ELEMENT_NODE
-                        }.map {
-                            it as Element
-                        }.filter {
-                            it.tagName == "meta-data"
-                        }.forEach {
-                            putString(
-                                it.attributes.getNamedItem("android:name").nodeValue,
-                                it.attributes.getNamedItem("android:value").nodeValue,
-                            )
+                        .filterIsInstance<Element>()
+                        .forEach {
+                            when (it.tagName) {
+                                "meta-data" -> {
+                                    putString(
+                                        it.attributes.getNamedItem("android:name").nodeValue,
+                                        it.attributes.getNamedItem("android:value").nodeValue,
+                                    )
+                                }
+                                "activity" -> {
+                                    it.getElementsByTagName("intent-filter")
+                                        .toList()
+                                        .forEach {
+                                            val hosts = mutableListOf<String>()
+                                            val scheme = mutableListOf<String>()
+                                            val pathPattern = mutableListOf<String>()
+                                            it.childNodes
+                                                .toList()
+                                                .filterIsInstance<Element>()
+                                                .forEach {
+                                                    it.attributes.getNamedItem("android:host")?.let {
+                                                        hosts += it.nodeValue
+                                                        return@forEach
+                                                    }
+                                                    it.attributes.getNamedItem("android:scheme")?.let {
+                                                        scheme += it.nodeValue
+                                                        return@forEach
+                                                    }
+                                                    it.attributes.getNamedItem("android:pathPattern")?.let {
+                                                        pathPattern += it.nodeValue
+                                                        return@forEach
+                                                    }
+                                                }
+                                            intents += Bundle().apply {
+                                                putStringArray("hosts", hosts.toTypedArray())
+                                                putStringArray("schemes", scheme.toTypedArray())
+                                                putStringArray("pathPatterns", pathPattern.toTypedArray())
+                                            }
+                                        }
+
+                                }
+                            }
                         }
+
+                    putInt("intentsSize", intents.size)
+                    intents.forEachIndexed { index, bundle ->
+                        putBundle("intent$index", bundle)
+                    }
                 }
 
             signatures =
