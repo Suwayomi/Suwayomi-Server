@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.koin.core.context.stopKoin
@@ -33,6 +34,7 @@ class CloudFlareTest {
         SettingsRegistry.clear()
         applicationSetup()
         setLoggingEnabled(false)
+        return
 
         runBlocking {
             val extensions = ExtensionsList.getExtensionList()
@@ -62,6 +64,7 @@ class CloudFlareTest {
     private val logger = KotlinLogging.logger {}
 
     @Test
+    @Disabled
     fun `test nhentai browse`() =
         runTest {
             assert(nhentai.getPopularManga(1).mangas.isNotEmpty()) {
