@@ -220,6 +220,7 @@ class KcefWebViewProvider(
         }
     }
 
+    @Suppress("DEPRECATION")
     private inner class LoadHandler : CefLoadHandlerAdapter() {
         override fun onLoadEnd(
             browser: CefBrowser,
@@ -475,6 +476,7 @@ class KcefWebViewProvider(
         }
     }
 
+    @Suppress("DEPRECATION")
     private inner class RequestHandler : CefRequestHandlerAdapter() {
         override fun getResourceRequestHandler(
             browser: CefBrowser,
@@ -836,6 +838,7 @@ class KcefWebViewProvider(
 
     override fun getWebChromeClient(): WebChromeClient = chromeClient
 
+    @Suppress("DEPRECATION")
     override fun setPictureListener(listener: PictureListener): Unit = throw RuntimeException("Stub!")
 
     @Serializable
