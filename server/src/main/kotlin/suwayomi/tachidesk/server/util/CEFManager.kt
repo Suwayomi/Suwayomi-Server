@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -34,41 +33,37 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.PosixFilePermission
 import kotlin.concurrent.thread
+import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.createDirectories
+import kotlin.io.path.createTempDirectory
 import kotlin.io.path.deleteExisting
 import kotlin.io.path.deleteIfExists
+import kotlin.io.path.deleteRecursively
 import kotlin.io.path.div
 import kotlin.io.path.exists
+import kotlin.io.path.getPosixFilePermissions
 import kotlin.io.path.inputStream
-import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.isSameFileAs
+import kotlin.io.path.isSymbolicLink
 import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.moveTo
 import kotlin.io.path.outputStream
 import kotlin.io.path.readLines
+import kotlin.io.path.readSymbolicLink
 import kotlin.io.path.readText
+import kotlin.io.path.setPosixFilePermissions
 import kotlin.io.path.writeText
 import kotlin.streams.asSequence
 
 private val logger = KotlinLogging.logger {}
 
-internal fun Path.deleteDir(): Result<Boolean> =
-    runCatching {
-        if (!this.exists()) {
-            return@runCatching false
-        }
-
-        if (this.isDirectory()) {
-            this.listDirectoryEntries().forEach {
-                it.deleteDir()
-            }
-        }
-        this.deleteIfExists()
-    }
-
+@OptIn(ExperimentalPathApi::class)
 object CEFManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + Dispatchers.IO)
     private val applicationDirs by lazy { Injekt.get<ApplicationDirs>() }
@@ -182,7 +177,7 @@ object CEFManager {
 
     internal suspend fun downloadRelease(installDir: Path) {
         logger.info { "Downloading CEF from Github (${BuildConfig.JCEF_JBR_RELEASE})" }
-        installDir.deleteDir()
+        installDir.deleteRecursively()
 
         if (!runCatching { installDir.createDirectories() }.isSuccess) {
             throw CefException("Failed to create installation directory")
@@ -202,10 +197,7 @@ object CEFManager {
                 GithubReleaseTransform.transform(response)
             }
 
-        val tempDownload =
-            withContext(Dispatchers.IO) {
-                Files.createTempDirectory("cef")
-            }
+        val tempDownload = createTempDirectory("cef")
         try {
             val downFile = tempDownload / "download.tar.gz"
             val downloadRequest =
@@ -231,7 +223,7 @@ object CEFManager {
                 installDir,
             )
         } finally {
-            tempDownload.deleteDir()
+            tempDownload.deleteRecursively()
         }
     }
 
@@ -364,26 +356,10 @@ object CEFManager {
                 false
             } else {
                 this == targetFile || runCatching {
-                    sourceFile.absolute() == targetFile.absolute() ||
-                        sourceFile.isSameFileAs(targetFile),
+                    sourceFile.absolute() == targetFile.absolute() || sourceFile.isSameFileAs(targetFile)
                 }.getOrNull() ?: false
             }
         }
-
-        internal fun Path.move(target: Path): Path =
-            runCatching {
-                Files
-                    .move(
-                        this,
-                        target,
-                    )
-            }.getOrNull() ?: runCatching {
-                if (this.toFile().renameTo(target.toFile())) {
-                    target
-                } else {
-                    this
-                }
-            }.getOrNull() ?: this
 
         fun extract(
             installDir: Path,
@@ -405,11 +381,12 @@ object CEFManager {
                                 if (currentEntry.isDirectory) {
                                     file.createDirectories()
                                     file.setPosixFilePermissions(
-                                        file.getPosixFilePermissions() + setOf(
-                                            PosixFilePermission.OWNER_EXECUTE,
-                                            PosixFilePermission.GROUP_EXECUTE,
-                                            PosixFilePermission.OTHERS_EXECUTE
-                                        )
+                                        file.getPosixFilePermissions() +
+                                            setOf(
+                                                PosixFilePermission.OWNER_EXECUTE,
+                                                PosixFilePermission.GROUP_EXECUTE,
+                                                PosixFilePermission.OTHERS_EXECUTE,
+                                            ),
                                     )
                                 } else {
                                     var count: Int
@@ -423,11 +400,12 @@ object CEFManager {
                                         }
                                     }
                                     file.setPosixFilePermissions(
-                                        file.getPosixFilePermissions() + setOf(
-                                            PosixFilePermission.OWNER_EXECUTE,
-                                            PosixFilePermission.GROUP_EXECUTE,
-                                            PosixFilePermission.OTHERS_EXECUTE
-                                        )
+                                        file.getPosixFilePermissions() +
+                                            setOf(
+                                                PosixFilePermission.OWNER_EXECUTE,
+                                                PosixFilePermission.GROUP_EXECUTE,
+                                                PosixFilePermission.OTHERS_EXECUTE,
+                                            ),
                                     )
                                 }
                             }
@@ -471,9 +449,9 @@ object CEFManager {
             }
 
             foundDir?.let {
-                val target = it.move(installDir / "lib")
+                val target = it.moveTo(installDir / "lib")
                 foundParent?.let { p ->
-                    p.deleteDir()
+                    p.deleteRecursively()
                     p.deleteIfExists()
                 }
 
@@ -484,7 +462,7 @@ object CEFManager {
                 }
 
                 target.listDirectoryEntries().forEach { moveCandidate ->
-                    moveCandidate.move(installDir / moveCandidate.fileName)
+                    moveCandidate.moveTo(installDir / moveCandidate.fileName)
                 }
 
                 target.deleteExisting()
@@ -505,15 +483,15 @@ object CEFManager {
             val target = (installDir / "lib").also { it.createDirectories() }
             foundDir?.let { contents ->
                 (contents / "Home" / "lib").listDirectoryEntries().forEach { moveCandidate ->
-                    moveCandidate.move(target / moveCandidate.fileName)
+                    moveCandidate.moveTo(target / moveCandidate.fileName)
                 }
 
-                (contents / "Frameworks").move(
+                (contents / "Frameworks").moveTo(
                     target / "Frameworks",
                 )
 
                 foundParent?.let { p ->
-                    p.deleteDir()
+                    p.deleteRecursively()
                     p.deleteIfExists()
                 }
 
@@ -524,7 +502,7 @@ object CEFManager {
                 }
 
                 target.listDirectoryEntries().forEach { moveCandidate ->
-                    moveCandidate.move(installDir / moveCandidate.fileName)
+                    moveCandidate.moveTo(installDir / moveCandidate.fileName)
                 }
 
                 target.deleteExisting()
@@ -541,9 +519,9 @@ object CEFManager {
             }
 
             foundDir?.let {
-                val target = (it / "lib").move(installDir / "lib")
+                val target = (it / "lib").moveTo(installDir / "lib")
                 (it / "bin").listDirectoryEntries().forEach { moveCandidate ->
-                    moveCandidate.move(target / moveCandidate.fileName)
+                    moveCandidate.moveTo(target / moveCandidate.fileName)
                 }
 
                 installDir.listDirectoryEntries().forEach { deleteCandidate ->
@@ -553,7 +531,7 @@ object CEFManager {
                 }
 
                 target.listDirectoryEntries().forEach { moveCandidate ->
-                    moveCandidate.move(installDir / moveCandidate.fileName)
+                    moveCandidate.moveTo(installDir / moveCandidate.fileName)
                 }
 
                 target.deleteExisting()
