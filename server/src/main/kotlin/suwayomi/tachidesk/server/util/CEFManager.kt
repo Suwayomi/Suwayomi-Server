@@ -335,15 +335,15 @@ object CEFManager {
 
         internal fun Path.isSymlink(): Boolean =
             runCatching {
-                Files.isSymbolicLink(this)
+                this.isSymbolicLink()
             }.getOrNull() ?: runCatching {
-                !Files.isRegularFile(this, LinkOption.NOFOLLOW_LINKS)
+                !this.isRegularFile(LinkOption.NOFOLLOW_LINKS)
             }.getOrNull() ?: false
 
         internal fun Path.getRealFile(): Path =
             if (isSymlink()) {
                 runCatching {
-                    Files.readSymbolicLink(this)
+                    this.readSymbolicLink()
                 }.getOrNull() ?: this
             } else {
                 this
@@ -365,10 +365,7 @@ object CEFManager {
             } else {
                 this == targetFile || runCatching {
                     sourceFile.absolute() == targetFile.absolute() ||
-                        Files.isSameFile(
-                            sourceFile,
-                            targetFile,
-                        )
+                        sourceFile.isSameFileAs(targetFile),
                 }.getOrNull() ?: false
             }
         }
@@ -407,19 +404,31 @@ object CEFManager {
 
                                 if (currentEntry.isDirectory) {
                                     file.createDirectories()
-                                    file.toFile().setExecutable(true, false)
+                                    file.setPosixFilePermissions(
+                                        file.getPosixFilePermissions() + setOf(
+                                            PosixFilePermission.OWNER_EXECUTE,
+                                            PosixFilePermission.GROUP_EXECUTE,
+                                            PosixFilePermission.OTHERS_EXECUTE
+                                        )
+                                    )
                                 } else {
                                     var count: Int
                                     val data = ByteArray(bufferSize.toInt())
                                     BufferedOutputStream(
-                                        Files.newOutputStream(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE),
+                                        file.outputStream(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE),
                                         bufferSize.toInt(),
                                     ).use { dest ->
                                         while (tarIn.read(data, 0, bufferSize.toInt()).also { count = it } != -1) {
                                             dest.write(data, 0, count)
                                         }
                                     }
-                                    file.toFile().setExecutable(true, false)
+                                    file.setPosixFilePermissions(
+                                        file.getPosixFilePermissions() + setOf(
+                                            PosixFilePermission.OWNER_EXECUTE,
+                                            PosixFilePermission.GROUP_EXECUTE,
+                                            PosixFilePermission.OTHERS_EXECUTE
+                                        )
+                                    )
                                 }
                             }
                         }
