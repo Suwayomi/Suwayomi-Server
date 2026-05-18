@@ -401,14 +401,6 @@ object CEFManager {
 
                                 if (currentEntry.isDirectory) {
                                     file.createDirectories()
-                                    file.setPosixFilePermissions(
-                                        file.getPosixFilePermissions() +
-                                            setOf(
-                                                PosixFilePermission.OWNER_EXECUTE,
-                                                PosixFilePermission.GROUP_EXECUTE,
-                                                PosixFilePermission.OTHERS_EXECUTE,
-                                            ),
-                                    )
                                 } else {
                                     BufferedOutputStream(
                                         file.outputStream(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE),
@@ -416,6 +408,8 @@ object CEFManager {
                                     ).use { dest ->
                                         tarIn.copyTo(dest)
                                     }
+                                }
+                                try {
                                     file.setPosixFilePermissions(
                                         file.getPosixFilePermissions() +
                                             setOf(
@@ -424,6 +418,8 @@ object CEFManager {
                                                 PosixFilePermission.OTHERS_EXECUTE,
                                             ),
                                     )
+                                } catch (_: UnsupportedOperationException) {
+                                    // ignore
                                 }
                             }
                         }
