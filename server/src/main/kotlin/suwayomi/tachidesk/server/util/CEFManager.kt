@@ -77,6 +77,10 @@ object CEFManager {
 
     private suspend fun initAsync(): CefApp =
         try {
+            if (!serverConfig.kcefEnabled.value) {
+                throw CefException("CEF is disabled")
+            }
+
             System.loadLibrary("jawt")
 
             if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
