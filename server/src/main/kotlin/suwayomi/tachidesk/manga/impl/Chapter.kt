@@ -262,16 +262,14 @@ object Chapter {
                         }
                     }
 
-                // we got some clean up due
-                if (chaptersIdsToDelete.isNotEmpty()) {
-                    DownloadManager.dequeue(chaptersIdsToDelete)
-                    transaction {
+                transaction {
+                    // we got some clean up due
+                    if (chaptersIdsToDelete.isNotEmpty()) {
+                        DownloadManager.dequeue(chaptersIdsToDelete)
                         PageTable.deleteWhere { chapter inList chaptersIdsToDelete }
                         ChapterTable.deleteWhere { id inList chaptersIdsToDelete }
                     }
-                }
 
-                transaction {
                     if (chaptersToInsert.isNotEmpty()) {
                         ChapterTable
                             .batchInsert(chaptersToInsert) { chapter ->
@@ -287,6 +285,7 @@ object Chapter {
                                 this[ChapterTable.isRead] = false
                                 this[ChapterTable.isBookmarked] = false
                                 this[ChapterTable.isDownloaded] = false
+                                this[ChapterTable.pageCount] = -1
 
                                 // is recognized chapter number
                                 if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
