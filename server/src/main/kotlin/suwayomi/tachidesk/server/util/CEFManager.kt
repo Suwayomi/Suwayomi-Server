@@ -45,8 +45,10 @@ import kotlin.io.path.div
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.io.path.isDirectory
+import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.outputStream
+import kotlin.io.path.readLines
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.streams.asSequence
@@ -69,8 +71,9 @@ internal fun Path.deleteDir(): Result<Boolean> =
 
 object CEFManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + Dispatchers.IO)
-    private val applicationDirs = Injekt.get<ApplicationDirs>()
-    private val cefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
+    private val applicationDirs by lazy { Injekt.get<ApplicationDirs>() }
+    private val cefDir by lazy { Path(applicationDirs.dataRoot) / "bin/kcef" }
+    private val releaseFile by lazy { cefDir / "release" }
 
     fun init() = scope.launch { initAsync() }
 
@@ -84,12 +87,10 @@ object CEFManager {
 
             if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
 
-            if (!isInstallationValid()) {
-                logger.info { "Downloading CEF from Github (${BuildConfig.JCEF_JBR_RELEASE})" }
-
+            if (!isInstallationValid(releaseFile)) {
                 downloadRelease(cefDir)
 
-                if (!isInstallationValid()) {
+                if (!isInstallationValid(releaseFile)) {
                     throw CefException("Failed to provide a valid installation, this is a bug!")
                 }
                 logger.info { "Downloaded CEF successfully!" }
@@ -163,9 +164,8 @@ object CEFManager {
             throw e
         }
 
-    private fun isInstallationValid(): Boolean {
-        val releaseFile = (cefDir / "release").toFile()
-        if (!releaseFile.exists() || !releaseFile.isFile()) return false
+    internal fun isInstallationValid(releaseFile: Path): Boolean {
+        if (!releaseFile.exists() || !releaseFile.isRegularFile()) return false
         return try {
             releaseFile
                 .readLines()
@@ -180,7 +180,8 @@ object CEFManager {
         }
     }
 
-    private suspend fun downloadRelease(installDir: Path) {
+    internal suspend fun downloadRelease(installDir: Path) {
+        logger.info { "Downloading CEF from Github (${BuildConfig.JCEF_JBR_RELEASE})" }
         installDir.deleteDir()
 
         if (!runCatching { installDir.createDirectories() }.isSuccess) {
