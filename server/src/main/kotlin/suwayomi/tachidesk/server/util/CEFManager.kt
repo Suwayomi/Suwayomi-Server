@@ -35,6 +35,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import kotlin.concurrent.thread
 import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
 import kotlin.io.path.div
 import kotlin.streams.asSequence
 
@@ -143,7 +144,7 @@ object CEFManager {
                     )
                     cefSettings.apply {
                         windowless_rendering_enabled = true
-                        cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
+                        cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").absolutePathString()
                         log_severity =
                             if (serverConfig.debugLogsEnabled.value) LogSeverity.LOGSEVERITY_VERBOSE else LogSeverity.LOGSEVERITY_DEFAULT
                     }
