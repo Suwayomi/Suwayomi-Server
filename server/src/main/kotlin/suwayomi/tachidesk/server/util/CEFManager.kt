@@ -210,19 +210,28 @@ object CEFManager {
                     .build()
 
             downFile.outputStream().use { output ->
-                client.newCachelessCallWithProgress(downloadRequest, object : ProgressListener {
-                    private var lastPercent = 0L
+                client
+                    .newCachelessCallWithProgress(
+                        downloadRequest,
+                        object : ProgressListener {
+                            private var lastPercent = 0L
 
-                    override fun update(bytesRead: Long, contentLength: Long, done: Boolean) {
-                        val newPercent = (bytesRead * 100).floorDiv(contentLength)
-                        if (newPercent != lastPercent) {
-                            logger.info { "Downloading $newPercent% of ${Formatter.formatFileSize(null, contentLength)}" }
-                            lastPercent = newPercent
-                        }
+                            override fun update(
+                                bytesRead: Long,
+                                contentLength: Long,
+                                done: Boolean,
+                            ) {
+                                val newPercent = (bytesRead * 100).floorDiv(contentLength)
+                                if (newPercent != lastPercent) {
+                                    logger.info { "Downloading $newPercent% of ${Formatter.formatFileSize(null, contentLength)}" }
+                                    lastPercent = newPercent
+                                }
+                            }
+                        },
+                    ).awaitSuccess()
+                    .use { response ->
+                        response.body.byteStream().use { input -> input.copyTo(output) }
                     }
-                }).awaitSuccess().use { response ->
-                    response.body.byteStream().use { input -> input.copyTo(output) }
-                }
             }
 
             logger.debug { "Extracting CEF..." }
