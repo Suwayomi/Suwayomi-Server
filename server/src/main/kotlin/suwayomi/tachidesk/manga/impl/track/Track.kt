@@ -222,6 +222,48 @@ object Track {
         }
     }
 
+    fun bindTrackRecord(
+        mangaId: Int,
+        trackRecordId: Int,
+    ): Int {
+        val (trackRecord, existingTrackRecord) =
+            transaction {
+                val trackRecord =
+                    TrackRecordTable
+                        .selectAll()
+                        .where {
+                            (TrackRecordTable.id eq trackRecordId)
+                        }.first()
+                        .toTrackRecordDataClass()
+
+                val existingTrackRecord =
+                    TrackRecordTable
+                        .selectAll()
+                        .where {
+                            (TrackRecordTable.mangaId eq mangaId) and (TrackRecordTable.trackerId eq trackRecord.trackerId)
+                        }.firstOrNull()
+                        ?.toTrackRecordDataClass()
+
+                trackRecord to existingTrackRecord
+            }
+
+        val isAlreadyBoundToManga = trackRecord.mangaId == mangaId
+        if (isAlreadyBoundToManga) {
+            return trackRecordId
+        }
+
+        val hasRecordForTracker = existingTrackRecord != null
+        if (hasRecordForTracker) {
+            val updatedTrack = trackRecord.copy(id = existingTrackRecord.id, mangaId = mangaId).toTrack()
+
+            return updateTrackRecord(updatedTrack)
+        }
+
+        val newTrack = trackRecord.copy(mangaId = mangaId).toTrack()
+
+        return insertTrackRecord(newTrack)
+    }
+
     suspend fun refresh(recordId: Int) {
         val recordDb =
             transaction {
@@ -423,9 +465,9 @@ object Track {
             }
         }
 
-    fun updateTrackRecord(track: Track) = updateTrackRecords(listOf(track))
+    fun updateTrackRecord(track: Track): Int = updateTrackRecords(listOf(track)).first()
 
-    fun updateTrackRecords(tracks: List<Track>) =
+    fun updateTrackRecords(tracks: List<Track>): List<Int> =
         transaction {
             if (tracks.isNotEmpty()) {
                 BatchUpdateStatement(TrackRecordTable)
@@ -447,6 +489,8 @@ object Track {
                     }.toExecutable()
                     .execute(this@transaction)
             }
+
+            tracks.map { it.id!! }
         }
 
     fun insertTrackRecord(track: Track): Int = insertTrackRecords(listOf(track)).first()

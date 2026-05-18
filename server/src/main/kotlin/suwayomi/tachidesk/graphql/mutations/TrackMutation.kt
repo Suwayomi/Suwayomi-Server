@@ -148,6 +148,36 @@ class TrackMutation {
         }
     }
 
+    data class BindTrackRecordInput(
+        val clientMutationId: String? = null,
+        val mangaId: Int,
+        val trackRecordId: Int,
+    )
+
+    data class BindTrackRecordPayload(
+        val clientMutationId: String?,
+        val trackRecord: TrackRecordType,
+    )
+
+    @RequireAuth
+    fun bindTrackRecord(input: BindTrackRecordInput): CompletableFuture<BindTrackRecordPayload?> {
+        val (clientMutationId, mangaId, trackRecordId) = input
+
+        return future {
+            val boundTrackRecordId = Track.bindTrackRecord(mangaId, trackRecordId)
+
+            val trackRecord =
+                transaction {
+                    TrackRecordTable.selectAll().where { TrackRecordTable.id eq boundTrackRecordId }.first()
+                }
+
+            BindTrackRecordPayload(
+                clientMutationId,
+                TrackRecordType(trackRecord),
+            )
+        }
+    }
+
     data class FetchTrackInput(
         val clientMutationId: String? = null,
         val recordId: Int,
