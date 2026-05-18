@@ -313,12 +313,30 @@ object Chapter {
                             .apply {
                                 chaptersToUpdate.forEach {
                                     addBatch(EntityID(it.id, ChapterTable))
+
+                                    val currentChapter = chaptersInDb.find { dbChapter -> dbChapter.id == it.id }!!
+
                                     this[ChapterTable.name] = it.name
                                     this[ChapterTable.date_upload] = it.uploadDate
                                     this[ChapterTable.chapter_number] = it.chapterNumber
                                     this[ChapterTable.scanlator] = it.scanlator
                                     this[ChapterTable.sourceOrder] = it.index
                                     this[ChapterTable.realUrl] = it.realUrl
+                                    this[ChapterTable.isDownloaded] = currentChapter.downloaded
+                                    this[ChapterTable.pageCount] = currentChapter.pageCount
+
+                                    if (!currentChapter.downloaded) {
+                                        return@forEach
+                                    }
+
+                                    val isSameScanlator = currentChapter.scanlator == it.scanlator
+                                    val isSameName = currentChapter.name == it.name
+
+                                    val isDownloadPreservable = isSameName && isSameScanlator
+                                    if (!isDownloadPreservable) {
+                                        this[ChapterTable.isDownloaded] = false
+                                        this[ChapterTable.pageCount] = -1
+                                    }
                                 }
                             }.toExecutable()
                             .execute(this@transaction)
