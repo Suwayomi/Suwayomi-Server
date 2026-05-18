@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -28,31 +29,42 @@ import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import java.io.BufferedOutputStream
-import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import kotlin.concurrent.thread
 import kotlin.io.path.Path
+import kotlin.io.path.absolute
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.deleteIfExists
 import kotlin.io.path.div
+import kotlin.io.path.exists
+import kotlin.io.path.inputStream
+import kotlin.io.path.isDirectory
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.outputStream
+import kotlin.io.path.readText
+import kotlin.io.path.writeText
 import kotlin.streams.asSequence
 
 private val logger = KotlinLogging.logger {}
 
-internal fun File.deleteDir(): Result<Boolean> =
+internal fun Path.deleteDir(): Result<Boolean> =
     runCatching {
         if (!this.exists()) {
             return@runCatching false
         }
 
         if (this.isDirectory()) {
-            this.listFiles().forEach {
+            this.listDirectoryEntries().forEach {
                 it.deleteDir()
             }
         }
-        this.delete()
+        this.deleteIfExists()
     }
 
 object CEFManager {
@@ -71,60 +83,13 @@ object CEFManager {
 
             if (!isInstallationValid()) {
                 logger.info { "Downloading CEF from Github ($JBR_VERSION)" }
-                val installDir = cefDir.toFile()
-                installDir.deleteDir()
 
-                if (!installDir.mkdirs()) {
-                    throw CefException("Failed to create installation directory")
+                downloadRelease(cefDir)
+
+                if (!isInstallationValid()) {
+                    throw CefException("Failed to provide a valid installation, this is a bug!")
                 }
-
-                val client = OkHttpClient.Builder().followRedirects(true).build()
-                val request =
-                    Request
-                        .Builder()
-                        .url("https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/tags/$JBR_VERSION")
-                        .addHeader("Content-Type", GithubReleaseTransform.GITHUB_JSON)
-                        .build()
-
-                val downloadUrl =
-                    client.newCall(request).awaitSuccess().use { response ->
-                        if (!response.isSuccessful) throw IOException("Unexpected code $response")
-                        GithubReleaseTransform.transform(response)
-                    }
-
-                val tempDownload = Files.createTempDirectory("cef").toFile()
-                try {
-                    val downFile = File(tempDownload, "download.tar.gz")
-                    val downloadRequest =
-                        Request
-                            .Builder()
-                            .url(downloadUrl)
-                            .build()
-
-                    // TODO: progress?
-                    downFile.outputStream().use { output ->
-                        client.newCall(downloadRequest).awaitSuccess().use { response ->
-                            response.body.byteStream().use { input -> input.copyTo(output) }
-                        }
-                    }
-
-                    logger.debug { "Extracting CEF..." }
-                    TarGzExtractor.extract(
-                        installDir,
-                        downFile,
-                        4096,
-                    )
-                    TarGzExtractor.move(
-                        installDir,
-                    )
-
-                    if (!isInstallationValid()) {
-                        throw CefException("Failed to provide a valid installation, this is a bug!")
-                    }
-                    logger.info { "Downloaded CEF successfully!" }
-                } finally {
-                    tempDownload.deleteDir()
-                }
+                logger.info { "Downloaded CEF successfully!" }
             }
 
             val config =
@@ -209,6 +174,59 @@ object CEFManager {
                 } ?: false
         } catch (_: Exception) {
             false
+        }
+    }
+
+    private suspend fun downloadRelease(installDir: Path) {
+        installDir.deleteDir()
+
+        if (!runCatching { installDir.createDirectories() }.isSuccess) {
+            throw CefException("Failed to create installation directory")
+        }
+
+        val client = OkHttpClient.Builder().followRedirects(true).build()
+        val request =
+            Request
+                .Builder()
+                .url("https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/tags/$JBR_VERSION")
+                .addHeader("Content-Type", GithubReleaseTransform.GITHUB_JSON)
+                .build()
+
+        val downloadUrl =
+            client.newCall(request).awaitSuccess().use { response ->
+                if (!response.isSuccessful) throw IOException("Unexpected code $response")
+                GithubReleaseTransform.transform(response)
+            }
+
+        val tempDownload = withContext(Dispatchers.IO) {
+            Files.createTempDirectory("cef")
+        }
+        try {
+            val downFile = tempDownload / "download.tar.gz"
+            val downloadRequest =
+                Request
+                    .Builder()
+                    .url(downloadUrl)
+                    .build()
+
+            // TODO: progress?
+            downFile.outputStream().use { output ->
+                client.newCall(downloadRequest).awaitSuccess().use { response ->
+                    response.body.byteStream().use { input -> input.copyTo(output) }
+                }
+            }
+
+            logger.debug { "Extracting CEF..." }
+            TarGzExtractor.extract(
+                installDir,
+                downFile,
+                4096,
+            )
+            TarGzExtractor.move(
+                installDir,
+            )
+        } finally {
+            tempDownload.deleteDir()
         }
     }
 
@@ -305,30 +323,28 @@ object CEFManager {
 
     // based on https://github.com/DatL4g/KCEF/blob/master/kcef/src/main/kotlin/dev/datlag/kcef/step/extract/TarGzExtractor.kt
     internal data object TarGzExtractor {
-        internal fun File.validate(parent: File): Boolean =
+        internal fun Path.validate(parent: Path): Boolean =
             runCatching {
-                this.toPath().normalize().startsWith(parent.toPath())
-            }.getOrNull() ?: runCatching {
-                this.canonicalPath.startsWith(parent.canonicalPath)
+                this.normalize().startsWith(parent)
             }.getOrNull() ?: false
 
-        internal fun File.isSymlink(): Boolean =
+        internal fun Path.isSymlink(): Boolean =
             runCatching {
-                Files.isSymbolicLink(this.toPath())
+                Files.isSymbolicLink(this)
             }.getOrNull() ?: runCatching {
-                !Files.isRegularFile(this.toPath(), LinkOption.NOFOLLOW_LINKS)
+                !Files.isRegularFile(this, LinkOption.NOFOLLOW_LINKS)
             }.getOrNull() ?: false
 
-        internal fun File.getRealFile(): File =
+        internal fun Path.getRealFile(): Path =
             if (isSymlink()) {
                 runCatching {
-                    Files.readSymbolicLink(this.toPath()).toFile()
+                    Files.readSymbolicLink(this)
                 }.getOrNull() ?: this
             } else {
                 this
             }
 
-        internal fun File.isSame(file: File?): Boolean {
+        internal fun Path.isSame(file: Path?): Boolean {
             var sourceFile = this.getRealFile()
             if (!sourceFile.exists()) {
                 sourceFile = this
@@ -343,24 +359,24 @@ object CEFManager {
                 false
             } else {
                 this == targetFile || runCatching {
-                    sourceFile.absoluteFile == targetFile.absoluteFile ||
+                    sourceFile.absolute() == targetFile.absolute() ||
                         Files.isSameFile(
-                            sourceFile.toPath(),
-                            targetFile.toPath(),
+                            sourceFile,
+                            targetFile,
                         )
                 }.getOrNull() ?: false
             }
         }
 
-        internal fun File.move(target: File): File =
+        internal fun Path.move(target: Path): Path =
             runCatching {
                 Files
                     .move(
-                        this.toPath(),
-                        target.toPath(),
-                    ).toFile()
+                        this,
+                        target,
+                    )
             }.getOrNull() ?: runCatching {
-                if (this.renameTo(target)) {
+                if (this.toFile().renameTo(target.toFile())) {
                     target
                 } else {
                     this
@@ -368,8 +384,8 @@ object CEFManager {
             }.getOrNull() ?: this
 
         fun extract(
-            installDir: File,
-            downloadedFile: File,
+            installDir: Path,
+            downloadedFile: Path,
             bufferSize: Long,
         ) {
             downloadedFile.inputStream().use { `in` ->
@@ -379,44 +395,43 @@ object CEFManager {
                             val currentEntry = tarIn.currentEntry
 
                             if (currentEntry != null) {
-                                val file = File(installDir, currentEntry.name)
+                                val file = installDir / currentEntry.name
                                 if (!file.validate(installDir)) {
                                     throw CefException("bad archive")
                                 }
 
                                 if (currentEntry.isDirectory) {
-                                    file.mkdir()
-                                    file.setExecutable(true, false)
+                                    file.createDirectories()
+                                    file.toFile().setExecutable(true, false)
                                 } else {
                                     var count: Int
                                     val data = ByteArray(bufferSize.toInt())
                                     BufferedOutputStream(
-                                        FileOutputStream(file, false),
+                                        Files.newOutputStream(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE),
                                         bufferSize.toInt(),
                                     ).use { dest ->
                                         while (tarIn.read(data, 0, bufferSize.toInt()).also { count = it } != -1) {
                                             dest.write(data, 0, count)
                                         }
                                     }
-                                    file.setExecutable(true, false)
+                                    file.toFile().setExecutable(true, false)
                                 }
                             }
                         }
                     }
                 }
             }
-            downloadedFile.delete()
+            downloadedFile.deleteExisting()
         }
 
-        fun move(installDir: File) {
+        fun move(installDir: Path) {
             val releaseFile =
-                Files.walk(installDir.toPath()).use { s ->
+                Files.walk(installDir).use { s ->
                     s
                         .filter(Files::isRegularFile)
                         .asSequence()
-                        .map { it.toFile() }
-                        .firstOrNull { it.name == "release" }
-                } ?: File(installDir, "release")
+                        .firstOrNull { it.fileName?.toString() == "release" }
+                } ?: (installDir / "release")
             val releaseFileContents = if (releaseFile.exists()) releaseFile.readText(Charsets.UTF_8) else ""
 
             val os = Platform.current.os
@@ -427,109 +442,107 @@ object CEFManager {
                 else -> linuxMove(installDir)
             }
 
-            File(installDir, "release").writeText(releaseFileContents)
+            (installDir / "release").writeText(releaseFileContents)
         }
 
-        private fun linuxMove(installDir: File) {
-            var foundDir: File? = null
-            var foundParent: File? = null
+        private fun linuxMove(installDir: Path) {
+            var foundDir: Path? = null
+            var foundParent: Path? = null
 
-            installDir.listFiles().forEach { parent ->
-                if (File(parent, "lib").exists()) {
-                    foundDir = File(parent, "lib")
+            installDir.listDirectoryEntries().forEach { parent ->
+                if ((parent / "lib").exists()) {
+                    foundDir = parent / "lib"
                     foundParent = parent
                 }
             }
 
             foundDir?.let {
-                val target = it.move(File(installDir, "lib"))
+                val target = it.move(installDir / "lib")
                 foundParent?.let { p ->
                     p.deleteDir()
-                    p.delete()
-                    p.deleteOnExit()
+                    p.deleteIfExists()
                 }
 
-                installDir.listFiles().forEach { deleteCandidate ->
+                installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {
-                        deleteCandidate.delete()
+                        deleteCandidate.deleteExisting()
                     }
                 }
 
-                target.listFiles().forEach { moveCandidate ->
-                    moveCandidate.move(File(installDir, moveCandidate.name))
+                target.listDirectoryEntries().forEach { moveCandidate ->
+                    moveCandidate.move(installDir / moveCandidate.fileName)
                 }
 
-                target.delete()
+                target.deleteExisting()
             }
         }
 
-        private fun macMove(installDir: File) {
-            var foundDir: File? = null
-            var foundParent: File? = null
+        private fun macMove(installDir: Path) {
+            var foundDir: Path? = null
+            var foundParent: Path? = null
 
-            installDir.listFiles().forEach { parent ->
-                if (File(parent, "Contents").exists()) {
-                    foundDir = File(parent, "Contents")
+            installDir.listDirectoryEntries().forEach { parent ->
+                if ((parent / "Contents").exists()) {
+                    foundDir = parent / "Contents"
                     foundParent = parent
                 }
             }
 
-            val target = File(installDir, "lib").also { it.mkdir() }
+            val target = (installDir / "lib").also { it.createDirectories() }
             foundDir?.let { contents ->
-                File(contents, "Home/lib").listFiles().forEach { moveCandidate ->
-                    moveCandidate.move(File(target, moveCandidate.name))
+                (contents / "Home" / "lib").listDirectoryEntries().forEach { moveCandidate ->
+                    moveCandidate.move(target / moveCandidate.fileName)
                 }
 
-                File(contents, "Frameworks").move(
-                    File(target, "Frameworks"),
+                (contents / "Frameworks").move(
+                    target / "Frameworks",
                 )
 
                 foundParent?.let { p ->
                     p.deleteDir()
-                    p.delete()
-                    p.deleteOnExit()
+                    p.deleteIfExists()
                 }
 
-                installDir.listFiles().forEach { deleteCandidate ->
+                installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {
-                        deleteCandidate.delete()
+                        deleteCandidate.deleteExisting()
                     }
                 }
 
-                target.listFiles().forEach { moveCandidate ->
-                    moveCandidate.move(File(installDir, moveCandidate.name))
+                target.listDirectoryEntries().forEach { moveCandidate ->
+                    moveCandidate.move(installDir / moveCandidate.fileName)
                 }
 
-                target.delete()
+                target.deleteExisting()
             }
         }
 
-        private fun winMove(installDir: File) {
-            var foundDir: File? = null
+        private fun winMove(installDir: Path) {
+            var foundDir: Path? = null
 
-            installDir.listFiles().forEach { parent ->
-                if (File(parent, "lib").exists()) {
+            installDir.listDirectoryEntries().forEach { parent ->
+                if ((parent / "lib").exists()) {
                     foundDir = parent
                 }
             }
 
             foundDir?.let {
-                val target = File(it, "lib").move(File(installDir, "lib"))
-                File(it, "bin").listFiles().forEach { moveCandidate ->
-                    moveCandidate.move(File(target, moveCandidate.name))
+                val target = (it / "lib").move(installDir / "lib")
+                (it / "bin").listDirectoryEntries().forEach { moveCandidate ->
+                    moveCandidate.move(target / moveCandidate.fileName)
                 }
 
-                installDir.listFiles().forEach { deleteCandidate ->
+                installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {
-                        deleteCandidate.delete()
+                        deleteCandidate.deleteExisting()
                     }
                 }
 
-                target.listFiles().forEach { moveCandidate ->
-                    moveCandidate.move(File(installDir, moveCandidate.name))
+                target.listDirectoryEntries().forEach { moveCandidate ->
+                    moveCandidate.move(installDir / moveCandidate.fileName)
                 }
 
-                target.delete()
+                target.deleteExisting()
             }
         }
     }
