@@ -236,7 +236,7 @@ object Chapter {
                 val deletedChapterNumbers = TreeSet<Float>()
                 val deletedReadChapterNumbers = TreeSet<Float>()
                 val deletedBookmarkedChapterNumbers = TreeSet<Float>()
-                val deletedDownloadedChapterNumberInfoMap = mutableMapOf<Float, MutableMap<String?, Int>>()
+                val deletedDownloadedChapterNumberToChapter = mutableMapOf<Float, ChapterDataClass>()
                 val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
 
                 // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
@@ -247,13 +247,7 @@ object Chapter {
                         if (!chapterUrls.contains(dbChapter.url)) {
                             if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
                             if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
-                            if (dbChapter.downloaded) {
-                                val pageCountByScanlator =
-                                    deletedDownloadedChapterNumberInfoMap.getOrPut(
-                                        dbChapter.chapterNumber,
-                                    ) { mutableMapOf() }
-                                pageCountByScanlator[dbChapter.scanlator] = dbChapter.pageCount
-                            }
+                            if (dbChapter.downloaded) deletedDownloadedChapterNumberToChapter[dbChapter.chapterNumber] = dbChapter
                             deletedChapterNumbers.add(dbChapter.chapterNumber)
                             deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
                             dbChapter.id
@@ -292,17 +286,23 @@ object Chapter {
                                     this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
                                     this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
 
-                                    // only preserve download status for chapters of the same scanlator, otherwise,
-                                    // the downloaded files won't be found anyway
-                                    val downloadedChapterInfo = deletedDownloadedChapterNumberInfoMap[chapter.chapterNumber]
-                                    val pageCount = downloadedChapterInfo?.get(chapter.scanlator)
-                                    if (pageCount != null) {
-                                        this[ChapterTable.isDownloaded] = true
-                                        this[ChapterTable.pageCount] = pageCount
-                                    }
                                     // Try to use the fetch date of the original entry to not pollute 'Updates' tab
                                     deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                         this[ChapterTable.fetchedAt] = it
+                                    }
+
+                                    val deletedChapter = deletedDownloadedChapterNumberToChapter[chapter.chapterNumber]!!
+
+                                    val hasDownloadedPages = deletedChapter.pageCount > 0
+                                    val isSameName = deletedChapter.name == chapter.name
+                                    val isSameScanlator = deletedChapter.scanlator == chapter.scanlator
+
+                                    // Only preserve download status for chapters with the same name and of the same scanlator; otherwise,
+                                    // the downloaded files won't be found anyway
+                                    val isDownloadPreservable = hasDownloadedPages && isSameName && isSameScanlator
+                                    if (isDownloadPreservable) {
+                                        this[ChapterTable.isDownloaded] = true
+                                        this[ChapterTable.pageCount] = deletedChapter.pageCount
                                     }
                                 }
                             }.forEach { insertedChapters.add(ChapterTable.toDataClass(it)) }
