@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebUI**) Handle serving non-default webui with "bundled"
 - (**WebUI**) Wait until WebUI is ready to open in browser
 - (**Downloads**) Truncate filenames by byte length to prevent "File name too long" IO errors
+- (**Downloads**) Fix preserving chapter download states during an update
 - (**Extension**) Do not indicate an update is available when the extension is not installed
 - (**Chapter**) Fix losing chapter data on failed chapter list update
 - (**Chapter**) Fix database error when fetching chapter updates
