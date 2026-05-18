@@ -97,8 +97,8 @@ fun updateMangaDownloadDir(
             "$sourceDir/$newMangaDirName"
         }
 
-    val oldDir = "${applicationDirs.downloadsRoot}/$currentMangaDir"
-    val newDir = "${applicationDirs.downloadsRoot}/$newMangaDir"
+    val oldDir = "${applicationDirs.mangaDownloadsRoot}/$currentMangaDir"
+    val newDir = "${applicationDirs.mangaDownloadsRoot}/$newMangaDir"
 
     val oldDirFile = File(oldDir)
     val newDirFile = File(newDir)
