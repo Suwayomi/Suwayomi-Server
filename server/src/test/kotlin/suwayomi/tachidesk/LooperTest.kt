@@ -17,7 +17,7 @@ class LooperThread : Thread() {
 
     override fun run() {
         Looper.prepare()
-        mHandler = Handler(Looper.myLooper())
+        mHandler = Handler(Looper.myLooper()!!)
         latch.countDown()
         Looper.loop()
     }
