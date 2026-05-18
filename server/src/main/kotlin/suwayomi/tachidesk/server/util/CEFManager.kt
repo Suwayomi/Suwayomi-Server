@@ -198,9 +198,10 @@ object CEFManager {
                 GithubReleaseTransform.transform(response)
             }
 
-        val tempDownload = withContext(Dispatchers.IO) {
-            Files.createTempDirectory("cef")
-        }
+        val tempDownload =
+            withContext(Dispatchers.IO) {
+                Files.createTempDirectory("cef")
+            }
         try {
             val downFile = tempDownload / "download.tar.gz"
             val downloadRequest =
