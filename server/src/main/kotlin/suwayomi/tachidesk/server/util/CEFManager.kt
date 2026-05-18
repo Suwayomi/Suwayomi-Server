@@ -71,7 +71,6 @@ object CEFManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + Dispatchers.IO)
     private val applicationDirs = Injekt.get<ApplicationDirs>()
     private val cefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
-    private const val JBR_VERSION = "jbr-release-25.0.3b475.60"
 
     fun init() = scope.launch { initAsync() }
 
@@ -86,7 +85,7 @@ object CEFManager {
             if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
 
             if (!isInstallationValid()) {
-                logger.info { "Downloading CEF from Github ($JBR_VERSION)" }
+                logger.info { "Downloading CEF from Github (${BuildConfig.JCEF_JBR_RELEASE})" }
 
                 downloadRelease(cefDir)
 
@@ -192,7 +191,7 @@ object CEFManager {
         val request =
             Request
                 .Builder()
-                .url("https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/tags/$JBR_VERSION")
+                .url("https://api.github.com/repos/JetBrains/JetBrainsRuntime/releases/tags/${BuildConfig.JCEF_JBR_RELEASE}")
                 .addHeader("Content-Type", GithubReleaseTransform.GITHUB_JSON)
                 .build()
 
