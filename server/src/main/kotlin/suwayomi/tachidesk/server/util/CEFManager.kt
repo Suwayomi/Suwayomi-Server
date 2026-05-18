@@ -153,7 +153,7 @@ object CEFManager {
                 thread(start = false) {
                     logger.debug { "Shutting down CEF" }
                     app.dispose()
-                    logger.debug { "KCEF shutdown complete" }
+                    logger.debug { "CEF shutdown complete" }
                 },
             )
 
