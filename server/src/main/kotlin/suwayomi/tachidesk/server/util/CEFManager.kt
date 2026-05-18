@@ -470,7 +470,7 @@ object CEFManager {
 
                 installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {
-                        deleteCandidate.deleteExisting()
+                        deleteCandidate.deleteRecursively()
                     }
                 }
 
@@ -510,7 +510,7 @@ object CEFManager {
 
                 installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {
-                        deleteCandidate.deleteExisting()
+                        deleteCandidate.deleteRecursively()
                     }
                 }
 
@@ -539,7 +539,7 @@ object CEFManager {
 
                 installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {
-                        deleteCandidate.deleteExisting()
+                        deleteCandidate.deleteRecursively()
                     }
                 }
 
