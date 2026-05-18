@@ -24,14 +24,22 @@ private val applicationDirs: ApplicationDirs by injectLazy()
 
 private val logger = KotlinLogging.logger { }
 
+private fun getMangaDir(
+    title: String,
+    sourceName: String,
+): String {
+    val sourceDir = SafePath.buildValidFilename(sourceName)
+    val mangaDir = SafePath.buildValidFilename(title)
+
+    return "$sourceDir/$mangaDir"
+}
+
 private fun getMangaDir(mangaId: Int): String =
     transaction {
         val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
         val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-        val sourceDir = SafePath.buildValidFilename(source.toString())
-        val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
-        "$sourceDir/$mangaDir"
+        getMangaDir(mangaEntry[MangaTable.title], source.toString())
     }
 
 private fun getChapterDir(
@@ -62,6 +70,11 @@ private fun getChapterDir(
 
 fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
 
+fun getMangaDownloadDir(
+    title: String,
+    sourceName: String,
+): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(title, sourceName)
+
 fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
 
 fun getChapterDownloadPath(
@@ -81,24 +94,12 @@ fun getChapterCachePath(
 
 /** return value says if rename/move was successful */
 fun updateMangaDownloadDir(
-    mangaId: Int,
+    title: String,
+    sourceName: String,
     newTitle: String,
 ): Boolean {
-    // Get current manga directory (uses its own transaction)
-    val currentMangaDir = getMangaDir(mangaId)
-
-    // Build new directory path
-    val newMangaDir =
-        transaction {
-            val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
-            val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
-            val sourceDir = SafePath.buildValidFilename(source.toString())
-            val newMangaDirName = SafePath.buildValidFilename(newTitle)
-            "$sourceDir/$newMangaDirName"
-        }
-
-    val oldDir = "${applicationDirs.downloadsRoot}/$currentMangaDir"
-    val newDir = "${applicationDirs.downloadsRoot}/$newMangaDir"
+    val oldDir = getMangaDownloadDir(title, sourceName)
+    val newDir = getMangaDownloadDir(newTitle, sourceName)
 
     val oldDirFile = File(oldDir)
     val newDirFile = File(newDir)
