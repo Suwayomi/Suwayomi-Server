@@ -77,6 +77,11 @@ fun getMangaDownloadDir(
 
 fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
 
+fun getMangaCacheDir(
+    title: String,
+    sourceName: String,
+): String = applicationDirs.tempMangaCacheRoot + "/" + getMangaDir(title, sourceName)
+
 fun getChapterDownloadPath(
     mangaId: Int,
     chapterId: Int,
@@ -92,26 +97,21 @@ fun getChapterCachePath(
     chapterId: Int,
 ): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 
-/** return value says if rename/move was successful */
-fun updateMangaDownloadDir(
-    title: String,
-    sourceName: String,
-    newTitle: String,
+private fun updateDownloadDir(
+    currentDir: String,
+    newDir: String,
 ): Boolean {
-    val oldDir = getMangaDownloadDir(title, sourceName)
-    val newDir = getMangaDownloadDir(newTitle, sourceName)
-
-    val oldDirFile = File(oldDir)
+    val currentDirFile = File(currentDir)
     val newDirFile = File(newDir)
 
-    if (!oldDirFile.exists()) {
+    if (!currentDirFile.exists()) {
         return true
     }
 
     return try {
-        Files.move(oldDirFile.toPath(), newDirFile.toPath())
+        Files.move(currentDirFile.toPath(), newDirFile.toPath())
 
-        if (oldDirFile.exists()) {
+        if (currentDirFile.exists()) {
             return false
         }
 
@@ -119,9 +119,31 @@ fun updateMangaDownloadDir(
             return false
         }
 
-        true
+        return true
     } catch (e: Exception) {
-        logger.error(e) { "updateMangaDownloadDir: failed to rename manga download folder from \"$oldDir\" to \"$newDir\"" }
+        logger.error(e) { "updateDownloadDir: failed to rename download folder from \"$currentDir\" to \"$newDir\"" }
         false
     }
+}
+
+/** return value says if rename/move was successful */
+fun updateMangaDownloadDir(
+    title: String,
+    sourceName: String,
+    newTitle: String,
+): Boolean {
+    val currentDownloadDir = getMangaDownloadDir(title, sourceName)
+    val newDownloadDir = getMangaDownloadDir(newTitle, sourceName)
+
+    val renamed = updateDownloadDir(currentDownloadDir, newDownloadDir)
+
+    val tryToKeepCachedFilesUsable = renamed
+    if (tryToKeepCachedFilesUsable) {
+        val currentCacheDir = getMangaCacheDir(title, sourceName)
+        val newCacheDir = getMangaCacheDir(newTitle, sourceName)
+
+        updateDownloadDir(currentCacheDir, newCacheDir)
+    }
+
+    return renamed
 }
