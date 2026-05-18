@@ -1,7 +1,10 @@
 package suwayomi.tachidesk.server.util
 
+import android.text.format.Formatter
 import com.jetbrains.cef.JCefAppConfig
+import eu.kanade.tachiyomi.network.ProgressListener
 import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.network.newCachelessCallWithProgress
 import eu.kanade.tachiyomi.network.parseAs
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
@@ -206,9 +209,18 @@ object CEFManager {
                     .url(downloadUrl)
                     .build()
 
-            // TODO: progress?
             downFile.outputStream().use { output ->
-                client.newCall(downloadRequest).awaitSuccess().use { response ->
+                client.newCachelessCallWithProgress(downloadRequest, object : ProgressListener {
+                    private var lastPercent = 0L
+
+                    override fun update(bytesRead: Long, contentLength: Long, done: Boolean) {
+                        val newPercent = (bytesRead * 100).floorDiv(contentLength)
+                        if (newPercent != lastPercent) {
+                            logger.info { "Downloading $newPercent% of ${Formatter.formatFileSize(null, contentLength)}" }
+                            lastPercent = newPercent
+                        }
+                    }
+                }).awaitSuccess().use { response ->
                     response.body.byteStream().use { input -> input.copyTo(output) }
                 }
             }
@@ -389,15 +401,11 @@ object CEFManager {
                                             ),
                                     )
                                 } else {
-                                    var count: Int
-                                    val data = ByteArray(bufferSize.toInt())
                                     BufferedOutputStream(
                                         file.outputStream(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE),
                                         bufferSize.toInt(),
                                     ).use { dest ->
-                                        while (tarIn.read(data, 0, bufferSize.toInt()).also { count = it } != -1) {
-                                            dest.write(data, 0, count)
-                                        }
+                                        tarIn.copyTo(dest)
                                     }
                                     file.setPosixFilePermissions(
                                         file.getPosixFilePermissions() +
