@@ -189,7 +189,11 @@ tasks {
     }
 
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            if (!project.hasProperty("masstest")) {
+                exclude("**/masstest/*")
+            }
+        }
         testLogging {
             showStandardStreams = true
             events("passed", "skipped", "failed")
