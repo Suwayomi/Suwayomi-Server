@@ -92,6 +92,7 @@ class ApplicationDirs(
     val webUIServe = "$tempRoot/webUI-serve"
     val automatedBackupRoot
         get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
+    val mangaUpdateErrorFile = "$dataRoot/tachidesk-update-errors.txt"
 
     val tempThumbnailCacheRoot = "$tempRoot/thumbnails"
     val tempMangaCacheRoot = "$tempRoot/manga-cache"
