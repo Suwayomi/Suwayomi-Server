@@ -6,12 +6,14 @@ import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import suwayomi.tachidesk.server.util.CEFManager
-import suwayomi.tachidesk.server.util.deleteDir
 import java.nio.file.Files
+import kotlin.io.path.ExperimentalPathApi
+import kotlin.io.path.deleteRecursively
 import kotlin.io.path.div
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalPathApi::class)
 class CefTest {
     @Test
     fun downloadedJbrIsValidForJcef() =
@@ -33,7 +35,7 @@ class CefTest {
                 CEFManager.downloadRelease(tempDownload)
                 assertTrue { CEFManager.isInstallationValid(tempDownload / "release") }
             } finally {
-                tempDownload.deleteDir()
+                tempDownload.deleteRecursively()
                 stopKoin()
             }
         }
