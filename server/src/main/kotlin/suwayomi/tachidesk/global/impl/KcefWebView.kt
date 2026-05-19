@@ -1,15 +1,14 @@
 package suwayomi.tachidesk.global.impl
 
-import dev.datlag.kcef.KCEF
-import dev.datlag.kcef.KCEFBrowser
-import dev.datlag.kcef.KCEFClient
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
 import okhttp3.HttpUrl
+import org.cef.CefClient
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -26,6 +25,9 @@ import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
+import xyz.nulldev.androidcompat.webkit.CefHelper
+import xyz.nulldev.androidcompat.webkit.dispose
+import xyz.nulldev.androidcompat.webkit.evaluateJavaScript
 import java.awt.Component
 import java.awt.HeadlessException
 import java.awt.Rectangle
@@ -47,8 +49,8 @@ import javax.swing.JPanel
 class KcefWebView {
     private val logger = KotlinLogging.logger {}
     private val renderHandler = RenderHandler()
-    private var kcefClient: KCEFClient? = null
-    private var browser: KCEFBrowser? = null
+    private var kcefClient: CefClient? = null
+    private var browser: CefBrowser? = null
     private var width = 1000
     private var height = 1000
 
@@ -76,7 +78,8 @@ class KcefWebView {
         }
     }
 
-    @Serializable sealed class Event
+    @Serializable
+    sealed class Event
 
     @Serializable
     @SerialName("consoleMessage")
@@ -247,10 +250,12 @@ class KcefWebView {
     init {
         destroy()
         kcefClient =
-            KCEF.newClientBlocking().apply {
-                addDisplayHandler(DisplayHandler())
-                addLoadHandler(LoadHandler())
-                addRequestHandler(RequestHandler())
+            runBlocking {
+                CefHelper.createClient().apply {
+                    addDisplayHandler(DisplayHandler())
+                    addLoadHandler(LoadHandler())
+                    addRequestHandler(RequestHandler())
+                }
             }
 
         logger.debug { "Start loading cookies" }
@@ -289,6 +294,7 @@ class KcefWebView {
                 .createBrowser(
                     url,
                     CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                    false,
                     // NOTE: with a context, we don't seem to be getting any cookies
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events

@@ -106,13 +106,13 @@ Download the latest `linux-x64`(x86_64) release from [the releases section](http
 
 #### WebView support (GNU/Linux)
 
-WebView support is implemented via [KCEF](https://github.com/DATL4G/KCEF).
+WebView support is implemented via [JCEF](https://github.com/JetBrains/jcef).
 This is optional, and is only necessary to support some extensions.
 
 To have a functional WebView, several dependencies are required; aside from X11 libraries necessary for rendering Chromium, some JNI bindings are necessary: gluegen and jogl (found in Ubuntu as `libgluegen2-jni` and `libjogl2-jni`).
 Note that on some systems (e.g. Ubuntu), the JNI libraries are not automatically found, see below.
 
-A KCEF server is launched on startup, which loads the X11 libraries.
+A CEF server is launched on startup, which loads the X11 libraries.
 If those are missing, you should see "Could not load 'jcef' library".
 If so, use `ldd ~/.local/share/Tachidesk/bin/kcef/libjcef.so | grep not` to figure out which libraries are not found on your system.
 
@@ -122,6 +122,10 @@ If there is a problem loading the JNI libraries, you should see a message indica
 This search path includes the current working directory, if you do not want to modify system directories.
 
 Refer to the [Dockerfile](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/Dockerfile) for more details.
+
+Note that it is required to have an X session active and available to Suwayomi (i.e. `DISPLAY` is set).
+It is not enough to have `WAYLAND_DISPLAY`, if your environment does not provide xwayland (or if you run Suwayomi as a service), you need to use a tool like [`Xvfb`](https://en.wikipedia.org/wiki/Xvfb).
+The Dockerfile linked above also does this.
 
 ## Other methods of getting Suwayomi
 ### Docker

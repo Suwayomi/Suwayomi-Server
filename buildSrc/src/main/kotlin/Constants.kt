@@ -14,6 +14,8 @@ val getTachideskVersion = { "v2.2.${getCommitCount()}" }
 
 val webUIRevisionTag = "r3136"
 
+val webviewJbrRelease = "jbr-release-25.0.3b475.60"
+
 private val getCommitCount = {
     runCatching {
         ProcessBuilder()
