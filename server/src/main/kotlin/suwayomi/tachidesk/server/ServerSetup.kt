@@ -22,7 +22,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.javalin.json.JavalinJackson
+import io.javalin.json.JavalinJackson3
 import io.javalin.json.JsonMapper
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -222,7 +222,7 @@ fun serverModule(applicationDirs: ApplicationDirs): Module =
     module {
         single { applicationDirs }
         single<IUpdater> { Updater() }
-        single<JsonMapper> { JavalinJackson() }
+        single<JsonMapper> { JavalinJackson3() }
     }
 
 @OptIn(DelicateCoroutinesApi::class)
