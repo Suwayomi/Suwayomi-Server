@@ -11,7 +11,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.subscribe
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -73,10 +75,25 @@ object CEFManager {
     private val cefDir by lazy { Path(applicationDirs.dataRoot) / "bin/kcef" }
     private val releaseFile by lazy { cefDir / "release" }
 
-    fun init() = scope.launch { initAsync() }
+    fun init() =
+        scope.launch {
+            serverConfig.subscribeTo(serverConfig.kcefEnabled, CEFManager::initAsync, ignoreInitialValue = false)
 
-    private suspend fun initAsync(): CefApp =
+            Runtime.getRuntime().addShutdownHook(
+                thread(start = false) {
+                    CefHelper.cefApp.value.getOrNull()?.let {
+                        logger.debug { "Shutting down CEF" }
+                        it.dispose()
+                        logger.debug { "CEF shutdown complete" }
+                    }
+                },
+            )
+        }
+
+    private suspend fun initAsync(): Unit =
         try {
+            CefHelper.cefApp.value = Result.success(null)
+
             if (!serverConfig.kcefEnabled.value) {
                 throw CefException("CEF is disabled")
             }
@@ -94,72 +111,74 @@ object CEFManager {
                 logger.info { "Downloaded CEF successfully!" }
             }
 
-            val config =
-                JCefAppConfig.getInstance(cefDir.toString(), false).apply {
-                    appArgsAsList.addAll(
-                        arrayOf(
-                            "--disable-gpu",
-                            // #1486 needed to be able to render without a window
-                            "--off-screen-rendering-enabled",
-                            // #1489 since /dev/shm is restricted in docker (OOM)
-                            "--disable-dev-shm-usage",
-                            // #1723 support Widevine (incomplete)
-                            "--enable-widevine-cdm",
-                            // #1736 JCEF does implement stack guards properly
-                            "--change-stack-guard-on-fork=disable",
-                        ),
-                    )
-                    cefSettings.apply {
-                        windowless_rendering_enabled = true
-                        cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").absolutePathString()
-                        log_severity =
-                            if (serverConfig.debugLogsEnabled.value) LogSeverity.LOGSEVERITY_VERBOSE else LogSeverity.LOGSEVERITY_DEFAULT
+            val app =
+                if (CefApp.getInstanceIfAny() == null) {
+                    val config =
+                        JCefAppConfig.getInstance(cefDir.toString(), false).apply {
+                            appArgsAsList.addAll(
+                                arrayOf(
+                                    "--disable-gpu",
+                                    // #1486 needed to be able to render without a window
+                                    "--off-screen-rendering-enabled",
+                                    // #1489 since /dev/shm is restricted in docker (OOM)
+                                    "--disable-dev-shm-usage",
+                                    // #1723 support Widevine (incomplete)
+                                    "--enable-widevine-cdm",
+                                    // #1736 JCEF does implement stack guards properly
+                                    "--change-stack-guard-on-fork=disable",
+                                ),
+                            )
+                            cefSettings.apply {
+                                windowless_rendering_enabled = true
+                                cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").absolutePathString()
+                                log_severity =
+                                    if (serverConfig.debugLogsEnabled.value) {
+                                        LogSeverity.LOGSEVERITY_VERBOSE
+                                    } else {
+                                        LogSeverity.LOGSEVERITY_DEFAULT
+                                    }
+                            }
+                        }
+                    logger.debug {
+                        "Attempting to initialize CEF: exe=${config.getServerExe()}, settings={${
+                            config.cefSettings.getDescription()
+                        }}, args=${config.getAppArgs().contentToString()}"
                     }
+
+                    // this is essentially https://github.com/JetBrains/jcef/blob/5b93e5b916068316f1c8e7f8a59bf958d5ffd6e1/java/org/cef/CefApp.java#L777
+                    // we do this here because JCEF has no mechanism to tell us that initalization failed, they just record in an inaccessible future
+                    val os = Platform.current.os
+                    when {
+                        os.isLinux -> {
+                            config.getLoader().loadLibrary("cef")
+                        }
+
+                        os.isWindows -> {
+                            config.getLoader().loadLibrary("chrome_elf")
+                            config.getLoader().loadLibrary("libcef")
+                        }
+
+                        else -> {}
+                    }
+                    config.getLoader().loadLibrary("jcef")
+
+                    CefApp.setIsRemoteEnabled(config.isRemoteEnabled)
+                    SystemBootstrap.setLoader(config.getLoader())
+                    CefApp.startup(config.getAppArgs())
+
+                    CefApp.getInstance(config.getAppArgs(), config.cefSettings, config.getServerExe())
+                } else {
+                    logger.debug { "Getting existing app instance" }
+                    CefApp.getInstance()
                 }
-            logger.debug {
-                "Attempting to initialize CEF: exe=${config.getServerExe()}, settings={${config.cefSettings.getDescription()}}, args=${
-                    config.getAppArgs().contentToString()
-                }"
-            }
-
-            // this is essentially https://github.com/JetBrains/jcef/blob/5b93e5b916068316f1c8e7f8a59bf958d5ffd6e1/java/org/cef/CefApp.java#L777
-            // we do this here because JCEF has no mechanism to tell us that initalization failed, they just record in an inaccessible future
-            val os = Platform.current.os
-            when {
-                os.isLinux -> {
-                    config.getLoader().loadLibrary("cef")
-                }
-
-                os.isWindows -> {
-                    config.getLoader().loadLibrary("chrome_elf")
-                    config.getLoader().loadLibrary("libcef")
-                }
-
-                else -> {}
-            }
-            config.getLoader().loadLibrary("jcef")
-
-            CefApp.setIsRemoteEnabled(config.isRemoteEnabled)
-            SystemBootstrap.setLoader(config.getLoader())
-            CefApp.startup(config.getAppArgs())
-
-            val app = CefApp.getInstance(config.getAppArgs(), config.cefSettings, config.getServerExe())
             CefHelper.cefApp.value = Result.success(app)
             logger.debug { "CEF app created" }
 
-            Runtime.getRuntime().addShutdownHook(
-                thread(start = false) {
-                    logger.debug { "Shutting down CEF" }
-                    app.dispose()
-                    logger.debug { "CEF shutdown complete" }
-                },
-            )
-
             CefHelper.waitForInit().first()
+            return
         } catch (e: Throwable) {
             logger.error(e) { "Failed to set up CEF" }
             CefHelper.cefApp.value = Result.failure(e)
-            throw e
         }
 
     internal fun isInstallationValid(releaseFile: Path): Boolean {

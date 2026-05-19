@@ -1019,7 +1019,7 @@ class ServerConfig(
         group = SettingGroup.WEB_VIEW,
         privacySafe = true,
         defaultValue = true,
-        requiresRestart = true,
+        description = "Enable the WebView via CEF (Chromium)"
     )
 
 
