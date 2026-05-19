@@ -291,18 +291,18 @@ object Chapter {
                                         this[ChapterTable.fetchedAt] = it
                                     }
 
-                                    val deletedChapter = deletedDownloadedChapterNumberToChapter[chapter.chapterNumber]!!
+                                    deletedDownloadedChapterNumberToChapter[chapter.chapterNumber]?.let {
+                                        val hasDownloadedPages = it.pageCount > 0
+                                        val isSameName = it.name == chapter.name
+                                        val isSameScanlator = it.scanlator == chapter.scanlator
 
-                                    val hasDownloadedPages = deletedChapter.pageCount > 0
-                                    val isSameName = deletedChapter.name == chapter.name
-                                    val isSameScanlator = deletedChapter.scanlator == chapter.scanlator
-
-                                    // Only preserve download status for chapters with the same name and of the same scanlator; otherwise,
-                                    // the downloaded files won't be found anyway
-                                    val isDownloadPreservable = hasDownloadedPages && isSameName && isSameScanlator
-                                    if (isDownloadPreservable) {
-                                        this[ChapterTable.isDownloaded] = true
-                                        this[ChapterTable.pageCount] = deletedChapter.pageCount
+                                        // Only preserve download status for chapters with the same name and of the same scanlator; otherwise,
+                                        // the downloaded files won't be found anyway
+                                        val isDownloadPreservable = hasDownloadedPages && isSameName && isSameScanlator
+                                        if (isDownloadPreservable) {
+                                            this[ChapterTable.isDownloaded] = true
+                                            this[ChapterTable.pageCount] = it.pageCount
+                                        }
                                     }
                                 }
                             }.forEach { insertedChapters.add(ChapterTable.toDataClass(it)) }
