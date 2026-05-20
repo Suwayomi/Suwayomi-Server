@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Chapter**) Fix losing chapter data on failed chapter list update
 - (**Chapter**) Fix database error when fetching chapter updates
 - (**Manga/API**) Fix "mangas" graphql query with active sorting and using a postgresql database (QUERY "mangas")
+- (**API**) Fix GraphQL `Filter` causing an UnsupportedOperationException when passing an empty list as a `Any` filter value
 
 ## [v2.2.2100] + [WebUI: v20260508.01] - 2026-05-08
 
