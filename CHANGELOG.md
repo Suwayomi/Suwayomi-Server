@@ -10,13 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - .
 
 ### Changed
-- .
+- (**Database/H2**) Use the latest H2 database engine
+- (**Startup**) Crash on startup if an unrecoverable error happens
+- (**WebView**) Use JCEF directly and update to newest Chromium
+- (**Extension/Android**) Switch MessageQueue to LegacyMessageQueue from ConcurrentMessageQueue
 
 ### Fixed
-- (CloudFlareInterceptor) Don't send the `cf_clearance` cookie back to Flaresolverr
-- (WebUI) Handle serving non-default webui with "bundled"
-- (WebUI) Wait until WebUI is ready to open in browser
-- (Downloads) Truncate filenames by byte length to prevent "File name too long" IO errors
+- (**CloudFlareInterceptor**) Don't send the `cf_clearance` cookie back to Flaresolverr
+- (**WebUI**) Handle serving non-default webui with "bundled"
+- (**WebUI**) Wait until WebUI is ready to open in browser
+- (**Downloads**) Truncate filenames by byte length to prevent "File name too long" IO errors
+- (**Downloads**) Fix being unable to find downloads after manga was renamed during an update
+- (**Downloads**) Fix preserving chapter download states during an update
+- (**Extension**) Do not indicate an update is available when the extension is not installed
+- (**Chapter**) Fix losing chapter data on failed chapter list update
+- (**Chapter**) Fix database error when fetching chapter updates
+- (**Manga/API**) Fix "mangas" graphql query with active sorting and using a postgresql database (QUERY "mangas")
 
 ## [v2.2.2100] + [WebUI: v20260508.01] - 2026-05-08
 

@@ -1,10 +1,12 @@
 package suwayomi.tachidesk.global.impl
 
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 
 /*
@@ -32,13 +34,14 @@ object GlobalMeta {
             val (existingMeta, newMeta) = meta.toList().partition { (key) -> key in dbMetaMap.keys }
 
             if (existingMeta.isNotEmpty()) {
-                BatchUpdateStatement(GlobalMetaTable).apply {
-                    existingMeta.forEach { (key, value) ->
-                        addBatch(EntityID(dbMetaMap[key]!![GlobalMetaTable.id].value, GlobalMetaTable))
-                        this[GlobalMetaTable.value] = value
-                    }
-                    execute(this@transaction)
-                }
+                BatchUpdateStatement(GlobalMetaTable)
+                    .apply {
+                        existingMeta.forEach { (key, value) ->
+                            addBatch(EntityID(dbMetaMap[key]!![GlobalMetaTable.id].value, GlobalMetaTable))
+                            this[GlobalMetaTable.value] = value
+                        }
+                    }.toExecutable()
+                    .execute(this@transaction)
             }
 
             if (newMeta.isNotEmpty()) {

@@ -37,6 +37,10 @@ dependencies {
     implementation(libs.bundles.shared)
     testImplementation(libs.bundles.sharedTest)
 
+    // WebView
+    implementation(libs.gluegen)
+    implementation(libs.jogl)
+
     // OkHttp
     implementation(libs.bundles.okhttp)
     implementation(libs.okio)
@@ -159,6 +163,8 @@ buildConfig {
 
     buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Suwayomi-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
+    buildConfigField("String", "JCEF_VERSION", quoteWrap(libs.versions.jcef.get()))
+    buildConfigField("String", "JCEF_JBR_RELEASE", quoteWrap(webviewJbrRelease))
 }
 
 tasks {
@@ -172,6 +178,7 @@ tasks {
                 "Specification-Version" to getTachideskVersion(),
                 "Implementation-Version" to getTachideskRevision(),
                 "Multi-Release" to true, // needed for polyglot
+                "X-JBR-Release" to webviewJbrRelease,
             )
         }
         archiveBaseName.set(rootProject.name)
@@ -182,7 +189,11 @@ tasks {
     }
 
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            if (!project.hasProperty("masstest")) {
+                exclude("**/masstest/*")
+            }
+        }
         testLogging {
             showStandardStreams = true
             events("passed", "skipped", "failed")

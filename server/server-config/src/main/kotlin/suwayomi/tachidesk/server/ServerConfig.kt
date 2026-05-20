@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
-import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.v1.core.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
@@ -56,16 +56,14 @@ import suwayomi.tachidesk.server.settings.PathSetting
 import suwayomi.tachidesk.server.settings.SettingGroup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.settings.StringSetting
+import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
-import kotlin.collections.associate
-import kotlin.getValue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import uy.kohesive.injekt.injectLazy
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -582,7 +580,7 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = SortOrder.DESC,
         enumClass = SortOrder::class,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.sql.SortOrder")),
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.v1.core.SortOrder")),
     )
 
     val authMode: MutableStateFlow<AuthMode> by EnumSetting(
@@ -1014,6 +1012,14 @@ class ServerConfig(
         defaultValue = true,
         excludeFromBackup = true,
         description = "Use Hikari Connection Pool to connect to the database.",
+    )
+
+    val kcefEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 86,
+        group = SettingGroup.WEB_VIEW,
+        privacySafe = true,
+        defaultValue = true,
+        description = "Enable the WebView via CEF (Chromium)"
     )
 
 

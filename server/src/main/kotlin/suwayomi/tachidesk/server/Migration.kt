@@ -4,12 +4,13 @@ import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.server.database.H2Migration
+import suwayomi.tachidesk.server.util.ExitCode
+import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
 import java.util.prefs.Preferences
-import kotlin.collections.isNotEmpty
-import kotlin.collections.orEmpty
 
 private fun migratePreferences(
     parent: String?,
@@ -76,6 +77,14 @@ private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
     }
 }
 
+fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
+    H2Migration.migrate(
+        applicationDirs.dataRoot,
+        "1.4.200",
+        "2.4.240",
+    )
+}
+
 private val MIGRATIONS =
     listOf<Pair<String, (ApplicationDirs) -> Unit>>(
         "InitialMigration" to { applicationDirs ->
@@ -85,35 +94,42 @@ private val MIGRATIONS =
         "FixGlobalUpdateScheduling" to {
             Injekt.get<IUpdater>().deleteLastAutomatedUpdateTimestamp()
         },
+        "MigrateH2DatabaseToV2.4.240" to { applicationDirs ->
+            migrateH2DatabaseToV24240(applicationDirs)
+        },
     )
 
 fun runMigrations(applicationDirs: ApplicationDirs) {
     val logger = KotlinLogging.logger("Migration")
+    try {
+        val migrationPreferences =
+            Injekt
+                .get<Application>()
+                .getSharedPreferences(
+                    "migrations",
+                    Context.MODE_PRIVATE,
+                )
+        val version = migrationPreferences.getInt("version", 0)
 
-    val migrationPreferences =
-        Injekt
-            .get<Application>()
-            .getSharedPreferences(
-                "migrations",
-                Context.MODE_PRIVATE,
-            )
-    val version = migrationPreferences.getInt("version", 0)
+        logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
 
-    logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
+        MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
+            val migrationVersion = index + 1
 
-    MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
-        val migrationVersion = index + 1
+            val isMigrationRequired = version < migrationVersion
+            if (!isMigrationRequired) {
+                logger.info { "Skipping migration version $migrationVersion: $migrationName" }
+                return@forEachIndexed
+            }
 
-        val isMigrationRequired = version < migrationVersion
-        if (!isMigrationRequired) {
-            logger.info { "Skipping migration version $migrationVersion: $migrationName" }
-            return@forEachIndexed
+            logger.info { "Running migration version $migrationVersion: $migrationName" }
+
+            migrationFunction(applicationDirs)
+
+            migrationPreferences.edit().putInt("version", migrationVersion).apply()
         }
-
-        logger.info { "Running migration version $migrationVersion: $migrationName" }
-
-        migrationFunction(applicationDirs)
-
-        migrationPreferences.edit().putInt("version", migrationVersion).apply()
+    } catch (e: Exception) {
+        logger.error(e) { "Failed to run migrations" }
+        shutdownApp(ExitCode.MigrationsRunFailure)
     }
 }

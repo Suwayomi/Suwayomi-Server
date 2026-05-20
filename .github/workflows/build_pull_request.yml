@@ -67,7 +67,7 @@ jobs:
           export LD_PRELOAD="$(pwd)/scripts/resources/catch_abort.so"
           JAR=$(ls ./server/build/*.jar| head -1)
           set +e
-          timeout 30s java -DcrashOnFailedMigration=true \
+          timeout 30s java \
               -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
               -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
               -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL \
@@ -83,7 +83,7 @@ jobs:
             exit "$ecode"
           fi
 
-          timeout 30s java -DcrashOnFailedMigration=true \
+          timeout 30s java \
               -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
               -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
               -jar "$JAR"
@@ -95,6 +95,10 @@ jobs:
             exit "$ecode"
           fi
           exit 0
+
+      - name: "Run tests"
+        working-directory: master
+        run: ./gradlew test --stacktrace
 
   check_docs:
     name: Validate that all options are documented

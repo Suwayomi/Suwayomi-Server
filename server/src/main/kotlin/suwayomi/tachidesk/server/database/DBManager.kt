@@ -12,13 +12,13 @@ import com.zaxxer.hikari.HikariDataSource
 import de.neonew.exposed.migrations.loadMigrationsFrom
 import de.neonew.exposed.migrations.runMigrations
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.DatabaseConfig
-import org.jetbrains.exposed.sql.ExperimentalKeywordApi
-import org.jetbrains.exposed.sql.Schema
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.DatabaseConfig
+import org.jetbrains.exposed.v1.core.ExperimentalKeywordApi
+import org.jetbrains.exposed.v1.core.Schema
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
@@ -27,7 +27,6 @@ import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.sql.SQLException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -79,7 +78,7 @@ object DBManager {
 
     fun setupDatabase(): Database {
         // Clean up existing connections
-        if (TransactionManager.isInitialized()) {
+        if (TransactionManager.currentOrNull() != null) {
             val currentDatabase = TransactionManager.currentOrNull()?.db
             if (currentDatabase != null) {
                 TransactionManager.closeAndUnregister(currentDatabase)
@@ -145,14 +144,15 @@ object DBManager {
 
 private val logger = KotlinLogging.logger {}
 
-fun databaseUp() {
+fun databaseUp(givenDb: Database? = null) {
     val db =
-        try {
-            DBManager.setupDatabase()
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to setup Database" }
-            return
-        }
+        givenDb
+            ?: try {
+                DBManager.setupDatabase()
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to setup Database" }
+                return
+            }
 
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
@@ -184,10 +184,8 @@ fun databaseUp() {
         }
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
         runMigrations(migrations)
-    } catch (e: SQLException) {
+    } catch (e: Exception) {
         logger.error(e) { "Error up-to-database migration" }
-        if (System.getProperty("crashOnFailedMigration").toBoolean()) {
-            shutdownApp(ExitCode.DbMigrationFailure)
-        }
+        shutdownApp(ExitCode.DbMigrationFailure)
     }
 }

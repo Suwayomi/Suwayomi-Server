@@ -6,16 +6,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jsoup.Jsoup
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
@@ -427,23 +428,24 @@ object Track {
     fun updateTrackRecords(tracks: List<Track>) =
         transaction {
             if (tracks.isNotEmpty()) {
-                BatchUpdateStatement(TrackRecordTable).apply {
-                    tracks.forEach {
-                        addBatch(EntityID(it.id!!, TrackRecordTable))
-                        this[remoteId] = it.remote_id
-                        this[libraryId] = it.library_id
-                        this[title] = it.title
-                        this[lastChapterRead] = it.last_chapter_read
-                        this[totalChapters] = it.total_chapters
-                        this[status] = it.status
-                        this[score] = it.score
-                        this[remoteUrl] = it.tracking_url
-                        this[startDate] = it.started_reading_date
-                        this[finishDate] = it.finished_reading_date
-                        this[private] = it.private
-                    }
-                    execute(this@transaction)
-                }
+                BatchUpdateStatement(TrackRecordTable)
+                    .apply {
+                        tracks.forEach {
+                            addBatch(EntityID(it.id!!, TrackRecordTable))
+                            this[remoteId] = it.remote_id
+                            this[libraryId] = it.library_id
+                            this[title] = it.title
+                            this[lastChapterRead] = it.last_chapter_read
+                            this[totalChapters] = it.total_chapters
+                            this[status] = it.status
+                            this[score] = it.score
+                            this[remoteUrl] = it.tracking_url
+                            this[startDate] = it.started_reading_date
+                            this[finishDate] = it.finished_reading_date
+                            this[private] = it.private
+                        }
+                    }.toExecutable()
+                    .execute(this@transaction)
             }
         }
 

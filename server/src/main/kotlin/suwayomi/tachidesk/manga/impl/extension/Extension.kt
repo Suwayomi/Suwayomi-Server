@@ -20,12 +20,12 @@ import okhttp3.CacheControl
 import okio.buffer
 import okio.sink
 import okio.source
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.extensionTableAsDataClass
 import suwayomi.tachidesk.manga.impl.extension.github.ExtensionGithubApi
 import suwayomi.tachidesk.manga.impl.util.PackageTools
@@ -55,7 +55,6 @@ import java.util.zip.ZipOutputStream
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.outputStream
-import kotlin.io.path.relativeTo
 
 object Extension {
     private val logger = KotlinLogging.logger {}
@@ -359,6 +358,7 @@ object Extension {
                 } else {
                     ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
                         it[isInstalled] = false
+                        it[hasUpdate] = false
                     }
                 }
 

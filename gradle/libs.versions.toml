@@ -4,19 +4,20 @@ coroutines = "1.11.0"
 serialization = "1.11.0"
 jvmTarget = "21"
 okhttp = "5.3.2" # Major version is locked by Tachiyomi extensions
-javalin = "7.2.0"
+javalin = "7.2.2"
 jte = "3.2.4"
 jackson = "3.1.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
-exposed = "0.61.0"
+exposed = "1.2.0"
 dex2jar = "2.4.36"
 polyglot = "25.0.3"
 settings = "1.3.0"
 twelvemonkeys = "3.13.1"
-graphqlkotlin = "10.0.0-alpha.3"
+graphqlkotlin = "10.0.0-alpha.4"
 xmlserialization = "0.91.3"
 ktlint = "1.8.0"
 koin = "4.2.1"
 moko = "0.26.4"
+jcef = "144.0.15-g72717cf-chromium-144.0.7559.172-api-1.21-262-b34"
 
 [libraries]
 # Kotlin
@@ -37,7 +38,7 @@ serialization-xml-core = { module = "io.github.pdvrieze.xmlutil:core", version.r
 serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", version.ref = "xmlserialization" }
 
 # Logging
-slf4japi = "org.slf4j:slf4j-api:2.0.17"
+slf4japi = "org.slf4j:slf4j-api:2.0.18"
 logback = "ch.qos.logback:logback-classic:1.5.32"
 kotlinlogging = "io.github.oshai:kotlin-logging-jvm:8.0.02"
 
@@ -68,12 +69,13 @@ exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "e
 exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
+exposed-kotlintime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
 postgres = "org.postgresql:postgresql:42.7.11"
-h2 = "com.h2database:h2:1.4.200" # current database driver, can't update to h2 v2 without sql migration
+h2 = "com.h2database:h2:2.4.240"
 hikaricp = "com.zaxxer:HikariCP:7.0.2"
 
 # Exposed Migrations
-exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.8.0"
+exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.10.1"
 
 # Dependency Injection
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
@@ -115,7 +117,7 @@ appdirs = "ca.gosyer:kotlin-multiplatform-appdirs:2.0.0"
 cache4k = "io.github.reactivecircus.cache4k:cache4k:0.14.0"
 zip4j = "net.lingala.zip4j:zip4j:2.11.6"
 commonscompress = "org.apache.commons:commons-compress:1.28.0"
-junrar = "com.github.junrar:junrar:7.5.10"
+junrar = "com.github.junrar:junrar:7.6.0"
 
 # AES/CBC/PKCS7Padding Cypher provider
 bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.84"
@@ -155,7 +157,9 @@ cron4j = "it.sauronsoftware.cron4j:cron4j:2.2.5"
 cronUtils = "com.cronutils:cron-utils:9.2.1"
 
 # Webview
-kcef = "dev.datlag:kcef:2024.04.20.4"
+jcef = { module = "org.jetbrains.intellij.deps.jcef:jcef", version.ref = "jcef" }
+gluegen = "org.jogamp.gluegen:gluegen-rt:2.5.0"
+jogl = "org.jogamp.jogl:jogl-all:2.5.0"
 
 # User
 jwt = "com.auth0:java-jwt:4.5.2"
@@ -212,7 +216,7 @@ shared = [
     "dex2jar-tools",
     "apk-parser",
     "jackson-annotations",
-    "kcef"
+    "jcef",
 ]
 
 sharedTest = [
@@ -242,6 +246,7 @@ exposed = [
     "exposed-dao",
     "exposed-jdbc",
     "exposed-javatime",
+    "exposed-kotlintime",
 ]
 systemtray = [
     "systemtray-core",
