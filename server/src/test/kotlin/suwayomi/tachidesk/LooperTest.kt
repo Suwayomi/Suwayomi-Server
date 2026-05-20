@@ -17,7 +17,7 @@ class LooperThread : Thread() {
 
     override fun run() {
         Looper.prepare()
-        mHandler = Handler(Looper.myLooper())
+        mHandler = Handler(Looper.myLooper()!!)
         latch.countDown()
         Looper.loop()
     }
@@ -50,6 +50,36 @@ class LooperTest {
         assertTrue(latch.await(5, TimeUnit.SECONDS))
 
         assertEquals("a_b_c_d_e_f_g_h_i", sb.toString())
+        thread.mHandler!!.looper.quit()
+        // thread.join()
+    }
+
+    @Test
+    fun loopTest() {
+        val thread = LooperThread()
+        thread.start()
+        val sb = StringBuilder()
+        val expected = StringBuilder()
+        val latch = CountDownLatch(1)
+        assertTrue(thread.latch.await(5, TimeUnit.SECONDS))
+        val n = 100
+
+        for (i in 0 until n) {
+            thread.mHandler!!.post {
+                Thread.sleep(10)
+                sb.append("$i")
+            }
+            expected.append("$i")
+        }
+
+        thread.mHandler!!.post {
+            latch.countDown()
+        }
+
+        assertNotEquals(expected.toString(), sb.toString())
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "only got to $sb")
+
+        assertEquals(expected.toString(), sb.toString())
         thread.mHandler!!.looper.quit()
         // thread.join()
     }

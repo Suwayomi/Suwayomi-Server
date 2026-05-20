@@ -25,6 +25,7 @@ allprojects {
         maven("https://github.com/vtorres-t/Suwayomi-Server/raw/android-jar/")
         maven("https://jitpack.io")
         maven("https://jogamp.org/deployment/maven")
+        maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
     }
 }
 

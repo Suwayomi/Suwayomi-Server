@@ -96,6 +96,10 @@ jobs:
           fi
           exit 0
 
+      - name: "Run tests"
+        working-directory: master
+        run: ./gradlew test --stacktrace
+
   check_docs:
     name: Validate that all options are documented
     runs-on: ubuntu-latest
