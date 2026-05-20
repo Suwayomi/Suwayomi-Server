@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.3.21"
+kotlin = "2.4.20-neptune-251"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 jvmTarget = "21"
