@@ -8,7 +8,7 @@
   - [Features](#features)
 - [Suwayomi client projects](#suwayomi-client-projects)
   - [Integrated clients](#integrated-clients)
-  - [Other clients](#other-clients-potentially-inactive-or-abondend)
+  - [Other clients](#other-clients-potentially-inactive-or-abandoned)
 - [Downloading and Running the app](#downloading-and-running-the-app)
   - [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
     - [Windows](#windows)
