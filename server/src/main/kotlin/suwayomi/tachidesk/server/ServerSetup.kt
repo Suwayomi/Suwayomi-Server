@@ -14,8 +14,6 @@ import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.parser.ConfigDocument
-import dev.datlag.kcef.KCEF
-import dev.datlag.kcef.KCEFBuilder.Settings.LogSeverity
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -31,13 +29,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
-import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
@@ -58,7 +53,6 @@ import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
 import xyz.nulldev.androidcompat.androidCompatModule
-import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
 import xyz.nulldev.ts.config.ApplicationRootDir
 import xyz.nulldev.ts.config.BASE_LOGGER_NAME
 import xyz.nulldev.ts.config.GlobalConfigManager
@@ -70,12 +64,7 @@ import java.io.File
 import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
-import java.util.Locale
-import kotlin.concurrent.thread
-import kotlin.io.path.Path
-import kotlin.io.path.createDirectories
-import kotlin.io.path.div
-import kotlin.math.roundToInt
+import java.util.*
 
 private val logger = KotlinLogging.logger {}
 
@@ -308,33 +297,6 @@ fun applicationSetup() {
             androidCompatModule(),
             configManagerModule(),
             serverModule(applicationDirs),
-            module {
-                single<KcefWebViewProvider.InitBrowserHandler> {
-                    object : KcefWebViewProvider.InitBrowserHandler {
-                        override fun init(provider: KcefWebViewProvider) {
-                            val networkHelper = Injekt.get<NetworkHelper>()
-                            val logger = KotlinLogging.logger {}
-                            logger.info { "Start loading cookies" }
-                            CefCookieManager.getGlobalManager().apply {
-                                val cookies = networkHelper.cookieStore.getStoredCookies()
-                                for (cookie in cookies) {
-                                    try {
-                                        if (!setCookie(
-                                                "https://" + cookie.domain,
-                                                cookie.toCefCookie(),
-                                            )
-                                        ) {
-                                            throw Exception()
-                                        }
-                                    } catch (e: Exception) {
-                                        logger.warn(e) { "Loading cookie ${cookie.name} failed" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
         )
     }
 
@@ -517,57 +479,4 @@ fun applicationSetup() {
 
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
-
-    GlobalScope.launch {
-        val logger = KotlinLogging.logger("KCEF")
-        KCEF.init(
-            builder = {
-                progress {
-                    var lastNum = -1
-                    onDownloading {
-                        val num = it.roundToInt()
-                        if (num > lastNum) {
-                            lastNum = num
-                            logger.info { "KCEF download progress: $num%" }
-                        }
-                    }
-                }
-                download { github { release("jbr-release-21.0.10b1163.108") } }
-                settings {
-                    windowlessRenderingEnabled = true
-                    cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
-                    logSeverity = if (serverConfig.debugLogsEnabled.value) LogSeverity.Verbose else LogSeverity.Default
-                }
-                appHandler(
-                    KCEF.AppHandler(
-                        arrayOf(
-                            "--disable-gpu",
-                            // #1486 needed to be able to render without a window
-                            "--off-screen-rendering-enabled",
-                            // #1489 since /dev/shm is restricted in docker (OOM)
-                            "--disable-dev-shm-usage",
-                            // #1723 support Widevine (incomplete)
-                            "--enable-widevine-cdm",
-                            // #1736 JCEF does implement stack guards properly
-                            "--change-stack-guard-on-fork=disable",
-                        ),
-                    ),
-                )
-
-                val kcefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
-                kcefDir.createDirectories()
-                installDir(kcefDir.toFile())
-            },
-            onError = { it?.printStackTrace() },
-        )
-    }
-
-    Runtime.getRuntime().addShutdownHook(
-        thread(start = false) {
-            val logger = KotlinLogging.logger("KCEF")
-            logger.debug { "Shutting down KCEF" }
-            KCEF.disposeBlocking()
-            logger.debug { "KCEF shutdown complete" }
-        },
-    )
 }
