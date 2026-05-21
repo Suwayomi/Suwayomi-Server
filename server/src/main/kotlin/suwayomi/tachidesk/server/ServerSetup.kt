@@ -64,7 +64,7 @@ import java.io.File
 import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
-import java.util.*
+import java.util.Locale
 
 private val logger = KotlinLogging.logger {}
 
