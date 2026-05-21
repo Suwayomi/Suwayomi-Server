@@ -566,7 +566,7 @@ class OpAnd(
         andPart: (T) -> Op<Boolean>,
     ) {
         values ?: return
-        val expr = values.map { andPart(it) }.reduce { acc, op -> acc or op }
+        val expr = values.map { andPart(it) }.reduceOrNull { acc, op -> acc or op } ?: return
         op = if (op == null) expr else (op!! and expr)
     }
 
