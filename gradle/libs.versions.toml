@@ -159,7 +159,7 @@ cronUtils = "com.cronutils:cron-utils:9.2.1"
 # Webview
 jcef = { module = "org.jetbrains.intellij.deps.jcef:jcef", version.ref = "jcef" }
 gluegen = "org.jogamp.gluegen:gluegen-rt:2.5.0"
-jogl = "org.jogamp.jogl:jogl-all:2.5.0"
+jogl = "org.jogamp.jogl:jogl-all:2.6.0"
 
 # User
 jwt = "com.auth0:java-jwt:4.5.2"
