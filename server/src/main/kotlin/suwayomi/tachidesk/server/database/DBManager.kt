@@ -53,7 +53,10 @@ object DBManager {
                     }
 
                     DatabaseType.H2 -> {
-                        jdbcUrl = "jdbc:h2:${applicationDirs.dataRoot}/database;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE;WRITE_DELAY=3000;MAX_COMPACT_TIME=8000;CACHE_SIZE=131072;PAGE_SIZE=4096;LOCK_MODE=1;ASYNC_WRITE=TRUE"
+                        jdbcUrl = "jdbc:h2:${applicationDirs.dataRoot}/database;" +
+                            "DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE;WRITE_DELAY=3000;" +
+                            "MAX_COMPACT_TIME=8000;CACHE_SIZE=131072;PAGE_SIZE=4096;" +
+                            "LOCK_MODE=1;ASYNC_WRITE=TRUE"
                         driverClassName = "org.h2.Driver"
                         // H2 specific optimizations
                         addDataSourceProperty("cachePrepStmts", "true")
