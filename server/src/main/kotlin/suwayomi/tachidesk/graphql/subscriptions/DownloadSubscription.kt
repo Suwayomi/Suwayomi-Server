@@ -11,6 +11,9 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.graphql.types.DownloadUpdates
@@ -40,24 +43,31 @@ class DownloadSubscription {
         val omitUpdates = input.maxUpdates != null
         val maxUpdates = input.maxUpdates ?: 50
 
-        return DownloadManager.updates.map { downloadUpdates ->
-            val omittedUpdates = omitUpdates && downloadUpdates.updates.size > maxUpdates
+        return DownloadManager.updates
+            // 1. Evita la saturación reteniendo las emisiones continuas durante 300ms.
+            // Esto agrupa las ráfagas masivas de encolamiento y reduce drásticamente el problema N+1.
+            .debounce(300)
+            .map { downloadUpdates ->
+                val omittedUpdates = omitUpdates && downloadUpdates.updates.size > maxUpdates
 
-            // the graphql subscription execution strategy does not support data loader batching which causes the n+1 problem,
-            // thus, too many updates (e.g. on mass enqueue or dequeue) causes unresponsiveness of the server until the
-            // update has been handled
-            val actualDownloadUpdates =
-                if (omittedUpdates) {
-                    suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates(
-                        downloadUpdates.status,
-                        downloadUpdates.updates.subList(0, maxUpdates),
-                        downloadUpdates.initial,
-                    )
-                } else {
-                    downloadUpdates
-                }
+                // the graphql subscription execution strategy does not support data loader batching which causes the n+1 problem,
+                // thus, too many updates (e.g. on mass enqueue or dequeue) causes unresponsiveness of the server until the
+                // update has been handled
+                val actualDownloadUpdates =
+                    if (omittedUpdates) {
+                        suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates(
+                            downloadUpdates.status,
+                            downloadUpdates.updates.subList(0, maxUpdates),
+                            downloadUpdates.initial,
+                        )
+                    } else {
+                        downloadUpdates
+                    }
 
-            DownloadUpdates(actualDownloadUpdates, omittedUpdates)
-        }
+                DownloadUpdates(actualDownloadUpdates, omittedUpdates)
+            }
+            // 2. Descarga el procesamiento pesado fuera del hilo de UI/GraphQL principal
+            // hacia el pool de subprocesos optimizado de Kotlin para tareas intensivas.
+            .flowOn(Dispatchers.Default)
     }
 }
