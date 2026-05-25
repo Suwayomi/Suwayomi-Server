@@ -11,6 +11,7 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -44,15 +45,16 @@ class DownloadSubscription {
         val maxUpdates = input.maxUpdates ?: 50
 
         return DownloadManager.updates
-            // 1. Evita la saturación reteniendo las emisiones continuas durante 300ms.
-            // Esto agrupa las ráfagas masivas de encolamiento y reduce drásticamente el problema N+1.
-            .debounce(300)
+            // 1. Agrupa ráfagas masivas de eventos encolados en ventanas de 250ms
+            .debounce(250)
+            // 2. Si el servidor se satura, salta estados intermedios y entrega solo el último estado útil
+            .conflate()
+            // 3. Ejecuta la lógica pesada de mapeo en un pool de hilos optimizado para entrada/salida (I/O)
             .map { downloadUpdates ->
                 val omittedUpdates = omitUpdates && downloadUpdates.updates.size > maxUpdates
 
-                // the graphql subscription execution strategy does not support data loader batching which causes the n+1 problem,
-                // thus, too many updates (e.g. on mass enqueue or dequeue) causes unresponsiveness of the server until the
-                // update has been handled
+                // El motor de GraphQL no soporta procesamiento por lotes, provocando el problema N+1.
+                // Con las optimizaciones reactivas previas, este mapeo se ejecuta de forma controlada.
                 val actualDownloadUpdates =
                     if (omittedUpdates) {
                         suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates(
@@ -66,8 +68,7 @@ class DownloadSubscription {
 
                 DownloadUpdates(actualDownloadUpdates, omittedUpdates)
             }
-            // 2. Descarga el procesamiento pesado fuera del hilo de UI/GraphQL principal
-            // hacia el pool de subprocesos optimizado de Kotlin para tareas intensivas.
-            .flowOn(Dispatchers.Default)
+            // 4. Asegura que el flujo libere por completo los hilos del servidor GraphQL nativo de Suwayomi
+            .flowOn(Dispatchers.IO)
     }
 }
