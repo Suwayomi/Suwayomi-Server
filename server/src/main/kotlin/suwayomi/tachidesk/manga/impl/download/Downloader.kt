@@ -11,12 +11,14 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -67,11 +69,14 @@ class Downloader(
         val download = downloadUpdate?.downloadQueueItem
         notifier(immediate, downloadUpdate)
         currentCoroutineContext().ensureActive()
-        if (download != null && download != availableSourceDownloads.firstOrNull { it.state != Error }) {
-            if (download in downloadQueue) {
-                throw PauseDownloadException()
-            } else {
-                throw StopDownloadException()
+        if (download != null) {
+            val firstValid = downloadQueue.firstOrNull { it.sourceId == sourceId && it.state != Error }
+            if (download != firstValid) {
+                if (download in downloadQueue) {
+                    throw PauseDownloadException()
+                } else {
+                    throw StopDownloadException()
+                }
             }
         }
     }
@@ -145,15 +150,15 @@ class Downloader(
 
                 download.pageCount = chapter.pageCount
 
-                ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, immediate ->
-                    step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, immediate)
+                ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, _ ->
+                    step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, false)
                 }
                 download.state = Finished
-                transaction {
-                    ChapterTable.update(
-                        { (ChapterTable.id eq download.chapterId) },
-                    ) {
-                        it[isDownloaded] = true
+                withContext(Dispatchers.IO) {
+                    transaction {
+                        ChapterTable.update({ (ChapterTable.id eq download.chapterId) }) {
+                            it[isDownloaded] = true
+                        }
                     }
                 }
                 finishDownload(downloadLogger, download)

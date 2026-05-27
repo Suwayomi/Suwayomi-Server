@@ -98,7 +98,8 @@ object DownloadManager {
         immediate: Boolean,
         download: DownloadUpdate? = null,
     ) {
-        notifyAllClients(immediate, listOfNotNull(download))
+        val brandNewImmediate = download?.type == DownloadUpdateType.FINISHED || download?.type == DownloadUpdateType.ERROR
+        notifyAllClients(brandNewImmediate, listOfNotNull(download))
     }
 
     fun restoreAndResumeDownloads() {
