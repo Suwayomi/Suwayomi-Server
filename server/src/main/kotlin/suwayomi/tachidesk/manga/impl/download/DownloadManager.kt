@@ -64,7 +64,7 @@ private val logger = KotlinLogging.logger {}
 
 @OptIn(FlowPreview::class)
 object DownloadManager {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadQueueItem>()
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
@@ -553,13 +553,5 @@ object DownloadManager {
         downloadQueue.clear()
         triggerSaveDownloadQueue()
         notifyAllClients(false, removedDownloads)
-    }
-
-    fun getMaxConcurrentDownloads(): Int {
-        return try {
-            serverConfig.maxSimultaneousDownloads.value
-        } catch (e: Exception) {
-            3
-        }
     }
 }

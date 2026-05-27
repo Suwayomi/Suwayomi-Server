@@ -18,8 +18,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -121,85 +119,71 @@ class Downloader(
     }
 
     private suspend fun run() {
-        val maxConcurrent = DownloadManager.getMaxConcurrentDownloads()
-        val semaphore = Semaphore(maxConcurrent)
-
-        logger.debug { "Iniciando Downloader con soporte para $maxConcurrent descargas en paralelo" }
-
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
-            val availableTasks = availableSourceDownloads.filter {
-                (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
+            val download =
+                availableSourceDownloads.firstOrNull {
+                    (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
+                } ?: break
+
+            val logContext = "${logger.name} - downloadChapter($download))"
+            val downloadLogger = KotlinLogging.logger(logContext)
+
+            downloadLogger.debug { "start" }
+
+            // handle cases were the downloader was stopped before the finished download could be removed from the queue
+            // otherwise, it will create an endless loop, due to never removing the finished chapter and thinking that the
+            // current download chapter was moved down in the queue
+            if (download.state == Finished) {
+                finishDownload(downloadLogger, download)
+                break
             }
 
-            if (availableTasks.isEmpty()) break
+            try {
+                download.state = Downloading
+                step(DownloadUpdate(PROGRESS, download), true)
 
-            for (download in availableTasks) {
-                if (!currentCoroutineContext().isActive) break
+                val chapter = getChapterDownloadReadyById(download.chapterId)
 
-                val logContext = "${logger.name} - downloadChapter($download))"
-                val downloadLogger = KotlinLogging.logger(logContext)
-
-                if (download.state == Finished) {
-                    finishDownload(downloadLogger, download)
-                    continue
+                if (chapter.pageCount <= 0) {
+                    throw EmptyChapterException()
                 }
 
-                if (download.state == Downloading) continue
+                download.pageCount = chapter.pageCount
 
-                scope.launch {
-                    semaphore.withPermit {
-                        try {
-                            download.state = Downloading
-                            step(DownloadUpdate(PROGRESS, download), true)
-
-                            val chapter = getChapterDownloadReadyById(download.chapterId)
-
-                            if (chapter.pageCount <= 0) {
-                                throw EmptyChapterException()
-                            }
-
-                            download.pageCount = chapter.pageCount
-
-                            ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, _ ->
-                                step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, false)
-                            }
-
-                            download.state = Finished
-                            withContext(Dispatchers.IO) {
-                                transaction {
-                                    ChapterTable.update({ (ChapterTable.id eq download.chapterId) }) {
-                                        it[isDownloaded] = true
-                                    }
-                                }
-                            }
-                            finishDownload(downloadLogger, download)
-                        } catch (e: CancellationException) {
-                            logger.debug { "Downloader was stopped" }
-                            download.state = Queued
-                            notifier(false, DownloadUpdate(STOPPED, download))
-                        } catch (e: PauseDownloadException) {
-                            downloadLogger.debug { "paused" }
-                            download.state = Queued
-                            notifier(false, DownloadUpdate(PAUSED, download))
-                        } catch (e: EmptyChapterException) {
-                            downloadLogger.warn(e) { "failed due to" }
-                            download.tries = MAX_RETRIES
-                            download.state = Error
-                            notifier(false, DownloadUpdate(ERROR, download))
-                        } catch (e: Exception) {
-                            downloadLogger.warn(e) { "failed due to" }
-                            download.tries++
-                            download.state = Queued
-                            if (download.tries >= MAX_RETRIES) {
-                                download.state = Error
-                                notifier(false, DownloadUpdate(ERROR, download))
-                            }
+                ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, _ ->
+                    step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, false)
+                }
+                download.state = Finished
+                withContext(Dispatchers.IO) {
+                    transaction {
+                        ChapterTable.update({ (ChapterTable.id eq download.chapterId) }) {
+                            it[isDownloaded] = true
                         }
                     }
                 }
+                finishDownload(downloadLogger, download)
+            } catch (e: CancellationException) {
+                logger.debug { "Downloader was stopped" }
+                availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
+                notifier(false, DownloadUpdate(STOPPED, download))
+            } catch (e: PauseDownloadException) {
+                downloadLogger.debug { "paused" }
+                download.state = Queued
+                notifier(false, DownloadUpdate(PAUSED, download))
+            } catch (e: EmptyChapterException) {
+                downloadLogger.warn(e) { "failed due to" }
+                download.tries = MAX_RETRIES
+                download.state = Error
+                notifier(false, DownloadUpdate(ERROR, download))
+            } catch (e: Exception) {
+                downloadLogger.warn(e) { "failed due to" }
+                download.tries++
+                download.state = Queued
+                if (download.tries >= MAX_RETRIES) {
+                    download.state = Error
+                    notifier(false, DownloadUpdate(ERROR, download))
+                }
             }
-
-            kotlinx.coroutines.delay(200)
         }
     }
 }
