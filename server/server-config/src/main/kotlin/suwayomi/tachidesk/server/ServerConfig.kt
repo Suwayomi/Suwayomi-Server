@@ -301,6 +301,16 @@ class ServerConfig(
                 "Library update/downloads are grouped by source and all manga of a source are updated/downloaded synchronously",
     )
 
+    val maxDownloadsInParallel: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 86,
+        group = SettingGroup.DOWNLOADER,
+        privacySafe = true,
+        defaultValue = 3,
+        min = 1,
+        max = 6,
+        description = "How many different downloads can do requests in parallel. ",
+    )
+
     val excludeUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 24,
         group = SettingGroup.LIBRARY_UPDATES,

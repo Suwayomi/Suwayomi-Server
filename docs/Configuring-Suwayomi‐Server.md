@@ -71,6 +71,7 @@ server.autoDownloadNewChapters = false
 server.excludeEntryWithUnreadChapters = true
 server.autoDownloadNewChaptersLimit = 0
 server.autoDownloadIgnoreReUploads = false
+server.maxDownloadsInParallel = 3
 server.downloadConversions = {}
 ```
 - `server.downloadAsCbz = true` configures Suwayomi to automatically compress chapters into CBZ.

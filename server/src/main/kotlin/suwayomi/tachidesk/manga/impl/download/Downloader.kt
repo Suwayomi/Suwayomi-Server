@@ -40,7 +40,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 class Downloader(
     private val scope: CoroutineScope,
-    val sourceId: Long,
+    val id: String,
     private val downloadQueue: CopyOnWriteArrayList<DownloadQueueItem>,
     private val notifier: (immediate: Boolean, download: DownloadUpdate?) -> Unit,
     private val onComplete: () -> Unit,
@@ -50,11 +50,11 @@ class Downloader(
         private const val MAX_RETRIES = 3
     }
 
-    private val logger = KotlinLogging.logger("${Downloader::class.java.name} source($sourceId)")
+    private val logger = KotlinLogging.logger("${Downloader::class.java.name} source_chapter($id)")
 
     private var job: Job? = null
     private val availableSourceDownloads
-        get() = downloadQueue.filter { it.sourceId == sourceId }
+        get() = downloadQueue.filter { it.id == id }
 
     class StopDownloadException : Exception("Cancelled download")
 
@@ -70,7 +70,7 @@ class Downloader(
         notifier(immediate, downloadUpdate)
         currentCoroutineContext().ensureActive()
         if (download != null) {
-            val firstValid = downloadQueue.firstOrNull { it.sourceId == sourceId && it.state != Error }
+            val firstValid = downloadQueue.firstOrNull { it.id == id  && it.state != Error }
             if (download != firstValid) {
                 if (download in downloadQueue) {
                     throw PauseDownloadException()

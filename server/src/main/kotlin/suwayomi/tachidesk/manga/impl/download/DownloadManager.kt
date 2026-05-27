@@ -68,7 +68,7 @@ object DownloadManager {
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadQueueItem>()
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
-    private val downloaders = ConcurrentHashMap<Long, Downloader>()
+    private val downloaders = ConcurrentHashMap<String, Downloader>()
     private val storageScanner = StorageScanner()
     private val applicationDirs: ApplicationDirs by injectLazy()
 
@@ -282,11 +282,11 @@ object DownloadManager {
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     init {
-        serverConfig.subscribeTo(serverConfig.maxSourcesInParallel, { maxSourcesInParallel ->
+        serverConfig.subscribeTo(serverConfig.maxDownloadsInParallel, { maxDownloadsInParallel ->
             val runningDownloaders = downloaders.values.filter { it.isActive }
-            var downloadersToStop = runningDownloaders.size - maxSourcesInParallel
+            var downloadersToStop = runningDownloaders.size - maxDownloadsInParallel
 
-            logger.debug { "Max sources in parallel changed to $maxSourcesInParallel (running downloaders ${runningDownloaders.size})" }
+            logger.debug { "Max downloads in parallel changed to $maxDownloadsInParallel (running downloaders ${runningDownloaders.size})" }
 
             if (downloadersToStop > 0) {
                 runningDownloaders.takeWhile {
@@ -309,14 +309,14 @@ object DownloadManager {
                         "Failed: ${downloadQueue.size - availableDownloads.size}"
                 }
 
-                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
+                if (runningDownloaders.size < serverConfig.maxDownloadsInParallel.value) {
                     availableDownloads
                         .asSequence()
-                        .map { it.sourceId }
+                        .map { it.id }
                         .distinct()
                         .minus(
-                            runningDownloaders.map { it.sourceId }.toSet(),
-                        ).take((serverConfig.maxSourcesInParallel.value - runningDownloaders.size).coerceAtLeast(0))
+                            runningDownloaders.map { it.id }.toSet(),
+                        ).take((serverConfig.maxDownloadsInParallel.value - runningDownloaders.size).coerceAtLeast(0))
                         .map { getDownloader(it) }
                         .forEach {
                             it.start()
@@ -333,11 +333,11 @@ object DownloadManager {
         }
     }
 
-    private fun getDownloader(sourceId: Long) =
-        downloaders.getOrPut(sourceId) {
+    private fun getDownloader(id: String) =
+        downloaders.getOrPut(id) {
             Downloader(
                 scope = scope,
-                sourceId = sourceId,
+                id = id,
                 downloadQueue = downloadQueue,
                 notifier = ::handleDownloadUpdate,
                 onComplete = ::refreshDownloaders,
