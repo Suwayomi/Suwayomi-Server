@@ -3,18 +3,45 @@ package suwayomi.tachidesk.manga.impl.util.storage
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.ln
 import kotlin.math.pow
 
 class StorageScanner(
     private val fileSystem: FileSystem = FileSystem.SYSTEM,
 ) {
+    // Definimos el tiempo de vida de la caché (5 segundos es ideal para descargas activas)
+    private companion object {
+        const val CACHE_TTL_MS = 60000L
+    }
+
+    // Estructuras para almacenar el tamaño y el tiempo de expiración
+    private val sizeCache = ConcurrentHashMap<String, Long>()
+    private val cacheTimestamp = ConcurrentHashMap<String, Long>()
+
+    /**
+     * Invalida la caché de una ruta específica cuando termine una descarga
+     * para forzar un nuevo cálculo real la próxima vez.
+     */
+    fun invalidateCache(directoryPath: String) {
+        sizeCache.remove(directoryPath)
+        cacheTimestamp.remove(directoryPath)
+    }
+
+    /**
+     * Limpia por completo la caché de almacenamiento.
+     */
+    fun clearCache() {
+        sizeCache.clear()
+        cacheTimestamp.clear()
+    }
+
     /**
      * Devuelve un par con (Tamaño de carpeta, Espacio disponible en disco) en Bytes.
      */
     fun getDirectoryStats(directoryPath: String): DirectoryStats {
         val path = directoryPath.toPath()
-        val size = calculateSize(path)
+        val size = getFolderSize(directoryPath) // Utiliza la caché interna
         val available = getAvailableDiskSpace(path)
 
         return DirectoryStats(
@@ -25,7 +52,25 @@ class StorageScanner(
         )
     }
 
-    fun getFolderSize(directoryPath: String): Long = calculateSize(directoryPath.toPath())
+    /**
+     * Obtiene el tamaño de la carpeta respetando la caché de tiempo.
+     */
+    fun getFolderSize(directoryPath: String): Long {
+        val now = System.currentTimeMillis()
+        val lastCheck = cacheTimestamp[directoryPath] ?: 0L
+
+        // Si la caché es válida y no ha expirado, devolvemos el valor guardado
+        if (sizeCache.containsKey(directoryPath) && (now - lastCheck) < CACHE_TTL_MS) {
+            return sizeCache[directoryPath] ?: 0L
+        }
+
+        // Si expiró o no existe, calculamos de forma real y actualizamos la caché
+        val freshSize = calculateSize(directoryPath.toPath())
+        sizeCache[directoryPath] = freshSize
+        cacheTimestamp[directoryPath] = now
+
+        return freshSize
+    }
 
     fun getFolderSizePretty(directoryPath: String): String = formatBytes(getFolderSize(directoryPath))
 
