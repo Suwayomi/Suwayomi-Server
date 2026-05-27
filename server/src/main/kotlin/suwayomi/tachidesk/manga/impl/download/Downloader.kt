@@ -70,7 +70,7 @@ class Downloader(
         notifier(immediate, downloadUpdate)
         currentCoroutineContext().ensureActive()
         if (download != null) {
-            val firstValid = downloadQueue.firstOrNull { it.id == id  && it.state != Error }
+            val firstValid = downloadQueue.firstOrNull { it.id == id && it.state != Error }
             if (download != firstValid) {
                 if (download in downloadQueue) {
                     throw PauseDownloadException()

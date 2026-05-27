@@ -23,5 +23,5 @@ class DownloadQueueItem(
     override fun toString(): String = "$mangaId - $chapterId | state= $state, tries= $tries, progress= $progress"
 
     val id
-        get() = "${sourceId}_${chapterId}"
+        get() = $"{sourceId}_{chapterId}"
 }
