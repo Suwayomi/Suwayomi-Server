@@ -10,12 +10,10 @@ import kotlin.math.pow
 class StorageScanner(
     private val fileSystem: FileSystem = FileSystem.SYSTEM,
 ) {
-    // Definimos el tiempo de vida de la caché (5 segundos es ideal para descargas activas)
     private companion object {
         const val CACHE_TTL_MS = 60000L
     }
 
-    // Estructuras para almacenar el tamaño y el tiempo de expiración
     private val sizeCache = ConcurrentHashMap<String, Long>()
     private val cacheTimestamp = ConcurrentHashMap<String, Long>()
 
@@ -59,12 +57,10 @@ class StorageScanner(
         val now = System.currentTimeMillis()
         val lastCheck = cacheTimestamp[directoryPath] ?: 0L
 
-        // Si la caché es válida y no ha expirado, devolvemos el valor guardado
         if (sizeCache.containsKey(directoryPath) && (now - lastCheck) < CACHE_TTL_MS) {
             return sizeCache[directoryPath] ?: 0L
         }
 
-        // Si expiró o no existe, calculamos de forma real y actualizamos la caché
         val freshSize = calculateSize(directoryPath.toPath())
         sizeCache[directoryPath] = freshSize
         cacheTimestamp[directoryPath] = now

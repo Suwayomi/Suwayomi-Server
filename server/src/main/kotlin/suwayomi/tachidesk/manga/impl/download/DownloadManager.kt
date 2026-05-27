@@ -554,4 +554,12 @@ object DownloadManager {
         triggerSaveDownloadQueue()
         notifyAllClients(false, removedDownloads)
     }
+
+    fun getMaxConcurrentDownloads(): Int {
+        return try {
+            serverConfig.maxSimultaneousDownloads.value
+        } catch (e: Exception) {
+            3
+        }
+    }
 }

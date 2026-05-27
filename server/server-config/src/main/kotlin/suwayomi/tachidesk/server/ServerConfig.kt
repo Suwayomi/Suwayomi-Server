@@ -263,6 +263,15 @@ class ServerConfig(
         description = "Ignore re-uploaded chapters from auto-download",
     )
 
+    val maxSimultaneousDownloads: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 86,
+        group = SettingGroup.DOWNLOADER,
+        privacySafe = true,
+        defaultValue = 3,
+        min = 1,
+        max = 4,
+    )
+
     val extensionRepos: MutableStateFlow<List<String>> by ListSetting<String>(
         protoNumber = 22,
         group = SettingGroup.EXTENSION,
