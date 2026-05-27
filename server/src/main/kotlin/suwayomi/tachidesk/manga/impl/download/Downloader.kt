@@ -202,5 +202,4 @@ class Downloader(
             kotlinx.coroutines.delay(200)
         }
     }
-
 }

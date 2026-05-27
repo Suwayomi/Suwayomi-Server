@@ -270,6 +270,7 @@ class ServerConfig(
         defaultValue = 3,
         min = 1,
         max = 4,
+        description = "Max simultaneous downloads",
     )
 
     val extensionRepos: MutableStateFlow<List<String>> by ListSetting<String>(
