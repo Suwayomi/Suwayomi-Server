@@ -73,6 +73,24 @@ val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 private val application: Application by injectLazy()
 
+@OptIn(ExperimentalCoroutinesApi::class)
+fun <T> subscribeTo(
+    flow: Flow<T>,
+    ignoreInitialValue: Boolean = true,
+    onChange: suspend (value: T) -> Unit,
+) {
+    val actualFlow =
+        if (ignoreInitialValue) {
+            flow.drop(1)
+        } else {
+            flow
+        }
+
+    val sharedFlow = MutableSharedFlow<T>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    actualFlow.distinctUntilChanged().mapLatest { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
+    sharedFlow.onEach { onChange(it) }.launchIn(mutableConfigValueScope)
+}
+
 // Settings are ordered by "protoNumber".
 class ServerConfig(
     getConfig: () -> Config,
@@ -1067,18 +1085,7 @@ class ServerConfig(
         flow: Flow<T>,
         onChange: suspend (value: T) -> Unit,
         ignoreInitialValue: Boolean = true,
-    ) {
-        val actualFlow =
-            if (ignoreInitialValue) {
-                flow.drop(1)
-            } else {
-                flow
-            }
-
-        val sharedFlow = MutableSharedFlow<T>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        actualFlow.distinctUntilChanged().mapLatest { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
-        sharedFlow.onEach { onChange(it) }.launchIn(mutableConfigValueScope)
-    }
+    ) = subscribeTo(flow, ignoreInitialValue, onChange)
 
     fun <T> subscribeTo(
         flow: Flow<T>,
