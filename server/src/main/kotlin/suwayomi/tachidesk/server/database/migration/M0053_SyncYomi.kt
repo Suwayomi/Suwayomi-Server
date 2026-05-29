@@ -15,18 +15,18 @@ class M0053_SyncYomi : SQLMigration() {
     // language=postgresql
     fun postgresQuery(): String =
         """
-        ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
-        ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
-        ALTER TABLE manga ADD COLUMN last_modified_at BIGINT DEFAULT 0;
+        ALTER TABLE manga ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE manga ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
 
-        ALTER TABLE chapter ADD COLUMN version BIGINT DEFAULT 0;
-        ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
-        ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT DEFAULT 0;
+        ALTER TABLE chapter ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
 
-        ALTER TABLE category ADD COLUMN version BIGINT DEFAULT 0;
-        ALTER TABLE category ADD COLUMN uid BIGINT DEFAULT 0;
-        ALTER TABLE category ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
-        ALTER TABLE category ADD COLUMN last_modified_at BIGINT DEFAULT 0;
+        ALTER TABLE category ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE category ADD COLUMN uid BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE category ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE category ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
 
 
         CREATE OR REPLACE FUNCTION update_manga_version()
@@ -120,7 +120,7 @@ class M0053_SyncYomi : SQLMigration() {
         RETURNS trigger AS $$
         BEGIN
             IF NEW.uid = 0 THEN
-                NEW.uid := random(1, 9223372036854775807);
+                NEW.uid := RANDOM(1, 9223372036854775807);
             END IF;
 
             IF NEW.last_modified_at = 0 THEN
@@ -162,18 +162,18 @@ class M0053_SyncYomi : SQLMigration() {
     // language=h2
     fun h2Query() =
         """
-        ALTER TABLE manga ADD COLUMN version BIGINT DEFAULT 0;
-        ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
-        ALTER TABLE manga ADD COLUMN last_modified_at BIGINT DEFAULT 0;
+        ALTER TABLE manga ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE manga ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
 
-        ALTER TABLE chapter ADD COLUMN version BIGINT DEFAULT 0;
-        ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
-        ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT DEFAULT 0;
-        
-        ALTER TABLE category ADD COLUMN version BIGINT DEFAULT 0;
-        ALTER TABLE category ADD COLUMN uid BIGINT DEFAULT 0;
-        ALTER TABLE category ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
-        ALTER TABLE category ADD COLUMN last_modified_at BIGINT DEFAULT 0;
+        ALTER TABLE chapter ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
+
+        ALTER TABLE category ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE category ADD COLUMN uid BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE category ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE category ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
         
 
         CREATE TRIGGER update_manga_version 
