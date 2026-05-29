@@ -71,14 +71,12 @@ object Manga {
         mangaId: Int,
         onlineFetch: Boolean = false,
     ): MangaDataClass {
-        var mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
 
         return if (!onlineFetch && mangaEntry[MangaTable.initialized]) {
             getMangaDataClass(mangaId, mangaEntry)
         } else { // initialize manga
-            val sManga = fetchManga(mangaId) ?: return getMangaDataClass(mangaId, mangaEntry)
-
-            mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+            val sManga = fetchManga(mangaId, mangaEntry) ?: return getMangaDataClass(mangaId, mangaEntry)
 
             MangaDataClass(
                 id = mangaId,
@@ -109,7 +107,13 @@ object Manga {
 
     suspend fun fetchManga(mangaId: Int): SManga? {
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        return fetchManga(mangaId, mangaEntry)
+    }
 
+    suspend fun fetchManga(
+        mangaId: Int,
+        mangaEntry: ResultRow,
+    ): SManga? {
         val source =
             getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
                 ?: return null
@@ -189,43 +193,21 @@ object Manga {
         mangaId: Int,
         onlineFetch: Boolean = false,
     ): MangaDataClass {
-        val mangaDaaClass = getManga(mangaId, onlineFetch)
+        val mangaDataClass = getManga(mangaId, onlineFetch)
 
         return transaction {
-            val unreadCount =
-                ChapterTable
-                    .selectAll()
-                    .where { (ChapterTable.manga eq mangaId) and (ChapterTable.isRead eq false) }
-                    .count()
+            val chapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }.toList()
 
-            val downloadCount =
-                ChapterTable
-                    .selectAll()
-                    .where { (ChapterTable.manga eq mangaId) and (ChapterTable.isDownloaded eq true) }
-                    .count()
-
-            val donwloadSize = storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
-
-            val chapterCount =
-                ChapterTable
-                    .selectAll()
-                    .where { (ChapterTable.manga eq mangaId) }
-                    .count()
-
-            val lastChapterRead =
-                ChapterTable
-                    .selectAll()
-                    .where { (ChapterTable.manga eq mangaId) }
-                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                    .firstOrNull { it[ChapterTable.isRead] }
-
-            mangaDaaClass.unreadCount = unreadCount
-            mangaDaaClass.downloadCount = downloadCount
-            mangaDaaClass.donwloadSize = donwloadSize
-            mangaDaaClass.chapterCount = chapterCount
-            mangaDaaClass.lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) }
-
-            mangaDaaClass
+            mangaDataClass.apply {
+                chapterCount = chapters.size.toLong()
+                unreadCount = chapters.count { !it[ChapterTable.isRead] }.toLong()
+                downloadCount = chapters.count { it[ChapterTable.isDownloaded] }.toLong()
+                donwloadSize = storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
+                lastChapterRead = chapters
+                    .filter { it[ChapterTable.isRead] }
+                    .maxByOrNull { it[ChapterTable.sourceOrder] }
+                    ?.let { ChapterTable.toDataClass(it) }
+            }
         }
     }
 
@@ -327,9 +309,9 @@ object Manga {
         }
     }
 
-    private suspend fun fetchThumbnailUrl(mangaId: Int): String? {
-        getManga(mangaId, true)
-        return transaction {
+    private suspend fun fetchThumbnailUrl(mangaId: Int, mangaEntry: ResultRow): String? {
+        fetchManga(mangaId, mangaEntry)
+        return transaction { 
             MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
         }[MangaTable.thumbnail_url]
     }
@@ -349,7 +331,7 @@ object Manga {
 
         val thumbnailUrl =
             if (refreshThumbnailUrl) {
-                fetchThumbnailUrl(mangaId)
+                fetchThumbnailUrl(mangaId, mangaEntry)
             } else {
                 mangaEntry[MangaTable.thumbnail_url]
             } ?: throw NullPointerException("No thumbnail found")
@@ -378,10 +360,14 @@ object Manga {
     }
 
     suspend fun fetchMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        return fetchMangaThumbnail(mangaId, mangaEntry)
+    }
+
+    suspend fun fetchMangaThumbnail(mangaId: Int, mangaEntry: ResultRow): Pair<InputStream, String> {
         val cacheSaveDir = applicationDirs.tempThumbnailCacheRoot
         val fileName = mangaId.toString()
 
-        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
         return when (val source = getCatalogueSourceOrStub(sourceId)) {
@@ -437,7 +423,7 @@ object Manga {
             }
         }
 
-        return fetchMangaThumbnail(mangaId)
+        return fetchMangaThumbnail(mangaId, mangaEntry)
     }
 
     fun clearThumbnail(mangaId: Int) {
@@ -462,11 +448,8 @@ object Manga {
         }
 
     fun isInIncludedDownloadCategory(
-        logContext: KLogger = logger,
         mangaId: Int,
     ): Boolean {
-        val log = KotlinLogging.logger("${logContext.name}::isInExcludedDownloadCategory($mangaId)")
-
         // Verify the manga is configured to be downloaded based on it's categories.
         var mangaCategories = CategoryManga.getMangaCategories(mangaId).toSet()
         // if the manga has no categories, then it's implicitly in the default category
@@ -485,14 +468,14 @@ object Manga {
         // Only download manga that aren't in any excluded categories
         val mangaExcludeCategories = mangaCategories.intersect(excludedCategories.toSet())
         if (mangaExcludeCategories.isNotEmpty()) {
-            log.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
+            logger.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
             return false
         }
         val mangaDownloadCategories = mangaCategories.intersect(includedCategories.toSet())
         if (mangaDownloadCategories.isNotEmpty()) {
-            log.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
+            logger.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
         } else {
-            log.debug { "skipping download due to download categories configuration" }
+            logger.debug { "skipping download due to download categories configuration" }
             return false
         }
 

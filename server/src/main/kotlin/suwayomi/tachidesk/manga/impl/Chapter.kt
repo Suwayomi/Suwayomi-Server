@@ -391,7 +391,7 @@ object Chapter {
             return
         }
 
-        if (!Manga.isInIncludedDownloadCategory(log, mangaId)) {
+        if (!Manga.isInIncludedDownloadCategory(mangaId)) {
             return
         }
 
