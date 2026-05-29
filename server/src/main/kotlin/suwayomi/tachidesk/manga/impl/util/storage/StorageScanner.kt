@@ -4,8 +4,6 @@ import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.math.ln
-import kotlin.math.pow
 
 class StorageScanner(
     private val fileSystem: FileSystem = FileSystem.SYSTEM,
@@ -91,10 +89,14 @@ class StorageScanner(
         if (bytes < 1024) return "$bytes B"
 
         val units = arrayOf("B", "KB", "MB", "GB", "TB")
-        val exp = (ln(bytes.toDouble()) / ln(1024.0)).toInt().coerceIn(0, units.size - 1)
-        val size = bytes / 1024.0.pow(exp.toDouble())
+        var size = bytes.toDouble()
+        var unitIndex = 0
+        while (size >= 1024 && unitIndex < units.size - 1) {
+            size /= 1024.0
+            unitIndex++
+        }
 
-        return "%.2f %s".format(size, units[exp])
+        return "%.2f %s".format(size, units[unitIndex])
     }
 }
 
