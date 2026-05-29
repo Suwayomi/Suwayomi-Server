@@ -55,11 +55,11 @@ object ChapterRepository {
 
     suspend fun getChaptersForManga(
         mangaId: Int,
-        pageNum: Int,
         sortColumn: Column<*>,
         sortOrder: SortOrder,
-        skipMetadata: Boolean = false,
         filter: String,
+        pageNum: Int,
+        skipMetadata: Boolean,
     ): Pair<List<OpdsChapterListAcqEntry>, Long> {
         val (rawChapters, totalCount) =
             transaction {

@@ -90,15 +90,15 @@ object OpdsEntryBuilder {
 
     /**
      * Converts a manga data object into a full OPDS acquisition entry.
-     * @param entry The manga data object.
      * @param baseUrl The base URL for constructing links.
      * @param locale The locale for localization.
+     * @param entry The manga data object.
      * @return An [OpdsEntryXml] object representing the manga.
      */
     fun mangaAcqEntryToEntry(
-        entry: OpdsMangaAcqEntry,
         baseUrl: String,
         locale: Locale,
+        entry: OpdsMangaAcqEntry,
     ): OpdsEntryXml {
         val displayThumbnailUrl = entry.thumbnailUrl?.let { proxyThumbnailUrl(entry.id) }
         val categoryScheme = if (entry.inLibrary) "$baseUrl/library/genres" else "$baseUrl/genres"
@@ -179,21 +179,21 @@ object OpdsEntryBuilder {
 
     /**
      * Creates an OPDS entry for a chapter, including acquisition and streaming links.
+     * @param baseUrl The base URL for constructing links.
+     * @param locale The locale for localization.
      * @param chapter The chapter data object.
      * @param manga The parent manga's details.
-     * @param baseUrl The base URL for constructing links.
      * @param addMangaTitle Whether to prepend the manga title to the entry title.
-     * @param locale The locale for localization.
      * @param skipMetadataFeed Whether to skip the metadata feed.
      * @return An [OpdsEntryXml] object for the chapter.
      */
     suspend fun createChapterListEntry(
+        baseUrl: String,
+        locale: Locale,
         chapter: OpdsChapterListAcqEntry,
         manga: OpdsMangaDetails,
-        baseUrl: String,
         addMangaTitle: Boolean,
-        locale: Locale,
-        skipMetadataFeed: Boolean = false,
+        skipMetadataFeed: Boolean,
     ): OpdsEntryXml {
         var effectiveLastPageRead = chapter.lastPageRead
         var effectiveLastReadAt = chapter.lastReadAt
@@ -311,18 +311,18 @@ object OpdsEntryBuilder {
     /**
      * Creates one or two OPDS entries for a chapter, handling synchronization conflicts internally.
      *
-     * @param chapter The chapter metadata object.
-     * @param manga The parent manga's details.
      * @param baseUrl The base URL for constructing links.
      * @param locale The locale for localization.
+     * @param chapter The chapter metadata object.
+     * @param manga The parent manga's details.
      * @return A `Pair` where the first element is the primary entry (always present) and the
      * second is an optional entry representing the remote progress in case of a conflict.
      */
     suspend fun createChapterMetadataEntries(
-        chapter: OpdsChapterMetadataAcqEntry,
-        manga: OpdsMangaDetails,
         baseUrl: String,
         locale: Locale,
+        chapter: OpdsChapterMetadataAcqEntry,
+        manga: OpdsMangaDetails,
     ): Pair<OpdsEntryXml, OpdsEntryXml?> {
         // Check remote progress before building the entry
         val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
@@ -334,20 +334,20 @@ object OpdsEntryBuilder {
             // Generate two entries: one for local progress and another for remote.
             val localEntry =
                 buildSingleChapterMetadataEntry(
-                    chapter,
-                    manga,
                     baseUrl,
                     locale,
+                    chapter,
+                    manga,
                     progressSource = ProgressSource.Local(chapter.lastPageRead, chapter.lastReadAt),
                     isConflict = true,
                 )
 
             val remoteEntry =
                 buildSingleChapterMetadataEntry(
-                    chapter,
-                    manga,
                     baseUrl,
                     locale,
+                    chapter,
+                    manga,
                     progressSource = ProgressSource.Remote(syncResult!!.pageRead, syncResult.timestamp, syncResult.device),
                     isConflict = true,
                 )
@@ -363,10 +363,10 @@ object OpdsEntryBuilder {
 
             val mainEntry =
                 buildSingleChapterMetadataEntry(
-                    chapter,
-                    manga,
                     baseUrl,
                     locale,
+                    chapter,
+                    manga,
                     progressSource = progressSource,
                     isConflict = false,
                 )
@@ -397,10 +397,10 @@ object OpdsEntryBuilder {
      * Helper function to build a single OpdsEntryXml for a chapter.
      */
     private suspend fun buildSingleChapterMetadataEntry(
-        chapter: OpdsChapterMetadataAcqEntry,
-        manga: OpdsMangaDetails,
         baseUrl: String,
         locale: Locale,
+        chapter: OpdsChapterMetadataAcqEntry,
+        manga: OpdsMangaDetails,
         progressSource: ProgressSource,
         isConflict: Boolean,
     ): OpdsEntryXml {
@@ -542,8 +542,8 @@ object OpdsEntryBuilder {
     fun addSourceSortFacets(
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
-        currentSort: String,
         locale: Locale,
+        currentSort: String,
     ) {
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
         val addFacet = { href: String, titleKey: StringResource, isActive: Boolean ->
@@ -568,9 +568,9 @@ object OpdsEntryBuilder {
     fun addChapterSortAndFilterFacets(
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
+        locale: Locale,
         currentSort: String,
         currentFilter: String,
-        locale: Locale,
         filterCounts: Map<String, Long>? = null,
     ) {
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
@@ -647,15 +647,15 @@ object OpdsEntryBuilder {
     fun addLibraryFacets(
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
-        activeFilters: OpdsMangaFilter,
         locale: Locale,
+        activeFilters: OpdsMangaFilter,
     ) {
         val currentSort = activeFilters.sort ?: "alpha_asc"
         val currentFilter = activeFilters.filter ?: "all"
 
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
         val filterGroup = MR.strings.opds_facetgroup_filter_content.localized(locale)
-        val filterCounts = MangaRepository.getLibraryFilterCounts()
+        val filterCounts = MangaRepository.getLibraryFilterCounts(activeFilters)
 
         val buildUrl = { newFilters: OpdsMangaFilter, newSort: String, newFilter: String ->
             val crossFilterParams = newFilters.toCrossFilterQueryParameters()
@@ -760,7 +760,7 @@ object OpdsEntryBuilder {
 
         // --- Cross-Filter Facets ---
         if (activeFilters.primaryFilter != PrimaryFilterType.SOURCE) {
-            val sources = NavigationRepository.getLibrarySources(1).first
+            val sources = NavigationRepository.getLibrarySources(pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("source_id"), currentSort, currentFilter),
@@ -781,7 +781,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.CATEGORY) {
-            val categories = NavigationRepository.getCategories(1).first
+            val categories = NavigationRepository.getCategories(pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("category_id"), currentSort, currentFilter),
@@ -802,7 +802,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.STATUS) {
-            val statuses = NavigationRepository.getStatuses(locale)
+            val statuses = NavigationRepository.getStatuses(locale, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("status_id"), currentSort, currentFilter),
@@ -823,7 +823,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.LANGUAGE) {
-            val languages = NavigationRepository.getContentLanguages(locale)
+            val languages = NavigationRepository.getContentLanguages(locale, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("lang_code"), currentSort, currentFilter),
@@ -844,7 +844,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.GENRE) {
-            val genres = NavigationRepository.getGenres(1, locale).first
+            val genres = NavigationRepository.getGenres(locale, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("genre"), currentSort, currentFilter),
