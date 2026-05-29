@@ -68,7 +68,7 @@ object DownloadManager {
     private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadQueueItem>()
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
-    private val downloaders = ConcurrentHashMap<String, Downloader>()
+    private val downloaderList = ConcurrentHashMap<String, Downloader>()
     private val storageScanner = StorageScanner()
     private val applicationDirs: ApplicationDirs by injectLazy()
 
@@ -80,7 +80,7 @@ object DownloadManager {
         sharedPreferences
             .getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())
             ?.mapNotNull {
-                it.toInt()
+                it.toIntOrNull()
             }.orEmpty()
 
     private fun saveDownloadQueue() {
@@ -94,12 +94,8 @@ object DownloadManager {
         scope.launch { saveQueueFlow.emit(Unit) }
     }
 
-    private fun onDownloadFinished(){
-        triggerSaveDownloadQueue();
-        val availableDownloads = downloadQueue.filter { it.state != Error }
-        if(availableDownloads.size <= 0) {
-            storageScanner.invalidateCache(applicationDirs.downloadsRoot);
-        }
+    private fun onDownloadFinished() {
+        triggerSaveDownloadQueue()
     }
 
     private fun handleDownloadUpdate(
@@ -108,6 +104,11 @@ object DownloadManager {
     ) {
         val brandNewImmediate = download?.type == DownloadUpdateType.FINISHED || download?.type == DownloadUpdateType.ERROR
         notifyAllClients(brandNewImmediate, listOfNotNull(download))
+
+        if (brandNewImmediate && downloadQueue.isEmpty()) {
+            logger.info { "Cola de descargas vacía por completo. Invalidando caché de almacenamiento..." }
+            storageScanner.invalidateCache(applicationDirs.downloadsRoot)
+        }
     }
 
     fun restoreAndResumeDownloads() {
@@ -115,7 +116,7 @@ object DownloadManager {
             logger.debug { "restoreAndResumeDownloads: Restore download queue..." }
             enqueue(EnqueueInput(loadDownloadQueue()))
 
-            if (downloadQueue.size > 0) {
+            if (downloadQueue.isNotEmpty()) {
                 logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
             }
         }
@@ -166,18 +167,113 @@ object DownloadManager {
     private val updatesFlow = MutableSharedFlow<DownloadUpdates>()
     val updates = updatesFlow.onStart { emit(getDownloadUpdates(addInitial = true)) }
 
+    private val saveQueueFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
     init {
         scope.launch {
             notifyFlow.sample(1.seconds).collect {
                 notifyAllClients(immediate = true, gqlEmit = true)
             }
         }
-    }
 
-    private val saveQueueFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-
-    init {
         saveQueueFlow.onEach { saveDownloadQueue() }.launchIn(scope)
+
+        serverConfig.subscribeTo(serverConfig.maxDownloadsInParallel, { maxDownloadsInParallel ->
+            val runningDownloaders = downloaderList.values.filter { it.isActive }
+            val queueMap = downloadQueue.associateBy { it.id } // Indexación O(1)
+
+            val runningBySource =
+                runningDownloaders.groupBy { downloader ->
+                    queueMap[downloader.id]?.sourceId ?: 0L
+                }
+
+            runningBySource.forEach { (_, downloadersOfSource) ->
+                var toStop = downloadersOfSource.size - maxDownloadsInParallel
+                if (toStop > 0) {
+                    downloadersOfSource.takeWhile {
+                        it.stop()
+                        --toStop > 0
+                    }
+                }
+            }
+            downloaderWatch.emit(Unit)
+        })
+
+        // Suscriptor para cambios en tiempo real del número máximo de fuentes en paralelo
+        serverConfig.subscribeTo(serverConfig.maxSourcesInParallel, { maxSourcesInParallel ->
+            val runningDownloaders = downloaderList.values.filter { it.isActive }
+            val queueMap = downloadQueue.associateBy { it.id } // Indexación O(1)
+
+            val activeSources = runningDownloaders.mapNotNull { queueMap[it.id]?.sourceId }.distinct()
+
+            if (activeSources.size > maxSourcesInParallel) {
+                val sourcesToStop = activeSources.drop(maxSourcesInParallel).toSet()
+                runningDownloaders
+                    .filter { downloader ->
+                        queueMap[downloader.id]?.sourceId in sourcesToStop
+                    }.forEach { it.stop() }
+            }
+            downloaderWatch.emit(Unit)
+        })
+
+        scope.launch {
+            downloaderWatch.sample(1.seconds).collect {
+                val runningDownloaders = downloaderList.values.filter { it.isActive }
+                val availableDownloads = downloadQueue.filter { it.state != Error }
+
+                logger.info {
+                    "Running globally: ${runningDownloaders.size}, " +
+                        "Queued: ${availableDownloads.size}, " +
+                        "Failed: ${downloadQueue.size - availableDownloads.size}"
+                }
+
+                if (availableDownloads.isEmpty()) return@collect
+
+                val queueMap = downloadQueue.associateBy { it.id }
+
+                // 1. Mapeamos cuántas descargas activas tiene cada origen (sourceId) actualmente
+                val activeCountsBySource =
+                    runningDownloaders
+                        .groupBy { queueMap[it.id]?.sourceId ?: 0L }
+                        .mapValues { it.value.size }
+                        .toMutableMap()
+
+                // 2. Extraemos el conjunto de IDs de fuentes que ya están descargando algo en este momento
+                val activeSources = activeCountsBySource.filterValues { it > 0 }.keys.toMutableSet()
+                val runningIds = runningDownloaders.map { it.id }.toSet()
+
+                // Límites dinámicos desde la configuración
+                val limitDownloadsPerSource = serverConfig.maxDownloadsInParallel.value
+                val limitSourcesInParallel = serverConfig.maxSourcesInParallel.value
+
+                // 3. Procesamos secuencialmente los elementos en cola aplicando el doble filtro
+                availableDownloads
+                    .asSequence()
+                    .map { it.id }
+                    .distinct()
+                    .minus(runningIds)
+                    .mapNotNull { id -> queueMap[id] }
+                    .filter { item ->
+                        val currentSourceCount = activeCountsBySource.getOrDefault(item.sourceId, 0)
+
+                        // REGLA 1: Comprobar el límite de descargas concurrentes de este origen específico
+                        if (currentSourceCount >= limitDownloadsPerSource) return@filter false
+
+                        // REGLA 2: Comprobar el límite global de fuentes activas en paralelo
+                        if (!activeSources.contains(item.sourceId) && activeSources.size >= limitSourcesInParallel) return@filter false
+
+                        // Si supera ambos filtros, registramos la ranura temporalmente para este ciclo
+                        activeCountsBySource[item.sourceId] = currentSourceCount + 1
+                        activeSources.add(item.sourceId)
+                        true
+                    }.map { getDownloader(it.id) }
+                    .forEach {
+                        it.start()
+                    }
+
+                notifyAllClients()
+            }
+        }
     }
 
     private fun notifyAllClients(
@@ -233,7 +329,7 @@ object DownloadManager {
 
     fun getStatus(): DownloadStatus =
         DownloadStatus(
-            if (downloaders.values.any { it.isActive }) {
+            if (downloaderList.values.any { it.isActive }) {
                 Status.Started
             } else {
                 Status.Stopped
@@ -278,7 +374,7 @@ object DownloadManager {
 
     private fun getDownloadUpdates(addInitial: Boolean = false): DownloadUpdates =
         DownloadUpdates(
-            if (downloaders.values.any { it.isActive }) {
+            if (downloaderList.values.any { it.isActive }) {
                 Status.Started
             } else {
                 Status.Stopped
@@ -289,52 +385,6 @@ object DownloadManager {
 
     private val downloaderWatch = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    init {
-        serverConfig.subscribeTo(serverConfig.maxDownloadsInParallel, { maxDownloadsInParallel ->
-            val runningDownloaders = downloaders.values.filter { it.isActive }
-            var downloadersToStop = runningDownloaders.size - maxDownloadsInParallel
-
-            logger.debug { "Max downloads in parallel changed to $maxDownloadsInParallel (running downloaders ${runningDownloaders.size})" }
-
-            if (downloadersToStop > 0) {
-                runningDownloaders.takeWhile {
-                    it.stop()
-                    --downloadersToStop > 0
-                }
-            } else {
-                downloaderWatch.emit(Unit)
-            }
-        })
-
-        scope.launch {
-            downloaderWatch.sample(1.seconds).collect {
-                val runningDownloaders = downloaders.values.filter { it.isActive }
-                val availableDownloads = downloadQueue.filter { it.state != Error }
-
-                logger.info {
-                    "Running: ${runningDownloaders.size}, " +
-                        "Queued: ${availableDownloads.size}, " +
-                        "Failed: ${downloadQueue.size - availableDownloads.size}"
-                }
-
-                if (runningDownloaders.size < serverConfig.maxDownloadsInParallel.value) {
-                    availableDownloads
-                        .asSequence()
-                        .map { it.id }
-                        .distinct()
-                        .minus(
-                            runningDownloaders.map { it.id }.toSet(),
-                        ).take((serverConfig.maxDownloadsInParallel.value - runningDownloaders.size).coerceAtLeast(0))
-                        .map { getDownloader(it) }
-                        .forEach {
-                            it.start()
-                        }
-                    notifyAllClients()
-                }
-            }
-        }
-    }
-
     private fun refreshDownloaders() {
         scope.launch {
             downloaderWatch.emit(Unit)
@@ -342,7 +392,7 @@ object DownloadManager {
     }
 
     private fun getDownloader(id: String) =
-        downloaders.getOrPut(id) {
+        downloaderList.getOrPut(id) {
             Downloader(
                 scope = scope,
                 id = id,
@@ -543,7 +593,7 @@ object DownloadManager {
         logger.debug { "stop" }
 
         coroutineScope {
-            downloaders
+            downloaderList
                 .map { (_, downloader) ->
                     async {
                         downloader.stop()

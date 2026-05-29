@@ -11,7 +11,7 @@ class StorageScanner(
     private val fileSystem: FileSystem = FileSystem.SYSTEM,
 ) {
     private companion object {
-        const val CACHE_TTL_MS = 300000L //5min TTL
+        const val CACHE_TTL_MS = 300000L // 5min TTL
     }
 
     private val sizeCache = ConcurrentHashMap<String, Long>()
