@@ -203,10 +203,11 @@ object Manga {
                 unreadCount = chapters.count { !it[ChapterTable.isRead] }.toLong()
                 downloadCount = chapters.count { it[ChapterTable.isDownloaded] }.toLong()
                 donwloadSize = storageScanner.getFolderSizePretty(getMangaDownloadDir(mangaId))
-                lastChapterRead = chapters
-                    .filter { it[ChapterTable.isRead] }
-                    .maxByOrNull { it[ChapterTable.sourceOrder] }
-                    ?.let { ChapterTable.toDataClass(it) }
+                lastChapterRead =
+                    chapters
+                        .filter { it[ChapterTable.isRead] }
+                        .maxByOrNull { it[ChapterTable.sourceOrder] }
+                        ?.let { ChapterTable.toDataClass(it) }
             }
         }
     }
@@ -309,9 +310,12 @@ object Manga {
         }
     }
 
-    private suspend fun fetchThumbnailUrl(mangaId: Int, mangaEntry: ResultRow): String? {
+    private suspend fun fetchThumbnailUrl(
+        mangaId: Int,
+        mangaEntry: ResultRow,
+    ): String? {
         fetchManga(mangaId, mangaEntry)
-        return transaction { 
+        return transaction {
             MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
         }[MangaTable.thumbnail_url]
     }
@@ -364,7 +368,10 @@ object Manga {
         return fetchMangaThumbnail(mangaId, mangaEntry)
     }
 
-    suspend fun fetchMangaThumbnail(mangaId: Int, mangaEntry: ResultRow): Pair<InputStream, String> {
+    suspend fun fetchMangaThumbnail(
+        mangaId: Int,
+        mangaEntry: ResultRow,
+    ): Pair<InputStream, String> {
         val cacheSaveDir = applicationDirs.tempThumbnailCacheRoot
         val fileName = mangaId.toString()
 
@@ -447,9 +454,7 @@ object Manga {
                 .map { ChapterTable.toDataClass(it) }
         }
 
-    fun isInIncludedDownloadCategory(
-        mangaId: Int,
-    ): Boolean {
+    fun isInIncludedDownloadCategory(mangaId: Int): Boolean {
         // Verify the manga is configured to be downloaded based on it's categories.
         var mangaCategories = CategoryManga.getMangaCategories(mangaId).toSet()
         // if the manga has no categories, then it's implicitly in the default category

@@ -424,15 +424,18 @@ object DownloadManager {
 
         val inputPairs =
             transaction {
-                val chapters = (ChapterTable innerJoin MangaTable)
-                    .selectAll()
-                    .where { ChapterTable.id inList input.chapterIds }
-                    .orderBy(ChapterTable.manga)
-                    .orderBy(ChapterTable.sourceOrder)
-                    .toList()
+                val chapters =
+                    (ChapterTable innerJoin MangaTable)
+                        .selectAll()
+                        .where { ChapterTable.id inList input.chapterIds }
+                        .orderBy(ChapterTable.manga)
+                        .orderBy(ChapterTable.sourceOrder)
+                        .toList()
 
-                val mangasMap = chapters.distinctBy { it[MangaTable.id] }
-                    .associate { it[MangaTable.id].value to MangaTable.toDataClass(it) }
+                val mangasMap =
+                    chapters
+                        .distinctBy { it[MangaTable.id] }
+                        .associate { it[MangaTable.id].value to MangaTable.toDataClass(it) }
 
                 chapters.map {
                     mangasMap[it[ChapterTable.manga].value]!! to ChapterTable.toDataClass(it)

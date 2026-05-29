@@ -115,9 +115,11 @@ class Downloader(
 
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
-            val download = downloadQueue.find {
-                it.id == id && (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
-            } ?: break
+            val download =
+                downloadQueue
+                    .find {
+                        it.id == id && (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
+                    } ?: break
 
             logger.debug { "Starting download for chapter ${download.chapterId}" }
 
