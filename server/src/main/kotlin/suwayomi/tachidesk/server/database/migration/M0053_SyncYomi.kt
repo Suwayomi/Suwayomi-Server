@@ -23,6 +23,11 @@ class M0053_SyncYomi : SQLMigration() {
         ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
         ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT DEFAULT 0;
 
+        ALTER TABLE category ADD COLUMN version BIGINT DEFAULT 0;
+        ALTER TABLE category ADD COLUMN uid BIGINT DEFAULT 0;
+        ALTER TABLE category ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
+        ALTER TABLE category ADD COLUMN last_modified_at BIGINT DEFAULT 0;
+
 
         CREATE OR REPLACE FUNCTION update_manga_version()
         RETURNS trigger AS $$
@@ -109,6 +114,49 @@ class M0053_SyncYomi : SQLMigration() {
         AFTER INSERT ON categorymanga
         FOR EACH ROW
         EXECUTE FUNCTION insert_manga_category_update_version();
+        
+
+        CREATE OR REPLACE FUNCTION insert_category_uid()
+        RETURNS trigger AS $$
+        BEGIN
+            IF NEW.uid = 0 THEN
+                NEW.uid := random(1, 9223372036854775807);
+            END IF;
+
+            IF NEW.last_modified_at = 0 THEN
+                NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
+            END IF;
+
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        
+        CREATE TRIGGER insert_category_uid
+        BEFORE INSERT ON category
+        FOR EACH ROW
+        EXECUTE FUNCTION insert_category_uid();
+        
+        
+        CREATE OR REPLACE FUNCTION update_category_version()
+        RETURNS trigger AS $$
+        BEGIN
+            IF NOT NEW.is_syncing
+               AND ROW(NEW.name, NEW.sort_order)
+                   IS DISTINCT FROM
+                   ROW(OLD.name, OLD.sort_order)
+            THEN
+                NEW.version := NEW.version + 1;
+                NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
+            END IF;
+
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        
+        CREATE TRIGGER update_category_version
+        BEFORE UPDATE ON category
+        FOR EACH ROW
+        EXECUTE FUNCTION update_category_version();
         """.trimIndent()
 
     // language=h2
@@ -122,6 +170,12 @@ class M0053_SyncYomi : SQLMigration() {
         ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
         ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT DEFAULT 0;
         
+        ALTER TABLE category ADD COLUMN version BIGINT DEFAULT 0;
+        ALTER TABLE category ADD COLUMN uid BIGINT DEFAULT 0;
+        ALTER TABLE category ADD COLUMN is_syncing BOOLEAN DEFAULT FALSE;
+        ALTER TABLE category ADD COLUMN last_modified_at BIGINT DEFAULT 0;
+        
+
         CREATE TRIGGER update_manga_version 
         AFTER UPDATE ON manga
         FOR EACH ROW
@@ -156,5 +210,15 @@ class M0053_SyncYomi : SQLMigration() {
         AFTER INSERT ON categorymanga
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.InsertMangaCategoryUpdateVersionTrigger";
+        
+        CREATE TRIGGER insert_category_uid
+        BEFORE INSERT ON category
+        FOR EACH ROW
+        CALL "suwayomi.tachidesk.server.database.trigger.InsertCategoryUidTrigger";
+        
+        CREATE TRIGGER update_category_version
+        BEFORE UPDATE ON category
+        FOR EACH ROW
+        CALL "suwayomi.tachidesk.server.database.trigger.UpdateCategoryVersionTrigger";
         """.trimIndent()
 }

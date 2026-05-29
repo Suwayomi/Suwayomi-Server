@@ -30,5 +30,8 @@ data class CategoryDataClass(
     val size: Int,
     val includeInUpdate: IncludeOrExclude,
     val includeInDownload: IncludeOrExclude,
+    val version: Long,
+    val uid: Long,
+    val lastModifiedAt: Long,
     val meta: Map<String, String> = emptyMap(),
 )

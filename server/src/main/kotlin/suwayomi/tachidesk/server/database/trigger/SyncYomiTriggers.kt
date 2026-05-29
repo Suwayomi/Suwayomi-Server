@@ -3,6 +3,7 @@ package suwayomi.tachidesk.server.database.trigger
 import org.h2.tools.TriggerAdapter
 import java.sql.Connection
 import java.sql.ResultSet
+import kotlin.random.Random
 import kotlin.time.Clock
 
 @Suppress("unused")
@@ -108,5 +109,50 @@ class InsertMangaCategoryUpdateVersionTrigger : TriggerAdapter() {
                 it.setInt(2, mangaId)
                 it.executeUpdate()
             }
+    }
+}
+
+@Suppress("unused")
+class InsertCategoryUidTrigger : TriggerAdapter() {
+    override fun fire(
+        conn: Connection,
+        oldRow: ResultSet?,
+        newRow: ResultSet,
+    ) {
+        if (newRow.getLong("uid") == 0L) {
+            newRow.updateLong("uid", Random.nextLong(1, Long.MAX_VALUE))
+        }
+
+        if (newRow.getLong("last_modified_at") == 0L) {
+            newRow.updateLong(
+                "last_modified_at",
+                Clock.System.now().epochSeconds,
+            )
+        }
+    }
+}
+
+@Suppress("unused")
+class UpdateCategoryVersionTrigger : TriggerAdapter() {
+    override fun fire(
+        conn: Connection,
+        oldRow: ResultSet,
+        newRow: ResultSet,
+    ) {
+        val isSyncing = newRow.getBoolean("is_syncing")
+        val hasChanged =
+            oldRow.getString("name") != newRow.getString("name") ||
+                oldRow.getInt("sort_order") != newRow.getInt("sort_order")
+
+        if (!isSyncing && hasChanged) {
+            val currentVersion = newRow.getLong("version")
+
+            newRow.updateLong("version", currentVersion + 1)
+
+            newRow.updateLong(
+                "last_modified_at",
+                Clock.System.now().epochSeconds,
+            )
+        }
     }
 }

@@ -178,6 +178,9 @@ object SyncManager {
                 ChapterTable.update({ ChapterTable.isSyncing eq true }) {
                     it[isSyncing] = false
                 }
+                CategoryTable.update({ CategoryTable.isSyncing eq true }) {
+                    it[isSyncing] = false
+                }
             }
 
             val backupFlags =
@@ -226,7 +229,7 @@ object SyncManager {
             }
 
             // Stop the sync early if the remote backup is null or empty
-            if (remoteBackup.backupManga.isEmpty()) {
+            if (remoteBackup.backupManga.isEmpty() && remoteBackup.backupCategories.isEmpty() && remoteBackup.backupSources.isEmpty()) {
                 logger.error { "No data found on remote server." }
                 finishWithError(startInstant, "No data found on remote server.", periodic)
                 return
@@ -257,11 +260,31 @@ object SyncManager {
                     backupSources = remoteBackup.backupSources,
                 )
 
-            // It's local sync no need to restore data. (just update remote data)
-            if (filteredFavorites.isEmpty()) {
+            val hasMangaChanges = filteredFavorites.isNotEmpty()
+            val hasCategoryChanges = remoteBackup.backupCategories != backup.backupCategories
+            val hasSourceChanges = remoteBackup.backupSources != backup.backupSources
+
+            if (!hasMangaChanges && !hasCategoryChanges && !hasSourceChanges) {
                 // update the sync timestamp
                 finishWithSuccess(startInstant, periodic)
                 return
+            }
+
+            if (serverConfig.syncDataCategories.value) {
+                val mergedUids = newSyncData.backupCategories.map { it.uid }.toSet()
+                val mergedNames = newSyncData.backupCategories.map { it.name }.toSet()
+                val localCategories = Category.getCategoryList().filterNot { it.default } // Exclude system category
+                val categoriesToDelete =
+                    localCategories.filter {
+                        it.uid !in mergedUids && it.name !in mergedNames
+                    }
+                if (categoriesToDelete.isNotEmpty()) {
+                    transaction {
+                        categoriesToDelete.forEach {
+                            Category.removeCategory(it.id)
+                        }
+                    }
+                }
             }
 
             val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()

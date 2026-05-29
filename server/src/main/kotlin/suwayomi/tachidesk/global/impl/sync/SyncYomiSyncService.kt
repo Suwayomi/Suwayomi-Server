@@ -410,36 +410,66 @@ object SyncYomiSyncService {
     ): List<BackupCategory> {
         if (localCategoriesList == null) return remoteCategoriesList ?: emptyList()
         if (remoteCategoriesList == null) return localCategoriesList
-        val localCategoriesMap = localCategoriesList.associateBy { it.name }
-        val remoteCategoriesMap = remoteCategoriesList.associateBy { it.name }
+        val result = mutableListOf<BackupCategory>()
+        val processedLocals = mutableSetOf<BackupCategory>()
 
-        val mergedCategoriesMap = mutableMapOf<String, BackupCategory>()
+        val localMapByUid = localCategoriesList.filter { it.uid != 0L }.associateBy { it.uid }
+        val localMapByName = localCategoriesList.associateBy { it.name }
 
-        localCategoriesMap.forEach { (name, localCategory) ->
-            val remoteCategory = remoteCategoriesMap[name]
-            if (remoteCategory != null) {
-                // Compare and merge local and remote categories
-                val mergedCategory =
-                    if (localCategory.order > remoteCategory.order) {
-                        localCategory
-                    } else {
-                        remoteCategory
+        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp", 0)
+
+        remoteCategoriesList.forEach { remote ->
+            var localMatch: BackupCategory? = null
+
+            // 1. Try match by UID
+            if (remote.uid != 0L) {
+                localMatch = localMapByUid[remote.uid]
+            }
+
+            // 2. Try match by Name (fallback)
+            if (localMatch == null) {
+                localMatch = localMapByName[remote.name]
+            }
+
+            if (localMatch != null) {
+                processedLocals.add(localMatch)
+                // Conflict resolution
+                if (localMatch.version >= remote.version) {
+                    logger.debug { "Keeping local category: ${localMatch.name} (UID: ${localMatch.uid})" }
+                    result.add(localMatch)
+                } else {
+                    logger.debug { "Keeping remote category: ${remote.name} (UID: ${remote.uid})" }
+                    // Preserve Local UID if Remote was 0
+                    if (remote.uid == 0L) {
+                        remote.uid = localMatch.uid
                     }
-                mergedCategoriesMap[name] = mergedCategory
+                    result.add(remote)
+                }
             } else {
-                // If the category is only in the local list, add it to the merged list
-                mergedCategoriesMap[name] = localCategory
+                val remoteModifiedTimeMillis = remote.lastModifiedAt.seconds.inWholeMilliseconds
+                if (lastSyncTime == 0L || remoteModifiedTimeMillis > lastSyncTime) {
+                    logger.debug { "Adding new remote category: ${remote.name} (UID: ${remote.uid})" }
+                    result.add(remote)
+                } else {
+                    logger.debug { "Dropping deleted remote category: ${remote.name} (UID: ${remote.uid})" }
+                }
             }
         }
 
-        // Add any categories from the remote list that are not in the local list
-        remoteCategoriesMap.forEach { (name, remoteCategory) ->
-            if (!mergedCategoriesMap.containsKey(name)) {
-                mergedCategoriesMap[name] = remoteCategory
+        // Add remaining Local Categories
+        localCategoriesList.forEach { local ->
+            if (local !in processedLocals) {
+                val localModifiedTimeMillis = local.lastModifiedAt.seconds.inWholeMilliseconds
+                if (lastSyncTime == 0L || localModifiedTimeMillis > lastSyncTime) {
+                    logger.debug { "Keeping local only category: ${local.name} (UID: ${local.uid})" }
+                    result.add(local)
+                } else {
+                    logger.debug { "Dropping local category deleted on remote: ${local.name} (UID: ${local.uid})" }
+                }
             }
         }
 
-        return mergedCategoriesMap.values.toList()
+        return result.sortedBy { it.order }
     }
 
     private fun mergeSourcesLists(
@@ -474,8 +504,8 @@ object SyncYomiSyncService {
                     }
 
                     else -> {
-                        logger.debug { "Remote and local is not empty: $sourceId. Skipping." }
-                        null
+                        logger.debug { "Remote and local have the same source ID: $sourceId. Keeping local." }
+                        localSource
                     }
                 }
             }
