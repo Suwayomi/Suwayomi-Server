@@ -20,15 +20,8 @@ class UpdateMangaVersionTrigger : TriggerAdapter() {
                 oldRow.getBoolean("in_library") != newRow.getBoolean("in_library")
 
         if (!isSyncing && hasChanged) {
-            val id = newRow.getInt("id")
-
-            conn
-                .prepareStatement(
-                    "UPDATE MANGA SET version = version + 1 WHERE id = ?",
-                ).use {
-                    it.setInt(1, id)
-                    it.executeUpdate()
-                }
+            val currentVersion = newRow.getLong("version")
+            newRow.updateLong("version", currentVersion + 1)
         }
     }
 }
@@ -47,23 +40,15 @@ class UpdateChapterAndMangaVersionTrigger : TriggerAdapter() {
                 oldRow.getInt("last_page_read") != newRow.getInt("last_page_read")
 
         if (!isSyncing && hasChanged) {
-            val chapterId = newRow.getInt("id")
+            val currentVersion = newRow.getLong("version")
+            newRow.updateLong("version", currentVersion + 1)
+
             val mangaId = newRow.getInt("manga")
-
             conn
                 .prepareStatement(
-                    "UPDATE CHAPTER SET version = version + 1 WHERE id = ?",
-                ).use {
-                    it.setInt(1, chapterId)
-                    it.executeUpdate()
-                }
-
-            conn
-                .prepareStatement(
-                    "UPDATE MANGA SET version = version + 1 WHERE id = ? AND (SELECT is_syncing FROM MANGA WHERE id = ?) = FALSE",
+                    "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
                 ).use {
                     it.setInt(1, mangaId)
-                    it.setInt(2, mangaId)
                     it.executeUpdate()
                 }
         }
@@ -103,10 +88,9 @@ class InsertMangaCategoryUpdateVersionTrigger : TriggerAdapter() {
 
         conn
             .prepareStatement(
-                "UPDATE MANGA SET version = version + 1 WHERE id = ? AND (SELECT is_syncing FROM MANGA WHERE id = ?) = FALSE",
+                "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
             ).use {
                 it.setInt(1, mangaId)
-                it.setInt(2, mangaId)
                 it.executeUpdate()
             }
     }
@@ -146,7 +130,6 @@ class UpdateCategoryVersionTrigger : TriggerAdapter() {
 
         if (!isSyncing && hasChanged) {
             val currentVersion = newRow.getLong("version")
-
             newRow.updateLong("version", currentVersion + 1)
 
             newRow.updateLong(

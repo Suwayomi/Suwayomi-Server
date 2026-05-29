@@ -177,12 +177,12 @@ class M0053_SyncYomi : SQLMigration() {
         
 
         CREATE TRIGGER update_manga_version 
-        AFTER UPDATE ON manga
+        BEFORE UPDATE ON manga
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaVersionTrigger";
         
         CREATE TRIGGER update_chapter_and_manga_version
-        AFTER UPDATE ON chapter
+        BEFORE UPDATE ON chapter
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterAndMangaVersionTrigger";
         
