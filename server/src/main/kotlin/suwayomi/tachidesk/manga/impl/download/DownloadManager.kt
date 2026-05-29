@@ -247,9 +247,10 @@ object DownloadManager {
 
                 // 3. Procesamos secuencialmente los elementos en cola aplicando el doble filtro
                 availableDownloads
-                    .filter { it.id !in runningIds }
-                    .distinctBy { it.id }
                     .asSequence()
+                    .map { it.id }
+                    .distinct()
+                    .minus(runningIds)
                     .mapNotNull { id -> queueMap[id] }
                     .filter { item ->
                         val currentSourceCount = activeCountsBySource.getOrDefault(item.sourceId, 0)
@@ -258,10 +259,11 @@ object DownloadManager {
                         if (currentSourceCount >= limitDownloadsPerSource) return@filter false
 
                         // REGLA 2: Comprobar el límite global de fuentes activas en paralelo
-                        if (currentSourceCount == 0 && activeCountsBySource.size >= limitSourcesInParallel) return@filter false
+                        if (!activeSources.contains(item.sourceId) && activeSources.size >= limitSourcesInParallel) return@filter false
 
                         // Si supera ambos filtros, registramos la ranura temporalmente para este ciclo
                         activeCountsBySource[item.sourceId] = currentSourceCount + 1
+                        activeSources.add(item.sourceId)
                         true
                     }.map { getDownloader(it.id) }
                     .forEach {
