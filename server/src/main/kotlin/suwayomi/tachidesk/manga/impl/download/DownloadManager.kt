@@ -175,7 +175,7 @@ object DownloadManager {
             }
         }
 
-        saveQueueFlow.onEach { saveDownloadQueue() }.launchIn(scope)
+        saveQueueFlow.sample(2.seconds).onEach { saveDownloadQueue() }.launchIn(scope)
 
         serverConfig.subscribeTo(serverConfig.maxDownloadsInParallel, { maxDownloadsInParallel ->
             val runningDownloaders = downloaderList.values.filter { it.isActive }
@@ -218,7 +218,7 @@ object DownloadManager {
         scope.launch {
             downloaderWatch.sample(1.seconds).collect {
                 val runningDownloaders = downloaderList.values.filter { it.isActive }
-                val availableDownloads = downloadQueue.filter { it.state != Error }
+                val availableDownloads = downloadQueue.filter { it.state == Queued }
 
                 logger.info {
                     "Running globally: ${runningDownloaders.size}, " +
@@ -247,10 +247,9 @@ object DownloadManager {
 
                 // 3. Procesamos secuencialmente los elementos en cola aplicando el doble filtro
                 availableDownloads
+                    .filter { it.id !in runningIds }
+                    .distinctBy { it.id }
                     .asSequence()
-                    .map { it.id }
-                    .distinct()
-                    .minus(runningIds)
                     .mapNotNull { id -> queueMap[id] }
                     .filter { item ->
                         val currentSourceCount = activeCountsBySource.getOrDefault(item.sourceId, 0)
@@ -259,11 +258,10 @@ object DownloadManager {
                         if (currentSourceCount >= limitDownloadsPerSource) return@filter false
 
                         // REGLA 2: Comprobar el límite global de fuentes activas en paralelo
-                        if (!activeSources.contains(item.sourceId) && activeSources.size >= limitSourcesInParallel) return@filter false
+                        if (currentSourceCount == 0 && activeCountsBySource.size >= limitSourcesInParallel) return@filter false
 
                         // Si supera ambos filtros, registramos la ranura temporalmente para este ciclo
                         activeCountsBySource[item.sourceId] = currentSourceCount + 1
-                        activeSources.add(item.sourceId)
                         true
                     }.map { getDownloader(it.id) }
                     .forEach {
@@ -280,13 +278,9 @@ object DownloadManager {
         downloads: List<DownloadUpdate> = emptyList(),
         gqlEmit: Boolean = false,
     ) {
+        val incomingChapterIds = downloads.map { it.downloadQueueItem.chapterId }.toSet()
         val outdatedUpdates =
-            downloadUpdates.filter { update ->
-                downloads.any { download ->
-                    download.downloadQueueItem.chapterId ==
-                        update.downloadQueueItem.chapterId
-                }
-            }
+            downloadUpdates.filter { it.downloadQueueItem.chapterId in incomingChapterIds }
         downloadUpdates.removeAll(outdatedUpdates.toSet())
         downloadUpdates.addAll(downloads)
 
@@ -426,32 +420,20 @@ object DownloadManager {
     fun enqueue(input: EnqueueInput) {
         if (input.chapterIds.isNullOrEmpty()) return
 
-        val chapters =
+        val inputPairs =
             transaction {
-                (ChapterTable innerJoin MangaTable)
+                val chapters = (ChapterTable innerJoin MangaTable)
                     .selectAll()
                     .where { ChapterTable.id inList input.chapterIds }
                     .orderBy(ChapterTable.manga)
                     .orderBy(ChapterTable.sourceOrder)
                     .toList()
-            }
 
-        val mangas =
-            transaction {
-                chapters
-                    .distinctBy { chapter -> chapter[MangaTable.id] }
-                    .map { MangaTable.toDataClass(it) }
-                    .associateBy { it.id }
-            }
+                val mangasMap = chapters.distinctBy { it[MangaTable.id] }
+                    .associate { it[MangaTable.id].value to MangaTable.toDataClass(it) }
 
-        val inputPairs =
-            transaction {
                 chapters.map {
-                    Pair(
-                        // this should be safe because mangas is created above from chapters
-                        mangas[it[ChapterTable.manga].value]!!,
-                        ChapterTable.toDataClass(it),
-                    )
+                    mangasMap[it[ChapterTable.manga].value]!! to ChapterTable.toDataClass(it)
                 }
             }
 
