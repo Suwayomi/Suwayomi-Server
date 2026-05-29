@@ -94,6 +94,14 @@ object DownloadManager {
         scope.launch { saveQueueFlow.emit(Unit) }
     }
 
+    private fun onDownloadFinished(){
+        triggerSaveDownloadQueue();
+        val availableDownloads = downloadQueue.filter { it.state != Error }
+        if(availableDownloads.size <= 0) {
+            storageScanner.invalidateCache(applicationDirs.downloadsRoot);
+        }
+    }
+
     private fun handleDownloadUpdate(
         immediate: Boolean,
         download: DownloadUpdate? = null,
@@ -341,7 +349,7 @@ object DownloadManager {
                 downloadQueue = downloadQueue,
                 notifier = ::handleDownloadUpdate,
                 onComplete = ::refreshDownloaders,
-                onDownloadFinished = ::triggerSaveDownloadQueue,
+                onDownloadFinished = ::onDownloadFinished,
             )
         }
 
