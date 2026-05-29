@@ -58,7 +58,7 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
                 ),
             )
         }
-        return Cursor(input.value)
+        return Cursor(input.value!!)
     }
 
     private fun valueToLiteralImpl(input: Any): StringValue = StringValue.newStringValue(input.toString()).build()

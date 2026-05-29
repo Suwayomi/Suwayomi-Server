@@ -2,7 +2,6 @@ package suwayomi.tachidesk.server.settings
 
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.parser.ConfigDocument
-import kotlin.collections.find
 import kotlin.reflect.KClass
 
 /**
@@ -89,4 +88,6 @@ object SettingsRegistry {
     fun get(name: String): SettingMetadata? = settings[name]
 
     fun getAll(): Map<String, SettingMetadata> = settings.toMap()
+
+    fun clear() = settings.clear()
 }

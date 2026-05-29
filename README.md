@@ -3,13 +3,12 @@
 |-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
 | ![CI](https://github.com/Suwayomi/Suwayomi-Server/actions/workflows/build_push.yml/badge.svg) | [![stable release](https://img.shields.io/github/release/Suwayomi/Suwayomi-Server.svg?maxAge=3600&label=download)](https://github.com/Suwayomi/Suwayomi-Server/releases) | [![preview](https://img.shields.io/badge/dynamic/json?url=https://github.com/Suwayomi/Suwayomi-Server-preview/raw/main/index.json&label=download&query=$.latest&color=blue)](https://github.com/Suwayomi/Suwayomi-Server-preview/releases/latest) | [![Discord](https://img.shields.io/discord/801021177333940224.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/DDZdqZWaHA) |
 
-## Table of Content
+## Table of Contents
 - [What is Suwayomi?](#what-is-suwayomi)
   - [Features](#features)
 - [Suwayomi client projects](#suwayomi-client-projects)
-  - [Actively Developed Clients](#actively-developed-clients)
-  - [Inactive Clients (functional but outdated)](#inactive-clients-functional-but-outdated)
-  - [Abandoned Clients (functionality unknown)](#abandoned-clients-functionality-unknown)
+  - [Integrated clients](#integrated-clients)
+  - [Other clients](#other-clients-potentially-inactive-or-abondend)
 - [Downloading and Running the app](#downloading-and-running-the-app)
   - [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
     - [Windows](#windows)
@@ -38,7 +37,7 @@
 # What is Suwayomi?
 <img src="https://github.com/Suwayomi/Suwayomi-Server/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
 
-A free and open source manga reader server that runs extensions built for [Mihon (Tachiyomi)](https://mihon.app/). 
+A free and open source manga reader server that runs extensions built for [Mihon (Tachiyomi)](https://mihon.app/).
 
 Suwayomi is an independent Mihon (Tachiyomi) compatible software and is **not a Fork of** Mihon (Tachiyomi).
 
@@ -65,21 +64,24 @@ You can use Mihon (Tachiyomi) to access your Suwayomi-Server. For more info look
 - Automated WebUI updates (supports the default WebUI and VUI)
 - OPDS and OPDS-PSE support (endpoint: `/api/opds/v1.2`)
 
-# Suwayomi client projects
+# Suwayomi Client Projects
 **You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
 
 Here's a list of known clients/user interfaces for Suwayomi-Server (checkout the respective GitHub repository for their features):
-##### Actively Developed Clients
-- [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): The web front-end that Suwayomi-Server ships with by default.
-- [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): A Suwayomi-Server preview focused web frontend built with svelte
-- [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): A Web front-end for Suwayomi-Server built with Vaadin.
-##### Inactive Clients (functional but outdated)
-- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): The native desktop front-end for Suwayomi-Server.
-- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): A Flutter front-end for Desktop(Linux, windows, etc.), Web and Android with a User Interface inspired by Mihon (Tachiyomi).
-#####  Abandoned Clients (functionality unknown)
-- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): A C++/Qt front-end for mobile devices(Android/linux), feature support is basic.
-- [Tachidesk-GTK](https://github.com/mahor1221/Tachidesk-GTK): A native Rust/GTK desktop client.
-- [Equinox](https://github.com/Suwayomi/Equinox): A web user interface made with Vue.js.
+
+##### Integrated clients
+
+These clients are built-in options, and the server can keep them automatically up-to-date.
+
+- [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): Web app, PWA
+- [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): Web app, PWA
+
+##### Other clients (potentially inactive or abandoned)
+- [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): Desktop app (windows, linux, mac); UI in the browser, manages its own suwayomi server instance
+- [Moku](https://github.com/Youwes09/Moku): Desktop app (windows, linux, mac), can manage its own suwayomi server instance
+- [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): Desktop app (windows, linux, mac); can manage its own suwayomi server instance
+- [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): Web app; Desktop app (windows, linux, mac); Android app; requires access to a running server
+- [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): Android app; iOS app Desktop app (linux); requires access to a running server
 
 # Downloading and Running the app
 ## Using Operating System Specific Bundles
@@ -104,13 +106,13 @@ Download the latest `linux-x64`(x86_64) release from [the releases section](http
 
 #### WebView support (GNU/Linux)
 
-WebView support is implemented via [KCEF](https://github.com/DATL4G/KCEF).
+WebView support is implemented via [JCEF](https://github.com/JetBrains/jcef).
 This is optional, and is only necessary to support some extensions.
 
 To have a functional WebView, several dependencies are required; aside from X11 libraries necessary for rendering Chromium, some JNI bindings are necessary: gluegen and jogl (found in Ubuntu as `libgluegen2-jni` and `libjogl2-jni`).
 Note that on some systems (e.g. Ubuntu), the JNI libraries are not automatically found, see below.
 
-A KCEF server is launched on startup, which loads the X11 libraries.
+A CEF server is launched on startup, which loads the X11 libraries.
 If those are missing, you should see "Could not load 'jcef' library".
 If so, use `ldd ~/.local/share/Tachidesk/bin/kcef/libjcef.so | grep not` to figure out which libraries are not found on your system.
 
@@ -120,6 +122,10 @@ If there is a problem loading the JNI libraries, you should see a message indica
 This search path includes the current working directory, if you do not want to modify system directories.
 
 Refer to the [Dockerfile](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/Dockerfile) for more details.
+
+Note that it is required to have an X session active and available to Suwayomi (i.e. `DISPLAY` is set).
+It is not enough to have `WAYLAND_DISPLAY`, if your environment does not provide xwayland (or if you run Suwayomi as a service), you need to use a tool like [`Xvfb`](https://en.wikipedia.org/wiki/Xvfb).
+The Dockerfile linked above also does this.
 
 ## Other methods of getting Suwayomi
 ### Docker

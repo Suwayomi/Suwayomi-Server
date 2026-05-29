@@ -17,17 +17,21 @@ import io.github.reactivecircus.cache4k.Cache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
@@ -234,7 +238,7 @@ object Chapter {
                 val deletedChapterNumbers = TreeSet<Float>()
                 val deletedReadChapterNumbers = TreeSet<Float>()
                 val deletedBookmarkedChapterNumbers = TreeSet<Float>()
-                val deletedDownloadedChapterNumberInfoMap = mutableMapOf<Float, MutableMap<String?, Int>>()
+                val deletedDownloadedChapterNumberToChapter = mutableMapOf<Float, ChapterDataClass>()
                 val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
 
                 // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
@@ -245,13 +249,7 @@ object Chapter {
                         if (!chapterUrls.contains(dbChapter.url)) {
                             if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
                             if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
-                            if (dbChapter.downloaded) {
-                                val pageCountByScanlator =
-                                    deletedDownloadedChapterNumberInfoMap.getOrPut(
-                                        dbChapter.chapterNumber,
-                                    ) { mutableMapOf() }
-                                pageCountByScanlator[dbChapter.scanlator] = dbChapter.pageCount
-                            }
+                            if (dbChapter.downloaded) deletedDownloadedChapterNumberToChapter[dbChapter.chapterNumber] = dbChapter
                             deletedChapterNumbers.add(dbChapter.chapterNumber)
                             deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
                             dbChapter.id
@@ -260,16 +258,14 @@ object Chapter {
                         }
                     }
 
-                // we got some clean up due
-                if (chaptersIdsToDelete.isNotEmpty()) {
-                    DownloadManager.dequeue(chaptersIdsToDelete)
-                    transaction {
+                transaction {
+                    // we got some clean up due
+                    if (chaptersIdsToDelete.isNotEmpty()) {
+                        DownloadManager.dequeue(chaptersIdsToDelete)
                         PageTable.deleteWhere { chapter inList chaptersIdsToDelete }
                         ChapterTable.deleteWhere { id inList chaptersIdsToDelete }
                     }
-                }
 
-                transaction {
                     if (chaptersToInsert.isNotEmpty()) {
                         ChapterTable
                             .batchInsert(chaptersToInsert) { chapter ->
@@ -287,43 +283,69 @@ object Chapter {
                                 this[ChapterTable.isDownloaded] = false
                                 this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
                                 this[ChapterTable.version] = chapter.version
+                                this[ChapterTable.pageCount] = -1
 
                                 // is recognized chapter number
                                 if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
                                     this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
                                     this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
 
-                                    // only preserve download status for chapters of the same scanlator, otherwise,
-                                    // the downloaded files won't be found anyway
-                                    val downloadedChapterInfo = deletedDownloadedChapterNumberInfoMap[chapter.chapterNumber]
-                                    val pageCount = downloadedChapterInfo?.get(chapter.scanlator)
-                                    if (pageCount != null) {
-                                        this[ChapterTable.isDownloaded] = true
-                                        this[ChapterTable.pageCount] = pageCount
-                                    }
                                     // Try to use the fetch date of the original entry to not pollute 'Updates' tab
                                     deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                         this[ChapterTable.fetchedAt] = it
+                                    }
+
+                                    deletedDownloadedChapterNumberToChapter[chapter.chapterNumber]?.let {
+                                        val hasDownloadedPages = it.pageCount > 0
+                                        val isSameName = it.name == chapter.name
+                                        val isSameScanlator = it.scanlator == chapter.scanlator
+
+                                        // Only preserve download status for chapters with the same name and of the same scanlator; otherwise,
+                                        // the downloaded files won't be found anyway
+                                        val isDownloadPreservable = hasDownloadedPages && isSameName && isSameScanlator
+                                        if (isDownloadPreservable) {
+                                            this[ChapterTable.isDownloaded] = true
+                                            this[ChapterTable.pageCount] = it.pageCount
+                                        }
                                     }
                                 }
                             }.forEach { insertedChapters.add(ChapterTable.toDataClass(it)) }
                     }
 
                     if (chaptersToUpdate.isNotEmpty()) {
-                        BatchUpdateStatement(ChapterTable).apply {
-                            chaptersToUpdate.forEach {
-                                addBatch(EntityID(it.id, ChapterTable))
-                                this[ChapterTable.name] = it.name
-                                this[ChapterTable.date_upload] = it.uploadDate
-                                this[ChapterTable.chapter_number] = it.chapterNumber
-                                this[ChapterTable.scanlator] = it.scanlator
-                                this[ChapterTable.sourceOrder] = it.index
-                                this[ChapterTable.realUrl] = it.realUrl
-                                this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
-                                this[ChapterTable.version] = it.version
-                            }
-                            execute(this@transaction)
-                        }
+                        BatchUpdateStatement(ChapterTable)
+                            .apply {
+                                chaptersToUpdate.forEach {
+                                    addBatch(EntityID(it.id, ChapterTable))
+
+                                    val currentChapter = chaptersInDb.find { dbChapter -> dbChapter.id == it.id }!!
+
+                                    this[ChapterTable.name] = it.name
+                                    this[ChapterTable.date_upload] = it.uploadDate
+                                    this[ChapterTable.chapter_number] = it.chapterNumber
+                                    this[ChapterTable.scanlator] = it.scanlator
+                                    this[ChapterTable.sourceOrder] = it.index
+                                    this[ChapterTable.realUrl] = it.realUrl
+                                    this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
+                                    this[ChapterTable.version] = it.version
+                                    this[ChapterTable.isDownloaded] = currentChapter.downloaded
+                                    this[ChapterTable.pageCount] = currentChapter.pageCount
+
+                                    if (!currentChapter.downloaded) {
+                                        return@forEach
+                                    }
+
+                                    val isSameScanlator = currentChapter.scanlator == it.scanlator
+                                    val isSameName = currentChapter.name == it.name
+
+                                    val isDownloadPreservable = isSameName && isSameScanlator
+                                    if (!isDownloadPreservable) {
+                                        this[ChapterTable.isDownloaded] = false
+                                        this[ChapterTable.pageCount] = -1
+                                    }
+                                }
+                            }.toExecutable()
+                            .execute(this@transaction)
                     }
 
                     MangaTable.update({ MangaTable.id eq mangaId }) {
@@ -523,11 +545,11 @@ object Chapter {
                     // mangaId is not null, scope query under manga
                     when {
                         input.chapterIds != null -> {
-                            Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds) }
+                            (ChapterTable.manga eq mangaId) and (ChapterTable.id inList input.chapterIds)
                         }
 
                         input.chapterIndexes != null -> {
-                            Op.build { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes) }
+                            (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder inList input.chapterIndexes)
                         }
 
                         else -> {
@@ -540,7 +562,7 @@ object Chapter {
                     // mangaId is null, only chapterIndexes is valid for this case
                     when {
                         input.chapterIds != null -> {
-                            Op.build { (ChapterTable.id inList input.chapterIds) }
+                            (ChapterTable.id inList input.chapterIds)
                         }
 
                         else -> {
@@ -656,13 +678,14 @@ object Chapter {
                 }
 
             if (existingMetaByMetaId.isNotEmpty()) {
-                BatchUpdateStatement(ChapterMetaTable).apply {
-                    existingMetaByMetaId.forEach { (metaId, entry) ->
-                        addBatch(EntityID(metaId, ChapterMetaTable))
-                        this[ChapterMetaTable.value] = entry.value
-                    }
-                    execute(this@transaction)
-                }
+                BatchUpdateStatement(ChapterMetaTable)
+                    .apply {
+                        existingMetaByMetaId.forEach { (metaId, entry) ->
+                            addBatch(EntityID(metaId, ChapterMetaTable))
+                            this[ChapterMetaTable.value] = entry.value
+                        }
+                    }.toExecutable()
+                    .execute(this@transaction)
             }
 
             if (newMetaByChapterId.isNotEmpty()) {

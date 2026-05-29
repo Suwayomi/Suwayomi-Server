@@ -71,7 +71,7 @@ fun createAppModule(app: Application): Module {
             }
         }
 
-        single {
+        single<ProtoBuf> {
             ProtoBuf
         }
     }

@@ -67,7 +67,7 @@ jobs:
           export LD_PRELOAD="$(pwd)/scripts/resources/catch_abort.so"
           JAR=$(ls ./server/build/*.jar| head -1)
           set +e
-          timeout 30s java -DcrashOnFailedMigration=true \
+          timeout 30s java \
               -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
               -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
               -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL \
@@ -83,7 +83,7 @@ jobs:
             exit "$ecode"
           fi
 
-          timeout 30s java -DcrashOnFailedMigration=true \
+          timeout 30s java \
               -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
               -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
               -jar "$JAR"
@@ -95,3 +95,30 @@ jobs:
             exit "$ecode"
           fi
           exit 0
+
+      - name: "Run tests"
+        working-directory: master
+        run: ./gradlew test --stacktrace
+
+  check_docs:
+    name: Validate that all options are documented
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v6
+
+      - name: Validate all options are documented
+        run: |
+          f="`cat ./server/server-config/src/main/kotlin/suwayomi/tachidesk/server/ServerConfig.kt |
+            awk -F' ' 'BEGIN{prev=""}{if ($3 ~ "Mutable" && !(prev ~ "@Deprecated")) print "server." substr($2, 1, length($2)-1); prev=$0}' |
+            while read -r setting; do
+              if ! grep "$setting" ./docs/Configuring-Suwayomi‐Server.md >/dev/null; then
+                echo "Setting $setting not documented" >&2
+                echo ":"
+              fi
+            done`"
+          if [ -n "$f" ]; then
+            exit 1
+          fi
+

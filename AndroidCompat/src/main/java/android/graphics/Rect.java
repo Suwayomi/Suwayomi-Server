@@ -37,11 +37,25 @@ public final class Rect {
             this.right = 0;
             this.bottom = 0;
         } else {
-            this.left = left;
-            this.top = top;
-            this.right = right;
-            this.bottom = bottom;
+            this.left = r.left;
+            this.top = r.top;
+            this.right = r.right;
+            this.bottom = r.bottom;
         }
+    }
+
+    public void set(int left, int top, int right, int bottom) {
+        this.left = left;
+        this.top = top;
+        this.right = right;
+        this.bottom = bottom;
+    }
+
+    public void set(Rect r) {
+        this.left = r.left;
+        this.top = r.top;
+        this.right = r.right;
+        this.bottom = r.bottom;
     }
 
     public final int getWidth() {

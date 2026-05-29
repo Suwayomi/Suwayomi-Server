@@ -53,4 +53,11 @@
     <string name="manga_status_licensed">正式版</string>
     <string name="manga_status_publishing_finished">連載終了</string>
     <string name="manga_status_cancelled">打ち切り</string>
+    <string name="opds_feeds_history_title">履歴</string>
+    <string name="opds_feeds_history_entry_content">最近読んだ章</string>
+    <string name="opds_feeds_all_series_in_library_title">すべてのマンガ</string>
+    <string name="opds_feeds_all_series_in_library_entry_content">ライブラリに保存されたマンガを閲覧</string>
+    <string name="opds_feeds_library_sources_title">ソース</string>
+    <string name="opds_feeds_library_sources_entry_content">ソース別にライブラリ内のマンガを閲覧</string>
+    <string name="opds_feeds_search_results_title">検索結果</string>
 </resources>

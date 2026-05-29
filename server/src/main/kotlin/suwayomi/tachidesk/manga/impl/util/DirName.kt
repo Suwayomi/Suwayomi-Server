@@ -7,10 +7,10 @@ package suwayomi.tachidesk.manga.impl.util
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -24,14 +24,22 @@ private val applicationDirs: ApplicationDirs by injectLazy()
 
 private val logger = KotlinLogging.logger { }
 
+private fun getMangaDir(
+    title: String,
+    sourceName: String,
+): String {
+    val sourceDir = SafePath.buildValidFilename(sourceName)
+    val mangaDir = SafePath.buildValidFilename(title)
+
+    return "$sourceDir/$mangaDir"
+}
+
 private fun getMangaDir(mangaId: Int): String =
     transaction {
         val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
         val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-        val sourceDir = SafePath.buildValidFilename(source.toString())
-        val mangaDir = SafePath.buildValidFilename(mangaEntry[MangaTable.title])
-        "$sourceDir/$mangaDir"
+        getMangaDir(mangaEntry[MangaTable.title], source.toString())
     }
 
 private fun getChapterDir(
@@ -62,7 +70,17 @@ private fun getChapterDir(
 
 fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
 
+fun getMangaDownloadDir(
+    title: String,
+    sourceName: String,
+): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(title, sourceName)
+
 fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
+
+fun getMangaCacheDir(
+    title: String,
+    sourceName: String,
+): String = applicationDirs.tempMangaCacheRoot + "/" + getMangaDir(title, sourceName)
 
 fun getChapterDownloadPath(
     mangaId: Int,
@@ -79,38 +97,21 @@ fun getChapterCachePath(
     chapterId: Int,
 ): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 
-/** return value says if rename/move was successful */
-fun updateMangaDownloadDir(
-    mangaId: Int,
-    newTitle: String,
+private fun updateDownloadDir(
+    currentDir: String,
+    newDir: String,
 ): Boolean {
-    // Get current manga directory (uses its own transaction)
-    val currentMangaDir = getMangaDir(mangaId)
-
-    // Build new directory path
-    val newMangaDir =
-        transaction {
-            val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
-            val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
-            val sourceDir = SafePath.buildValidFilename(source.toString())
-            val newMangaDirName = SafePath.buildValidFilename(newTitle)
-            "$sourceDir/$newMangaDirName"
-        }
-
-    val oldDir = "${applicationDirs.downloadsRoot}/$currentMangaDir"
-    val newDir = "${applicationDirs.downloadsRoot}/$newMangaDir"
-
-    val oldDirFile = File(oldDir)
+    val currentDirFile = File(currentDir)
     val newDirFile = File(newDir)
 
-    if (!oldDirFile.exists()) {
+    if (!currentDirFile.exists()) {
         return true
     }
 
     return try {
-        Files.move(oldDirFile.toPath(), newDirFile.toPath())
+        Files.move(currentDirFile.toPath(), newDirFile.toPath())
 
-        if (oldDirFile.exists()) {
+        if (currentDirFile.exists()) {
             return false
         }
 
@@ -118,9 +119,31 @@ fun updateMangaDownloadDir(
             return false
         }
 
-        true
+        return true
     } catch (e: Exception) {
-        logger.error(e) { "updateMangaDownloadDir: failed to rename manga download folder from \"$oldDir\" to \"$newDir\"" }
+        logger.error(e) { "updateDownloadDir: failed to rename download folder from \"$currentDir\" to \"$newDir\"" }
         false
     }
+}
+
+/** return value says if rename/move was successful */
+fun updateMangaDownloadDir(
+    title: String,
+    sourceName: String,
+    newTitle: String,
+): Boolean {
+    val currentDownloadDir = getMangaDownloadDir(title, sourceName)
+    val newDownloadDir = getMangaDownloadDir(newTitle, sourceName)
+
+    val renamed = updateDownloadDir(currentDownloadDir, newDownloadDir)
+
+    val tryToKeepCachedFilesUsable = renamed
+    if (tryToKeepCachedFilesUsable) {
+        val currentCacheDir = getMangaCacheDir(title, sourceName)
+        val newCacheDir = getMangaCacheDir(newTitle, sourceName)
+
+        updateDownloadDir(currentCacheDir, newCacheDir)
+    }
+
+    return renamed
 }

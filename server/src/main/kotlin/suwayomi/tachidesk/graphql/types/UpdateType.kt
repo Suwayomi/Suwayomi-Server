@@ -129,6 +129,7 @@ enum class CategoryJobStatus {
 }
 
 class MangaUpdateType(
+    @get:GraphQLIgnore
     val manga: MangaType,
     val status: MangaJobStatus,
 ) {
@@ -142,6 +143,16 @@ class MangaUpdateType(
             JobStatus.SKIPPED -> MangaJobStatus.SKIPPED
         },
     )
+
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
+        // Clearing the data loader cache here everytime should be fine, because a manga gets sent only once for each status
+        val clearCache = status === MangaJobStatus.COMPLETE || status === MangaJobStatus.FAILED
+        if (clearCache) {
+            MangaType.clearCacheFor(manga.id, dataFetchingEnvironment)
+        }
+
+        return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", manga.id)
+    }
 }
 
 class CategoryUpdateType(

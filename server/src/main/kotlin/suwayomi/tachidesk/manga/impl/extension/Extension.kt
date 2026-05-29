@@ -14,16 +14,18 @@ import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.dongliu.apk.parser.ApkFile
+import net.dongliu.apk.parser.bean.Icon
 import okhttp3.CacheControl
 import okio.buffer
 import okio.sink
 import okio.source
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.extensionTableAsDataClass
 import suwayomi.tachidesk.manga.impl.extension.github.ExtensionGithubApi
 import suwayomi.tachidesk.manga.impl.util.PackageTools
@@ -37,7 +39,9 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -51,7 +55,6 @@ import java.util.zip.ZipOutputStream
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.outputStream
-import kotlin.io.path.relativeTo
 
 object Extension {
     private val logger = KotlinLogging.logger {}
@@ -115,7 +118,6 @@ object Extension {
 
         val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
         val jarFilePath = "$dirPathWithoutType.jar"
-        val dexFilePath = "$dirPathWithoutType.dex"
 
         val packageInfo = getPackageInfo(apkFilePath)
         val pkgName = packageInfo.packageName
@@ -155,76 +157,112 @@ object Extension {
 
             dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
             extractAssetsFromApk(apkFilePath, jarFilePath)
+            extractAndCacheApkIcon(apkFilePath, apkName)
 
             // clean up
             File(apkFilePath).delete()
-            File(dexFilePath).delete()
 
-            // collect sources from the extension
-            val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
-            val sources: List<CatalogueSource> =
-                when (extensionMainClassInstance) {
-                    is Source -> listOf(extensionMainClassInstance)
-                    is SourceFactory -> extensionMainClassInstance.createSources()
-                    else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
-                }.map { it as CatalogueSource }
+            try {
+                // collect sources from the extension
+                val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
+                val sources: List<CatalogueSource> =
+                    when (extensionMainClassInstance) {
+                        is Source -> listOf(extensionMainClassInstance)
+                        is SourceFactory -> extensionMainClassInstance.createSources()
+                        else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
+                    }.map { it as CatalogueSource }
 
-            val langs = sources.map { it.lang }.toSet()
-            val extensionLang =
-                when (langs.size) {
-                    0 -> ""
-                    1 -> langs.first()
-                    else -> "all"
-                }
+                val langs = sources.map { it.lang }.toSet()
+                val extensionLang =
+                    when (langs.size) {
+                        0 -> ""
+                        1 -> langs.first()
+                        else -> "all"
+                    }
 
-            val extensionName =
-                packageInfo.applicationInfo.nonLocalizedLabel
-                    .toString()
-                    .substringAfter("Tachiyomi: ")
+                val extensionName =
+                    packageInfo.applicationInfo.nonLocalizedLabel
+                        .toString()
+                        .substringAfter("Tachiyomi: ")
 
-            // update extension info
-            transaction {
-                if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
-                    ExtensionTable.insert {
+                // update extension info
+                transaction {
+                    if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
+                        ExtensionTable.insert {
+                            it[this.apkName] = apkName
+                            it[name] = extensionName
+                            it[this.pkgName] = packageInfo.packageName
+                            it[versionName] = packageInfo.versionName
+                            it[versionCode] = packageInfo.versionCode
+                            it[lang] = extensionLang
+                            it[this.isNsfw] = isNsfw
+                        }
+                    }
+
+                    ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
                         it[this.apkName] = apkName
-                        it[name] = extensionName
-                        it[this.pkgName] = packageInfo.packageName
+                        it[this.isInstalled] = true
+                        it[this.classFQName] = className
                         it[versionName] = packageInfo.versionName
                         it[versionCode] = packageInfo.versionCode
-                        it[lang] = extensionLang
-                        it[this.isNsfw] = isNsfw
+                    }
+
+                    val extensionId =
+                        ExtensionTable
+                            .selectAll()
+                            .where { ExtensionTable.pkgName eq pkgName }
+                            .first()[ExtensionTable.id]
+                            .value
+
+                    sources.forEach { httpSource ->
+                        SourceTable.insert {
+                            it[id] = httpSource.id
+                            it[name] = httpSource.name
+                            it[lang] = httpSource.lang
+                            it[extension] = extensionId
+                            it[SourceTable.isNsfw] = isNsfw
+                        }
+                        logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
                     }
                 }
+                return 201 // we installed successfully
+            } catch (e: Throwable) {
+                // free up the file descriptor if exists
+                PackageTools.jarLoaderMap.remove(jarFilePath)?.close()
+                File(jarFilePath).delete()
 
-                ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
-                    it[this.apkName] = apkName
-                    it[this.isInstalled] = true
-                    it[this.classFQName] = className
-                    it[versionName] = packageInfo.versionName
-                    it[versionCode] = packageInfo.versionCode
-                }
-
-                val extensionId =
-                    ExtensionTable
-                        .selectAll()
-                        .where { ExtensionTable.pkgName eq pkgName }
-                        .first()[ExtensionTable.id]
-                        .value
-
-                sources.forEach { httpSource ->
-                    SourceTable.insert {
-                        it[id] = httpSource.id
-                        it[name] = httpSource.name
-                        it[lang] = httpSource.lang
-                        it[extension] = extensionId
-                        it[SourceTable.isNsfw] = isNsfw
-                    }
-                    logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
-                }
+                uninstallExtension(pkgName)
+                throw e
             }
-            return 201 // we installed successfully
         } else {
             return 302 // extension was already installed
+        }
+    }
+
+    private fun extractAndCacheApkIcon(
+        apkFilePath: String,
+        apkName: String,
+    ) {
+        val iconCacheDir = "${applicationDirs.extensionsRoot}/icon"
+        try {
+            val iconData =
+                ApkFile(File(apkFilePath)).use { apk ->
+                    apk.allIcons
+                        .filterIsInstance<Icon>()
+                        .mapNotNull { it.data?.let { data -> data to it.density } }
+                        .maxByOrNull { (_, density) -> density }
+                        ?.first
+                }
+            if (iconData == null) {
+                logger.warn { "No icon found in APK $apkName" }
+                return
+            }
+
+            File(iconCacheDir).mkdirs()
+            clearCachedImage(iconCacheDir, apkName)
+            saveImage("$iconCacheDir/$apkName", iconData.inputStream(), null)
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to extract icon from APK $apkName" }
         }
     }
 
@@ -320,6 +358,7 @@ object Extension {
                 } else {
                     ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
                         it[isInstalled] = false
+                        it[hasUpdate] = false
                     }
                 }
 

@@ -1,13 +1,14 @@
 name: GitHub Wiki upload
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
     paths: [docs/**, .github/workflows/wiki.yml]
 
 concurrency:
-  group: wiki
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:

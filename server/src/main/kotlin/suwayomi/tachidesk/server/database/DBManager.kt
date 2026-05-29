@@ -12,13 +12,13 @@ import com.zaxxer.hikari.HikariDataSource
 import de.neonew.exposed.migrations.loadMigrationsFrom
 import de.neonew.exposed.migrations.runMigrations
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.DatabaseConfig
-import org.jetbrains.exposed.sql.ExperimentalKeywordApi
-import org.jetbrains.exposed.sql.Schema
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.DatabaseConfig
+import org.jetbrains.exposed.v1.core.ExperimentalKeywordApi
+import org.jetbrains.exposed.v1.core.Schema
+import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
@@ -27,7 +27,6 @@ import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.sql.SQLException
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -65,11 +64,11 @@ object DBManager {
 
                 // Optimized for Raspberry Pi / Low memory environments
                 maximumPoolSize = 6 // Moderate pool for better concurrency
+                minimumIdle = 2 // Keep 2 idle connections for responsiveness
                 connectionTimeout = 45.seconds.inWholeMilliseconds // more tolerance for slow devices
                 idleTimeout = 5.minutes.inWholeMilliseconds // close idle connections faster
                 maxLifetime = 15.minutes.inWholeMilliseconds // recycle connections more often
                 leakDetectionThreshold = 1.minutes.inWholeMilliseconds
-                isAutoCommit = false
 
                 // Pool name for monitoring
                 poolName = "Suwayomi-DB-Pool"
@@ -79,7 +78,7 @@ object DBManager {
 
     fun setupDatabase(): Database {
         // Clean up existing connections
-        if (TransactionManager.isInitialized()) {
+        if (TransactionManager.currentOrNull() != null) {
             val currentDatabase = TransactionManager.currentOrNull()?.db
             if (currentDatabase != null) {
                 TransactionManager.closeAndUnregister(currentDatabase)
@@ -94,6 +93,11 @@ object DBManager {
                 useNestedTransactions = true
                 @OptIn(ExperimentalKeywordApi::class)
                 preserveKeywordCasing = false
+                defaultSchema =
+                    when (serverConfig.databaseType.value) {
+                        DatabaseType.POSTGRESQL -> Schema("suwayomi")
+                        DatabaseType.H2 -> null
+                    }
             }
 
         return if (serverConfig.useHikariConnectionPool.value) {
@@ -140,14 +144,15 @@ object DBManager {
 
 private val logger = KotlinLogging.logger {}
 
-fun databaseUp() {
+fun databaseUp(givenDb: Database? = null) {
     val db =
-        try {
-            DBManager.setupDatabase()
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to setup Database" }
-            return
-        }
+        givenDb
+            ?: try {
+                DBManager.setupDatabase()
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to setup Database" }
+                return
+            }
 
     logger.info {
         "Using ${db.vendor} database version ${db.version}"
@@ -175,15 +180,12 @@ fun databaseUp() {
                         serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
                     )
                 SchemaUtils.createSchema(schema)
-                SchemaUtils.setSchema(schema)
             }
         }
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
         runMigrations(migrations)
-    } catch (e: SQLException) {
+    } catch (e: Exception) {
         logger.error(e) { "Error up-to-database migration" }
-        if (System.getProperty("crashOnFailedMigration").toBoolean()) {
-            shutdownApp(ExitCode.DbMigrationFailure)
-        }
+        shutdownApp(ExitCode.DbMigrationFailure)
     }
 }

@@ -1,9 +1,9 @@
+@file:Suppress("RedundantNullableReturnType", "unused")
+
 package suwayomi.tachidesk.graphql.mutations
 
-import graphql.execution.DataFetcherResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
-import suwayomi.tachidesk.graphql.asDataFetcherResult
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
@@ -26,55 +26,51 @@ class InfoMutation {
     )
 
     @RequireAuth
-    fun updateWebUI(input: WebUIUpdateInput): CompletableFuture<DataFetcherResult<WebUIUpdatePayload?>> {
+    fun updateWebUI(input: WebUIUpdateInput): CompletableFuture<WebUIUpdatePayload?> {
         return future {
-            asDataFetcherResult {
-                withTimeout(30.seconds) {
-                    if (WebInterfaceManager.status.value.state === DOWNLOADING) {
-                        return@withTimeout WebUIUpdatePayload(input.clientMutationId, WebInterfaceManager.status.value)
-                    }
+            withTimeout(30.seconds) {
+                if (WebInterfaceManager.status.value.state === DOWNLOADING) {
+                    return@withTimeout WebUIUpdatePayload(input.clientMutationId, WebInterfaceManager.status.value)
+                }
 
-                    val flavor = WebUIFlavor.current
+                val flavor = WebUIFlavor.current
 
-                    val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(flavor)
+                val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(flavor)
 
-                    if (!updateAvailable) {
-                        val didUpdateCheckFail = version.isEmpty()
+                if (!updateAvailable) {
+                    val didUpdateCheckFail = version.isEmpty()
 
-                        return@withTimeout WebUIUpdatePayload(
-                            input.clientMutationId,
-                            WebInterfaceManager.getStatus(version, if (didUpdateCheckFail) ERROR else IDLE),
-                        )
-                    }
-                    try {
-                        WebInterfaceManager.startDownloadInScope(flavor, version)
-                    } catch (e: Exception) {
-                        // ignore since we use the status anyway
-                    }
-
-                    WebUIUpdatePayload(
+                    return@withTimeout WebUIUpdatePayload(
                         input.clientMutationId,
-                        updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING },
+                        WebInterfaceManager.getStatus(version, if (didUpdateCheckFail) ERROR else IDLE),
                     )
                 }
+                try {
+                    WebInterfaceManager.startDownloadInScope(flavor, version)
+                } catch (e: Exception) {
+                    // ignore since we use the status anyway
+                }
+
+                WebUIUpdatePayload(
+                    input.clientMutationId,
+                    updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING },
+                )
             }
         }
     }
 
     @RequireAuth
-    fun resetWebUIUpdateStatus(): CompletableFuture<DataFetcherResult<WebUIUpdateStatus?>> =
+    fun resetWebUIUpdateStatus(): CompletableFuture<WebUIUpdateStatus?> =
         future {
-            asDataFetcherResult {
-                withTimeout(30.seconds) {
-                    val isUpdateFinished = WebInterfaceManager.status.value.state != DOWNLOADING
-                    if (!isUpdateFinished) {
-                        throw Exception("Status reset is not allowed during status \"$DOWNLOADING\"")
-                    }
-
-                    WebInterfaceManager.resetStatus()
-
-                    WebInterfaceManager.status.first { it.state == IDLE }
+            withTimeout(30.seconds) {
+                val isUpdateFinished = WebInterfaceManager.status.value.state != DOWNLOADING
+                if (!isUpdateFinished) {
+                    throw Exception("Status reset is not allowed during status \"$DOWNLOADING\"")
                 }
+
+                WebInterfaceManager.resetStatus()
+
+                WebInterfaceManager.status.first { it.state == IDLE }
             }
         }
 }

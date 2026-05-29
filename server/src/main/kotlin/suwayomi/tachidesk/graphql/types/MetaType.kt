@@ -2,7 +2,7 @@ package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
@@ -19,6 +19,11 @@ interface MetaType : Node {
     val key: String
     val value: String
 }
+
+data class MetaInput(
+    val key: String,
+    val value: String,
+)
 
 class ChapterMetaType(
     override val key: String,

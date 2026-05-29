@@ -13,6 +13,7 @@ import java.awt.Shape;
 import java.awt.font.TextAttribute;
 import java.awt.font.GlyphVector;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.text.AttributedString;
 import java.util.ArrayList;
@@ -182,11 +183,21 @@ public final class Canvas {
         canvas.fillRect(0, 0, canvasImage.getWidth(), canvasImage.getHeight());
     }
 
+    public void drawPoint(float x, float y, Paint paint) {
+        applyPaint(paint);
+        Shape shape = paintToShape(paint, x, y);
+        if (paint.getStyle() == Paint.Style.FILL) {
+            canvas.fill(shape);
+        } else {
+            canvas.draw(shape);
+        }
+    }
+
     private void applyPaint(Paint paint) {
         canvas.setFont(paint.getTypeface().getFont());
         java.awt.Color color = Color.valueOf(paint.getColorLong()).toJavaColor();
         canvas.setColor(color);
-        canvas.setStroke(new BasicStroke(paint.getStrokeWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        canvas.setStroke(new BasicStroke(paint.getStrokeWidth(), paintToStrokeCap(paint), BasicStroke.JOIN_ROUND));
         if (paint.isAntiAlias()) {
             canvas.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         } else {
@@ -198,5 +209,35 @@ public final class Canvas {
             canvas.setRenderingHint(RenderingHints.KEY_DITHERING, RenderingHints.VALUE_DITHER_DISABLE);
         }
         // TODO: use more from paint?
+    }
+
+    private static int paintToStrokeCap(Paint paint) {
+        switch (paint.getStrokeCap()) {
+            case BUTT:
+                return BasicStroke.CAP_BUTT;
+            case SQUARE:
+                return BasicStroke.CAP_SQUARE;
+            case ROUND:
+                return BasicStroke.CAP_ROUND;
+            default:
+                throw new UnsupportedOperationException("Stroke cap " + paint.getStrokeCap() + " not supported");
+        }
+    }
+
+    private static Shape paintToShape(Paint paint, float x, float y) {
+        int width = (int)(paint.getStrokeWidth() * 2);
+        if (width <= 0) width = 1;
+        int upLeftX = (int) (x - (float) width / 2);
+        int upLeftY = (int) (y - (float) width / 2);
+        switch (paint.getStrokeCap()) {
+            case BUTT:
+                return new Rectangle((int)x, (int)y, 1, 1);
+            case SQUARE:
+                return new Rectangle(upLeftX, upLeftY, width, width);
+            case ROUND:
+                return new Ellipse2D.Float(upLeftX, upLeftY, width, width);
+            default:
+                throw new UnsupportedOperationException("Stroke cap " + paint.getStrokeCap() + " not supported");
+        }
     }
 }

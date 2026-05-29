@@ -13,11 +13,12 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.StateFlow
 import libcore.net.MimeUtils
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
@@ -169,7 +170,9 @@ object Page {
                 )
             } catch (e: Exception) {
                 logger.error(e) { "Error while post-processing image" }
-                null
+                // re-open cached image in case of an error, since conversion likely (partially) consumed the input stream
+                // so it's likely not possible to serve it
+                getPageImage(mangaId = mangaId, chapterIndex = chapterIndex, index = index)
             }
         return converted?.also { inputStream.close() } ?: (inputStream to mime)
     }
@@ -269,11 +272,12 @@ object Page {
 
                     return processedStream to mime
                 }
+                throw Exception("HTTP-service did not return a usable stream")
             } catch (e: Exception) {
                 // HTTP post-processing failed, continue with original image
                 logger.warn(e) { "Error while post-processing image" }
+                throw e
             }
-            return null
         } else {
             if (mime == conversion.target) {
                 return null
@@ -296,7 +300,7 @@ object Page {
             )
         if (conversionWriter == null) {
             logger.warn { "Conversion aborted: No reader for target format ${target.target}" }
-            return inputStream to sourceMimeType
+            return null
         }
 
         val (writer, writerParams) = conversionWriter
@@ -310,13 +314,13 @@ object Page {
                 writer.write(null, IIOImage(inImage, null, null), writerParams)
             }
         } catch (e: Exception) {
-            logger.warn(e) { "Conversion aborted" }
-            return null
+            logger.warn(e) { "Conversion aborted ($sourceMimeType -> ${target.target})" }
+            throw e
         } finally {
             writer.dispose()
         }
         val inStream = ByteArrayInputStream(outStream.toByteArray())
-        return Pair(inStream.buffered(), target.target)
+        return inStream.buffered() to target.target
     }
 
     private fun getConversionWriter(

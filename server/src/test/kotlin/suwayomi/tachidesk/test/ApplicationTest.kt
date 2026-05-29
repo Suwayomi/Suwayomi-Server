@@ -12,9 +12,12 @@ import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.v1.core.DatabaseConfig
+import org.jetbrains.exposed.v1.core.ExperimentalKeywordApi
+import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.BeforeAll
 import org.koin.core.context.startKoin
+import org.koin.core.context.stopKoin
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.ServerConfig
@@ -22,7 +25,9 @@ import suwayomi.tachidesk.server.androidCompat
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.serverModule
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
+import suwayomi.tachidesk.server.util.ConfigTypeRegistration
 import suwayomi.tachidesk.server.util.SystemTray
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -55,6 +60,13 @@ open class ApplicationTest {
         private var initializedTheApp = false
 
         fun testingSetup() {
+            // register Tachidesk's config which is dubbed "ServerConfig"
+            SettingsRegistry.clear()
+            ConfigTypeRegistration.registerCustomTypes()
+            GlobalConfigManager.registerModule(
+                ServerConfig.register { GlobalConfigManager.config },
+            )
+
             // Application dirs
             val applicationDirs = ApplicationDirs()
 
@@ -72,13 +84,9 @@ open class ApplicationTest {
                 File(it).mkdirs()
             }
 
-            // register Tachidesk's config which is dubbed "ServerConfig"
-            GlobalConfigManager.registerModule(
-                ServerConfig.register { GlobalConfigManager.config },
-            )
-
             // initialize Koin modules
             val app = App()
+            stopKoin()
             startKoin {
                 modules(
                     createAppModule(app),
@@ -128,14 +136,14 @@ open class ApplicationTest {
             }
 
             // create system tray
-            if (serverConfig.systemTrayEnabled.value) {
-                try {
-                    SystemTray.create()
-                } catch (e: Throwable) {
-                    // cover both java.lang.Exception and java.lang.Error
-                    e.printStackTrace()
-                }
-            }
+            // if (serverConfig.systemTrayEnabled.value) {
+            //     try {
+            //         SystemTray.create()
+            //     } catch (e: Throwable) {
+            //         // cover both java.lang.Exception and java.lang.Error
+            //         e.printStackTrace()
+            //     }
+            // }
 
             // Disable jetty's logging
             System.setProperty("org.eclipse.jetty.util.log.announce", "false")
@@ -154,8 +162,16 @@ open class ApplicationTest {
             // fixes #119 , ref: https://github.com/Suwayomi/Suwayomi-Server/issues/119#issuecomment-894681292 , source Id calculation depends on String.lowercase()
             Locale.setDefault(Locale.ENGLISH)
 
+            val dbConfig =
+                DatabaseConfig {
+                    useNestedTransactions = true
+                    @OptIn(ExperimentalKeywordApi::class)
+                    preserveKeywordCasing = false
+                    defaultSchema = null
+                }
+
             // in-memory database, don't discard database between connections/transactions
-            val db = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver")
+            val db = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver", databaseConfig = dbConfig)
 
             databaseUp(db)
 

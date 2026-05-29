@@ -12,11 +12,13 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.dataloader.DataLoaderOptions
-import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.cache.CustomCacheMap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
@@ -25,10 +27,10 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
+class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
     override val dataLoaderName = "MangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
@@ -122,6 +124,6 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
                     }
                 }
             },
-            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()),
+            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()).build(),
         )
 }

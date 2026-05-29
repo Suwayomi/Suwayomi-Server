@@ -10,13 +10,11 @@ package suwayomi.tachidesk.graphql.server
 import com.expediagroup.graphql.generator.execution.FlowSubscriptionExecutionStrategy
 import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.execution.GraphQLServer
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import graphql.ExceptionWhileDataFetching
 import graphql.GraphQL
 import graphql.execution.AsyncExecutionStrategy
 import graphql.execution.DataFetcherExceptionHandler
 import graphql.execution.DataFetcherExceptionHandlerResult
-import graphql.schema.idl.RuntimeWiring
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.Context
 import io.javalin.websocket.WsCloseContext
@@ -27,6 +25,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionProtocolHandler
 import suwayomi.tachidesk.server.JavalinSetup.future
+import tools.jackson.module.kotlin.jacksonObjectMapper
 
 class TachideskGraphQLServer(
     requestParser: JavalinGraphQLRequestParser,

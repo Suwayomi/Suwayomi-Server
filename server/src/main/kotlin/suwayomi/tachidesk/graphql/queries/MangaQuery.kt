@@ -10,12 +10,17 @@ package suwayomi.tachidesk.graphql.queries
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
@@ -240,13 +245,16 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults =
             transaction {
-                val res =
+                val mangaIdsQuery =
                     MangaTable
                         .leftJoin(CategoryMangaTable)
-                        .select(MangaTable.columns)
-                        .withDistinctOn(MangaTable.id)
+                        .select(MangaTable.id)
+                        .withDistinct()
 
-                res.applyOps(condition, filter)
+                mangaIdsQuery.applyOps(condition, filter)
+
+                val res =
+                    MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
 
                 if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))

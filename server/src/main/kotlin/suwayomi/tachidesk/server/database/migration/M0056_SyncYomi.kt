@@ -5,7 +5,7 @@ import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.serverConfig
 
 @Suppress("ClassName", "unused")
-class M0053_SyncYomi : SQLMigration() {
+class M0056_SyncYomi : SQLMigration() {
     override val sql =
         when (serverConfig.databaseType.value) {
             DatabaseType.POSTGRESQL -> postgresQuery()
