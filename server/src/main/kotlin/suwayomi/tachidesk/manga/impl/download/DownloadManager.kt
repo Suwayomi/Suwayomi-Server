@@ -157,6 +157,7 @@ object DownloadManager {
     }
 
     private val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val saveQueueFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     @Deprecated("Replaced with updatesFlow", replaceWith = ReplaceWith("updatesFlow"))
     private val statusFlow = MutableSharedFlow<DownloadStatus>()
@@ -166,8 +167,6 @@ object DownloadManager {
 
     private val updatesFlow = MutableSharedFlow<DownloadUpdates>()
     val updates = updatesFlow.onStart { emit(getDownloadUpdates(addInitial = true)) }
-
-    private val saveQueueFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     init {
         scope.launch {
