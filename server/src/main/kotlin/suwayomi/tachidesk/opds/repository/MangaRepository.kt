@@ -142,7 +142,7 @@ object MangaRepository {
                     .where { MangaTable.inLibrary eq true }
 
             query.applyOpdsMangaFilter(criteria)
-            applyMangaLibrarySortAndFilter(query, sort, filter)
+            applyMangaLibrarySort(query, sort)
 
             query.groupBy(MangaTable.id, SourceTable.lang, SourceTable.name)
 
@@ -303,23 +303,13 @@ object MangaRepository {
      * @param sort The sorting parameter.
      * @param filter The filtering parameter.
      */
-    private fun applyMangaLibrarySortAndFilter(
+    private fun applyMangaLibrarySort(
         query: Query,
         sort: String?,
-        filter: String?,
     ) {
         val unreadCountExpr = Case().When(ChapterTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
-        val downloadedCountExpr = Case().When(ChapterTable.isDownloaded eq true, intLiteral(1)).Else(intLiteral(0)).sum()
         val lastReadAtExpr = ChapterTable.lastReadAt.max()
         val latestChapterDateExpr = ChapterTable.date_upload.max()
-
-        // Apply filtering using HAVING for aggregate functions or WHERE for direct columns
-        when (filter) {
-            "unread" -> query.having { unreadCountExpr greater 0 }
-            "downloaded" -> query.having { downloadedCountExpr greater 0 }
-            "ongoing" -> query.andWhere { MangaTable.status eq MangaStatus.ONGOING.value }
-            "completed" -> query.andWhere { MangaTable.status eq MangaStatus.COMPLETED.value }
-        }
 
         // Apply sorting
         when (sort) {
