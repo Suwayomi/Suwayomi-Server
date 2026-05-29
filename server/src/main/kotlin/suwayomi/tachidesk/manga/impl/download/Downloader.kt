@@ -53,8 +53,6 @@ class Downloader(
     private val logger = KotlinLogging.logger("${Downloader::class.java.name} source_chapter($id)")
 
     private var job: Job? = null
-    private val availableSourceDownloads
-        get() = downloadQueue.filter { it.id == id }
 
     class StopDownloadException : Exception("Cancelled download")
 
@@ -70,7 +68,7 @@ class Downloader(
         notifier(immediate, downloadUpdate)
         currentCoroutineContext().ensureActive()
         if (download != null) {
-            val firstValid = downloadQueue.firstOrNull { it.id == id && it.state != Error }
+            val firstValid = downloadQueue.find { it.id == id && it.state != Error }
             if (download != firstValid) {
                 if (download in downloadQueue) {
                     throw PauseDownloadException()
@@ -108,34 +106,27 @@ class Downloader(
         logger.debug { "stopped" }
     }
 
-    private fun finishDownload(
-        logger: KLogger,
-        download: DownloadQueueItem,
-    ) {
+    private fun finishDownload(download: DownloadQueueItem) {
         notifier(true, DownloadUpdate(FINISHED, download))
         downloadQueue -= download
         onDownloadFinished()
-        logger.debug { "finished" }
+        logger.debug { "Finished download for chapter ${download.chapterId}" }
     }
 
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
-            val download =
-                availableSourceDownloads.firstOrNull {
-                    (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
-                } ?: break
+            val download = downloadQueue.find {
+                it.id == id && (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
+            } ?: break
 
-            val logContext = "${logger.name} - downloadChapter($download))"
-            val downloadLogger = KotlinLogging.logger(logContext)
-
-            downloadLogger.debug { "start" }
+            logger.debug { "Starting download for chapter ${download.chapterId}" }
 
             // handle cases were the downloader was stopped before the finished download could be removed from the queue
             // otherwise, it will create an endless loop, due to never removing the finished chapter and thinking that the
             // current download chapter was moved down in the queue
             if (download.state == Finished) {
-                finishDownload(downloadLogger, download)
-                break
+                finishDownload(download)
+                continue
             }
 
             try {
@@ -161,22 +152,22 @@ class Downloader(
                         }
                     }
                 }
-                finishDownload(downloadLogger, download)
+                finishDownload(download)
             } catch (e: CancellationException) {
-                logger.debug { "Downloader was stopped" }
-                availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
+                logger.debug { "Downloader was stopped for ${download.chapterId}" }
+                if (download.state == Downloading) download.state = Queued
                 notifier(false, DownloadUpdate(STOPPED, download))
             } catch (e: PauseDownloadException) {
-                downloadLogger.debug { "paused" }
+                logger.debug { "Paused download for ${download.chapterId}" }
                 download.state = Queued
                 notifier(false, DownloadUpdate(PAUSED, download))
             } catch (e: EmptyChapterException) {
-                downloadLogger.warn(e) { "failed due to" }
+                logger.warn(e) { "Failed download for ${download.chapterId} - empty chapter" }
                 download.tries = MAX_RETRIES
                 download.state = Error
                 notifier(false, DownloadUpdate(ERROR, download))
             } catch (e: Exception) {
-                downloadLogger.warn(e) { "failed due to" }
+                logger.warn(e) { "Failed download for ${download.chapterId}" }
                 download.tries++
                 download.state = Queued
                 if (download.tries >= MAX_RETRIES) {
