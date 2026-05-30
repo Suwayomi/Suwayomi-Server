@@ -11,15 +11,16 @@ import kotlin.test.Test
 
 class FlowTest {
     @Test
-    fun subscribe() = runTest {
-        (1..1000).forEach { _ ->
-            val testFlow = MutableStateFlow(value = 3)
-            testFlow.first()
-            val latch = CountDownLatch(1)
-            subscribeTo(testFlow, ignoreInitialValue = false) { _ ->
-                latch.countDown()
+    fun subscribe() =
+        runTest {
+            (1..1000).forEach { _ ->
+                val testFlow = MutableStateFlow(value = 3)
+                testFlow.first()
+                val latch = CountDownLatch(1)
+                subscribeTo(testFlow, ignoreInitialValue = false) { _ ->
+                    latch.countDown()
+                }
+                assertTrue(latch.await(5, TimeUnit.SECONDS))
             }
-            assertTrue(latch.await(5, TimeUnit.SECONDS))
         }
-    }
 }
