@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
@@ -72,6 +73,21 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 private val application: Application by injectLazy()
+
+@OptIn(ExperimentalCoroutinesApi::class)
+fun <T> subscribeTo(
+    flow: Flow<T>,
+    ignoreInitialValue: Boolean = true,
+    onChange: suspend (value: T) -> Unit,
+) {
+    val actualFlow =
+        if (ignoreInitialValue) {
+            flow.drop(1)
+        } else {
+            flow
+        }
+    actualFlow.distinctUntilChanged().conflate().onEach { onChange(it) }.launchIn(mutableConfigValueScope)
+}
 
 // Settings are ordered by "protoNumber".
 class ServerConfig(
@@ -1067,18 +1083,7 @@ class ServerConfig(
         flow: Flow<T>,
         onChange: suspend (value: T) -> Unit,
         ignoreInitialValue: Boolean = true,
-    ) {
-        val actualFlow =
-            if (ignoreInitialValue) {
-                flow.drop(1)
-            } else {
-                flow
-            }
-
-        val sharedFlow = MutableSharedFlow<T>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        actualFlow.distinctUntilChanged().mapLatest { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
-        sharedFlow.onEach { onChange(it) }.launchIn(mutableConfigValueScope)
-    }
+    ) = subscribeTo(flow, ignoreInitialValue, onChange)
 
     fun <T> subscribeTo(
         flow: Flow<T>,
