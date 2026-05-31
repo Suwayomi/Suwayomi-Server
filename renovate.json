@@ -38,5 +38,15 @@
         "{\"releases\": $$.$join([$join($map(distro_version[[0..2]], $string), \".\"), \"_\", $join($map(java_version, $string), \".\")])}"
       ]
     }
-  }
+  },
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "org.jetbrains.intellij.deps.jcef:jcef",
+        "JetBrainsRuntime"
+      ],
+      "groupName": "JCEF + JetBrains Runtime",
+      "groupSlug": "jcef-jbr"
+    }
+  ]
 }
