@@ -43,7 +43,7 @@
     {
       "matchPackageNames": [
         "org.jetbrains.intellij.deps.jcef:jcef",
-        "JetBrainsRuntime"
+        "JetBrains/JetBrainsRuntime"
       ],
       "groupName": "JCEF + JetBrains Runtime",
       "groupSlug": "jcef-jbr"
