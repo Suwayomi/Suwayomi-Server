@@ -36,6 +36,13 @@ jobs:
           set -e
           cd $GITHUB_WORKSPACE/${{github.repository}}.wiki
           cp -r $GITHUB_WORKSPACE/${{github.repository}}/docs/* .
+          
+          stable="$(git describe --abbrev=0 --tags)"
+          if ! git -C $GITHUB_WORKSPACE/${{github.repository}} log --exit-code --pretty= "$stable.." -- docs/Configuring-Suwayomi‐Server.md; then
+            echo "Changes to config detected, embedding link to stable"
+            sed -i '1s/^/> [!WARNING]\n> This document describes the settings available in the preview version. Please head to ['$stable'](https:\/\/github.com\/Suwayomi\/Suwayomi-Server\/blob\/'$stable'\/docs\/Configuring-Suwayomi%E2%80%90Server.md) for the current stable version\n\n/' Configuring-Suwayomi‐Server.md
+          fi
+          
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
