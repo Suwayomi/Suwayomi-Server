@@ -6,7 +6,7 @@ jvmTarget = "21"
 okhttp = "5.3.2" # Major version is locked by Tachiyomi extensions
 javalin = "7.2.2"
 jte = "3.2.4"
-jackson = "3.1.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
+jackson = "3.1.4" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "1.2.0"
 dex2jar = "2.4.36"
 polyglot = "25.0.3"
@@ -55,7 +55,7 @@ javalin-openapi = { module = "io.javalin:javalin-openapi", version.ref = "javali
 javalin-rendering = { module = "io.javalin:javalin-rendering-jte", version.ref = "javalin" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
 jackson-kotlin = { module = "tools.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
-jackson-annotations = "com.fasterxml.jackson.core:jackson-annotations:2.21"
+jackson-annotations = "com.fasterxml.jackson.core:jackson-annotations:2.22"
 jte = { module = "gg.jte:jte", version.ref = "jte" }
 kte = { module = "gg.jte:jte-kotlin", version.ref = "jte" }
 
