@@ -775,15 +775,23 @@ class KcefWebViewProvider(
 
     override fun getContentWidth(): Int = throw RuntimeException("Stub!")
 
-    override fun pauseTimers(): Unit = throw RuntimeException("Stub!")
+    override fun pauseTimers() {
+        Log.v(TAG, "pauseTimers: doing nothing")
+    }
 
-    override fun resumeTimers(): Unit = throw RuntimeException("Stub!")
+    override fun resumeTimers() {
+        Log.v(TAG, "resumeTimers: doing nothing")
+    }
 
-    override fun onPause(): Unit = throw RuntimeException("Stub!")
+    override fun onPause() {
+        Log.v(TAG, "onPause: doing nothing")
+    }
 
-    override fun onResume(): Unit = throw RuntimeException("Stub!")
+    override fun onResume() {
+        Log.v(TAG, "onResume: doing nothing")
+    }
 
-    override fun isPaused(): Boolean = throw RuntimeException("Stub!")
+    override fun isPaused(): Boolean = false
 
     override fun freeMemory(): Unit = throw RuntimeException("Stub!")
 
