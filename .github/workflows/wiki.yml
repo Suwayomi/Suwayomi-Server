@@ -24,6 +24,8 @@ jobs:
         with:
           repository: ${{github.repository}}
           path: ${{github.repository}}
+          fetch-depth: 0 # fetch history & tags to determine stable version
+          fetch-tags: true
 
       - name: Checkout Wiki
         uses: actions/checkout@v6
