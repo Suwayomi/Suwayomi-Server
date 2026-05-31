@@ -47,6 +47,12 @@
       ],
       "groupName": "JCEF + JetBrains Runtime",
       "groupSlug": "jcef-jbr"
+    },
+    {
+      "matchPackageNames": [
+        "com.github.Suwayomi:android-jar"
+      ],
+      "enabled": false
     }
   ]
 }
