@@ -8,7 +8,7 @@
   - [Features](#features)
 - [Suwayomi client projects](#suwayomi-client-projects)
   - [Integrated clients](#integrated-clients)
-  - [Other clients](#other-clients-potentially-inactive-or-abondend)
+  - [Other clients](#other-clients-potentially-inactive-or-abandoned)
 - [Downloading and Running the app](#downloading-and-running-the-app)
   - [Using Operating System Specific Bundles](#using-operating-system-specific-bundles)
     - [Windows](#windows)
@@ -82,6 +82,7 @@ These clients are built-in options, and the server can keep them automatically u
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): Desktop app (windows, linux, mac); can manage its own suwayomi server instance
 - [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): Web app; Desktop app (windows, linux, mac); Android app; requires access to a running server
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): Android app; iOS app Desktop app (linux); requires access to a running server
+- [Suwayomi Client for KOReader](https://github.com/LK4D4/suwayomi.koplugin): KOReader plugin; works anywhere KOReader can run (Android, Kindle, Kobo, etc.); requires access to a running server
 
 # Downloading and Running the app
 ## Using Operating System Specific Bundles
