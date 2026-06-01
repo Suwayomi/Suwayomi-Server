@@ -52,6 +52,29 @@ Solutions:
     - If the WebView still does not work after a restart, your installation is incomplete. On Linux, refer to [the README](https://github.com/Suwayomi/Suwayomi-Server#webview-support-gnulinux).
 
 
+## Flaresolverr required
+
+- `java.io.IOException: Cloudflare bypass currently disabled`
+
+The source you are using has enabled CloudFlare's bot protection.
+If you open the source's website in your browser, you should see the "Confirm I'm human" page.
+
+Solution:
+- Download and set up [Flaresolverr](https://github.com/FlareSolverr/FlareSolverr) or [Byparr](https://github.com/ThePhaseless/Byparr). Make sure to run Flaresolverr/Byparr every time you use this source.
+
+
+## Flaresolverr not running
+
+- `java.io.IOException: Failed to connect to localhost/[0:0:0:0:0:0:0:1]:8191`
+
+You have configured Flaresolverr by enabling the `server.flareSolverrEnabled` setting, but Flaresolverr is not installed and/or running.
+
+Solutions:
+- Install Flaresolverr if you haven't already (see previous section). Then ensure it is running (Windows: do not close the console window!).
+- If it is running, ensure the configured url in `server.flareSolverrUrl` is correct. There is usually no need to change this.
+- If it is running and the url is correct, check your firewall settings, your system may be blocking access to Flaresolverr.
+
+
 ## General Troubleshooting
 This guide will try to fix Suwayomi by reseting it to a clean installation state.
 
