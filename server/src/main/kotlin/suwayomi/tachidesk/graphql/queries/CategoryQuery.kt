@@ -92,7 +92,6 @@ class CategoryQuery {
         val order: Int? = null,
         val name: String? = null,
         val default: Boolean? = null,
-        val completed: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -100,7 +99,6 @@ class CategoryQuery {
             opAnd.eq(order, CategoryTable.order)
             opAnd.eq(name, CategoryTable.name)
             opAnd.eq(default, CategoryTable.isDefault)
-            opAnd.eq(completed, CategoryTable.isCompleted)
 
             return opAnd.op
         }
@@ -111,7 +109,6 @@ class CategoryQuery {
         val order: IntFilter? = null,
         val name: StringFilter? = null,
         val default: BooleanFilter? = null,
-        val completed: BooleanFilter? = null,
         override val and: List<CategoryFilter>? = null,
         override val or: List<CategoryFilter>? = null,
         override val not: CategoryFilter? = null,
@@ -122,7 +119,6 @@ class CategoryQuery {
                 andFilterWithCompare(CategoryTable.order, order),
                 andFilterWithCompareString(CategoryTable.name, name),
                 andFilterWithCompare(CategoryTable.isDefault, default),
-                andFilterWithCompare(CategoryTable.isCompleted, completed),
             )
     }
 

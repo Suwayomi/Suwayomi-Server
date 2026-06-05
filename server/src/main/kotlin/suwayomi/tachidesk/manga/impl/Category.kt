@@ -68,7 +68,6 @@ object Category {
         categoryId: Int,
         name: String?,
         isDefault: Boolean?,
-        isCompleted: Boolean?,
         includeInUpdate: Int?,
         includeInDownload: Int?,
     ) {
@@ -82,7 +81,6 @@ object Category {
                     it[CategoryTable.name] = name
                 }
                 if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
-                if (isCompleted != null) it[CategoryTable.isCompleted] = isCompleted
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
                 if (includeInDownload != null) it[CategoryTable.includeInDownload] = includeInDownload
             }

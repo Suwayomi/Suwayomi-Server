@@ -226,7 +226,6 @@ class CategoryMutation {
     data class UpdateCategoryPatch(
         val name: String? = null,
         val default: Boolean? = null,
-        val completed: Boolean? = null,
         val includeInUpdate: IncludeOrExclude? = null,
         val includeInDownload: IncludeOrExclude? = null,
     )
@@ -269,13 +268,6 @@ class CategoryMutation {
                 CategoryTable.update({ CategoryTable.id inList ids }) { update ->
                     patch.default.also {
                         update[isDefault] = it
-                    }
-                }
-            }
-            if (patch.completed != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
-                    patch.completed.also {
-                        update[isCompleted] = it
                     }
                 }
             }
@@ -390,7 +382,6 @@ class CategoryMutation {
         val name: String,
         val order: Int? = null,
         val default: Boolean? = null,
-        val completed: Boolean? = null,
         val includeInUpdate: IncludeOrExclude? = null,
         val includeInDownload: IncludeOrExclude? = null,
     )
@@ -402,7 +393,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun createCategory(input: CreateCategoryInput): CreateCategoryPayload? {
-        val (clientMutationId, name, order, default, completed, includeInUpdate, includeInDownload) = input
+        val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
         transaction {
             require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
                 "'name' must be unique"
@@ -431,9 +422,6 @@ class CategoryMutation {
                         it[CategoryTable.order] = order ?: Int.MAX_VALUE
                         if (default != null) {
                             it[CategoryTable.isDefault] = default
-                        }
-                        if (completed != null) {
-                            it[CategoryTable.isCompleted] = completed
                         }
                         if (includeInUpdate != null) {
                             it[CategoryTable.includeInUpdate] = includeInUpdate.value
