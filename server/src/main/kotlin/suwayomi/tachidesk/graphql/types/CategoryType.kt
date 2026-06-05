@@ -25,6 +25,7 @@ class CategoryType(
     val order: Int,
     val name: String,
     val default: Boolean,
+    val completed: Boolean,
     val includeInUpdate: IncludeOrExclude,
     val includeInDownload: IncludeOrExclude,
 ) : Node {
@@ -33,6 +34,7 @@ class CategoryType(
         row[CategoryTable.order],
         row[CategoryTable.name],
         row[CategoryTable.isDefault],
+        row[CategoryTable.isCompleted],
         IncludeOrExclude.fromValue(row[CategoryTable.includeInUpdate]),
         IncludeOrExclude.fromValue(row[CategoryTable.includeInDownload]),
     )
@@ -42,6 +44,7 @@ class CategoryType(
         dataClass.order,
         dataClass.name,
         dataClass.default,
+        dataClass.completed,
         dataClass.includeInUpdate,
         dataClass.includeInDownload,
     )

@@ -17,6 +17,7 @@ object CategoryTable : IntIdTable() {
     val name = varchar("name", 64)
     val order = integer("sort_order").default(0)
     val isDefault = bool("is_default").default(false)
+    val isCompleted = bool("is_completed").default(false)
     val includeInUpdate = integer("include_in_update").default(IncludeOrExclude.UNSET.value)
     val includeInDownload = integer("include_in_download").default(IncludeOrExclude.UNSET.value)
 }
@@ -27,6 +28,7 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
         categoryEntry[order],
         categoryEntry[name],
         categoryEntry[isDefault],
+        categoryEntry[isCompleted],
         Category.getCategorySize(categoryEntry[id].value),
         IncludeOrExclude.fromValue(categoryEntry[includeInUpdate]),
         IncludeOrExclude.fromValue(categoryEntry[includeInDownload]),

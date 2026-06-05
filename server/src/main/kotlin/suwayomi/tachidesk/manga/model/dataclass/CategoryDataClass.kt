@@ -27,6 +27,7 @@ data class CategoryDataClass(
     val order: Int,
     val name: String,
     val default: Boolean,
+    val completed: Boolean,
     val size: Int,
     val includeInUpdate: IncludeOrExclude,
     val includeInDownload: IncludeOrExclude,

@@ -69,6 +69,7 @@ object CategoryController {
             pathParam<Int>("categoryId"),
             formParam<String?>("name"),
             formParam<Boolean?>("default"),
+            formParam<Boolean?>("completed"),
             formParam<Int?>("includeInUpdate"),
             formParam<Int?>("includeInDownload"),
             documentWith = {
@@ -77,9 +78,9 @@ object CategoryController {
                     description("Modify a category")
                 }
             },
-            behaviorOf = { ctx, categoryId, name, isDefault, includeInUpdate, includeInDownload ->
+            behaviorOf = { ctx, categoryId, name, isDefault, isCompleted, includeInUpdate, includeInDownload ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                Category.updateCategory(categoryId, name, isDefault, includeInUpdate, includeInDownload)
+                Category.updateCategory(categoryId, name, isDefault, isCompleted, includeInUpdate, includeInDownload)
                 ctx.status(200)
             },
             withResults = {
