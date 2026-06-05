@@ -36,6 +36,7 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
+import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
@@ -516,6 +517,8 @@ fun applicationSetup() {
 
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
+
+    SyncManager.scheduleSyncTask()
 
     // asynchronously initialize CEF
     GlobalScope.launch {

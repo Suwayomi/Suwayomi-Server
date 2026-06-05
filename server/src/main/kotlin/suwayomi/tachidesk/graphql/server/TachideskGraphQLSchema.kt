@@ -27,6 +27,7 @@ import suwayomi.tachidesk.graphql.mutations.MangaMutation
 import suwayomi.tachidesk.graphql.mutations.MetaMutation
 import suwayomi.tachidesk.graphql.mutations.SettingsMutation
 import suwayomi.tachidesk.graphql.mutations.SourceMutation
+import suwayomi.tachidesk.graphql.mutations.SyncMutation
 import suwayomi.tachidesk.graphql.mutations.TrackMutation
 import suwayomi.tachidesk.graphql.mutations.UpdateMutation
 import suwayomi.tachidesk.graphql.mutations.UserMutation
@@ -41,6 +42,7 @@ import suwayomi.tachidesk.graphql.queries.MangaQuery
 import suwayomi.tachidesk.graphql.queries.MetaQuery
 import suwayomi.tachidesk.graphql.queries.SettingsQuery
 import suwayomi.tachidesk.graphql.queries.SourceQuery
+import suwayomi.tachidesk.graphql.queries.SyncQuery
 import suwayomi.tachidesk.graphql.queries.TrackQuery
 import suwayomi.tachidesk.graphql.queries.UpdateQuery
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -50,6 +52,7 @@ import suwayomi.tachidesk.graphql.server.primitives.GraphQLLongAsString
 import suwayomi.tachidesk.graphql.server.primitives.GraphQLUpload
 import suwayomi.tachidesk.graphql.subscriptions.DownloadSubscription
 import suwayomi.tachidesk.graphql.subscriptions.InfoSubscription
+import suwayomi.tachidesk.graphql.subscriptions.SyncSubscription
 import suwayomi.tachidesk.graphql.subscriptions.UpdateSubscription
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
@@ -98,6 +101,7 @@ val schema =
                 TopLevelObject(MetaQuery()),
                 TopLevelObject(SettingsQuery()),
                 TopLevelObject(SourceQuery()),
+                TopLevelObject(SyncQuery()),
                 TopLevelObject(TrackQuery()),
                 TopLevelObject(UpdateQuery()),
             ),
@@ -114,6 +118,7 @@ val schema =
                 TopLevelObject(MangaMutation()),
                 TopLevelObject(MetaMutation()),
                 TopLevelObject(SettingsMutation()),
+                TopLevelObject(SyncMutation()),
                 TopLevelObject(SourceMutation()),
                 TopLevelObject(TrackMutation()),
                 TopLevelObject(UpdateMutation()),
@@ -123,6 +128,7 @@ val schema =
             listOf(
                 TopLevelObject(DownloadSubscription()),
                 TopLevelObject(InfoSubscription()),
+                TopLevelObject(SyncSubscription()),
                 TopLevelObject(UpdateSubscription()),
             ),
     )
