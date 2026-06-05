@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased] (Preview)
 
 ### Added
-- .
+- (**Sync**) Added [SyncYomi](https://github.com/syncyomi/syncyomi) support
 
 ### Changed
 - (**Database/H2**) Use the latest H2 database engine
