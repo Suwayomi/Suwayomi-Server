@@ -180,7 +180,7 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "14.2.0"}
 
 # Build config
-buildconfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.9"}
+buildconfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.10"}
 
 # Download
 download = { id = "de.undercouch.download", version = "5.7.0"}
