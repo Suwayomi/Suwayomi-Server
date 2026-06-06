@@ -7,6 +7,7 @@ import graphql.schema.DataFetchingEnvironment
 import suwayomi.tachidesk.manga.impl.update.CategoryUpdateJob
 import suwayomi.tachidesk.manga.impl.update.CategoryUpdateStatus
 import suwayomi.tachidesk.manga.impl.update.JobStatus
+import suwayomi.tachidesk.manga.impl.update.UpdateError
 import suwayomi.tachidesk.manga.impl.update.UpdateJob
 import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.UpdateUpdates
@@ -166,6 +167,17 @@ class CategoryUpdateType(
             CategoryUpdateStatus.SKIPPED -> CategoryJobStatus.SKIPPED
         },
     )
+}
+
+class LastUpdateErrorType(
+    @get:GraphQLIgnore
+    val mangaId: Int,
+    val error: String,
+) {
+    constructor(updateError: UpdateError) : this(updateError.mangaId, updateError.error)
+
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> =
+        dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", mangaId)
 }
 
 // wrap this info in a data class so that the update subscription updates the date of the update status in the clients cache

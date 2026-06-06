@@ -32,18 +32,14 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
-import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
-import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.MangaStatus
-import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.File
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.absoluteValue
@@ -64,7 +60,7 @@ class Updater : IUpdater {
     @Deprecated("Replaced with updates", replaceWith = ReplaceWith("updates"))
     override val status = statusFlow.onStart { emit(getStatusDeprecated(null)) }
 
-    private val failedMangaBySourceAndError = ConcurrentHashMap<MangaDataClass, String>()
+    private val lastUpdateErrors = ConcurrentHashMap<Int, String>()
 
     private val updatesFlow = MutableSharedFlow<UpdateUpdates>()
     override val updates = updatesFlow.onStart { emit(getUpdates(addInitial = true)) }
@@ -324,7 +320,7 @@ class Updater : IUpdater {
             } catch (e: Exception) {
                 logger.error(e) { "Error while updating ${job.manga}" }
                 if (e is CancellationException) throw e
-                failedMangaBySourceAndError[job.manga] = "${job.manga.sourceId}:${e.message}"
+                lastUpdateErrors[job.manga.id] = e.message ?: e.toString()
                 job.copy(status = JobStatus.FAILED)
             }
 
@@ -336,42 +332,10 @@ class Updater : IUpdater {
 
         if (wasLastJob) {
             updateStatus(isRunning = false)
-            writeUpdateErrorsToFile()
         }
     }
 
-    private fun writeUpdateErrorsToFile() {
-        if (failedMangaBySourceAndError.isEmpty()) return
-
-        val mangaBySource = HashMap<String, HashMap<String, List<MangaDataClass>>>()
-
-        failedMangaBySourceAndError.forEach { (manga, error) ->
-            val sourceId = manga.sourceId.toLongOrNull()
-            var sourceName = "Unknown Source"
-            if (sourceId != null) {
-                sourceName = Source.getSource(sourceId)?.name ?: sourceName
-            }
-
-            val mangaListForSourceAndError =
-                mangaBySource.getOrPut(sourceName) { HashMap() }.getOrPut(error) { mutableListOf() } as MutableList
-            mangaListForSourceAndError.add(manga)
-        }
-
-        val errorFilePath = ApplicationDirs().mangaUpdateErrorFile
-        val errorFile = File(errorFilePath)
-        errorFile.delete()
-        errorFile.createNewFile()
-        mangaBySource.forEach { (source, errors) ->
-            errorFile.appendText("Source: $source\n")
-            errors.forEach { (error, manga) ->
-                val prettierError = error.replace("\r", " ").replace("\n", " ")
-                errorFile.appendText("\tError: $prettierError\n")
-                manga.forEach {
-                    errorFile.appendText("\t\t${it.title} (id: ${it.id})\n")
-                }
-            }
-        }
-    }
+    override fun getLastUpdateErrors(): List<UpdateError> = lastUpdateErrors.map { (mangaId, error) -> UpdateError(mangaId, error) }
 
     override fun addCategoriesToUpdateQueue(
         categories: List<CategoryDataClass>,
@@ -384,8 +348,7 @@ class Updater : IUpdater {
             reset()
         }
 
-        // Clear failed manga tracking at the start of a new update
-        failedMangaBySourceAndError.clear()
+        lastUpdateErrors.clear()
 
         val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
         val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.EXCLUDE].orEmpty()
