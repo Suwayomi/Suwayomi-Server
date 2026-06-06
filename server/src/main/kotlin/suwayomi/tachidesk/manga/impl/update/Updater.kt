@@ -348,17 +348,6 @@ class Updater : IUpdater {
 
             saveLastUpdateTimestamp()
 
-            lastUpdateErrors.clear()
-
-            val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
-            val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.EXCLUDE].orEmpty()
-            val includedCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.INCLUDE].orEmpty()
-            val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.UNSET].orEmpty()
-            val categoriesToUpdate =
-                if (forceAll) {
-                    categories
-                } else {
-                    includedCategories.ifEmpty { unsetCategories }
             if (clear == true) {
                 reset()
             }
