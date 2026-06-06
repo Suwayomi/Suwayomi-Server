@@ -42,7 +42,7 @@ main() {
     gcc -fPIC -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
   fi
 
-  JRE_ZULU="25.30.17_25.0.1"
+  JRE_ZULU="25.34.17_25.0.3"
   JRE_RELEASE="jre${JRE_ZULU#*_}" # e.g. jre25.0.1
   ZULU_RELEASE="zulu${JRE_ZULU%_*}" # e.g. zulu25.30.17
 
@@ -149,15 +149,15 @@ move_release_to_output_dir() {
 }
 
 download_launcher() {
-  LAUNCHER_URL=$(curl -s "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
-  curl -L "$LAUNCHER_URL" -o "Suwayomi-Launcher.jar"
+  LAUNCHER_URL=$(curl -sf "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  curl -fL "$LAUNCHER_URL" -o "Suwayomi-Launcher.jar"
   mv "Suwayomi-Launcher.jar" "$RELEASE_NAME/Suwayomi-Launcher.jar"
 }
 
 download_jogamp() {
   local platform="$1"
   if [ ! -f jogamp-all-platforms.7z ]; then
-    curl "https://jogamp.org/deployment/jogamp-current/archive/jogamp-all-platforms.7z" -o jogamp-all-platforms.7z
+    curl -f "https://jogamp.org/deployment/jogamp-current/archive/jogamp-all-platforms.7z" -o jogamp-all-platforms.7z
   fi
 
   7z x jogamp-all-platforms.7z "jogamp-all-platforms/lib/$platform/"
@@ -168,7 +168,7 @@ download_jogamp() {
 
 download_electron() {
   if [ ! -f "$ELECTRON" ]; then
-    curl -L "$ELECTRON_URL" -o "$ELECTRON"
+    curl -fL "$ELECTRON_URL" -o "$ELECTRON"
   fi
 
   unzip "$ELECTRON" -d "$RELEASE_NAME/electron/"
@@ -181,7 +181,7 @@ setup_jre() {
     mv "jre" "$RELEASE_NAME/jre"
   else
     if [ ! -f "$JRE" ]; then
-      curl -L "$JRE_URL" -o "$JRE"
+      curl -fL "$JRE_URL" -o "$JRE"
     fi
 
     local ext="${JRE##*.}"
@@ -273,7 +273,7 @@ make_appimage() {
     sudo apt update
     sudo apt install libfuse2
   fi
-  curl -L $APPIMAGE_URL -o $APPIMAGE_TOOLNAME
+  curl -fL $APPIMAGE_URL -o $APPIMAGE_TOOLNAME
   chmod +x $APPIMAGE_TOOLNAME
   ARCH=x86_64 ./$APPIMAGE_TOOLNAME "$RELEASE_NAME" "$RELEASE"
 }
@@ -300,7 +300,7 @@ make_windows_bundle() {
   #local rcedit_url="https://github.com/electron/rcedit/releases/download/v0.1.1/$rcedit"
   ## change electron's icon
   #if [ ! -f "$rcedit" ]; then
-    #curl -L "$rcedit_url" -o "$rcedit"
+    #curl -fL "$rcedit_url" -o "$rcedit"
   #fi
 
   #local icon="server/src/main/resources/icon/faviconlogo.ico"

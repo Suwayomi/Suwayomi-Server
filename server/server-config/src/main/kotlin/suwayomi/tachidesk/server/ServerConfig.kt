@@ -20,12 +20,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
-import org.jetbrains.exposed.sql.SortOrder
+import org.jetbrains.exposed.v1.core.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DatabaseType
@@ -56,16 +57,14 @@ import suwayomi.tachidesk.server.settings.PathSetting
 import suwayomi.tachidesk.server.settings.SettingGroup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.settings.StringSetting
+import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
-import kotlin.collections.associate
-import kotlin.getValue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
-import uy.kohesive.injekt.injectLazy
 
 val mutableConfigValueScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -74,6 +73,21 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 private val application: Application by injectLazy()
+
+@OptIn(ExperimentalCoroutinesApi::class)
+fun <T> subscribeTo(
+    flow: Flow<T>,
+    ignoreInitialValue: Boolean = true,
+    onChange: suspend (value: T) -> Unit,
+) {
+    val actualFlow =
+        if (ignoreInitialValue) {
+            flow.drop(1)
+        } else {
+            flow
+        }
+    actualFlow.distinctUntilChanged().conflate().onEach { onChange(it) }.launchIn(mutableConfigValueScope)
+}
 
 // Settings are ordered by "protoNumber".
 class ServerConfig(
@@ -582,7 +596,7 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = SortOrder.DESC,
         enumClass = SortOrder::class,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.sql.SortOrder")),
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.v1.core.SortOrder")),
     )
 
     val authMode: MutableStateFlow<AuthMode> by EnumSetting(
@@ -1016,7 +1030,76 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val kcefEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 86,
+        group = SettingGroup.WEB_VIEW,
+        privacySafe = true,
+        defaultValue = true,
+        description = "Enable the WebView via CEF (Chromium)"
+    )
 
+    val syncYomiEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 87,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true
+    )
+
+    val syncYomiHost: MutableStateFlow<String> by StringSetting(
+        protoNumber = 88,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncYomiApiKey: MutableStateFlow<String> by StringSetting(
+        protoNumber = 89,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = false,
+    )
+
+    val syncDataManga: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 90,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 91,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataTracking: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 92,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataHistory: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 93,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataCategories: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 94,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncInterval: MutableStateFlow<Duration> by DurationSetting(
+        protoNumber = 95,
+        defaultValue = 0.seconds,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
 
     /** ****************************************************************** **/
     /**                                                                    **/
@@ -1061,18 +1144,7 @@ class ServerConfig(
         flow: Flow<T>,
         onChange: suspend (value: T) -> Unit,
         ignoreInitialValue: Boolean = true,
-    ) {
-        val actualFlow =
-            if (ignoreInitialValue) {
-                flow.drop(1)
-            } else {
-                flow
-            }
-
-        val sharedFlow = MutableSharedFlow<T>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-        actualFlow.distinctUntilChanged().mapLatest { sharedFlow.emit(it) }.launchIn(mutableConfigValueScope)
-        sharedFlow.onEach { onChange(it) }.launchIn(mutableConfigValueScope)
-    }
+    ) = subscribeTo(flow, ignoreInitialValue, onChange)
 
     fun <T> subscribeTo(
         flow: Flow<T>,

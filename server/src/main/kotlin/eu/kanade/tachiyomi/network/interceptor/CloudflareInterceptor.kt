@@ -103,7 +103,7 @@ class CloudflareInterceptor(
     companion object {
         private val ERROR_CODES = listOf(403, 503)
         private val SERVER_CHECK = arrayOf("cloudflare-nginx", "cloudflare")
-        private val COOKIE_NAMES = listOf("cf_clearance")
+        val COOKIE_NAMES = listOf("cf_clearance")
         private val CHROME_IMAGE_TEMPLATE_REGEX = Regex("""<title>(.*?) \(\d+×\d+\)</title>""")
     }
 }
@@ -205,9 +205,12 @@ object CFClearance {
                                             session = serverConfig.flareSolverrSessionName.value,
                                             sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
                                             cookies =
-                                                network.cookieStore.get(originalRequest.url).map {
-                                                    FlareSolverCookie(it.name, it.value)
-                                                },
+                                                network.cookieStore
+                                                    .get(originalRequest.url)
+                                                    .filter { it.name !in CloudflareInterceptor.COOKIE_NAMES }
+                                                    .map { cookie ->
+                                                        FlareSolverCookie(cookie.name, cookie.value)
+                                                    },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
                                             postData =

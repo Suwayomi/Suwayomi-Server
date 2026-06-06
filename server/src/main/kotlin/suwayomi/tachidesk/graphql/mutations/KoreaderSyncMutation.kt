@@ -1,10 +1,11 @@
+@file:Suppress("RedundantNullableReturnType", "unused")
+
 package suwayomi.tachidesk.graphql.mutations
 
-import graphql.execution.DataFetcherResult
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.graphql.asDataFetcherResult
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
@@ -62,26 +63,24 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun pushKoSyncProgress(input: PushKoSyncProgressInput): CompletableFuture<DataFetcherResult<PushKoSyncProgressPayload?>> =
+    fun pushKoSyncProgress(input: PushKoSyncProgressInput): CompletableFuture<PushKoSyncProgressPayload?> =
         future {
-            asDataFetcherResult {
-                KoreaderSyncService.pushProgress(input.chapterId)
+            KoreaderSyncService.pushProgress(input.chapterId)
 
-                val chapter =
-                    transaction {
-                        ChapterTable
-                            .selectAll()
-                            .where { ChapterTable.id eq input.chapterId }
-                            .firstOrNull()
-                            ?.let { ChapterType(it) }
-                    }
+            val chapter =
+                transaction {
+                    ChapterTable
+                        .selectAll()
+                        .where { ChapterTable.id eq input.chapterId }
+                        .firstOrNull()
+                        ?.let { ChapterType(it) }
+                }
 
-                PushKoSyncProgressPayload(
-                    clientMutationId = input.clientMutationId,
-                    success = true,
-                    chapter = chapter,
-                )
-            }
+            PushKoSyncProgressPayload(
+                clientMutationId = input.clientMutationId,
+                success = true,
+                chapter = chapter,
+            )
         }
 
     data class PullKoSyncProgressInput(
@@ -96,45 +95,43 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun pullKoSyncProgress(input: PullKoSyncProgressInput): CompletableFuture<DataFetcherResult<PullKoSyncProgressPayload?>> =
+    fun pullKoSyncProgress(input: PullKoSyncProgressInput): CompletableFuture<PullKoSyncProgressPayload?> =
         future {
-            asDataFetcherResult {
-                val syncResult = KoreaderSyncService.checkAndPullProgress(input.chapterId)
-                var syncConflictInfo: SyncConflictInfoType? = null
+            val syncResult = KoreaderSyncService.checkAndPullProgress(input.chapterId)
+            var syncConflictInfo: SyncConflictInfoType? = null
 
-                if (syncResult != null) {
-                    if (syncResult.isConflict) {
-                        syncConflictInfo =
-                            SyncConflictInfoType(
-                                deviceName = syncResult.device,
-                                remotePage = syncResult.pageRead,
-                            )
-                    }
+            if (syncResult != null) {
+                if (syncResult.isConflict) {
+                    syncConflictInfo =
+                        SyncConflictInfoType(
+                            deviceName = syncResult.device,
+                            remotePage = syncResult.pageRead,
+                        )
+                }
 
-                    if (syncResult.shouldUpdate) {
-                        transaction {
-                            ChapterTable.update({ ChapterTable.id eq input.chapterId }) {
-                                it[lastPageRead] = syncResult.pageRead
-                                it[lastReadAt] = syncResult.timestamp
-                            }
+                if (syncResult.shouldUpdate) {
+                    transaction {
+                        ChapterTable.update({ ChapterTable.id eq input.chapterId }) {
+                            it[lastPageRead] = syncResult.pageRead
+                            it[lastReadAt] = syncResult.timestamp
                         }
                     }
                 }
-
-                val chapter =
-                    transaction {
-                        ChapterTable
-                            .selectAll()
-                            .where { ChapterTable.id eq input.chapterId }
-                            .firstOrNull()
-                            ?.let { ChapterType(it) }
-                    }
-
-                PullKoSyncProgressPayload(
-                    clientMutationId = input.clientMutationId,
-                    chapter = chapter,
-                    syncConflict = syncConflictInfo,
-                )
             }
+
+            val chapter =
+                transaction {
+                    ChapterTable
+                        .selectAll()
+                        .where { ChapterTable.id eq input.chapterId }
+                        .firstOrNull()
+                        ?.let { ChapterType(it) }
+                }
+
+            PullKoSyncProgressPayload(
+                clientMutationId = input.clientMutationId,
+                chapter = chapter,
+                syncConflict = syncConflictInfo,
+            )
         }
 }

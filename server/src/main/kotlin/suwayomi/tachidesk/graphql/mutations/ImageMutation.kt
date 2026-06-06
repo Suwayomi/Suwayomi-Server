@@ -1,3 +1,5 @@
+@file:Suppress("RedundantNullableReturnType", "unused")
+
 package suwayomi.tachidesk.graphql.mutations
 
 import suwayomi.tachidesk.graphql.directives.RequireAuth

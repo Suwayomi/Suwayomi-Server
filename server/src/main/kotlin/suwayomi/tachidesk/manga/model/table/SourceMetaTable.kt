@@ -7,14 +7,14 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.dao.id.IntIdTable
-import suwayomi.tachidesk.manga.model.table.ChapterMetaTable.ref
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import suwayomi.tachidesk.manga.model.table.SourceMetaTable.ref
 
 /**
  * Metadata storage for clients, about Source with id == [ref].
  */
 object SourceMetaTable : IntIdTable() {
-    val key = varchar("key", 256)
+    val key = varchar("meta_key", 256)
     val value = varchar("value", 4096)
     val ref = long("source_ref")
 }

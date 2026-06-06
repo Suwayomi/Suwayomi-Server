@@ -63,6 +63,14 @@ server.webUISubpath = ""
 - `server.webUIUpdateCheckInterval` the interval time in hours at which to check for updates. Use `0` to disable update checking.
 - `server.webUISubpath` controls on which sub-path the UI is served; by default, it will be accessible on `/` (i.e. directly), with this setting it can also be set to appear at e.g. `/suwayomi`
 
+
+### webView
+```
+server.kcefEnabled = true
+```
+- `server.kcefEnabled` controls if KCEF WebView provider is enabled.
+
+
 ### Downloader
 ```
 server.downloadAsCbz = true
@@ -267,6 +275,28 @@ server.useHikariConnectionPool = true
 - `server.databaseUsername` the username with which to authenticate at the PostgreSQL instance.
 - `server.databasePassword` the username with which to authenticate at the PostgreSQL instance.
 - `server.useHikariConnectionPool` use Hikari Connection Pool to connect to the database.
+
+### SyncYomi
+```
+server.syncYomiEnabled = false
+server.syncYomiHost = ""
+server.syncYomiApiKey = ""
+server.syncDataManga = true
+server.syncDataChapters = true
+server.syncDataTracking = true
+server.syncDataHistory = true
+server.syncDataCategories = true
+server.syncInterval = "0s"
+```
+- `server.syncYomiEnabled` controls whether SyncYomi is enabled.
+- `server.syncYomiHost` base URL of the SyncYomi server instance. e.g. `http://localhost:8282`
+- `server.syncYomiApiKey` API key to authenticate with SyncYomi. You must use the same API key in both Suwayomi and SyncYomi.
+- `server.syncDataManga` enables syncing manga.
+- `server.syncDataChapters` enables syncing chapters.
+- `server.syncDataTracking` enables syncing tracking data.
+- `server.syncDataHistory` enables syncing reading history.
+- `server.syncDataCategories` enables syncing categories.
+- `server.syncInterval` interval between automatic sync operations. Use `0s` to disable.
 
 **Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+PostgreSQL. Please be aware that PostgreSQL support is currently still in beta.
 

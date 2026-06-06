@@ -7,8 +7,12 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.modifyCategoriesMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
@@ -38,6 +42,9 @@ object BackupCategoryHandler {
                     it.name,
                     it.order,
                     0, // not supported in Tachidesk
+                    it.version,
+                    it.uid,
+                    it.lastModifiedAt,
                 ).apply {
                     this.meta = categoryToMeta[it.id] ?: emptyMap()
                 }
@@ -45,7 +52,56 @@ object BackupCategoryHandler {
         }
 
     fun restore(backupCategories: List<BackupCategory>): Map<Int, Int> {
-        val categoryIds = Category.createCategories(backupCategories.map { it.name })
+        val dbCategories = Category.getCategoryList()
+        val dbCategoriesByName = dbCategories.associateBy { it.name }
+        val dbCategoriesByUid = dbCategories.associateBy { it.uid }
+
+        var nextOrder = dbCategories.maxOfOrNull { it.order }?.plus(1) ?: 0
+
+        val categoryIds =
+            transaction {
+                backupCategories
+                    .map { backupCategory ->
+                        var dbCategory =
+                            if (backupCategory.uid != 0L) {
+                                dbCategoriesByUid[backupCategory.uid]
+                            } else {
+                                null
+                            }
+
+                        if (dbCategory == null) {
+                            dbCategory = dbCategoriesByName[backupCategory.name]
+                        }
+
+                        if (dbCategory != null) {
+                            CategoryTable.update({ CategoryTable.id eq dbCategory.id }) {
+                                it[name] = backupCategory.name
+                                it[order] = backupCategory.order
+                                it[version] = backupCategory.version
+                                it[uid] = if (backupCategory.uid != 0L) backupCategory.uid else dbCategory.uid
+                                it[lastModifiedAt] = backupCategory.lastModifiedAt
+                                it[isSyncing] = true
+                            }
+                            return@map dbCategory.id
+                        }
+
+                        val currentOrder = nextOrder++
+                        CategoryTable
+                            .insertAndGetId {
+                                it[name] = backupCategory.name
+                                it[order] = currentOrder
+                                it[version] = backupCategory.version
+                                it[uid] = backupCategory.uid
+                                it[lastModifiedAt] = backupCategory.lastModifiedAt
+                            }.value
+                    }
+            }
+
+        transaction {
+            CategoryTable.update({ CategoryTable.isSyncing eq true }) {
+                it[isSyncing] = false
+            }
+        }
 
         val metaEntryByCategoryId =
             categoryIds

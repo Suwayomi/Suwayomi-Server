@@ -11,24 +11,28 @@ import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.count
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "ChapterDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -48,7 +52,7 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
     override val dataLoaderName = "ChaptersForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterNodeList> =
-        DataLoaderFactory.newDataLoader<Int, ChapterNodeList> { ids ->
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -68,7 +72,7 @@ class DownloadedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "DownloadedChapterCountForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -90,7 +94,7 @@ class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "UnreadChapterCountForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -112,7 +116,7 @@ class BookmarkedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "BookmarkedChapterCountForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -157,11 +161,11 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
         }
 }
 
-class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LastReadChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -177,11 +181,11 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
         }
 }
 
-class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LatestReadChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -197,11 +201,11 @@ class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> 
         }
 }
 
-class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LatestFetchedChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -217,11 +221,11 @@ class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType
         }
 }
 
-class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LatestUploadedChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -237,11 +241,11 @@ class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTyp
         }
 }
 
-class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "FirstUnreadChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -257,11 +261,11 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?>
         }
 }
 
-class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "HighestNumberedChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)

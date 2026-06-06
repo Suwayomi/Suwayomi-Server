@@ -2,7 +2,6 @@ package suwayomi.tachidesk.server.settings.generation
 
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import java.io.File
-import kotlin.text.appendLine
 
 object SettingsGraphqlTypeGenerator {
     fun generate(

@@ -35,7 +35,7 @@ class CategoryMangaTest : ApplicationTest() {
             CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID)[0].unreadCount,
             "Manga should not have any unread chapters",
         )
-        createChapters(mangaId, 10, false)
+        createChapters(mangaId, 10, false, start = 11)
         assertEquals(
             10,
             CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID)[0].unreadCount,

@@ -10,17 +10,10 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
-import org.jetbrains.exposed.sql.transactions.TransactionManager
+import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
 
 @Suppress("ClassName", "unused")
 class M0023_CategoryMetaRefFix : SQLMigration() {
-    fun String.toSqlName(): String =
-        TransactionManager.defaultDatabase!!.identifierManager.let {
-            it.quoteIfNecessary(
-                it.inProperCase(this),
-            )
-        }
-
     private val CategoryMetaTable by lazy { "CategoryMeta".toSqlName() }
     private val CategoryRefColumn by lazy { "category_ref".toSqlName() }
     private val CategoryTable by lazy { "Category".toSqlName() }
