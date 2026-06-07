@@ -129,6 +129,8 @@ object Chapter {
                 downloaded = dbChapter[ChapterTable.isDownloaded],
                 pageCount = dbChapter[ChapterTable.pageCount],
                 chapterCount = chapterList.size,
+                lastModifiedAt = dbChapter[ChapterTable.lastModifiedAt],
+                version = dbChapter[ChapterTable.version],
                 meta = chapterMetas.getValue(dbChapter[ChapterTable.id].value),
             )
         }
@@ -279,6 +281,8 @@ object Chapter {
                                 this[ChapterTable.isRead] = false
                                 this[ChapterTable.isBookmarked] = false
                                 this[ChapterTable.isDownloaded] = false
+                                this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
+                                this[ChapterTable.version] = chapter.version
                                 this[ChapterTable.pageCount] = -1
 
                                 // is recognized chapter number
@@ -322,6 +326,8 @@ object Chapter {
                                     this[ChapterTable.scanlator] = it.scanlator
                                     this[ChapterTable.sourceOrder] = it.index
                                     this[ChapterTable.realUrl] = it.realUrl
+                                    this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
+                                    this[ChapterTable.version] = it.version
                                     this[ChapterTable.isDownloaded] = currentChapter.downloaded
                                     this[ChapterTable.pageCount] = currentChapter.pageCount
 

@@ -269,6 +269,28 @@ server.useHikariConnectionPool = true
 - `server.databasePassword` the username with which to authenticate at the PostgreSQL instance.
 - `server.useHikariConnectionPool` use Hikari Connection Pool to connect to the database.
 
+### SyncYomi
+```
+server.syncYomiEnabled = false
+server.syncYomiHost = ""
+server.syncYomiApiKey = ""
+server.syncDataManga = true
+server.syncDataChapters = true
+server.syncDataTracking = true
+server.syncDataHistory = true
+server.syncDataCategories = true
+server.syncInterval = "0s"
+```
+- `server.syncYomiEnabled` controls whether SyncYomi is enabled.
+- `server.syncYomiHost` base URL of the SyncYomi server instance. e.g. `http://localhost:8282`
+- `server.syncYomiApiKey` API key to authenticate with SyncYomi. You must use the same API key in both Suwayomi and SyncYomi.
+- `server.syncDataManga` enables syncing manga.
+- `server.syncDataChapters` enables syncing chapters.
+- `server.syncDataTracking` enables syncing tracking data.
+- `server.syncDataHistory` enables syncing reading history.
+- `server.syncDataCategories` enables syncing categories.
+- `server.syncInterval` interval between automatic sync operations. Use `0s` to disable.
+
 **Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+PostgreSQL. Please be aware that PostgreSQL support is currently still in beta.
 
 **Note:** These settings are excluded from backups, so a backup can be used to easily switch database installations by setting up the connection first, then restoring the backup.
