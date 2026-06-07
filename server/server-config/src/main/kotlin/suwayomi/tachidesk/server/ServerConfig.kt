@@ -174,7 +174,7 @@ class ServerConfig(
         protoNumber = 10,
         group = SettingGroup.WEB_UI,
         privacySafe = true,
-        defaultValue = true,
+        defaultValue = false,
         description = "Open client on startup",
     )
 
@@ -266,7 +266,7 @@ class ServerConfig(
         protoNumber = 20,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
-        defaultValue = 0,
+        defaultValue = 5,
         min = 0,
         description = "Maximum number of new chapters to auto-download",
     )
@@ -331,14 +331,14 @@ class ServerConfig(
         protoNumber = 24,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
-        defaultValue = true,
+        defaultValue = false,
     )
 
     val excludeNotStarted: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 25,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
-        defaultValue = true,
+        defaultValue = false,
     )
 
     val excludeCompleted: MutableStateFlow<Boolean> by BooleanSetting(
@@ -361,7 +361,7 @@ class ServerConfig(
         protoNumber = 28,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
-        defaultValue = false,
+        defaultValue = true,
         description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
     )
 
@@ -432,7 +432,7 @@ class ServerConfig(
         protoNumber = 34,
         group = SettingGroup.MISC,
         privacySafe = true,
-        defaultValue = true,
+        defaultValue = false,
     )
 
     val maxLogFiles: MutableStateFlow<Int> by IntSetting(
@@ -458,7 +458,7 @@ class ServerConfig(
         protoNumber = 37,
         group = SettingGroup.MISC,
         privacySafe = true,
-        defaultValue = "100mb",
+        defaultValue = "50mb",
         pattern = logbackSizePattern,
         description = "Maximum log folder size - values: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)",
     )
@@ -485,7 +485,7 @@ class ServerConfig(
         protoNumber = 40,
         group = SettingGroup.BACKUP,
         privacySafe = true,
-        defaultValue = 1,
+        defaultValue = 2,
         min = 0,
         description = "Time in days",
     )
@@ -613,7 +613,7 @@ class ServerConfig(
         protoNumber = 56,
         group = SettingGroup.AUTH,
         privacySafe = true,
-        defaultValue = AuthMode.NONE,
+        defaultValue = AuthMode.SIMPLE_LOGIN,
         enumClass = AuthMode::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.AuthMode")),
         excludeFromBackup = true,
@@ -1040,7 +1040,68 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    val syncYomiEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 87,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true
+    )
 
+    val syncYomiHost: MutableStateFlow<String> by StringSetting(
+        protoNumber = 88,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncYomiApiKey: MutableStateFlow<String> by StringSetting(
+        protoNumber = 89,
+        defaultValue = "",
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = false,
+    )
+
+    val syncDataManga: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 90,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataChapters: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 91,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataTracking: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 92,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataHistory: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 93,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncDataCategories: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 94,
+        defaultValue = true,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncInterval: MutableStateFlow<Duration> by DurationSetting(
+        protoNumber = 95,
+        defaultValue = 0.seconds,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
 
     /** ****************************************************************** **/
     /**                                                                    **/

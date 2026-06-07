@@ -38,6 +38,8 @@ data class ChapterDataClass(
     val pageCount: Int = -1,
     /** total chapter count, used to calculate if there's a next and prev chapter */
     val chapterCount: Int? = null,
+    val lastModifiedAt: Long = 0,
+    val version: Long = 0,
     /** used to store client specific values */
     val meta: Map<String, String> = emptyMap(),
 ) {
