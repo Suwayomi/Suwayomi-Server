@@ -37,10 +37,6 @@ dependencies {
     implementation(libs.bundles.shared)
     testImplementation(libs.bundles.sharedTest)
 
-    // WebView
-    implementation(libs.gluegen)
-    implementation(libs.jogl)
-
     // OkHttp
     implementation(libs.bundles.okhttp)
     implementation(libs.okio)
