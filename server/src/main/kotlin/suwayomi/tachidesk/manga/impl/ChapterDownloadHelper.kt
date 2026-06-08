@@ -71,13 +71,46 @@ object ChapterDownloadHelper {
                     .select(ChapterTable.columns + MangaTable.columns)
                     .where { ChapterTable.id eq chapterId }
                     .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
+
             val chapter = ChapterTable.toDataClass(row)
-            val mangaTitle = row[MangaTable.title]
+            val mangaTitle = row[MangaTable.title].trim()
 
-            val scanlatorPart = chapter.scanlator?.let { "[$it] " } ?: ""
-            val fileName = "$mangaTitle - $scanlatorPart${chapter.name}.cbz"
+            val scanlatorName = chapter.scanlator?.trim()?.takeIf { it.isNotEmpty() }
+            val chapterName = chapter.name.trim().takeIf { it.isNotEmpty() }
 
-            Pair(chapter, fileName)
+            val fileName =
+                buildString {
+                    append(mangaTitle)
+                    append(" - ")
+
+                    if (chapterName != null) {
+                        append(chapterName)
+                    } else if (chapter.chapterNumber >= 0f) {
+                        // chapterNumber is stored as Float, drop .0 for whole numbers.
+                        val formatNumber =
+                            if (chapter.chapterNumber % 1 == 0f) {
+                                chapter.chapterNumber.toInt().toString()
+                            } else {
+                                chapter.chapterNumber.toString()
+                            }
+                        append("#$formatNumber")
+                    } else {
+                        // Fallback when neither name nor valid chapter number exists
+                        append("#${chapter.index}")
+                    }
+
+                    if (scanlatorName != null) {
+                        append(" [")
+                        append(scanlatorName)
+                        append("]")
+                    }
+                    append(".cbz")
+                }
+
+            // Sanitize filename for OS compatibility
+            val safeFileName = fileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+
+            Pair(chapter, safeFileName)
         }
 
     fun getCbzForDownload(
