@@ -61,6 +61,8 @@ class Updater : IUpdater {
     @Deprecated("Replaced with updates", replaceWith = ReplaceWith("updates"))
     override val status = statusFlow.onStart { emit(getStatusDeprecated(null)) }
 
+    private val lastUpdateErrors = ConcurrentHashMap<Int, String>()
+
     private val updatesFlow = MutableSharedFlow<UpdateUpdates>()
     override val updates = updatesFlow.onStart { emit(getUpdates(addInitial = true)) }
 
@@ -319,6 +321,7 @@ class Updater : IUpdater {
             } catch (e: Exception) {
                 logger.error(e) { "Error while updating ${job.manga}" }
                 if (e is CancellationException) throw e
+                lastUpdateErrors[job.manga.id] = e.message ?: e.toString()
                 job.copy(status = JobStatus.FAILED)
             }
 
@@ -332,6 +335,8 @@ class Updater : IUpdater {
             updateStatus(isRunning = false)
         }
     }
+
+    override fun getLastUpdateErrors(): List<UpdateError> = lastUpdateErrors.map { (mangaId, error) -> UpdateError(mangaId, error) }
 
     override fun addCategoriesToUpdateQueue(
         categories: List<CategoryDataClass>,
