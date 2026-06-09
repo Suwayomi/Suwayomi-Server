@@ -162,7 +162,7 @@ class ServerConfig(
         protoNumber = 9,
         group = SettingGroup.WEB_UI,
         privacySafe = true,
-        defaultValue = WebUIFlavor.WEBUI,
+        defaultValue = WebUIFlavor.CUSTOM,
         enumClass = WebUIFlavor::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.WebUIFlavor")),
     )
