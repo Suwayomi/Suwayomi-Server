@@ -28,6 +28,12 @@ import okio.Buffer
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -54,49 +60,147 @@ class CloudflareInterceptor(
 
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
 
+        val flareResponseFallback = serverConfig.flareSolverrAsResponseFallback.value
+
         return try {
             originalResponse.close()
-            // network.cookieStore.remove(originalRequest.url.toUri())
+            resolveCloudflare(chain, originalRequest, originalResponse, flareResponseFallback)
+        } catch (e: Exception) {
+            // Because OkHttp's enqueue only handles IOExceptions, wrap the exception so that we don't crash the entire app
+            throw IOException(e)
+        }
+    }
 
-            val flareResponseFallback = serverConfig.flareSolverrAsResponseFallback.value
-            val flareResponse =
-                runBlocking {
-                    CFClearance.resolveWithFlareSolver(originalRequest, !flareResponseFallback)
-                }
+    private fun resolveCloudflare(
+        chain: Interceptor.Chain,
+        originalRequest: Request,
+        originalResponse: Response,
+        flareResponseFallback: Boolean,
+    ): Response {
+        val host = originalRequest.url.host
 
-            if (flareResponse.message.contains("not detected", ignoreCase = true)) {
-                logger.debug { "FlareSolverr failed to detect Cloudflare challenge" }
+        while (true) {
+            if (chain.call().isCanceled()) throw IOException("Canceled")
 
-                if (flareResponseFallback &&
-                    flareResponse.solution.status in 200..299 &&
-                    flareResponse.solution.response != null
-                ) {
-                    val isImage =
-                        flareResponse.solution.response.contains(CHROME_IMAGE_TEMPLATE_REGEX)
-                    if (!isImage) {
-                        logger.debug { "Falling back to FlareSolverr response" }
+            val myFuture = CompletableFuture<CFClearance.Result>()
+            val inflightRequest = CFClearance.inflightCalls.putIfAbsent(host, myFuture)
 
-                        setUserAgent(flareResponse.solution.userAgent)
+            val awaitInflightResult = inflightRequest != null
+            if (awaitInflightResult) {
+                logger.debug { "Waiting for inflight call for host $host" }
 
-                        return originalResponse
-                            .newBuilder()
-                            .code(flareResponse.solution.status)
-                            .body(flareResponse.solution.response.toResponseBody())
-                            .build()
-                    } else {
-                        logger.debug { "FlareSolverr response is an image html template, not falling back" }
+                when (val result = awaitInflightResult(inflightRequest, chain)) {
+                    is CFClearance.Result.CloudflareBypassed -> {
+                        val request =
+                            CFClearance.buildRequestWithStoredCookies(
+                                originalRequest,
+                                result.userAgent,
+                            )
+
+                        return chain.proceed(request)
+                    }
+
+                    is CFClearance.Result.CloudflareNotDetected -> {
+                        logger.debug { "Inflight call did not detect Cloudflare for $host, retrying" }
+                        continue
                     }
                 }
             }
 
-            val request =
-                CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
+            logger.debug { "Calling FlareSolverr for host $host" }
+            try {
+                val flareResponse =
+                    runBlocking {
+                        CFClearance.resolveWithFlareSolver(originalRequest, !flareResponseFallback)
+                    }
 
-            chain.proceed(request)
-        } catch (e: Exception) {
-            // Because OkHttp's enqueue only handles IOExceptions, wrap the exception so that
-            // we don't crash the entire app
-            throw IOException(e)
+                val cloudflareDetected =
+                    !flareResponse.message.contains("not detected", ignoreCase = true)
+                return if (cloudflareDetected) {
+                    val request =
+                        CFClearance.requestWithFlareSolverr(
+                            flareResponse,
+                            setUserAgent,
+                            originalRequest,
+                        )
+                    myFuture.complete(
+                        CFClearance.Result.CloudflareBypassed(
+                            flareResponse.solution.userAgent,
+                        ),
+                    )
+
+                    chain.proceed(request)
+                } else {
+                    CFClearance.inflightCalls.remove(host, myFuture)
+                    myFuture.complete(CFClearance.Result.CloudflareNotDetected)
+
+                    maybeFallbackToFlareSolverResponse(
+                        flareResponse,
+                        chain,
+                        originalRequest,
+                        originalResponse,
+                        flareResponseFallback,
+                    )
+                }
+            } catch (e: Exception) {
+                myFuture.completeExceptionally(e)
+                throw e
+            } finally {
+                CFClearance.inflightCalls.remove(host, myFuture)
+            }
+        }
+    }
+
+    private fun maybeFallbackToFlareSolverResponse(
+        flareResponse: CFClearance.FlareSolverResponse,
+        chain: Interceptor.Chain,
+        originalRequest: Request,
+        originalResponse: Response,
+        flareResponseFallback: Boolean,
+    ): Response {
+        logger.debug { "FlareSolverr failed to detect Cloudflare challenge" }
+
+        if (flareResponseFallback &&
+            flareResponse.solution.status in 200..299 &&
+            flareResponse.solution.response != null
+        ) {
+            val isImage =
+                flareResponse.solution.response.contains(CHROME_IMAGE_TEMPLATE_REGEX)
+            if (!isImage) {
+                logger.debug { "Falling back to FlareSolverr response" }
+
+                setUserAgent(flareResponse.solution.userAgent)
+
+                return originalResponse
+                    .newBuilder()
+                    .code(flareResponse.solution.status)
+                    .body(flareResponse.solution.response.toResponseBody())
+                    .build()
+            } else {
+                logger.debug { "FlareSolverr response is an image html template, not falling back" }
+            }
+        }
+
+        val request =
+            CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
+
+        return chain.proceed(request)
+    }
+
+    private fun awaitInflightResult(
+        future: CompletableFuture<CFClearance.Result>,
+        chain: Interceptor.Chain,
+    ): CFClearance.Result {
+        while (true) {
+            if (chain.call().isCanceled()) throw IOException("Canceled")
+
+            try {
+                return future.get(500.milliseconds.inWholeMilliseconds, TimeUnit.MILLISECONDS)
+            } catch (_: TimeoutException) {
+                continue
+            } catch (e: ExecutionException) {
+                throw e.cause ?: e
+            }
         }
     }
 
@@ -130,6 +234,32 @@ object CFClearance {
     private val json: Json by injectLazy()
     private val jsonMediaType = "application/json".toMediaType()
     private val mutex = Mutex()
+
+    sealed class Result {
+        data class CloudflareBypassed(
+            val userAgent: String,
+        ) : Result()
+
+        data object CloudflareNotDetected : Result()
+    }
+
+    val inflightCalls = ConcurrentHashMap<String, CompletableFuture<Result>>()
+
+    fun buildRequestWithStoredCookies(
+        originalRequest: Request,
+        userAgent: String,
+    ): Request {
+        val finalCookies =
+            network.cookieStore.get(originalRequest.url).joinToString("; ", postfix = "; ") {
+                "${it.name}=${it.value}"
+            }
+
+        return originalRequest
+            .newBuilder()
+            .header("Cookie", finalCookies)
+            .header("User-Agent", userAgent)
+            .build()
+    }
 
     @Serializable
     data class FlareSolverCookie(
