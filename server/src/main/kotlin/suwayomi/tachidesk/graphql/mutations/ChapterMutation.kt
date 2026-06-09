@@ -24,10 +24,12 @@ import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
+import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.net.URLEncoder
@@ -119,6 +121,11 @@ class ChapterMutation {
                     KoreaderSyncService.pushProgress(chapterId)
                 }
             }
+        }
+
+        // SyncYomi trigger on chapter read
+        if (patch.isRead == true && serverConfig.syncOnChapterRead.value) {
+            SyncManager.startSync()
         }
     }
 
@@ -405,6 +412,11 @@ class ChapterMutation {
         val paramsMap = input.toParams()
 
         return future {
+            // SyncYomi trigger on chapter open (fires once when chapter is opened, not on every page)
+            if (serverConfig.syncOnChapterOpen.value) {
+                SyncManager.startSync()
+            }
+
             var chapter = getChapterDownloadReadyById(chapterId)
             val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
             var syncConflictInfo: SyncConflictInfoType? = null

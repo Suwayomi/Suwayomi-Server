@@ -1101,6 +1101,34 @@ class ServerConfig(
         privacySafe = true,
     )
 
+    val syncOnChapterRead: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 96,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncOnChapterOpen: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 97,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncOnWebUIStart: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 98,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncOnWebUIResume: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 99,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/

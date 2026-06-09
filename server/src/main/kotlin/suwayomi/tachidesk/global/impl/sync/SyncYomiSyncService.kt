@@ -168,10 +168,10 @@ object SyncYomiSyncService {
                 .edit()
                 .putString("last_sync_etag", newETag)
                 .apply()
-            logger.debug { "SyncYomi sync completed" }
+            logger.info { "SyncYomi push completed successfully" }
         } else if (response.code == HttpStatus.PRECONDITION_FAILED.code) {
             // other clients updated remote data, will try next time
-            logger.debug { "SyncYomi sync failed with 412" }
+            logger.info { "SyncYomi push failed with 412 - another client updated remote data, will retry on next sync" }
         } else {
             val responseBody = response.body.string()
             logger.error { "SyncError: $responseBody" }

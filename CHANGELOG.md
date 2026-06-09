@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**Sync**) Added [SyncYomi](https://github.com/syncyomi/syncyomi) support
+- (**Sync/SyncYomi**) Add trigger settings to start sync automatically on chapter read, chapter open, client start, and client resume
 
 ### Changed
 - (**Database/H2**) Use the latest H2 database engine
@@ -16,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension/Android**) Switch MessageQueue to LegacyMessageQueue from ConcurrentMessageQueue
 
 ### Fixed
+- (**Sync/SyncYomi**) Improve push log messages: clarify success outcome and 412 precondition-failed scenario with descriptive context
 - (**CloudFlareInterceptor**) Don't send the `cf_clearance` cookie back to Flaresolverr
 - (**WebUI**) Handle serving non-default webui with "bundled"
 - (**WebUI**) Wait until WebUI is ready to open in browser
