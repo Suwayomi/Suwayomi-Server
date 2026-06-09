@@ -27,8 +27,8 @@ import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.serverModule
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
+import suwayomi.tachidesk.server.util.systemtray.SystemTray
 import suwayomi.tachidesk.server.util.ConfigTypeRegistration
-import suwayomi.tachidesk.server.util.SystemTray
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompatInitializer
