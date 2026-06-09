@@ -35,7 +35,7 @@
 <!-- Generated with https://ecotrust-canada.github.io/markdown-toc/ -->
 
 # What is Suwayomi?
-<img src="https://github.com/vtorres-t/Suwayomi-Server/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
+<img src="https://github.com/Suwayomi/Suwayomi-Server/raw/master/server/src/main/resources/icon/faviconlogo.png" alt="drawing" width="200"/>
 
 A free and open source manga reader server that runs extensions built for [Mihon (Tachiyomi)](https://mihon.app/).
 
@@ -64,8 +64,8 @@ You can use Mihon (Tachiyomi) to access your Suwayomi-Server. For more info look
 - Automated WebUI updates (supports the default WebUI and VUI)
 - OPDS and OPDS-PSE support (endpoint: `/api/opds/v1.2`)
 
-# Suwayomi client projects
-**You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/vtorres-t/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/vtorres-t/Suwayomi-WebUI) with it.**
+# Suwayomi Client Projects
+**You need a client/user interface app as a front-end for Suwayomi-Server, if you [Directly Download Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/releases/latest) you'll get a bundled version of [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI) with it.**
 
 Here's a list of known clients/user interfaces for Suwayomi-Server (checkout the respective GitHub repository for their features):
 
@@ -73,7 +73,7 @@ Here's a list of known clients/user interfaces for Suwayomi-Server (checkout the
 
 These clients are built-in options, and the server can keep them automatically up-to-date.
 
-- [Suwayomi-WebUI](https://github.com/vtorres-t/Suwayomi-WebUI): Web app, PWA
+- [Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI): Web app, PWA
 - [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): Web app, PWA
 
 ##### Other clients (potentially inactive or abandoned)
