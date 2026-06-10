@@ -42,15 +42,12 @@ fun updateChapterPersistence(
     lastPageRead: Int,
     logger: KLogger,
 ): Boolean {
-    val doPageCountsMatch = dbPageCount == downloadPageCount
-
-    if (isMarkedAsDownloaded && doPageCountsMatch) {
+    if (isMarkedAsDownloaded && dbPageCount == downloadPageCount) {
         return false
     }
 
     return transaction {
         var needsUpdate = false
-
         if (!isMarkedAsDownloaded) {
             logger.debug { "mark as downloaded" }
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
@@ -59,7 +56,7 @@ fun updateChapterPersistence(
             needsUpdate = true
         }
 
-        if (!doPageCountsMatch) {
+        if (dbPageCount != downloadPageCount) {
             logger.debug { "use page count of downloaded chapter" }
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[pageCount] = downloadPageCount
@@ -77,11 +74,7 @@ suspend fun refreshChapterPageList(
 ): Int {
     val mutex = mutexByChapterId.get(chapterId) { Mutex() }
     return mutex.withLock {
-        val chapterEntry =
-            transaction {
-                ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
-            }
-
+        val chapterEntry = transaction { ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first() }
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
@@ -156,16 +149,10 @@ private class ChapterForDownload(
     suspend fun asDownloadReady(): ChapterDataClass {
         val log = KotlinLogging.logger("${logger.name}::asDownloadReady")
 
-        val downloadPageCount =
-            try {
-                ChapterDownloadHelper.getImageCount(mangaId, chapterId)
-            } catch (_: Exception) {
-                0
-            }
+        val downloadPageCount = runCatching { ChapterDownloadHelper.getImageCount(mangaId, chapterId) }.getOrDefault(0)
         val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
         val dbPageCount = chapterEntry[ChapterTable.pageCount]
         val doesDownloadExist = downloadPageCount != 0
-        val doPageCountsMatch = dbPageCount == downloadPageCount
 
         log.debug { "isMarkedAsDownloaded= $isMarkedAsDownloaded, dbPageCount= $dbPageCount, downloadPageCount= $downloadPageCount" }
 
@@ -175,8 +162,7 @@ private class ChapterForDownload(
             chapterEntry = freshChapterEntry(optChapterId = chapterId)
             ChapterTable.toDataClass(chapterEntry)
         } else {
-            val needsUpdate =
-                updateChapterPersistence(
+            if (updateChapterPersistence(
                     chapterId,
                     isMarkedAsDownloaded,
                     dbPageCount,
@@ -184,12 +170,9 @@ private class ChapterForDownload(
                     chapterEntry[ChapterTable.lastPageRead],
                     log,
                 )
-
-            // Return updated chapter data
-            if (needsUpdate) {
+            ) {
                 chapterEntry = freshChapterEntry(optChapterId = chapterId)
             }
-
             ChapterTable.toDataClass(chapterEntry)
         }
     }

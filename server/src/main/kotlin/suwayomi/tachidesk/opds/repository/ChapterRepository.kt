@@ -19,6 +19,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.chapter.refreshChapterPageList
@@ -103,58 +104,68 @@ object ChapterRepository {
             coroutineScope {
                 rawChapters.map { entry ->
                     async(Dispatchers.IO) {
-                        var currentEntry = entry
+                        var pageCount = entry.pageCount
+                        var isDownloaded = entry.downloaded
 
-                        // Ensure Page Count is available if unknown and not downloaded
-                        if (currentEntry.pageCount <= 0 || currentEntry.downloaded) {
-                            val downloadPageCount =
-                                try {
-                                    ChapterDownloadHelper.getImageCount(currentEntry.mangaId, currentEntry.id)
-                                } catch (_: Exception) {
-                                    0
-                                }
+                        // Verify physical files if page count is unknown or the DB marks it as downloaded
+                        if (pageCount <= 0 || isDownloaded) {
+                            val physicalPageCount =
+                                runCatching {
+                                    ChapterDownloadHelper.getImageCount(entry.mangaId, entry.id)
+                                }.getOrDefault(0)
 
-                            if (downloadPageCount == 0) {
-                                if (currentEntry.pageCount <= 0) {
-                                    try {
-                                        val newPageCount = refreshChapterPageList(currentEntry.mangaId, currentEntry.id)
-                                        currentEntry = currentEntry.copy(pageCount = newPageCount)
-                                    } catch (e: Exception) {
-                                        logger.warn(e) { "Failed to fetch page count for chapter ${currentEntry.id}" }
-                                    }
-                                }
-                            } else {
-                                val updated =
-                                    updateChapterPersistence(
-                                        chapterId = currentEntry.id,
-                                        isMarkedAsDownloaded = currentEntry.downloaded,
-                                        dbPageCount = currentEntry.pageCount,
-                                        downloadPageCount = downloadPageCount,
-                                        lastPageRead = currentEntry.lastPageRead,
+                            if (physicalPageCount > 0) {
+                                // Files exist! Sync DB if needed
+                                if (updateChapterPersistence(
+                                        chapterId = entry.id,
+                                        isMarkedAsDownloaded = isDownloaded,
+                                        dbPageCount = pageCount,
+                                        downloadPageCount = physicalPageCount,
+                                        lastPageRead = entry.lastPageRead,
                                         logger = logger,
                                     )
+                                ) {
+                                    pageCount = physicalPageCount
+                                    isDownloaded = true
+                                }
+                            } else {
+                                if (isDownloaded) {
+                                    // Fix DB state if marked as downloaded but physical files are missing
+                                    transaction {
+                                        ChapterTable.update({ ChapterTable.id eq entry.id }) {
+                                            it[ChapterTable.isDownloaded] = false
+                                        }
+                                    }
+                                    isDownloaded = false
+                                }
 
-                                if (updated) {
-                                    currentEntry =
-                                        currentEntry.copy(
-                                            pageCount = downloadPageCount,
-                                            downloaded = true,
-                                        )
+                                if (pageCount <= 0) {
+                                    // No files, and DB has no page count. Fetch from network
+                                    pageCount =
+                                        runCatching {
+                                            refreshChapterPageList(entry.mangaId, entry.id)
+                                        }.onFailure {
+                                            logger.warn(it) { "Failed to fetch page count for chapter ${entry.id}" }
+                                        }.getOrDefault(0)
                                 }
                             }
                         }
 
                         // Calculate CBZ size if downloaded
                         val cbzFileSize =
-                            if (currentEntry.downloaded) {
+                            if (isDownloaded) {
                                 runCatching {
-                                    ChapterDownloadHelper.getArchiveStreamWithSize(currentEntry.mangaId, currentEntry.id).second
+                                    ChapterDownloadHelper.getArchiveStreamWithSize(entry.mangaId, entry.id).second
                                 }.getOrNull()
                             } else {
                                 null
                             }
 
-                        currentEntry.copy(cbzFileSize = cbzFileSize)
+                        entry.copy(
+                            pageCount = pageCount,
+                            downloaded = isDownloaded,
+                            cbzFileSize = cbzFileSize,
+                        )
                     }
                 }
             }.awaitAll()
