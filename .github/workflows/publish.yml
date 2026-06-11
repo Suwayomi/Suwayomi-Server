@@ -170,28 +170,28 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: jar
+          name: jarOl
           path: release
-      - uses: actions/download-artifact@v8
-        with:
-          name: debian-all
-          path: release
-      - uses: actions/download-artifact@v8
-        with:
-          name: appimage
-          path: release
-      - uses: actions/download-artifact@v8
-        with:
-          name: linux-assets
-          path: release
-      - uses: actions/download-artifact@v8
-        with:
-          name: linux-x64
-          path: release
-      - uses: actions/download-artifact@v8
-        with:
-          name: windows-x64
-          path: release
+#      - uses: actions/download-artifact@v8
+#        with:
+#          name: debian-all
+#          path: release
+#      - uses: actions/download-artifact@v8
+#        with:
+#          name: appimage
+#          path: release
+#      - uses: actions/download-artifact@v8
+#        with:
+#          name: linux-assets
+#          path: release
+#      - uses: actions/download-artifact@v8
+#        with:
+#          name: linux-x64
+#          path: release
+#      - uses: actions/download-artifact@v8
+#        with:
+#          name: windows-x64
+#          path: release
 
       - name: Generate checksums
         run: cd release && sha256sum * > Checksums.sha256
