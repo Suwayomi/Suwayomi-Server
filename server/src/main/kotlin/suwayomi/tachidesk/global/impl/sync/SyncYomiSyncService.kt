@@ -3,12 +3,16 @@ package suwayomi.tachidesk.global.impl.sync
 import android.app.Application
 import android.content.Context
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.PUT
 import eu.kanade.tachiyomi.network.await
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HttpStatus
+import kotlinx.coroutines.CancellationException
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
@@ -36,31 +40,66 @@ object SyncYomiSyncService {
         message: String?,
     ) : Exception(message)
 
+    @Serializable
+    private data class SyncEvent(
+        val event: SyncEventStatus,
+        val device_Name: String? = null,
+        val message: String? = null,
+    )
+
+    @Serializable
+    private enum class SyncEventStatus {
+        SYNC_STARTED,
+        SYNC_SUCCESS,
+        SYNC_FAILED,
+        SYNC_ERROR,
+        SYNC_CANCELLED,
+    }
+
     suspend fun doSync(
         syncData: SyncData,
         startDate: Instant,
         setSyncState: (SyncManager.SyncState) -> Unit,
     ): Backup? {
+        reportSyncEvent(SyncEventStatus.SYNC_STARTED)
         setSyncState(SyncManager.SyncState.Downloading(startDate))
-        val (remoteData, etag) = pullSyncData()
 
-        val finalSyncData =
-            if (remoteData != null) {
-                require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
-                logger.debug { "Try update remote data with ETag($etag)" }
-                setSyncState(SyncManager.SyncState.Merging(startDate))
-                mergeSyncData(syncData, remoteData)
-            } else {
-                // init or overwrite remote data
-                logger.debug { "Try overwrite remote data with ETag($etag)" }
-                syncData
+        return try {
+            val (remoteData, etag) = pullSyncData()
+
+            val finalSyncData =
+                if (remoteData != null) {
+                    require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
+                    logger.debug { "Try update remote data with ETag($etag)" }
+                    setSyncState(SyncManager.SyncState.Merging(startDate))
+                    mergeSyncData(syncData, remoteData)
+                } else {
+                    // init or overwrite remote data
+                    logger.debug { "Try overwrite remote data with ETag($etag)" }
+                    syncData
+                }
+
+            if (finalSyncData.backup != null) {
+                setSyncState(SyncManager.SyncState.Uploading(startDate))
             }
 
-        if (finalSyncData.backup != null) {
-            setSyncState(SyncManager.SyncState.Uploading(startDate))
+            val success = pushSyncData(finalSyncData, etag)
+            if (success) {
+                reportSyncEvent(SyncEventStatus.SYNC_SUCCESS)
+            } else {
+                reportSyncEvent(SyncEventStatus.SYNC_FAILED, "Failed to push sync data")
+            }
+
+            finalSyncData.backup
+        } catch (e: Exception) {
+            if (e is CancellationException) {
+                reportSyncEvent(SyncEventStatus.SYNC_CANCELLED, e.message)
+                throw e
+            }
+            logger.error { "Error syncing: ${e.message}" }
+            reportSyncEvent(SyncEventStatus.SYNC_ERROR, e.message)
+            throw e
         }
-        pushSyncData(finalSyncData, etag)
-        return finalSyncData.backup
     }
 
     private suspend fun pullSyncData(): Pair<SyncData?, String> {
@@ -122,8 +161,8 @@ object SyncYomiSyncService {
     private suspend fun pushSyncData(
         syncData: SyncData,
         eTag: String,
-    ) {
-        val backup = syncData.backup ?: return
+    ): Boolean {
+        val backup = syncData.backup ?: return true
 
         val host = serverConfig.syncYomiHost.value
         val apiKey = serverConfig.syncYomiApiKey.value
@@ -160,7 +199,7 @@ object SyncYomiSyncService {
 
         val response = client.newCall(uploadRequest).await()
 
-        if (response.isSuccessful) {
+        return if (response.isSuccessful) {
             val newETag =
                 response.headers["ETag"]
                     ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
@@ -169,12 +208,48 @@ object SyncYomiSyncService {
                 .putString("last_sync_etag", newETag)
                 .apply()
             logger.debug { "SyncYomi sync completed" }
+            true
         } else if (response.code == HttpStatus.PRECONDITION_FAILED.code) {
             // other clients updated remote data, will try next time
             logger.debug { "SyncYomi sync failed with 412" }
+            false
         } else {
             val responseBody = response.body.string()
             logger.error { "SyncError: $responseBody" }
+            false
+        }
+    }
+
+    private suspend fun reportSyncEvent(
+        event: SyncEventStatus,
+        message: String? = null,
+    ) {
+        try {
+            val host = serverConfig.syncYomiHost.value
+            val apiKey = serverConfig.syncYomiApiKey.value
+            val url = "$host/api/sync/event"
+
+            val headers = Headers.Builder().add("X-API-Token", apiKey).build()
+
+            // Use a fixed server name.
+            val bodyObj = SyncEvent(
+                event = event,
+                device_Name = "Suwayomi Server",
+                message = message,
+            )
+
+            val jsonBody = Json.encodeToString(SyncEvent.serializer(), bodyObj)
+            val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
+
+            val request = POST(
+                url = url,
+                headers = headers,
+                body = requestBody,
+            )
+
+            network.client.newCall(request).await().close()
+        } catch (e: Exception) {
+            logger.error { "Failed to report sync event: ${e.message}" }
         }
     }
 
