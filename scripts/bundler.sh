@@ -119,7 +119,7 @@ move_release_to_output_dir() {
 }
 
 download_launcher() {
-  LAUNCHER_URL=$(curl -sf "https://api.github.com/repos/vtorres-t/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  LAUNCHER_URL=$(curl -sf "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
   curl -fL "$LAUNCHER_URL" -o "Suwayomi-Launcher.jar"
   mv "Suwayomi-Launcher.jar" "$RELEASE_NAME/Suwayomi-Launcher.jar"
 }

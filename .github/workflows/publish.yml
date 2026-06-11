@@ -115,7 +115,6 @@ jobs:
             jre: linux-x64
           - name: appimage
             jre: linux-x64
-          - name: linux-assets
             jre: linux-assets
           - name: linux-x64
             jre: linux-x64
