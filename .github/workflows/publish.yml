@@ -106,62 +106,63 @@ jobs:
           name: ${{ matrix.name }}-jre
           path: suwa
 
-  bundle:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: debian-all
-            jre: linux-x64
-          - name: appimage
-            jre: linux-x64
-            jre: linux-assets
-          - name: linux-x64
-            jre: linux-x64
-          - name: windows-x64
-            jre: windows-x64
-        name: [debian-all, appimage, linux-assets, linux-x64, windows-x64]
-
-    name: Make ${{ matrix.name }} release
-    needs: [build, jlink]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Jar
-        uses: actions/download-artifact@v8
-        with:
-          name: jar
-          path: server/build
-
-      - name: Download JRE
-        uses: actions/download-artifact@v8
-        if: matrix.name != 'linux-assets' && matrix.name != 'debian-all'
-        with:
-          name: ${{ matrix.jre }}-jre
-          path: jre
-
-      - name: Download icons
-        uses: actions/download-artifact@v8
-        with:
-          name: icon
-          path: server/src/main/resources/icon
-
-      - name: Download scripts.tar.gz
-        uses: actions/download-artifact@v8
-        with:
-          name: scripts
-
-      - name: Make ${{ matrix.name }} release
-        run: |
-          mkdir upload/
-          tar -xvpf scripts.tar.gz
-          scripts/bundler.sh -o upload/ ${{ matrix.name }}
-
-      - name: Upload ${{ matrix.name }} files
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ matrix.name }}
-          path: upload/*
-          if-no-files-found: error
+#  bundle:
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        include:
+#          - name: debian-all
+#            jre: linux-x64
+#          - name: appimage
+#            jre: linux-x64
+#          - name: linux-assets
+#            jre: linux-assets
+#          - name: linux-x64
+#            jre: linux-x64
+#          - name: windows-x64
+#            jre: windows-x64
+#        name: [debian-all, appimage, linux-assets, linux-x64, windows-x64]
+#
+#    name: Make ${{ matrix.name }} release
+#    needs: [build, jlink]
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Download Jar
+#        uses: actions/download-artifact@v8
+#        with:
+#          name: jar
+#          path: server/build
+#
+#      - name: Download JRE
+#        uses: actions/download-artifact@v8
+#        if: matrix.name != 'linux-assets' && matrix.name != 'debian-all'
+#        with:
+#          name: ${{ matrix.jre }}-jre
+#          path: jre
+#
+#      - name: Download icons
+#        uses: actions/download-artifact@v8
+#        with:
+#          name: icon
+#          path: server/src/main/resources/icon
+#
+#      - name: Download scripts.tar.gz
+#        uses: actions/download-artifact@v8
+#        with:
+#          name: scripts
+#
+#      - name: Make ${{ matrix.name }} release
+#        run: |
+#          mkdir upload/
+#          tar -xvpf scripts.tar.gz
+#          scripts/bundler.sh -o upload/ ${{ matrix.name }}
+#
+#      - name: Upload ${{ matrix.name }} files
+#        uses: actions/upload-artifact@v7
+#        with:
+#          name: ${{ matrix.name }}
+#          path: upload/*
+#          if-no-files-found: error
 
   release:
     needs: bundle
@@ -169,7 +170,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8
         with:
-          name: jarOl
+          name: jar
           path: release
 #      - uses: actions/download-artifact@v8
 #        with:
