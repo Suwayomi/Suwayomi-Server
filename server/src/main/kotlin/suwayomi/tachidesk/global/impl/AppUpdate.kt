@@ -16,14 +16,12 @@ import uy.kohesive.injekt.injectLazy
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 data class UpdateDataClass(
-    /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
-    val channel: String,
     val tag: String,
     val url: String,
 )
 
 object AppUpdate {
-    private const val LATEST_STABLE_CHANNEL_URL = "https://api.github.com/repos/vtorres-t/Suwayomi-Server/releases/latest"
+    private const val LATEST_RELEASE_REPO_URL = "https://api.github.com/repos/vtorres-t/Suwayomi-Server/releases/latest"
 
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
@@ -34,7 +32,7 @@ object AppUpdate {
                 .parseToJsonElement(
                     network.client
                         .newCall(
-                            GET(LATEST_STABLE_CHANNEL_URL),
+                            GET(LATEST_RELEASE_REPO_URL),
                         ).await()
                         .body
                         .string(),
@@ -42,7 +40,6 @@ object AppUpdate {
 
         return listOf(
             UpdateDataClass(
-                "Stable",
                 stableJson["tag_name"]!!.jsonPrimitive.content,
                 stableJson["html_url"]!!.jsonPrimitive.content,
             ),

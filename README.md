@@ -96,7 +96,7 @@ Download the latest `win64`(Windows 64-bit) release from [the releases section](
 Unzip the downloaded file and double-click on one of the launcher scripts.
 
 ### GNU/Linux
-Download the latest `linux-x64`(x86_64) release from [the releases section](https://github.com/Suwayomi/Suwayomi-Server/releases) or a preview one from [the preview repository](https://github.com/Suwayomi/Suwayomi-Server-preview/releases).
+Download the latest `linux-x64`(x86_64) release from [the releases section](https://github.com/Suwayomi/Suwayomi-Server/releases).
 
 `tar xvf` the downloaded file and double-click on one of the launcher scripts or run them using the terminal.
 

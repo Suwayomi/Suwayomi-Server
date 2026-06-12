@@ -7,17 +7,6 @@ enum class WebUIInterface {
     ELECTRON,
 }
 
-enum class WebUIChannel {
-    BUNDLED, // the default webUI version bundled with the server release
-    STABLE,
-    PREVIEW,
-    ;
-
-    companion object {
-        fun from(channel: String): WebUIChannel = entries.find { it.name.lowercase() == channel.lowercase() } ?: STABLE
-    }
-}
-
 enum class WebUIFlavor(
     val uiName: String,
     val repoUrl: String,

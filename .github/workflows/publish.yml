@@ -50,8 +50,6 @@ jobs:
             ~/.gradle/gradle.properties
 
       - name: Build and copy webUI, Build Jar
-        env:
-          ProductBuildType: "Stable"
         working-directory: master
         run: ./gradlew :server:downloadWebUI :server:shadowJar --stacktrace
 

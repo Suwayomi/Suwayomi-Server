@@ -19,7 +19,6 @@ class InfoQuery {
         val version: String,
         @GraphQLDeprecated("The version includes the revision as the patch number")
         val revision: String,
-        val buildType: String,
         val buildTime: Long,
         val github: String,
     )
@@ -29,14 +28,11 @@ class InfoQuery {
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
-            BuildConfig.BUILD_TYPE,
             BuildConfig.BUILD_TIME,
             BuildConfig.GITHUB,
         )
 
     data class CheckForServerUpdatesPayload(
-        /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */
-        val channel: String,
         val tag: String,
         val url: String,
     )
@@ -46,7 +42,6 @@ class InfoQuery {
         future {
             AppUpdate.checkUpdate().map {
                 CheckForServerUpdatesPayload(
-                    channel = it.channel,
                     tag = it.tag,
                     url = it.url,
                 )
@@ -64,7 +59,6 @@ class InfoQuery {
         future {
             val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(WebUIFlavor.current, raiseError = true)
             WebUIUpdateCheck(
-                channel = serverConfig.webUIChannel.value,
                 tag = version,
                 updateAvailable,
             )

@@ -152,7 +152,6 @@ buildConfig {
     buildConfigField("String", "NAME", quoteWrap(rootProject.name))
     buildConfigField("String", "VERSION", quoteWrap(getTachideskVersion()))
     buildConfigField("String", "REVISION", quoteWrap(getTachideskRevision()))
-    buildConfigField("String", "BUILD_TYPE", quoteWrap(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))

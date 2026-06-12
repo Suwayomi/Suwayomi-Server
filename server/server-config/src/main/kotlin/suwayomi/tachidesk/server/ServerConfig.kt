@@ -36,7 +36,6 @@ import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionHeaderType
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
-import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
@@ -194,15 +193,6 @@ class ServerConfig(
         defaultValue = "",
         mustExist = true,
         excludeFromBackup = true,
-    )
-
-    val webUIChannel: MutableStateFlow<WebUIChannel> by EnumSetting(
-        protoNumber = 13,
-        group = SettingGroup.WEB_UI,
-        privacySafe = true,
-        defaultValue = WebUIChannel.STABLE,
-        enumClass = WebUIChannel::class,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.WebUIChannel")),
     )
 
     val webUIUpdateCheckInterval: MutableStateFlow<Double> by DisableableDoubleSetting(

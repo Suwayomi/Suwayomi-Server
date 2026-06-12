@@ -45,7 +45,6 @@ import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.FINISHED
 import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
-import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
@@ -140,7 +139,6 @@ object WebInterfaceManager {
         }
 
         return AboutWebUI(
-            channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
             updateTimestamp = preferences.getLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()),
         )
@@ -154,7 +152,6 @@ object WebInterfaceManager {
         WebUIUpdateStatus(
             info =
                 WebUIUpdateInfo(
-                    channel = serverConfig.webUIChannel.value,
                     tag = version,
                 ),
             state,
@@ -264,7 +261,6 @@ object WebInterfaceManager {
                     KotlinLogging.logger(
                         "${logger.name}::scheduleWebUIUpdateCheck(" +
                             "flavor= ${WebUIFlavor.current.uiName}, " +
-                            "channel= ${serverConfig.webUIChannel.value}, " +
                             "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
                             "lastAutomatedUpdate= ${
                                 Date(
@@ -307,21 +303,10 @@ object WebInterfaceManager {
 
         val log =
             KotlinLogging.logger(
-                "${logger.name} setupWebUI(flavor= ${WebUIFlavor.current.uiName}, servedFlavor= ${servedFlavor.uiName}, channel= ${serverConfig.webUIChannel})",
+                "${logger.name} setupWebUI(flavor= ${WebUIFlavor.current.uiName}, servedFlavor= ${servedFlavor.uiName})",
             )
 
-        val flavor =
-            if (serverConfig.webUIChannel.value == WebUIChannel.BUNDLED) {
-                if (serverConfig.webUIFlavor.value != WebUIFlavor.default) {
-                    log.warn {
-                        "Changed flavor to ${WebUIFlavor.default.uiName}. Channel \"${WebUIChannel.BUNDLED}\" only works with the default flavor"
-                    }
-                }
-
-                WebUIFlavor.default
-            } else {
-                WebUIFlavor.current
-            }
+        val flavor = WebUIFlavor.current
 
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
             val currentVersion = getLocalVersion()

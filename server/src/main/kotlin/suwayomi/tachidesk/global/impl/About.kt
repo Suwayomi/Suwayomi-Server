@@ -14,7 +14,6 @@ data class AboutDataClass(
     val version: String,
     @Deprecated("The version includes the revision as the patch number")
     val revision: String,
-    val buildType: String,
     val buildTime: Long,
     val github: String,
 )
@@ -25,7 +24,6 @@ object About {
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
-            BuildConfig.BUILD_TYPE,
             BuildConfig.BUILD_TIME,
             BuildConfig.GITHUB,
         )
