@@ -63,6 +63,47 @@ private fun List<ChapterDataClass>.removeDuplicates(currentChapter: ChapterDataC
 object Chapter {
     private val logger = KotlinLogging.logger { }
 
+    /**
+     * Update manga chapter statistics in MangaTable
+     * Should be called after any operation that changes chapter read status, count, or upload dates
+     */
+    private fun updateMangaChapterStats(mangaId: Int) {
+        transaction {
+            val chapterStats = ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq mangaId }
+                .let { query ->
+                    var totalCount = 0
+                    var unreadCount = 0
+                    var maxLastReadAt = 0L
+                    var maxUploadDate = 0L
+
+                    query.forEach { row ->
+                        totalCount++
+                        if (!row[ChapterTable.isRead]) {
+                            unreadCount++
+                        }
+                        maxLastReadAt = maxOf(maxLastReadAt, row[ChapterTable.lastReadAt])
+                        maxUploadDate = maxOf(maxUploadDate, row[ChapterTable.date_upload])
+                    }
+
+                    object {
+                        val total = totalCount
+                        val unread = unreadCount
+                        val lastReadAt = maxLastReadAt
+                        val lastUploadDate = maxUploadDate
+                    }
+                }
+
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                it[chaptersTotalCount] = chapterStats.total
+                it[chaptersUnreadCount] = chapterStats.unread
+                it[chaptersLastReadAt] = chapterStats.lastReadAt
+                it[chaptersLastUploadDate] = chapterStats.lastUploadDate
+            }
+        }
+    }
+
     /** get chapter list when showing a manga */
     suspend fun getChapterList(
         mangaId: Int,
@@ -353,6 +394,9 @@ object Chapter {
                     }
                 }
 
+                // Update manga chapter statistics after chapter list changes
+                updateMangaChapterStats(mangaId)
+
                 if (manga.inLibrary) {
                     // We have to query the inserted chapters to get the up-to-date data. I.e. "last_modified_at" is not returned by the insert statement, due to being set by a DB trigger
                     val insertedChapters =
@@ -501,6 +545,11 @@ object Chapter {
                 chapterIdValue
             }
 
+        // Update manga statistics if chapter status changed
+        if (listOf(isRead, isBookmarked, lastPageRead, markPrevRead).any { it != null }) {
+            updateMangaChapterStats(mangaId)
+        }
+
         if (isRead == true || markPrevRead == true) {
             Track.asyncTrackChapter(setOf(mangaId))
         }
@@ -595,15 +644,21 @@ object Chapter {
             }
         }
 
+        // Update manga statistics for all affected manga
+        val mangaIds =
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where(condition)
+                    .map { it[ChapterTable.manga].value }
+                    .toSet()
+            }
+
+        mangaIds.forEach { affectedMangaId ->
+            updateMangaChapterStats(affectedMangaId)
+        }
+
         if (isRead == true) {
-            val mangaIds =
-                transaction {
-                    ChapterTable
-                        .selectAll()
-                        .where(condition)
-                        .map { it[ChapterTable.manga].value }
-                        .toSet()
-                }
             Track.asyncTrackChapter(mangaIds)
         }
     }
