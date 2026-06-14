@@ -271,13 +271,17 @@ server.useHikariConnectionPool = true
 ```
 server.repoWebUiType = Github # Github, Gitea
 server.repoWebUiUrl = "https://github.com/vtorres-t/Suwayomi-WebUI"
+server.repoWebUiToken = ""
 server.repoServerType = Github # Github, Gitea
 server.repoServerUrl = "https://github.com/vtorres-t/Suwayomi-Server"
+server.repoServerToken = ""
 ```
 - `server.repoWebUiType` chooses which type of repository WebUi (Github or Gitea).
 - `server.repoWebUiUrl` the URL repository WebUi.
+- `server.repoWebUiToken` the token repository WebUi.
 - `server.repoServerType` chooses which type of repository server (Github or Gitea).
 - `server.repoServerUrl` the URL repository server.
+- `server.repoServerToken` the token repository server.
 
 ### SyncYomi
 ```

@@ -592,8 +592,9 @@ object WebInterfaceManager {
                 KotlinLogging.logger("${logger.name} fetchUIVersion(${flavor.uiName})"),
                 {
                     val updates = AppUpdate.checkWebUIUpdate(WebUIFlavor.toRepoUrl())
-                    val latestUpdate = updates.firstOrNull()
-                        ?: throw Exception("Failed to get the preview version tag")
+                    val latestUpdate =
+                        updates.firstOrNull()
+                            ?: throw Exception("Failed to get the preview version tag")
                     latestUpdate.tag
                 },
             )

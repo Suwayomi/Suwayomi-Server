@@ -928,6 +928,22 @@ class ServerConfig(
         description = "Repository type for Server.",
     )
 
+    val repoServerToken: MutableStateFlow<String> by StringSetting(
+        protoNumber = 1105,
+        group = SettingGroup.REPO,
+        privacySafe = false,
+        defaultValue = "",
+        requiresRestart = false,
+    )
+
+    val repoWebUiToken: MutableStateFlow<String> by StringSetting(
+        protoNumber = 1106,
+        group = SettingGroup.REPO,
+        privacySafe = false,
+        defaultValue = "",
+        requiresRestart = false,
+    )
+
     val databaseType: MutableStateFlow<DatabaseType> by EnumSetting(
         protoNumber = 69,
         group = SettingGroup.DATABASE,
