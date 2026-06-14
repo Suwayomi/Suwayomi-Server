@@ -27,11 +27,15 @@ object AppUpdate {
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
-    suspend fun checkUpdate(): List<UpdateDataClass> {
-        return checkUpdate(serverConfig.repoServerUrl.value)
+    suspend fun checkServerUpdate(): List<UpdateDataClass> {
+        return checkUpdate(serverConfig.repoServerType.value, serverConfig.repoServerUrl.value)
     }
 
-    suspend fun checkUpdate(repoUrl: String): List<UpdateDataClass> {
+    suspend fun checkWebUIUpdate(repoUrl: String): List<UpdateDataClass> {
+        return checkUpdate(serverConfig.repoWebUiType.value, repoUrl)
+    }
+
+    suspend fun checkUpdate(repoType: RepoType, repoUrl: String): List<UpdateDataClass> {
         val repoType = serverConfig.repoServerType.value
         val cleanUrl = repoUrl.removeSuffix("/")
 

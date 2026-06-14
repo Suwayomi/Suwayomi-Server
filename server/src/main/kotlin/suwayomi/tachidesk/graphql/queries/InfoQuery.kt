@@ -43,7 +43,7 @@ class InfoQuery {
     @RequireAuth
     fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> =
         future {
-            AppUpdate.checkUpdate().map {
+            AppUpdate.checkServerUpdate().map {
                 CheckForServerUpdatesPayload(
                     tag = it.tag,
                     url = it.url,

@@ -51,7 +51,7 @@ object SettingsController {
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { AppUpdate.checkUpdate() }
+                    future { AppUpdate.checkServerUpdate() }
                         .thenApply { ctx.json(it) }
                 }
             },
