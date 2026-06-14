@@ -5,7 +5,10 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import suwayomi.tachidesk.graphql.types.RepoType
+import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.manga.impl.util.network.await
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 
 /*
@@ -21,22 +24,38 @@ data class UpdateDataClass(
 )
 
 object AppUpdate {
-    private const val LATEST_RELEASE_REPO_URL = "https://api.github.com/repos/vtorres-t/Suwayomi-Server/releases/latest"
-
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
     suspend fun checkUpdate(): List<UpdateDataClass> {
-        val stableJson =
-            json
-                .parseToJsonElement(
-                    network.client
-                        .newCall(
-                            GET(LATEST_RELEASE_REPO_URL),
-                        ).await()
-                        .body
-                        .string(),
-                ).jsonObject
+        return checkUpdate(serverConfig.repoServerUrl.value)
+    }
+
+    suspend fun checkUpdate(repoUrl: String): List<UpdateDataClass> {
+        val repoType = serverConfig.repoServerType.value
+        val cleanUrl = repoUrl.removeSuffix("/")
+
+        val apiUrl = when (repoType) {
+            RepoType.Github -> {
+                val path = cleanUrl.substringAfter("github.com/")
+                "https://api.github.com/repos/$path/releases/latest"
+            }
+            RepoType.Gitea -> {
+                val scheme = cleanUrl.substringBefore("://") + "://"
+                val domainAndPath = cleanUrl.substringAfter("://")
+                val baseUrl = scheme + domainAndPath.substringBefore("/")
+                val path = domainAndPath.substringAfter("/")
+                "$baseUrl/api/v1/repos/$path/releases/latest"
+            }
+        }
+
+        val response = network.client
+            .newCall(GET(apiUrl))
+            .await()
+            .body
+            .string()
+
+        val stableJson = json.parseToJsonElement(response).jsonObject
 
         return listOf(
             UpdateDataClass(

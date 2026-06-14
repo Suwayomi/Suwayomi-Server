@@ -4,6 +4,7 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import suwayomi.tachidesk.global.impl.AppUpdate
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.AboutWebUI
+import suwayomi.tachidesk.graphql.types.RepoType
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateCheck
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
@@ -21,6 +22,7 @@ class InfoQuery {
         val revision: String,
         val buildTime: Long,
         val repoUrl: String,
+        val repoType: RepoType,
     )
 
     fun aboutServer(): AboutServerPayload =
@@ -29,7 +31,8 @@ class InfoQuery {
             BuildConfig.VERSION,
             BuildConfig.REVISION,
             BuildConfig.BUILD_TIME,
-            BuildConfig.REPO_URL,
+            serverConfig.repoServerUrl.value.takeIf { it.isNotBlank() } ?: BuildConfig.REPO_URL,
+            serverConfig.repoServerType.value,
         )
 
     data class CheckForServerUpdatesPayload(

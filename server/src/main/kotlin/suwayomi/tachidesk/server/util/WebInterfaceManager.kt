@@ -35,10 +35,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.lingala.zip4j.ZipFile
+import suwayomi.tachidesk.global.impl.AppUpdate
 import suwayomi.tachidesk.graphql.types.AboutWebUI
 import suwayomi.tachidesk.graphql.types.UpdateState
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
@@ -138,7 +138,8 @@ object WebInterfaceManager {
         }
 
         return AboutWebUI(
-            repoUrl = "",
+            repoUrl = serverConfig.repoWebUiUrl.value,
+            repoType = serverConfig.repoWebUiType.value,
             tag = currentVersion,
             updateTimestamp = preferences.getLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()),
         )
@@ -480,7 +481,7 @@ object WebInterfaceManager {
         flavor: WebUIFlavor,
         version: String,
     ): String {
-        val baseReleasesUrl = "${flavor.repoUrl}/releases"
+        val baseReleasesUrl = "${WebUIFlavor.toRepoUrl(flavor)}/releases"
         val downloadSpecificVersionBaseUrl = "$baseReleasesUrl/download"
 
         return "$downloadSpecificVersionBaseUrl/$version"
@@ -590,14 +591,10 @@ object WebInterfaceManager {
             executeWithRetry(
                 KotlinLogging.logger("${logger.name} fetchUIVersion(${flavor.uiName})"),
                 {
-                    val releaseInfoJson =
-                        network.client
-                            .newCall(GET(flavor.latestReleaseInfoUrl))
-                            .awaitSuccess()
-                            .body
-                            .string()
-                    Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
+                    val updates = AppUpdate.checkUpdate(WebUIFlavor.toRepoUrl())
+                    val latestUpdate = updates.firstOrNull()
                         ?: throw Exception("Failed to get the preview version tag")
+                    latestUpdate.tag
                 },
             )
         }

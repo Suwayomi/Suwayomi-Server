@@ -3,6 +3,7 @@ package suwayomi.tachidesk.graphql.types
 data class AboutWebUI(
     val tag: String,
     val repoUrl: String,
+    val repoType: RepoType,
     val updateTimestamp: Long,
 )
 

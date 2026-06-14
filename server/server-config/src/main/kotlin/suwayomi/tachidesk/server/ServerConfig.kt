@@ -905,7 +905,7 @@ class ServerConfig(
         group = SettingGroup.REPO,
         privacySafe = true,
         enumClass = RepoType::class,
-        defaultValue = RepoType.GITHUB,
+        defaultValue = RepoType.Github,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.RepoType")),
         description = "Repository type for WebUI.",
     )
@@ -914,7 +914,7 @@ class ServerConfig(
         protoNumber = 1103,
         group = SettingGroup.REPO,
         privacySafe = true,
-        defaultValue = "https://github.com/vtorres-t/Suwayomi-WebUI",
+        defaultValue = "https://github.com/vtorres-t/Suwayomi-Server",
         requiresRestart = false,
     )
 
@@ -923,7 +923,7 @@ class ServerConfig(
         group = SettingGroup.REPO,
         privacySafe = true,
         enumClass = RepoType::class,
-        defaultValue = RepoType.GITHUB,
+        defaultValue = RepoType.Github,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.RepoType")),
         description = "Repository type for Server.",
     )
