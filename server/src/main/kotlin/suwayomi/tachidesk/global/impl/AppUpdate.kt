@@ -27,37 +27,40 @@ object AppUpdate {
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
-    suspend fun checkServerUpdate(): List<UpdateDataClass> {
-        return checkUpdate(serverConfig.repoServerType.value, serverConfig.repoServerUrl.value)
-    }
+    suspend fun checkServerUpdate(): List<UpdateDataClass> =
+        checkUpdate(serverConfig.repoServerType.value, serverConfig.repoServerUrl.value)
 
-    suspend fun checkWebUIUpdate(repoUrl: String): List<UpdateDataClass> {
-        return checkUpdate(serverConfig.repoWebUiType.value, repoUrl)
-    }
+    suspend fun checkWebUIUpdate(repoUrl: String): List<UpdateDataClass> = checkUpdate(serverConfig.repoWebUiType.value, repoUrl)
 
-    suspend fun checkUpdate(repoType: RepoType, repoUrl: String): List<UpdateDataClass> {
+    suspend fun checkUpdate(
+        repoType: RepoType,
+        repoUrl: String,
+    ): List<UpdateDataClass> {
         val repoType = serverConfig.repoServerType.value
         val cleanUrl = repoUrl.removeSuffix("/")
 
-        val apiUrl = when (repoType) {
-            RepoType.Github -> {
-                val path = cleanUrl.substringAfter("github.com/")
-                "https://api.github.com/repos/$path/releases/latest"
-            }
-            RepoType.Gitea -> {
-                val scheme = cleanUrl.substringBefore("://") + "://"
-                val domainAndPath = cleanUrl.substringAfter("://")
-                val baseUrl = scheme + domainAndPath.substringBefore("/")
-                val path = domainAndPath.substringAfter("/")
-                "$baseUrl/api/v1/repos/$path/releases/latest"
-            }
-        }
+        val apiUrl =
+            when (repoType) {
+                RepoType.Github -> {
+                    val path = cleanUrl.substringAfter("github.com/")
+                    "https://api.github.com/repos/$path/releases/latest"
+                }
 
-        val response = network.client
-            .newCall(GET(apiUrl))
-            .await()
-            .body
-            .string()
+                RepoType.Gitea -> {
+                    val scheme = cleanUrl.substringBefore("://") + "://"
+                    val domainAndPath = cleanUrl.substringAfter("://")
+                    val baseUrl = scheme + domainAndPath.substringBefore("/")
+                    val path = domainAndPath.substringAfter("/")
+                    "$baseUrl/api/v1/repos/$path/releases/latest"
+                }
+            }
+
+        val response =
+            network.client
+                .newCall(GET(apiUrl))
+                .await()
+                .body
+                .string()
 
         val stableJson = json.parseToJsonElement(response).jsonObject
 
