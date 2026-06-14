@@ -29,7 +29,7 @@ enum class WebUIFlavor(
 
     CUSTOM(
         "Custom",
-        "repoURL",
+        "repoUrl",
         "latestReleaseInfoURL",
         "baseFileName",
     ),

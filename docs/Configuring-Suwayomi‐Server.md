@@ -267,6 +267,18 @@ server.useHikariConnectionPool = true
 - `server.databasePassword` the username with which to authenticate at the PostgreSQL instance.
 - `server.useHikariConnectionPool` use Hikari Connection Pool to connect to the database.
 
+### Repository
+```
+server.repoWebUiType = GITHUB # GITHUB, GITEA
+server.repoWebUiUrl = "https://github.com/vtorres-t/Suwayomi-WebUI"
+server.repoServerType = GITHUB # GITHUB, GITEA
+server.repoServerUrl = "https://github.com/vtorres-t/Suwayomi-Server"
+```
+- `server.repoWebUiType` chooses which type of repository WebUi (GITHUB or GITEA).
+- `server.repoWebUiUrl` the URL repository WebUi.
+- `server.repoServerType` chooses which type of repository server (GITHUB or GITEA).
+- `server.repoServerUrl` the URL repository server.
+
 ### SyncYomi
 ```
 server.syncYomiEnabled = false

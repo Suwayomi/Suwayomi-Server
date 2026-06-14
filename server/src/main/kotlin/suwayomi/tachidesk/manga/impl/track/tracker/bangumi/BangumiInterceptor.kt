@@ -37,7 +37,7 @@ class BangumiInterceptor(
             .newBuilder()
             .header(
                 "User-Agent",
-                "vtorres-t/Suwayomi-Server/${BuildConfig.VERSION} (${BuildConfig.GITHUB})",
+                "vtorres-t/Suwayomi-Server/${BuildConfig.VERSION} (${BuildConfig.REPO_URL})",
             ).apply {
                 addHeader("Authorization", "Bearer ${currAuth.accessToken}")
             }.build()

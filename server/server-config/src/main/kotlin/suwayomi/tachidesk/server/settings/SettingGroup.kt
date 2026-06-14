@@ -17,7 +17,8 @@ enum class SettingGroup(
     CLOUDFLARE("Cloudflare"),
     OPDS("OPDS"),
     KOREADER_SYNC("KOReader sync"),
-    SYNCYOMI("SyncYomi")
+    SYNCYOMI("SyncYomi"),
+    REPO("Repository")
     ;
 
     override fun toString(): String = value

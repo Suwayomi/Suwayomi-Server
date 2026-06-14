@@ -34,6 +34,7 @@ import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
+import suwayomi.tachidesk.graphql.types.RepoType
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionHeaderType
 import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
@@ -889,6 +890,42 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = true,
         requiresRestart = true,
+    )
+
+    val repoWebUiUrl: MutableStateFlow<String> by StringSetting(
+        protoNumber = 1101,
+        group = SettingGroup.REPO,
+        privacySafe = true,
+        defaultValue = "https://github.com/vtorres-t/Suwayomi-WebUI",
+        requiresRestart = false,
+    )
+
+    val repoWebUiType: MutableStateFlow<RepoType> by EnumSetting(
+        protoNumber = 1102,
+        group = SettingGroup.REPO,
+        privacySafe = true,
+        enumClass = RepoType::class,
+        defaultValue = RepoType.GITHUB,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.RepoType")),
+        description = "Repository type for WebUI.",
+    )
+
+    val repoServerUrl: MutableStateFlow<String> by StringSetting(
+        protoNumber = 1103,
+        group = SettingGroup.REPO,
+        privacySafe = true,
+        defaultValue = "https://github.com/vtorres-t/Suwayomi-WebUI",
+        requiresRestart = false,
+    )
+
+    val repoServerType: MutableStateFlow<RepoType> by EnumSetting(
+        protoNumber = 1104,
+        group = SettingGroup.REPO,
+        privacySafe = true,
+        enumClass = RepoType::class,
+        defaultValue = RepoType.GITHUB,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.RepoType")),
+        description = "Repository type for Server.",
     )
 
     val databaseType: MutableStateFlow<DatabaseType> by EnumSetting(

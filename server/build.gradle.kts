@@ -156,7 +156,7 @@ buildConfig {
 
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
 
-    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/vtorres-t/Suwayomi-Server"))
+    buildConfigField("String", "REPO_URL", quoteWrap("https://github.com/vtorres-t/Suwayomi-Server"))
 }
 
 tasks {

@@ -20,7 +20,7 @@ class InfoQuery {
         @GraphQLDeprecated("The version includes the revision as the patch number")
         val revision: String,
         val buildTime: Long,
-        val github: String,
+        val repoUrl: String,
     )
 
     fun aboutServer(): AboutServerPayload =
@@ -29,7 +29,7 @@ class InfoQuery {
             BuildConfig.VERSION,
             BuildConfig.REVISION,
             BuildConfig.BUILD_TIME,
-            BuildConfig.GITHUB,
+            BuildConfig.REPO_URL,
         )
 
     data class CheckForServerUpdatesPayload(

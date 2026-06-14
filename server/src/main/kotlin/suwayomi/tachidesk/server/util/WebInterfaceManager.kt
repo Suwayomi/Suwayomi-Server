@@ -94,7 +94,6 @@ object WebInterfaceManager {
     private val network: NetworkHelper by injectLazy()
 
     private val CACHE_DURATION = 5.minutes
-    private val versionMappingCache = Cache.Builder<String, JsonArray>().expireAfterWrite(CACHE_DURATION).build()
     private val previewVersionCache = Cache.Builder<String, String>().expireAfterWrite(CACHE_DURATION).build()
 
     private val notifyFlow = MutableSharedFlow<WebUIUpdateStatus?>()
@@ -139,6 +138,7 @@ object WebInterfaceManager {
         }
 
         return AboutWebUI(
+            repoUrl = "",
             tag = currentVersion,
             updateTimestamp = preferences.getLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()),
         )
