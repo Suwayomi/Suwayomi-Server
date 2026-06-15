@@ -148,13 +148,11 @@ object ProtoBackupExport : ProtoBackupBase() {
 
     fun createBackup(flags: BackupFlags): InputStream {
         // Create root object
-
-        val backupMangas = BackupMangaHandler.backup(flags)
-
         val backup: Backup =
             transaction {
+                val backupMangas = BackupMangaHandler.backup(flags)
                 Backup(
-                    BackupMangaHandler.backup(flags),
+                    backupMangas,
                     BackupCategoryHandler.backup(flags),
                     BackupSourceHandler.backup(backupMangas, flags),
                     BackupGlobalMetaHandler.backup(flags),
