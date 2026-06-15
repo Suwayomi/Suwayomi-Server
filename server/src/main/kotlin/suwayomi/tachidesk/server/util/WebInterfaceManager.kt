@@ -136,7 +136,7 @@ object WebInterfaceManager {
     fun getAboutInfo(): AboutWebUI {
         val currentVersion = getLocalVersion()
 
-        val failedToGetVersion = currentVersion === "r-1"
+        val failedToGetVersion = currentVersion == "r-1"
         if (failedToGetVersion) {
             throw Exception("Failed to get current version")
         }

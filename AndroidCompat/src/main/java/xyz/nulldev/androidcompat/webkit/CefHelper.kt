@@ -21,7 +21,7 @@ object CefHelper {
     }
 
     fun waitForInit() =
-        callbackFlow<CefApp> {
+        callbackFlow {
             val app = cefApp.first { it.isFailure || it.getOrThrow() != null }.getOrThrow()!!
             app.onInitialization {
                 logger.debug { "CEF: Initialization state $it" }

@@ -10,10 +10,6 @@ package suwayomi.tachidesk.manga.model.table
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.manga.impl.Chapter.getChapterMetaMap
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
@@ -48,45 +44,24 @@ object ChapterTable : IntIdTable() {
     val isSyncing = bool("is_syncing").default(false)
 }
 
-fun ChapterTable.toDataClass(
-    chapterEntry: ResultRow,
-    includeChapterCount: Boolean = true,
-    includeChapterMeta: Boolean = true,
-) = ChapterDataClass(
-    id = chapterEntry[id].value,
-    url = chapterEntry[url],
-    name = chapterEntry[name],
-    uploadDate = chapterEntry[date_upload],
-    chapterNumber = chapterEntry[chapter_number],
-    scanlator = chapterEntry[scanlator],
-    mangaId = chapterEntry[manga].value,
-    read = chapterEntry[isRead],
-    bookmarked = chapterEntry[isBookmarked],
-    lastPageRead = chapterEntry[lastPageRead],
-    lastReadAt = chapterEntry[lastReadAt],
-    index = chapterEntry[sourceOrder],
-    fetchedAt = chapterEntry[fetchedAt],
-    realUrl = chapterEntry[realUrl],
-    downloaded = chapterEntry[isDownloaded],
-    pageCount = chapterEntry[pageCount],
-    chapterCount =
-        if (includeChapterCount) {
-            transaction {
-                ChapterTable
-                    .selectAll()
-                    .where { manga eq chapterEntry[manga].value }
-                    .count()
-                    .toInt()
-            }
-        } else {
-            null
-        },
-    meta =
-        if (includeChapterMeta) {
-            getChapterMetaMap(chapterEntry[id])
-        } else {
-            emptyMap()
-        },
-    lastModifiedAt = chapterEntry[lastModifiedAt],
-    version = chapterEntry[version],
-)
+fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
+    ChapterDataClass(
+        id = chapterEntry[id].value,
+        url = chapterEntry[url],
+        name = chapterEntry[name],
+        uploadDate = chapterEntry[date_upload],
+        chapterNumber = chapterEntry[chapter_number],
+        scanlator = chapterEntry[scanlator],
+        mangaId = chapterEntry[manga].value,
+        read = chapterEntry[isRead],
+        bookmarked = chapterEntry[isBookmarked],
+        lastPageRead = chapterEntry[lastPageRead],
+        lastReadAt = chapterEntry[lastReadAt],
+        index = chapterEntry[sourceOrder],
+        fetchedAt = chapterEntry[fetchedAt],
+        realUrl = chapterEntry[realUrl],
+        downloaded = chapterEntry[isDownloaded],
+        pageCount = chapterEntry[pageCount],
+        lastModifiedAt = chapterEntry[lastModifiedAt],
+        version = chapterEntry[version],
+    )

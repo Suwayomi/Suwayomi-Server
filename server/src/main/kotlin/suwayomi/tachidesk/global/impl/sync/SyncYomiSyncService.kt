@@ -377,7 +377,7 @@ object SyncYomiSyncService {
                         // Use version number to decide which chapter to keep
                         val chosenChapter =
                             if (localChapter.version >= remoteChapter.version) {
-                                // If there mare more chapter on remote, local sourceOrder will need to be updated to maintain correct source order.
+                                // If there are more chapter on remote, local sourceOrder will need to be updated to maintain correct source order.
                                 if (localChapters.size < remoteChapters.size) {
                                     localChapter.copy(sourceOrder = remoteChapter.sourceOrder)
                                 } else {

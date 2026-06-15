@@ -92,7 +92,6 @@ object Manga {
                 inLibrary = mangaEntry[MangaTable.inLibrary],
                 inLibraryAt = mangaEntry[MangaTable.inLibraryAt],
                 source = getSource(mangaEntry[MangaTable.sourceReference]),
-                meta = getMangaMetaMap(mangaId),
                 realUrl = mangaEntry[MangaTable.realUrl],
                 lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
                 chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
@@ -213,12 +212,12 @@ object Manga {
                     .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
                     .firstOrNull { it[ChapterTable.isRead] }
 
-            mangaDaaClass.unreadCount = unreadCount
-            mangaDaaClass.downloadCount = downloadCount
-            mangaDaaClass.chapterCount = chapterCount
-            mangaDaaClass.lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) }
-
-            mangaDaaClass
+            mangaDaaClass.copy(
+                unreadCount = unreadCount,
+                downloadCount = downloadCount,
+                chapterCount = chapterCount,
+                lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) },
+            )
         }
     }
 
@@ -241,7 +240,6 @@ object Manga {
         inLibrary = mangaEntry[MangaTable.inLibrary],
         inLibraryAt = mangaEntry[MangaTable.inLibraryAt],
         source = getSource(mangaEntry[MangaTable.sourceReference]),
-        meta = getMangaMetaMap(mangaId),
         realUrl = mangaEntry[MangaTable.realUrl],
         lastFetchedAt = mangaEntry[MangaTable.lastFetchedAt],
         chaptersLastFetchedAt = mangaEntry[MangaTable.chaptersLastFetchedAt],
