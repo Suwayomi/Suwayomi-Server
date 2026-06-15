@@ -25,11 +25,16 @@ import okhttp3.OkHttpClient
 import okhttp3.brotli.BrotliInterceptor
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
+import kotlin.getValue
+
+private val applicationDirs: ApplicationDirs by injectLazy()
 
 class NetworkHelper(
     context: Context,
@@ -41,6 +46,12 @@ class NetworkHelper(
 //    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
     // Tachidesk -->
+
+    private val networkCacheFile: java.io.File by lazy {
+        val baseTempPath = java.nio.file.Path.of(applicationDirs.tempRoot)
+        Files.createTempDirectory(baseTempPath, "tachidesk_network_cache_").toFile()
+    }
+    private val cacheSize = 500L * 1024 * 1024 // 500 MiB
     val cookieStore = PersistentCookieStore(context)
 
     init {
@@ -64,7 +75,7 @@ class NetworkHelper(
         userAgent
             .drop(1)
             .onEach {
-                GetCatalogueSource.unregisterAllCatalogueSources() // need to reset the headers
+                GetCatalogueSource.unregisterAllCatalogueSources()
             }.launchIn(GlobalScope)
     }
 
@@ -79,8 +90,8 @@ class NetworkHelper(
                     .callTimeout(2, TimeUnit.MINUTES)
                     .cache(
                         Cache(
-                            directory = Files.createTempDirectory("tachidesk_network_cache").toFile(),
-                            maxSize = 5L * 1024 * 1024, // 5 MiB
+                            directory = networkCacheFile,
+                            maxSize = cacheSize,
                         ),
                     ).addInterceptor(UncaughtExceptionInterceptor())
                     .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
