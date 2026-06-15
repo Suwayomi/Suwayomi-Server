@@ -15,7 +15,7 @@ twelvemonkeys = "3.13.1"
 graphqlkotlin = "10.0.0"
 xmlserialization = "0.91.3"
 ktlint = "1.8.0"
-koin = "4.2.1"
+koin = "4.2.2"
 moko = "0.26.4"
 jcef = "144.0.15-g72717cf-chromium-144.0.7559.172-api-1.21-262-b37"
 
