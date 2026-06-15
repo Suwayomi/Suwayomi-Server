@@ -27,9 +27,18 @@ object AppUpdate {
     private val network: NetworkHelper by injectLazy()
 
     suspend fun checkServerUpdate(): List<UpdateDataClass> =
-        checkUpdate(serverConfig.repoServerType.value, serverConfig.repoServerUrl.value, serverConfig.repoServerToken.value)
+        checkUpdate(
+            serverConfig.repoServerType.value,
+            serverConfig.repoServerUrl.value,
+            serverConfig.repoServerToken.value,
+        )
 
-    suspend fun checkWebUIUpdate(repoUrl: String): List<UpdateDataClass> = checkUpdate(serverConfig.repoWebUiType.value, repoUrl, serverConfig.repoWebUiToken.value)
+    suspend fun checkWebUIUpdate(repoUrl: String): List<UpdateDataClass> =
+        checkUpdate(
+            serverConfig.repoWebUiType.value,
+            repoUrl,
+            serverConfig.repoWebUiToken.value,
+        )
 
     suspend fun checkUpdate(
         repoType: RepoType,
