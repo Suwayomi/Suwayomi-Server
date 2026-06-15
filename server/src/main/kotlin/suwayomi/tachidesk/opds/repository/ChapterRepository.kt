@@ -155,7 +155,7 @@ object ChapterRepository {
                         val cbzFileSize =
                             if (isDownloaded) {
                                 runCatching {
-                                    ChapterDownloadHelper.getArchiveStreamWithSize(entry.mangaId, entry.id).second
+                                    ChapterDownloadHelper.getChapterArchiveSize(entry.mangaId, entry.id)
                                 }.getOrNull()
                             } else {
                                 null
@@ -201,7 +201,7 @@ object ChapterRepository {
             cbzFileSize =
                 if (chapterDataClass.downloaded) {
                     withContext(Dispatchers.IO) {
-                        runCatching { ChapterDownloadHelper.getArchiveStreamWithSize(mangaId, chapterDataClass.id).second }.getOrNull()
+                        runCatching { ChapterDownloadHelper.getChapterArchiveSize(mangaId, chapterDataClass.id) }.getOrNull()
                     }
                 } else {
                     null
