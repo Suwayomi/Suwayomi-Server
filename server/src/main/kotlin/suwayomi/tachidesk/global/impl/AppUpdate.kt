@@ -60,7 +60,7 @@ object AppUpdate {
         }
         val response =
             network.client
-                .newCall(GET(apiUrl))
+                .newCall(requestBuilder.build())
                 .await()
                 .body
                 .string()
