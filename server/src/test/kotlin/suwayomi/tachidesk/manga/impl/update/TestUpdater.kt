@@ -46,6 +46,7 @@ class TestUpdater : IUpdater {
         TODO("Not yet implemented")
     }
 
+    @Deprecated("Replaced with updates", replaceWith = ReplaceWith("updates"))
     override val status: Flow<UpdateStatus>
         get() = TODO("Not yet implemented")
     override val updates: Flow<UpdateUpdates>

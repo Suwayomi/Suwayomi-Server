@@ -11,11 +11,9 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
-import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
-import suwayomi.tachidesk.manga.model.table.MangaStatus.Companion
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 import suwayomi.tachidesk.manga.model.table.columns.unlimitedVarchar
 
@@ -52,37 +50,29 @@ object MangaTable : IntIdTable() {
     val isSyncing = bool("is_syncing").default(false)
 }
 
-fun MangaTable.toDataClass(
-    mangaEntry: ResultRow,
-    includeMangaMeta: Boolean = true,
-) = MangaDataClass(
-    id = mangaEntry[this.id].value,
-    sourceId = mangaEntry[sourceReference].toString(),
-    url = mangaEntry[url],
-    title = mangaEntry[title],
-    thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
-    thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
-    initialized = mangaEntry[initialized],
-    artist = mangaEntry[artist],
-    author = mangaEntry[author],
-    description = mangaEntry[description],
-    genre = mangaEntry[genre].toGenreList(),
-    status = Companion.valueOf(mangaEntry[status]).name,
-    inLibrary = mangaEntry[inLibrary],
-    inLibraryAt = mangaEntry[inLibraryAt],
-    meta =
-        if (includeMangaMeta) {
-            getMangaMetaMap(mangaEntry[id].value)
-        } else {
-            emptyMap()
-        },
-    realUrl = mangaEntry[realUrl],
-    lastFetchedAt = mangaEntry[lastFetchedAt],
-    chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
-    updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
-    lastModifiedAt = mangaEntry[lastModifiedAt],
-    version = mangaEntry[version],
-)
+fun MangaTable.toDataClass(mangaEntry: ResultRow) =
+    MangaDataClass(
+        id = mangaEntry[this.id].value,
+        sourceId = mangaEntry[sourceReference].toString(),
+        url = mangaEntry[url],
+        title = mangaEntry[title],
+        thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
+        thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
+        initialized = mangaEntry[initialized],
+        artist = mangaEntry[artist],
+        author = mangaEntry[author],
+        description = mangaEntry[description],
+        genre = mangaEntry[genre].toGenreList(),
+        status = MangaStatus.valueOf(mangaEntry[status]).name,
+        inLibrary = mangaEntry[inLibrary],
+        inLibraryAt = mangaEntry[inLibraryAt],
+        realUrl = mangaEntry[realUrl],
+        lastFetchedAt = mangaEntry[lastFetchedAt],
+        chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
+        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
+        lastModifiedAt = mangaEntry[lastModifiedAt],
+        version = mangaEntry[version],
+    )
 
 enum class MangaStatus(
     val value: Int,
