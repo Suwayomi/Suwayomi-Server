@@ -71,10 +71,11 @@ fun updateChapterPersistence(
 suspend fun refreshChapterPageList(
     mangaId: Int,
     chapterId: Int,
+    existingChapterEntry: ResultRow? = null,
 ): Int {
     val mutex = mutexByChapterId.get(chapterId) { Mutex() }
     return mutex.withLock {
-        val chapterEntry = transaction { ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first() }
+        val chapterEntry = existingChapterEntry ?: transaction { ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first() }
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
@@ -158,7 +159,7 @@ private class ChapterForDownload(
 
         return if (!doesDownloadExist) {
             log.debug { "reset download status and fetch page list" }
-            refreshChapterPageList(mangaId, chapterId)
+            refreshChapterPageList(mangaId, chapterId, chapterEntry)
             chapterEntry = freshChapterEntry(optChapterId = chapterId)
             ChapterTable.toDataClass(chapterEntry)
         } else {
