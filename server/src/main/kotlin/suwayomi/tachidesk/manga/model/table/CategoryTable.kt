@@ -9,7 +9,6 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
-import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 
@@ -28,15 +27,13 @@ object CategoryTable : IntIdTable() {
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
     CategoryDataClass(
-        categoryEntry[id].value,
-        categoryEntry[order],
-        categoryEntry[name],
-        categoryEntry[isDefault],
-        Category.getCategorySize(categoryEntry[id].value),
-        IncludeOrExclude.fromValue(categoryEntry[includeInUpdate]),
-        IncludeOrExclude.fromValue(categoryEntry[includeInDownload]),
-        categoryEntry[version],
-        categoryEntry[uid],
-        categoryEntry[lastModifiedAt],
-        Category.getCategoryMetaMap(categoryEntry[id].value),
+        id = categoryEntry[id].value,
+        order = categoryEntry[order],
+        name = categoryEntry[name],
+        default = categoryEntry[isDefault],
+        includeInUpdate = IncludeOrExclude.fromValue(categoryEntry[includeInUpdate]),
+        includeInDownload = IncludeOrExclude.fromValue(categoryEntry[includeInDownload]),
+        version = categoryEntry[version],
+        uid = categoryEntry[uid],
+        lastModifiedAt = categoryEntry[lastModifiedAt],
     )

@@ -2,14 +2,12 @@ package suwayomi.tachidesk
 
 import android.os.Handler
 import android.os.Looper
-import android.os.Message
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
-import kotlin.text.StringBuilder
 
 class LooperThread : Thread() {
     var mHandler: Handler? = null
