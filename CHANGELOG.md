@@ -29,7 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Fix GraphQL `Filter` `notAll` and `notAny` being inversed
 - (**API**) Fix GraphQL `Filter` causing an UnsupportedOperationException when passing an empty list as a `Any` filter value
 - (**Build**) Fix CURL failing silently in builds
-- (**Backup/Database**) Fix backup creation slowdown when using PostgreSQL
+- (**Backup/Database**) Fix backup creation slowdown when mapping chapters
 
 ## [v2.2.2100] + [WebUI: v20260508.01] - 2026-05-08
 
