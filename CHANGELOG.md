@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**Sync**) Added [SyncYomi](https://github.com/syncyomi/syncyomi) support
+- (**OPDS**) Add option to skip chapter metadata feed providing direct stream/download links
 
 ### Changed
 - (**Database/H2**) Use the latest H2 database engine
