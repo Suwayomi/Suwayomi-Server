@@ -16,6 +16,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
+import xyz.nulldev.androidcompat.util.SafePath
 import java.io.File
 import java.io.InputStream
 
@@ -108,7 +109,7 @@ object ChapterDownloadHelper {
                 }
 
             // Sanitize filename for OS compatibility
-            val safeFileName = fileName.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            val safeFileName = SafePath.buildValidFilename(fileName)
 
             Pair(chapter, safeFileName)
         }
