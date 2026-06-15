@@ -64,6 +64,11 @@ object ChapterDownloadHelper {
         chapterId: Int,
     ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
 
+    fun getChapterArchiveSize(
+        mangaId: Int,
+        chapterId: Int,
+    ): Long = provider(mangaId, chapterId).getArchiveSize()
+
     private fun getChapterWithCbzFileName(chapterId: Int): Pair<ChapterDataClass, String> =
         transaction {
             val row =

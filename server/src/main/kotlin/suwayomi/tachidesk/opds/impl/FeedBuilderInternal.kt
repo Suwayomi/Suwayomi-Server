@@ -16,145 +16,131 @@ import kotlin.math.ceil
  */
 class FeedBuilderInternal(
     private val baseUrl: String,
+    private val locale: Locale,
     private val idPath: String,
     private val title: String,
-    private val locale: Locale,
     private val feedType: String,
-    private val pageNum: Int? = 1,
+    private val pageNum: Int? = null,
     private val explicitQueryParams: String? = null,
     private val currentSort: String? = null,
     private val currentFilter: String? = null,
     private val isSearchFeed: Boolean = false,
 ) {
-    private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value
-
-    private val feedAuthor = OpdsAuthorXml("Suwayomi", "https://suwayomi.org/")
-    private val feedGeneratedAt: String = OpdsDateUtil.formatCurrentInstantForOpds()
-
     var totalResults: Long = 0
     var icon: String? = null
     val links = mutableListOf<OpdsLinkXml>()
     val entries = mutableListOf<OpdsEntryXml>()
 
-    private fun buildUrlWithParams(
-        baseHrefPath: String,
-        page: Int?,
-    ): String {
-        val sb = StringBuilder("$baseUrl/$baseHrefPath")
-        val queryParamsList = mutableListOf<String>()
+    private fun buildUrlWithParams(page: Int? = pageNum): String {
+        val queryParams =
+            listOfNotNull(
+                explicitQueryParams?.takeIf(String::isNotBlank),
+                page?.let { "pageNumber=$it" },
+                currentSort?.let { "sort=$it" },
+                currentFilter?.let { "filter=$it" },
+                "lang=${locale.toLanguageTag()}",
+            ).joinToString("&")
 
-        explicitQueryParams?.takeIf { it.isNotBlank() }?.let { queryParamsList.add(it) }
-        page?.let { queryParamsList.add("pageNumber=$it") }
-        currentSort?.let { queryParamsList.add("sort=$it") }
-        currentFilter?.let { queryParamsList.add("filter=$it") }
-        queryParamsList.add("lang=${locale.toLanguageTag()}")
-
-        if (queryParamsList.isNotEmpty()) {
-            sb.append("?").append(queryParamsList.joinToString("&"))
-        }
-        return sb.toString()
+        return "$baseUrl/$idPath" + if (queryParams.isNotEmpty()) "?$queryParams" else ""
     }
 
     fun build(): OpdsFeedXml {
-        val selfLinkHref = buildUrlWithParams(idPath, if (pageNum != null) pageNum else null)
-        val feedLinks = mutableListOf<OpdsLinkXml>()
-        feedLinks.addAll(this.links)
-
-        feedLinks.add(
-            OpdsLinkXml(OpdsConstants.LINK_REL_SELF, selfLinkHref, feedType, MR.strings.opds_linktitle_self_feed.localized(locale)),
-        )
-        feedLinks.add(
-            OpdsLinkXml(
-                OpdsConstants.LINK_REL_START,
-                "$baseUrl?lang=${locale.toLanguageTag()}",
-                OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
-                MR.strings.opds_linktitle_catalog_root.localized(locale),
-            ),
-        )
-        feedLinks.add(
-            OpdsLinkXml(
-                OpdsConstants.LINK_REL_SEARCH,
-                "$baseUrl/search?lang=${locale.toLanguageTag()}",
-                OpdsConstants.TYPE_OPENSEARCH_DESCRIPTION,
-                MR.strings.opds_linktitle_search_catalog.localized(locale),
-            ),
-        )
-
-        // Add pagination links if needed
-        if (pageNum != null) {
-            val totalPages = ceil(totalResults.toDouble() / opdsItemsPerPageBounded).toInt()
-
-            if (totalPages > 1) {
-                val currentPage = pageNum.coerceAtLeast(1)
-
-                // Always add 'first' link when there are multiple pages
-                feedLinks.add(
-                    OpdsLinkXml(
-                        OpdsConstants.LINK_REL_FIRST,
-                        buildUrlWithParams(idPath, 1),
-                        feedType,
-                        MR.strings.opds_linktitle_first_page.localized(locale),
-                    ),
-                )
-
-                // Add 'prev' link if not on first page
-                if (currentPage > 1) {
-                    feedLinks.add(
-                        OpdsLinkXml(
-                            OpdsConstants.LINK_REL_PREV,
-                            buildUrlWithParams(idPath, currentPage - 1),
-                            feedType,
-                            MR.strings.opds_linktitle_previous_page.localized(locale),
-                        ),
-                    )
-                }
-
-                // Add 'next' link if not on last page
-                if (currentPage < totalPages) {
-                    feedLinks.add(
-                        OpdsLinkXml(
-                            OpdsConstants.LINK_REL_NEXT,
-                            buildUrlWithParams(idPath, currentPage + 1),
-                            feedType,
-                            MR.strings.opds_linktitle_next_page.localized(locale),
-                        ),
-                    )
-                }
-
-                // Always add 'last' link when there are multiple pages
-                feedLinks.add(
-                    OpdsLinkXml(
-                        OpdsConstants.LINK_REL_LAST,
-                        buildUrlWithParams(idPath, totalPages),
-                        feedType,
-                        MR.strings.opds_linktitle_last_page.localized(locale),
-                    ),
-                )
-            }
-        }
-
-        val urnParams = mutableListOf<String>()
-        urnParams.add(locale.toLanguageTag())
-        pageNum?.let { urnParams.add("page$it") }
-        explicitQueryParams?.let { urnParams.add(it.replace("&", ":").replace("=", "_")) }
-        currentSort?.let { urnParams.add("sort_$it") }
-        currentFilter?.let { urnParams.add("filter_$it") }
-        val urnSuffix = if (urnParams.isNotEmpty()) ":${urnParams.joinToString(":")}" else ""
-
-        val showOpenSearchFields = isSearchFeed && pageNum != null && totalResults > 0
+        val itemsPerPage = serverConfig.opdsItemsPerPage.value
+        val showOpenSearch = isSearchFeed && pageNum != null && totalResults > 0
+        val urnSuffix =
+            listOfNotNull(
+                locale.toLanguageTag(),
+                pageNum?.let { "page$it" },
+                explicitQueryParams?.replace("&", ":")?.replace("=", "_"),
+                currentSort?.let { "sort_$it" },
+                currentFilter?.let { "filter_$it" },
+            ).joinToString(":")
 
         return OpdsFeedXml(
-            id = "urn:suwayomi:feed:${idPath.replace('/',':')}$urnSuffix",
+            id = "urn:suwayomi:feed:${idPath.replace('/', ':')}${if (urnSuffix.isNotEmpty()) ":$urnSuffix" else ""}",
             title = title,
-            updated = feedGeneratedAt,
+            updated = OpdsDateUtil.formatCurrentInstantForOpds(),
             icon = icon,
-            author = feedAuthor,
-            links = feedLinks,
+            author = OpdsAuthorXml("Suwayomi", "https://suwayomi.org/"),
+            links =
+                buildList {
+                    addAll(this@FeedBuilderInternal.links)
+                    add(
+                        OpdsLinkXml(
+                            OpdsConstants.LINK_REL_SELF,
+                            buildUrlWithParams(),
+                            feedType,
+                            MR.strings.opds_linktitle_self_feed.localized(locale),
+                        ),
+                    )
+                    add(
+                        OpdsLinkXml(
+                            OpdsConstants.LINK_REL_START,
+                            "$baseUrl?lang=${locale.toLanguageTag()}",
+                            OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
+                            MR.strings.opds_linktitle_catalog_root.localized(locale),
+                        ),
+                    )
+                    add(
+                        OpdsLinkXml(
+                            OpdsConstants.LINK_REL_SEARCH,
+                            "$baseUrl/search?lang=${locale.toLanguageTag()}",
+                            OpdsConstants.TYPE_OPENSEARCH_DESCRIPTION,
+                            MR.strings.opds_linktitle_search_catalog.localized(locale),
+                        ),
+                    )
+
+                    if (pageNum != null) {
+                        val totalPages = ceil(totalResults.toDouble() / itemsPerPage).toInt()
+                        if (totalPages > 1) {
+                            val currentPage = pageNum.coerceAtLeast(1)
+                            add(
+                                OpdsLinkXml(
+                                    OpdsConstants.LINK_REL_FIRST,
+                                    buildUrlWithParams(1),
+                                    feedType,
+                                    MR.strings.opds_linktitle_first_page.localized(locale),
+                                ),
+                            )
+                            if (currentPage >
+                                1
+                            ) {
+                                add(
+                                    OpdsLinkXml(
+                                        OpdsConstants.LINK_REL_PREV,
+                                        buildUrlWithParams(currentPage - 1),
+                                        feedType,
+                                        MR.strings.opds_linktitle_previous_page.localized(locale),
+                                    ),
+                                )
+                            }
+                            if (currentPage <
+                                totalPages
+                            ) {
+                                add(
+                                    OpdsLinkXml(
+                                        OpdsConstants.LINK_REL_NEXT,
+                                        buildUrlWithParams(currentPage + 1),
+                                        feedType,
+                                        MR.strings.opds_linktitle_next_page.localized(locale),
+                                    ),
+                                )
+                            }
+                            add(
+                                OpdsLinkXml(
+                                    OpdsConstants.LINK_REL_LAST,
+                                    buildUrlWithParams(totalPages),
+                                    feedType,
+                                    MR.strings.opds_linktitle_last_page.localized(locale),
+                                ),
+                            )
+                        }
+                    }
+                },
             entries = entries,
-            totalResults = totalResults.takeIf { showOpenSearchFields },
-            itemsPerPage = if (showOpenSearchFields) opdsItemsPerPageBounded else null,
-            startIndex = if (showOpenSearchFields) ((pageNum - 1) * opdsItemsPerPageBounded) + 1 else null,
+            totalResults = totalResults.takeIf { showOpenSearch },
+            itemsPerPage = itemsPerPage.takeIf { showOpenSearch },
+            startIndex = if (showOpenSearch && pageNum != null) ((pageNum - 1) * itemsPerPage) + 1 else null,
         )
     }
 }
