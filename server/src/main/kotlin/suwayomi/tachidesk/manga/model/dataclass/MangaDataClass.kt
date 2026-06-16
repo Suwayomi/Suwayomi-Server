@@ -7,7 +7,9 @@ package suwayomi.tachidesk.manga.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.serialization.json.JsonObject
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -44,6 +46,8 @@ data class MangaDataClass(
     val trackers: List<MangaTrackerDataClass>? = null,
     val lastModifiedAt: Long = 0,
     val version: Long = 0,
+    @JsonIgnore
+    val memo: JsonObject = JsonObject(emptyMap()),
 ) {
     override fun toString(): String = "\"$title\" (id= $id) (sourceId= $sourceId)"
 

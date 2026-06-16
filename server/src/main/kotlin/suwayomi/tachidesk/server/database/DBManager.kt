@@ -12,6 +12,7 @@ import com.zaxxer.hikari.HikariDataSource
 import de.neonew.exposed.migrations.loadMigrationsFrom
 import de.neonew.exposed.migrations.runMigrations
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.ExperimentalKeywordApi
 import org.jetbrains.exposed.v1.core.Schema
@@ -140,6 +141,8 @@ object DBManager {
                 "Idle: ${ds.hikariPoolMXBean.idleConnections}, " +
                 "Waiting: ${ds.hikariPoolMXBean.threadsAwaitingConnection}"
         }
+
+    val format = Json { prettyPrint = false }
 }
 
 private val logger = KotlinLogging.logger {}

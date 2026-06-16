@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.manga.model.dataclass
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import eu.kanade.tachiyomi.source.model.SChapter
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -43,6 +45,8 @@ data class ChapterDataClass(
     val pageCount: Int = -1,
     val lastModifiedAt: Long = 0,
     val version: Long = 0,
+    @JsonIgnore
+    val memo: JsonObject = JsonObject(emptyMap()),
 ) {
     companion object {
         fun fromSChapter(
@@ -60,6 +64,7 @@ data class ChapterDataClass(
                 uploadDate = sChapter.date_upload,
                 chapterNumber = sChapter.chapter_number,
                 scanlator = sChapter.scanlator,
+                memo = sChapter.memo,
                 index = index,
                 fetchedAt = fetchedAt,
                 realUrl = realUrl,

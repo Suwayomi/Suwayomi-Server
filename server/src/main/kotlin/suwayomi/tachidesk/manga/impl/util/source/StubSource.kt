@@ -13,6 +13,7 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import rx.Observable
 
 open class StubSource(
@@ -23,8 +24,12 @@ open class StubSource(
     override val name: String
         get() = id.toString()
 
+    override suspend fun getPopularManga(page: Int): MangasPage = throw getSourceNotInstalledException()
+
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getPopularManga"))
     override fun fetchPopularManga(page: Int): Observable<MangasPage> = Observable.error(getSourceNotInstalledException())
+
+    override suspend fun getSearchManga(page: Int, query: String, filters: FilterList): MangasPage = throw getSourceNotInstalledException()
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
     override fun fetchSearchManga(
@@ -33,16 +38,22 @@ open class StubSource(
         filters: FilterList,
     ): Observable<MangasPage> = Observable.error(getSourceNotInstalledException())
 
+    override suspend fun getLatestUpdates(page: Int): MangasPage = throw getSourceNotInstalledException()
+
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getLatestUpdates"))
     override fun fetchLatestUpdates(page: Int): Observable<MangasPage> = Observable.error(getSourceNotInstalledException())
 
     override fun getFilterList(): FilterList = FilterList()
+
+    override suspend fun getMangaUpdate(manga: SManga, chapters: List<SChapter>, fetchDetails: Boolean, fetchChapters: Boolean): SMangaUpdate = throw getSourceNotInstalledException()
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getMangaDetails"))
     override fun fetchMangaDetails(manga: SManga): Observable<SManga> = Observable.error(getSourceNotInstalledException())
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getChapterList"))
     override fun fetchChapterList(manga: SManga): Observable<List<SChapter>> = Observable.error(getSourceNotInstalledException())
+
+    override suspend fun getPageList(chapter: SChapter): List<Page> = throw getSourceNotInstalledException()
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getPageList"))
     override fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.error(getSourceNotInstalledException())

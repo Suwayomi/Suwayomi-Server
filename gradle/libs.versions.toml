@@ -70,6 +70,7 @@ exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exp
 exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
 exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
 exposed-kotlintime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+exposed-json = { module = "org.jetbrains.exposed:exposed-json ", version.ref = "exposed" }
 postgres = "org.postgresql:postgresql:42.7.11"
 h2 = "com.h2database:h2:2.4.240"
 hikaricp = "com.zaxxer:HikariCP:7.1.0"
@@ -245,6 +246,7 @@ exposed = [
     "exposed-jdbc",
     "exposed-javatime",
     "exposed-kotlintime",
+    "exposed-json",
 ]
 systemtray = [
     "systemtray-core",

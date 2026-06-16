@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.LikePattern
@@ -167,6 +168,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
+    @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
     fun fetchChapters(input: FetchChaptersInput): CompletableFuture<FetchChaptersPayload?> {
         val (clientMutationId, mangaId) = input
 

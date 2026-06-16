@@ -9,13 +9,16 @@ package suwayomi.tachidesk.manga.model.table
 
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import org.jetbrains.exposed.v1.json.json
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 import suwayomi.tachidesk.manga.model.table.columns.unlimitedVarchar
+import suwayomi.tachidesk.server.database.DBManager
 
 object MangaTable : IntIdTable() {
     val url = varchar("url", 2048)
@@ -48,6 +51,7 @@ object MangaTable : IntIdTable() {
     val lastModifiedAt = long("last_modified_at").default(0)
     val version = long("version").default(0)
     val isSyncing = bool("is_syncing").default(false)
+    val memo = json<JsonObject>("memo", DBManager.format)
 }
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
@@ -72,6 +76,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
         lastModifiedAt = mangaEntry[lastModifiedAt],
         version = mangaEntry[version],
+        memo = mangaEntry[memo],
     )
 
 enum class MangaStatus(

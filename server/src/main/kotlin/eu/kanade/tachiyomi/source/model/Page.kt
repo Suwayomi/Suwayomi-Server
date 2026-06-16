@@ -27,12 +27,4 @@ open class Page(
                 -1
             }
     }
-
-    companion object {
-        const val QUEUE = 0
-        const val LOAD_PAGE = 1
-        const val DOWNLOAD_IMAGE = 2
-        const val READY = 3
-        const val ERROR = 4
-    }
 }
