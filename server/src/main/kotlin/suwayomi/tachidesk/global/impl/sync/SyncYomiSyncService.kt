@@ -3,8 +3,8 @@ package suwayomi.tachidesk.global.impl.sync
 import android.app.Application
 import android.content.Context
 import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.PUT
 import eu.kanade.tachiyomi.network.await
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -232,22 +232,27 @@ object SyncYomiSyncService {
             val headers = Headers.Builder().add("X-API-Token", apiKey).build()
 
             // Use a fixed server name.
-            val bodyObj = SyncEvent(
-                event = event,
-                device_Name = "Suwayomi Server",
-                message = message,
-            )
+            val bodyObj =
+                SyncEvent(
+                    event = event,
+                    device_Name = "Suwayomi Server",
+                    message = message,
+                )
 
             val jsonBody = Json.encodeToString(SyncEvent.serializer(), bodyObj)
             val requestBody = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
 
-            val request = POST(
-                url = url,
-                headers = headers,
-                body = requestBody,
-            )
+            val request =
+                POST(
+                    url = url,
+                    headers = headers,
+                    body = requestBody,
+                )
 
-            network.client.newCall(request).await().close()
+            network.client
+                .newCall(request)
+                .await()
+                .close()
         } catch (e: Exception) {
             logger.error { "Failed to report sync event: ${e.message}" }
         }
