@@ -13,7 +13,7 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 class M0057_AddMangaChapterMemoFields : SQLMigration() {
     override val sql =
         """
-        ALTER TABLE MANGA ADD COLUMN memo JSON DEFAULT '{}';
-        ALTER TABLE CHAPTER ADD COLUMN memo JSON DEFAULT '{}';
+        ALTER TABLE manga ADD COLUMN memo JSON DEFAULT '{}';
+        ALTER TABLE chapter ADD COLUMN memo JSON DEFAULT '{}';
         """.trimIndent()
 }

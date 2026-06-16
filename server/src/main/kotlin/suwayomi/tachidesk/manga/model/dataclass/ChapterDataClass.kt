@@ -7,6 +7,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Chapter.getChapterMetaMap
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 
 /*
@@ -46,7 +47,7 @@ data class ChapterDataClass(
     val lastModifiedAt: Long = 0,
     val version: Long = 0,
     @JsonIgnore
-    val memo: JsonObject = JsonObject(emptyMap()),
+    val memo: JsonObject = JsonObject.EMPTY,
 ) {
     companion object {
         fun fromSChapter(

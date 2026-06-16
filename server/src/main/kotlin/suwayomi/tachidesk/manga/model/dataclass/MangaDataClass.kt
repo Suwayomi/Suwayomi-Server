@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.json.JsonObject
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import java.time.Instant
@@ -47,7 +48,7 @@ data class MangaDataClass(
     val lastModifiedAt: Long = 0,
     val version: Long = 0,
     @JsonIgnore
-    val memo: JsonObject = JsonObject(emptyMap()),
+    val memo: JsonObject = JsonObject.EMPTY,
 ) {
     override fun toString(): String = "\"$title\" (id= $id) (sourceId= $sourceId)"
 
