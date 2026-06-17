@@ -93,7 +93,7 @@ class SourceQuery {
         val id: Long? = null,
         val name: String? = null,
         val lang: String? = null,
-        @GraphQLDeprecated("replace with contentRating == 3", ReplaceWith("contentRating"))
+        @GraphQLDeprecated("replace with contentRating == ContentRating.PORNOGRAPHIC", ReplaceWith("contentRating"))
         val isNsfw: Boolean? = null,
         val contentRating: ContentRating? = null,
     ) : HasGetOp {
@@ -102,7 +102,7 @@ class SourceQuery {
             opAnd.eq(id, SourceTable.id)
             opAnd.eq(name, SourceTable.name)
             opAnd.eq(lang, SourceTable.lang)
-            opAnd.andWhere(isNsfw) { if (it) SourceTable.contentRating eq 3 else SourceTable.contentRating neq 3 }
+            opAnd.andWhere(isNsfw) { if (it) SourceTable.contentRating eq ContentRating.PORNOGRAPHIC.ordinal else SourceTable.contentRating neq ContentRating.PORNOGRAPHIC.ordinal }
             opAnd.andWhere(contentRating) { SourceTable.contentRating eq it.getValue() }
 
             return opAnd.op
@@ -113,7 +113,7 @@ class SourceQuery {
         val id: LongFilter? = null,
         val name: StringFilter? = null,
         val lang: StringFilter? = null,
-        @GraphQLDeprecated("replace with contentRating == 3", ReplaceWith("contentRating"))
+        @GraphQLDeprecated("replace with contentRating == ContentRating.PORNOGRAPHIC", ReplaceWith("contentRating"))
         val isNsfw: BooleanFilter? = null,
         // val contentRating: EnumFilter<ContentRating>? = null,
         override val and: List<SourceFilter>? = null,

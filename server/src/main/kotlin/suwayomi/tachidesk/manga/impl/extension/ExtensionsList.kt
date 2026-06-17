@@ -22,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionInfo
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -80,7 +81,7 @@ object ExtensionsList {
                     versionName = it[ExtensionTable.versionName],
                     versionCode = it[ExtensionTable.versionCode].toInt(),
                     lang = it[ExtensionTable.lang],
-                    isNsfw = it[ExtensionTable.contentRating] == 3,
+                    isNsfw = it[ExtensionTable.contentRating] == ContentRating.PORNOGRAPHIC.ordinal,
                     installed = it[ExtensionTable.isInstalled],
                     hasUpdate = it[ExtensionTable.hasUpdate],
                     obsolete = it[ExtensionTable.isObsolete],

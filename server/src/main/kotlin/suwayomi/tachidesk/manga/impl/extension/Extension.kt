@@ -28,6 +28,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.types.ContentRating
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
@@ -197,7 +198,7 @@ object Extension {
                             it[versionName] = packageInfo.versionName
                             it[versionCode] = packageInfo.versionCode.toLong()
                             it[lang] = extensionLang
-                            it[contentRating] = if (isNsfw) 3 else 0 // todo will change
+                            it[contentRating] = if (isNsfw) ContentRating.PORNOGRAPHIC.ordinal else ContentRating.SAFE.ordinal // todo will change
                         }
                     }
 
@@ -222,7 +223,7 @@ object Extension {
                             it[name] = httpSource.name
                             it[lang] = httpSource.lang
                             it[extension] = extensionId
-                            it[contentRating] = if (isNsfw) 3 else 0
+                            it[contentRating] = if (isNsfw) ContentRating.PORNOGRAPHIC.ordinal else ContentRating.SAFE.ordinal
                         }
                         logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
                     }

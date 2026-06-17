@@ -29,6 +29,7 @@ import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
@@ -52,7 +53,7 @@ object Source {
                     iconUrl = proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
                     supportsLatest = catalogueSource.supportsLatest,
                     isConfigurable = catalogueSource is ConfigurableSource,
-                    isNsfw = it[SourceTable.contentRating] == 3,
+                    isNsfw = it[SourceTable.contentRating] == ContentRating.PORNOGRAPHIC.ordinal,
                     displayName = catalogueSource.toString(),
                     baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
                 )
@@ -73,7 +74,7 @@ object Source {
                 iconUrl = proxyExtensionIconUrl(extension[ExtensionTable.pkgName]),
                 supportsLatest = catalogueSource.supportsLatest,
                 isConfigurable = catalogueSource is ConfigurableSource,
-                isNsfw = source[SourceTable.contentRating] == 3,
+                isNsfw = source[SourceTable.contentRating] == ContentRating.PORNOGRAPHIC.ordinal,
                 displayName = catalogueSource.toString(),
                 baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
             )

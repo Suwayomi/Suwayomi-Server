@@ -63,7 +63,7 @@ class SourceType(
         iconUrl = Extension.proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
         supportsLatest = catalogueSource.supportsLatest,
         isConfigurable = catalogueSource is ConfigurableSource,
-        isNsfw = row[SourceTable.contentRating] == 3,
+        isNsfw = row[SourceTable.contentRating] == ContentRating.PORNOGRAPHIC.ordinal,
         displayName = catalogueSource.toString(),
         homeUrl = runCatching { (catalogueSource as? HttpSource)?.getHomeUrl() }.getOrNull(),
         baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),

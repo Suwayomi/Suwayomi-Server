@@ -60,7 +60,7 @@ class ExtensionType(
         versionCode = row[ExtensionTable.versionCode].toInt(),
         versionCodeLong = row[ExtensionTable.versionCode],
         lang = row[ExtensionTable.lang],
-        isNsfw = row[ExtensionTable.contentRating] == 3,
+        isNsfw = row[ExtensionTable.contentRating] == ContentRating.PORNOGRAPHIC.ordinal,
         contentRating = ContentRating.valueOf(row[ExtensionTable.contentRating]),
         isInstalled = row[ExtensionTable.isInstalled],
         hasUpdate = row[ExtensionTable.hasUpdate],
