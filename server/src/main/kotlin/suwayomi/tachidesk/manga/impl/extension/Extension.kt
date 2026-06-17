@@ -199,11 +199,12 @@ object Extension {
                             it[versionCode] = packageInfo.versionCode.toLong()
                             it[lang] = extensionLang
                             // todo will change
-                            it[contentRating] = if (isNsfw) {
-                                ContentRating.PORNOGRAPHIC.ordinal
-                            } else {
-                                ContentRating.SAFE.ordinal
-                            }
+                            it[contentRating] =
+                                if (isNsfw) {
+                                    ContentRating.PORNOGRAPHIC.ordinal
+                                } else {
+                                    ContentRating.SAFE.ordinal
+                                }
                         }
                     }
 
