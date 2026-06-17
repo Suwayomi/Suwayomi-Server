@@ -3,6 +3,7 @@
 package eu.kanade.tachiyomi.source.model
 
 import kotlinx.serialization.json.JsonObject
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 
 class SChapterImpl : SChapter {
     override lateinit var url: String
@@ -15,5 +16,5 @@ class SChapterImpl : SChapter {
 
     override var date_upload: Long = 0
 
-    override var memo: JsonObject = JsonObject(emptyMap())
+    override var memo: JsonObject = JsonObject.EMPTY
 }

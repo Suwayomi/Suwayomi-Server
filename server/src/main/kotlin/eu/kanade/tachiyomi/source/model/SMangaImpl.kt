@@ -3,6 +3,7 @@
 package eu.kanade.tachiyomi.source.model
 
 import kotlinx.serialization.json.JsonObject
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 
 class SMangaImpl : SManga {
     override lateinit var url: String
@@ -25,5 +26,5 @@ class SMangaImpl : SManga {
 
     override var initialized: Boolean = false
 
-    override var memo: JsonObject = JsonObject(emptyMap())
+    override var memo: JsonObject = JsonObject.EMPTY
 }
