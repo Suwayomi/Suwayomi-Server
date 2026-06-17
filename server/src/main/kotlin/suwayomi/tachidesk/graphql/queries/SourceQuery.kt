@@ -102,7 +102,14 @@ class SourceQuery {
             opAnd.eq(id, SourceTable.id)
             opAnd.eq(name, SourceTable.name)
             opAnd.eq(lang, SourceTable.lang)
-            opAnd.andWhere(isNsfw) { if (it) SourceTable.contentRating eq ContentRating.PORNOGRAPHIC.ordinal else SourceTable.contentRating neq ContentRating.PORNOGRAPHIC.ordinal }
+            opAnd.andWhere(isNsfw) {
+                if (it) {
+                    SourceTable.contentRating eq ContentRating.PORNOGRAPHIC.ordinal
+                } else {
+                    SourceTable.contentRating neq
+                        ContentRating.PORNOGRAPHIC.ordinal
+                }
+            }
             opAnd.andWhere(contentRating) { SourceTable.contentRating eq it.getValue() }
 
             return opAnd.op

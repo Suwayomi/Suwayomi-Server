@@ -126,7 +126,10 @@ class ExtensionQuery {
             opAnd.eq(versionCode?.toLong(), ExtensionTable.versionCode)
             opAnd.eq(versionCodeLong, ExtensionTable.versionCode)
             opAnd.eq(lang, ExtensionTable.lang)
-            opAnd.eq(isNsfw?.let { if (it) ContentRating.PORNOGRAPHIC.ordinal else ContentRating.SAFE.ordinal }, ExtensionTable.contentRating)
+            opAnd.eq(
+                isNsfw?.let { if (it) ContentRating.PORNOGRAPHIC.ordinal else ContentRating.SAFE.ordinal },
+                ExtensionTable.contentRating,
+            )
             opAnd.eq(contentRating?.ordinal, ExtensionTable.contentRating)
             opAnd.eq(isInstalled, ExtensionTable.isInstalled)
             opAnd.eq(hasUpdate, ExtensionTable.hasUpdate)
