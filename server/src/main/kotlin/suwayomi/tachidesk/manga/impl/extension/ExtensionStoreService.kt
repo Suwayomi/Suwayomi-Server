@@ -49,44 +49,41 @@ object ExtensionStoreService {
     ): ExtensionStore {
         var updatedIndexUrl = indexUrl
         return try {
-            val response = network.client.newCall(GET(indexUrl)).awaitSuccess()
-            response.body
-                .source()
-                .use { source ->
+            network.client.newCall(GET(indexUrl)).awaitSuccess().body.source().use { source ->
+                try {
+                    protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.peek().readByteArray())
+                } catch (e: IllegalArgumentException) {
+                    logger.debug { "Failed to decode as protobuf, trying JSON" }
                     try {
-                        protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.peek().readByteArray())
+                        json.decodeFromBufferedSource<NetworkExtensionStore>(source.peek())
                     } catch (e: IllegalArgumentException) {
-                        logger.debug { "Failed to decode as protobuf, trying JSON" }
                         if (forceV2) throw e
-                        try {
-                            json.decodeFromBufferedSource<NetworkExtensionStore>(source.peek())
-                        } catch (_: IllegalArgumentException) {
-                            logger.debug { "Failed to decode as NetworkExtensionStore, trying LegacyExtensionRepo" }
-                            val legacyIndex =
-                                try {
-                                    json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(source.peek())
-                                } catch (e: IllegalArgumentException) {
-                                    if (!indexUrl.endsWith("/index.min.json")) {
-                                        throw e
-                                    }
-                                    logger.debug { "Retrying with /index.min.json" }
-                                    updatedIndexUrl = indexUrl.replace("/index.min.json", "/repo.json")
-                                    network.client.newCall(GET(updatedIndexUrl)).awaitSuccess().body.source().use {
-                                        json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(it)
-                                    }
+                        logger.debug { "Failed to decode as NetworkExtensionStore, trying LegacyExtensionRepo" }
+                        val legacyIndex =
+                            try {
+                                json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(source.peek())
+                            } catch (e: IllegalArgumentException) {
+                                if (!indexUrl.endsWith("/index.min.json")) {
+                                    throw e
                                 }
-
-                            if (legacyIndex.indexV2 != null) {
-                                return fetch(legacyIndex.indexV2, forceV2 = true)
-                            } else {
-                                legacyIndex
+                                logger.debug { "Checking for new repo.json format" }
+                                updatedIndexUrl = indexUrl.replace("/index.min.json", "/repo.json")
+                                network.client.newCall(GET(updatedIndexUrl)).awaitSuccess().body.source().use {
+                                    json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(it)
+                                }
                             }
+
+                        if (legacyIndex.indexV2 != null) {
+                            return fetch(legacyIndex.indexV2, forceV2 = true)
+                        } else {
+                            legacyIndex
                         }
                     }
                 }.toExtensionStore(updatedIndexUrl)
+            }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            logger.debug(e) { "Failed to fetch extension store '$indexUrl'" }
+            logger.error(e) { "Failed to fetch extension store '$indexUrl'" }
             throw e
         }
     }
