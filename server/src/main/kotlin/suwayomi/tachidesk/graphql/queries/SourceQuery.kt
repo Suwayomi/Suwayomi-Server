@@ -15,8 +15,8 @@ import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
-import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -102,7 +102,7 @@ class SourceQuery {
             opAnd.eq(id, SourceTable.id)
             opAnd.eq(name, SourceTable.name)
             opAnd.eq(lang, SourceTable.lang)
-            opAnd.andWhere(isNsfw) { if (it) SourceTable.contentRating greaterEq 3 else SourceTable.contentRating less 3 }
+            opAnd.andWhere(isNsfw) { if (it) SourceTable.contentRating eq 3 else SourceTable.contentRating neq 3 }
             opAnd.andWhere(contentRating) { SourceTable.contentRating eq it.getValue() }
 
             return opAnd.op
