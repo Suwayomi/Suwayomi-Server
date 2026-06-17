@@ -160,8 +160,9 @@ object Manga {
         mangaInfoMutex.get(mangaId) { Mutex() }.withLock {
             var mangaEntry =
                 transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
-            val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
-                ?: throw NullPointerException("Missing source ${mangaEntry[MangaTable.sourceReference]}")
+            val source =
+                getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
+                    ?: throw NullPointerException("Missing source ${mangaEntry[MangaTable.sourceReference]}")
             val mangaUpdate =
                 fetchMangaAndChapters(
                     mangaEntry,
@@ -172,9 +173,10 @@ object Manga {
 
             if (updateManga) {
                 updateMangaDatabase(mangaEntry, source, mangaUpdate.manga)
-                mangaEntry = transaction {
-                    MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
-                }
+                mangaEntry =
+                    transaction {
+                        MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
+                    }
             }
             if (updateChapters) {
                 Chapter.updateChapterListDatabase(mangaEntry, mangaUpdate.chapters, source)

@@ -190,7 +190,7 @@ class MangaMutation {
             Manga.updateMangaAndChapters(
                 mangaId = id,
                 updateManga = fetchManga,
-                updateChapters = fetchChapters
+                updateChapters = fetchChapters,
             )
 
             val (manga, chapters) =

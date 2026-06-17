@@ -26,6 +26,8 @@ data class ExtensionSource(
     val name: String,
     val lang: String,
     val homeUrl: String,
+    val message: String?,
+    val contentRating: ContentRating,
 )
 
 enum class ContentRating {

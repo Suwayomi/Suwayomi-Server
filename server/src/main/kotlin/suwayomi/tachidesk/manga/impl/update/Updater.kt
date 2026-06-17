@@ -313,7 +313,7 @@ class Updater : IUpdater {
                 logger.info { "Updating ${job.manga}" }
                 Manga.updateMangaAndChapters(
                     job.manga.id,
-                    updateManga = serverConfig.updateMangas.value || !job.manga.initialized
+                    updateManga = serverConfig.updateMangas.value || !job.manga.initialized,
                 )
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {

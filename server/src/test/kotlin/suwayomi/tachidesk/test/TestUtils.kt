@@ -66,6 +66,7 @@ fun createChapters(
                 this[ChapterTable.sourceOrder] = it
                 this[ChapterTable.isRead] = read
                 this[ChapterTable.manga] = mangaId
+                this[ChapterTable.memo] = "{}"
             }
     }
 }

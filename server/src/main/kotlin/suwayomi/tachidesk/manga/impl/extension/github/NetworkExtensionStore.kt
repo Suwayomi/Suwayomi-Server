@@ -121,6 +121,14 @@ fun NetworkExtensionStore.toExtensionInfos(store: ExtensionStore): List<Extensio
                         name = source.name,
                         lang = source.language,
                         homeUrl = source.homeUrl,
+                        message = source.message,
+                        contentRating =
+                            when (source.contentRating) {
+                                NetworkExtensionStore.ContentRating.SAFE -> ContentRating.SAFE
+                                NetworkExtensionStore.ContentRating.SUGGESTIVE -> ContentRating.SUGGESTIVE
+                                NetworkExtensionStore.ContentRating.EROTICA -> ContentRating.EROTICA
+                                NetworkExtensionStore.ContentRating.PORNOGRAPHIC -> ContentRating.PORNOGRAPHIC
+                            },
                     )
                 },
         )

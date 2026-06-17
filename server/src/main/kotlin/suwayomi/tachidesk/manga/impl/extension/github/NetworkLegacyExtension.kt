@@ -58,6 +58,8 @@ fun NetworkLegacyExtension.toExtensionInfo(
                         name = name,
                         lang = lang,
                         homeUrl = "",
+                        message = null,
+                        contentRating = if (nsfw == 1) ContentRating.PORNOGRAPHIC else ContentRating.SAFE,
                     ),
                 )
             } else {
@@ -67,6 +69,8 @@ fun NetworkLegacyExtension.toExtensionInfo(
                         name = source.name,
                         lang = source.lang,
                         homeUrl = source.baseUrl,
+                        message = null,
+                        contentRating = if (nsfw == 1) ContentRating.PORNOGRAPHIC else ContentRating.SAFE,
                     )
                 }
             },
