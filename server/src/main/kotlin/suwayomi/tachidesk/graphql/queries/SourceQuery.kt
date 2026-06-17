@@ -21,12 +21,14 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
+import suwayomi.tachidesk.graphql.queries.filter.ContentRatingFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.LongFilter
 import suwayomi.tachidesk.graphql.queries.filter.OpAnd
 import suwayomi.tachidesk.graphql.queries.filter.StringFilter
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEnum
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -122,7 +124,7 @@ class SourceQuery {
         val lang: StringFilter? = null,
         @GraphQLDeprecated("replace with contentRating == ContentRating.PORNOGRAPHIC", ReplaceWith("contentRating"))
         val isNsfw: BooleanFilter? = null,
-        // val contentRating: EnumFilter<ContentRating>? = null,
+        val contentRating: ContentRatingFilter? = null,
         override val and: List<SourceFilter>? = null,
         override val or: List<SourceFilter>? = null,
         override val not: SourceFilter? = null,
@@ -132,7 +134,7 @@ class SourceQuery {
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
-                // andFilterWithCompareEnum(SourceTable.contentRating, contentRating)
+                andFilterWithCompareEnum(SourceTable.contentRating, contentRating),
             )
     }
 

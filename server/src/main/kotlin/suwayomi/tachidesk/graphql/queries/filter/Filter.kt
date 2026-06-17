@@ -28,6 +28,7 @@ import org.jetbrains.exposed.v1.core.upperCase
 import org.jetbrains.exposed.v1.core.wrap
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
+import suwayomi.tachidesk.graphql.types.ContentRating
 
 class ILikeEscapeOp(
     expr1: Expression<*>,
@@ -329,23 +330,23 @@ data class DoubleFilter(
         )
 }
 
-data class EnumFilter<T : Enum<T>>(
+data class ContentRatingFilter(
     override val isNull: Boolean? = null,
-    override val equalTo: T? = null,
-    override val notEqualTo: T? = null,
-    override val notEqualToAll: List<T>? = null,
-    override val notEqualToAny: List<T>? = null,
-    override val distinctFrom: T? = null,
-    override val distinctFromAll: List<T>? = null,
-    override val distinctFromAny: List<T>? = null,
-    override val notDistinctFrom: T? = null,
-    override val `in`: List<T>? = null,
-    override val notIn: List<T>? = null,
-    override val lessThan: T? = null,
-    override val lessThanOrEqualTo: T? = null,
-    override val greaterThan: T? = null,
-    override val greaterThanOrEqualTo: T? = null,
-) : ComparableScalarFilter<T>
+    override val equalTo: ContentRating? = null,
+    override val notEqualTo: ContentRating? = null,
+    override val notEqualToAll: List<ContentRating>? = null,
+    override val notEqualToAny: List<ContentRating>? = null,
+    override val distinctFrom: ContentRating? = null,
+    override val distinctFromAll: List<ContentRating>? = null,
+    override val distinctFromAny: List<ContentRating>? = null,
+    override val notDistinctFrom: ContentRating? = null,
+    override val `in`: List<ContentRating>? = null,
+    override val notIn: List<ContentRating>? = null,
+    override val lessThan: ContentRating? = null,
+    override val lessThanOrEqualTo: ContentRating? = null,
+    override val greaterThan: ContentRating? = null,
+    override val greaterThanOrEqualTo: ContentRating? = null,
+) : ComparableScalarFilter<ContentRating>
 
 data class StringFilter(
     override val isNull: Boolean? = null,

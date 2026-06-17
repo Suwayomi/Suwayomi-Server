@@ -21,6 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
+import suwayomi.tachidesk.graphql.queries.filter.ContentRatingFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.IntFilter
@@ -28,6 +29,7 @@ import suwayomi.tachidesk.graphql.queries.filter.LongFilter
 import suwayomi.tachidesk.graphql.queries.filter.OpAnd
 import suwayomi.tachidesk.graphql.queries.filter.StringFilter
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEnum
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -156,7 +158,7 @@ class ExtensionQuery {
         val lang: StringFilter? = null,
         @GraphQLDeprecated("", ReplaceWith("storeIndexUrl"))
         val isNsfw: BooleanFilter? = null,
-        // val contentRating: EnumFilter<ContentRating>? = null,
+        val contentRating: ContentRatingFilter? = null,
         val isInstalled: BooleanFilter? = null,
         val hasUpdate: BooleanFilter? = null,
         val isObsolete: BooleanFilter? = null,
@@ -177,7 +179,7 @@ class ExtensionQuery {
                 andFilterWithCompareString(ExtensionTable.versionName, versionName),
                 andFilterWithCompare(ExtensionTable.versionCode, versionCodeLong),
                 andFilterWithCompareString(ExtensionTable.lang, lang),
-                // andFilterWithCompareEnum(ExtensionTable.contentRating, contentRating),
+                andFilterWithCompareEnum(ExtensionTable.contentRating, contentRating),
                 andFilterWithCompare(ExtensionTable.isInstalled, isInstalled),
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
                 andFilterWithCompare(ExtensionTable.isObsolete, isObsolete),
