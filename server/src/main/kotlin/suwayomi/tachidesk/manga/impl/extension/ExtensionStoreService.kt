@@ -124,27 +124,30 @@ object ExtensionStoreService {
             transaction {
                 ExtensionStoreTable.selectAll().toList()
             }
-        return stores.mapNotNull { storeRow ->
+        var needsPrefUpdate = false
+        val updateStores = stores.mapNotNull { storeRow ->
             val oldIndexUrl = storeRow[ExtensionStoreTable.indexUrl]
             val oldName = storeRow[ExtensionStoreTable.name]
             try {
                 val store = fetch(oldIndexUrl)
-                upsert(store)
                 if (store.indexUrl != oldIndexUrl) {
                     transaction {
                         ExtensionStoreTable.deleteWhere { ExtensionStoreTable.indexUrl eq oldIndexUrl }
                     }
-                    syncDbToPrefs(oldIndexUrl)
+                    needsPrefUpdate = true
                 }
+                upsert(store)
                 store
             } catch (e: Exception) {
                 logger.warn(e) { "Failed to fetch extension store '$oldName ($oldIndexUrl)'" }
                 null
             }
         }
+        if (needsPrefUpdate) syncDbToPrefs()
+        return updateStores
     }
 
-    fun syncDbToPrefs(keepRemoved: String? = null) {
+    fun syncDbToPrefs() {
         val dbStores =
             transaction {
                 ExtensionStoreTable
@@ -154,8 +157,8 @@ object ExtensionStoreService {
             }
 
         val currentPrefs = serverConfig.extensionStores.value.toSet()
-        val toAdd = (dbStores - currentPrefs - keepRemoved).filterNotNull()
-        val toRemove = (currentPrefs - dbStores + keepRemoved).filterNotNull()
+        val toAdd = dbStores - currentPrefs
+        val toRemove = currentPrefs - dbStores
 
         if (toAdd.isNotEmpty()) {
             serverConfig.extensionStores.value = (serverConfig.extensionStores.value + toAdd).distinct()
@@ -175,27 +178,32 @@ object ExtensionStoreService {
             }
 
         val toAdd = prefUrls - dbStores.keys
+        val toRemove = (dbStores.keys - prefUrls).toMutableSet()
+        var needsPrefUpdate = toRemove.isNotEmpty()
 
         toAdd.forEach { url ->
             try {
                 val store = fetch(url)
-                upsert(store)
                 if (store.indexUrl != url) {
                     transaction {
                         ExtensionStoreTable.deleteWhere { ExtensionStoreTable.indexUrl eq url }
                     }
-                    syncDbToPrefs(url)
+                    needsPrefUpdate = true
+                    toRemove -= store.indexUrl
                 }
+                upsert(store)
             } catch (e: Exception) {
                 logger.warn(e) { "Failed to sync preference store '$url' to database" }
             }
         }
 
-        val toRemove = dbStores.keys - prefUrls
         if (toRemove.isNotEmpty()) {
             transaction {
                 ExtensionStoreTable.deleteWhere { ExtensionStoreTable.indexUrl inList toRemove.toList() }
             }
+        }
+        if (needsPrefUpdate) {
+            syncDbToPrefs()
         }
     }
 
