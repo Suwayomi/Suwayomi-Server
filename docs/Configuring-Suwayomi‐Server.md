@@ -159,15 +159,20 @@ server.systemTrayEnabled = true
 server.maxLogFiles = 31
 server.maxLogFileSize = "10mb"
 server.maxLogFolderSize = "100mb"
-server.extensionRepos = []
-server.maxSourcesInParallel = 6
+
 ```
 - `server.debugLogsEnabled` controls whether if Suwayomi-Server should print more information while being run inside a Terminal/CMD/Powershell window. 
 - `server.systemTrayEnabled = true` whether if Suwayomi-Server should show a System Tray Icon, disabling this on headless servers is recommended.
 - `server.maxLogFiles = 31` sets the maximum number of days to keep files before they get deleted.
 - `server.maxLogFileSize = "10mb"` sets the maximum size of a log file - values are formatted like: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)
 - `server.maxLogFolderSize = "100mb"` sets the maximum size of all saved log files - values are formatted like: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)
-- `server.extensionRepos` is a list of extension repositories for custom sources. Uses the same format as Mihon; each entry is expected to be a string URL pointing to a JSON file representing the repository.
+
+### Extension/Source
+```
+server.extensionStores = []
+server.maxSourcesInParallel = 6
+```
+- `server.extensionStores` is a list of extension stores(previously called repositories) for custom sources. Uses the same format as Mihon; each entry is expected to be a string URL pointing to a JSON or PROTOBUF file representing the repository.
 - `server.maxSourcesInParallel = 6` sets how many sources can do requests (updates, downloads) in parallel. Updates/downloads are grouped by source and all mangas of a source are updated/downloaded synchronously. Range: 1 <= n <= 20.
 
 ### Backup
