@@ -156,7 +156,7 @@ class MangaMutation {
         val (clientMutationId, id) = input
 
         return future {
-            Manga.fetchManga(id)
+            Manga.updateMangaAndChapters(id, updateChapters = false)
 
             val manga =
                 transaction {
@@ -187,20 +187,11 @@ class MangaMutation {
         val (clientMutationId, id, fetchManga, fetchChapters) = input
 
         return future {
-            var mangaEntry =
-                transaction { MangaTable.selectAll().where { MangaTable.id eq id }.first() }
-            val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
-            val sMangaUpdate =
-                Manga.fetchMangaAndChapters(
-                    mangaEntry = mangaEntry,
-                    source = source,
-                    fetchDetails = fetchManga,
-                    fetchChapters = fetchChapters,
-                )
-
-            Manga.updateMangaDatabase(mangaEntry, source, sMangaUpdate.manga)
-            mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq id }.first() }
-            Chapter.updateChapterListDatabase(mangaEntry, sMangaUpdate.chapters, source)
+            Manga.updateMangaAndChapters(
+                mangaId = id,
+                updateManga = fetchManga,
+                updateChapters = fetchChapters
+            )
 
             val (manga, chapters) =
                 transaction {

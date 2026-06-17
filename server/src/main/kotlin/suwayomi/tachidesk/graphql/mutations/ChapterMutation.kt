@@ -26,6 +26,7 @@ import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
@@ -173,7 +174,7 @@ class ChapterMutation {
         val (clientMutationId, mangaId) = input
 
         return future {
-            Chapter.fetchChapterList(mangaId)
+            Manga.updateMangaAndChapters(mangaId, updateManga = false)
 
             val chapters =
                 transaction {

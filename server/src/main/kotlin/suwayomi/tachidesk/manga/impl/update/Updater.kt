@@ -311,10 +311,10 @@ class Updater : IUpdater {
         tracker[job.manga.id] =
             try {
                 logger.info { "Updating ${job.manga}" }
-                if (serverConfig.updateMangas.value || !job.manga.initialized) {
-                    Manga.getManga(job.manga.id, true)
-                }
-                Chapter.getChapterList(job.manga.id, true)
+                Manga.updateMangaAndChapters(
+                    job.manga.id,
+                    updateManga = serverConfig.updateMangas.value || !job.manga.initialized
+                )
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {
                 logger.error(e) { "Error while updating ${job.manga}" }

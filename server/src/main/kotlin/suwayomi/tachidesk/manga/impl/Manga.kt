@@ -81,7 +81,7 @@ object Manga {
         return if (!onlineFetch && mangaEntry[MangaTable.initialized]) {
             MangaTable.toDataClass(mangaEntry)
         } else { // initialize manga
-            fetchManga(mangaId) ?: return MangaTable.toDataClass(mangaEntry)
+            updateMangaAndChapters(mangaId, updateChapters = false)
 
             mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
 
@@ -149,6 +149,36 @@ object Manga {
                 ).manga
 
             updateMangaDatabase(mangaEntry, source, sManga)
+        }
+    }
+
+    suspend fun updateMangaAndChapters(
+        mangaId: Int,
+        updateManga: Boolean = true,
+        updateChapters: Boolean = true,
+    ) {
+        mangaInfoMutex.get(mangaId) { Mutex() }.withLock {
+            var mangaEntry =
+                transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+            val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
+                ?: throw NullPointerException("Missing source ${mangaEntry[MangaTable.sourceReference]}")
+            val mangaUpdate =
+                fetchMangaAndChapters(
+                    mangaEntry,
+                    source,
+                    fetchDetails = updateManga,
+                    fetchChapters = updateChapters,
+                )
+
+            if (updateManga) {
+                updateMangaDatabase(mangaEntry, source, mangaUpdate.manga)
+                mangaEntry = transaction {
+                    MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
+                }
+            }
+            if (updateChapters) {
+                Chapter.updateChapterListDatabase(mangaEntry, mangaUpdate.chapters, source)
+            }
         }
     }
 
