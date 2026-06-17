@@ -52,7 +52,7 @@ object Source {
                     iconUrl = proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
                     supportsLatest = catalogueSource.supportsLatest,
                     isConfigurable = catalogueSource is ConfigurableSource,
-                    isNsfw = it[SourceTable.contentRating] >= 3,
+                    isNsfw = it[SourceTable.contentRating] == 3,
                     displayName = catalogueSource.toString(),
                     baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
                 )
@@ -73,7 +73,7 @@ object Source {
                 iconUrl = proxyExtensionIconUrl(extension[ExtensionTable.pkgName]),
                 supportsLatest = catalogueSource.supportsLatest,
                 isConfigurable = catalogueSource is ConfigurableSource,
-                isNsfw = source[SourceTable.contentRating] >= 3,
+                isNsfw = source[SourceTable.contentRating] == 3,
                 displayName = catalogueSource.toString(),
                 baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
             )
