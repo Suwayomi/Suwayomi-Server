@@ -18,6 +18,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -114,17 +115,20 @@ object Chapter {
         val mutex = Manga.mangaInfoMutex.get(mangaId) { Mutex() }
         val chapterList =
             mutex.withLock {
-                val mangaEntry = transaction {
-                    MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
-                }
+                val mangaEntry =
+                    transaction {
+                        MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
+                    }
                 val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
-                val chapters = Manga.fetchMangaAndChapters(
-                    mangaEntry = mangaEntry,
-                    source = source,
-                    fetchDetails = false,
-                    fetchChapters = true,
-                ).chapters
+                val chapters =
+                    Manga
+                        .fetchMangaAndChapters(
+                            mangaEntry = mangaEntry,
+                            source = source,
+                            fetchDetails = false,
+                            fetchChapters = true,
+                        ).chapters
 
                 updateChapterListDatabase(mangaEntry, chapters, source)
             }
@@ -150,22 +154,28 @@ object Chapter {
         }
 
         // Recognize number for new chapters.
-        val sManga = SManga.create().apply {
-            url = mangaEntry[MangaTable.url]
-            title = mangaEntry[MangaTable.title]
-            thumbnail_url = mangaEntry[MangaTable.thumbnail_url]
-            artist = mangaEntry[MangaTable.artist]
-            author = mangaEntry[MangaTable.author]
-            description = mangaEntry[MangaTable.description]
-            genre = mangaEntry[MangaTable.genre]
-            status = mangaEntry[MangaTable.status]
-            update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
-            memo = mangaEntry[MangaTable.memo]
-            initialized = mangaEntry[MangaTable.initialized]
-        }
+        val sManga =
+            SManga.create().apply {
+                url = mangaEntry[MangaTable.url]
+                title = mangaEntry[MangaTable.title]
+                thumbnail_url = mangaEntry[MangaTable.thumbnail_url]
+                artist = mangaEntry[MangaTable.artist]
+                author = mangaEntry[MangaTable.author]
+                description = mangaEntry[MangaTable.description]
+                genre = mangaEntry[MangaTable.genre]
+                status = mangaEntry[MangaTable.status]
+                update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
+                memo = Json.decodeFromString(mangaEntry[MangaTable.memo])
+                initialized = mangaEntry[MangaTable.initialized]
+            }
         uniqueChapters.forEach { chapter ->
             (source as? HttpSource)?.prepareNewChapter(chapter, sManga)
-            val chapterNumber = ChapterRecognition.parseChapterNumber(mangaEntry[MangaTable.title], chapter.name, chapter.chapter_number.toDouble())
+            val chapterNumber =
+                ChapterRecognition.parseChapterNumber(
+                    mangaEntry[MangaTable.title],
+                    chapter.name,
+                    chapter.chapter_number.toDouble(),
+                )
             chapter.chapter_number = chapterNumber.toFloat()
             chapter.name = chapter.name.sanitize(mangaEntry[MangaTable.title])
             chapter.scanlator = chapter.scanlator?.ifBlank { null }?.trim()
@@ -270,7 +280,7 @@ object Chapter {
                         this[ChapterTable.fetchedAt] = chapter.fetchedAt
                         this[ChapterTable.manga] = chapter.mangaId
                         this[ChapterTable.realUrl] = chapter.realUrl
-                        this[ChapterTable.memo] = chapter.memo
+                        this[ChapterTable.memo] = Json.encodeToString(chapter.memo)
                         this[ChapterTable.isRead] = false
                         this[ChapterTable.isBookmarked] = false
                         this[ChapterTable.isDownloaded] = false
@@ -321,7 +331,7 @@ object Chapter {
                             this[ChapterTable.realUrl] = it.realUrl
                             this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
                             this[ChapterTable.version] = it.version
-                            this[ChapterTable.memo] = it.memo
+                            this[ChapterTable.memo] = Json.encodeToString(it.memo)
                             this[ChapterTable.isDownloaded] = currentChapter.downloaded
                             this[ChapterTable.pageCount] = currentChapter.pageCount
 
@@ -359,7 +369,7 @@ object Chapter {
                 mangaEntry[MangaTable.id].value,
                 currentLatestChapterNumber,
                 numberOfCurrentChapters,
-                insertedChapters
+                insertedChapters,
             )
         }
 

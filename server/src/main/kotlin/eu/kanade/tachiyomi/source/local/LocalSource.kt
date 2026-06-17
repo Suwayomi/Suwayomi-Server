@@ -175,11 +175,12 @@ class LocalSource(
         chapters: List<SChapter>,
         fetchDetails: Boolean,
         fetchChapters: Boolean,
-    ): SMangaUpdate = supervisorScope {
-        val asyncManga = if (fetchDetails) async { getMangaDetails(manga) } else null
-        val asyncChapters = if (fetchChapters) async { getChapterList(manga) } else null
-        SMangaUpdate(asyncManga?.await() ?: manga, asyncChapters?.await() ?: chapters)
-    }
+    ): SMangaUpdate =
+        supervisorScope {
+            val asyncManga = if (fetchDetails) async { getMangaDetails(manga) } else null
+            val asyncChapters = if (fetchChapters) async { getChapterList(manga) } else null
+            SMangaUpdate(asyncManga?.await() ?: manga, asyncChapters?.await() ?: chapters)
+        }
 
     // Manga details related
     private suspend fun getMangaDetails(manga: SManga): SManga =
@@ -481,7 +482,8 @@ class LocalSource(
                             it[versionName] = "1.2"
                             it[versionCode] = 0
                             it[lang] = LANG
-                            it[isNsfw] = false
+                            it[extensionLib] = "1.2"
+                            it[contentRating] = 0
                             it[isInstalled] = true
                         }
 
@@ -490,7 +492,6 @@ class LocalSource(
                         it[name] = NAME
                         it[lang] = LANG
                         it[extension] = extensionId
-                        it[isNsfw] = false
                     }
                 }
             }

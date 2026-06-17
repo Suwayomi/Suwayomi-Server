@@ -329,6 +329,24 @@ data class DoubleFilter(
         )
 }
 
+data class EnumFilter<T : Enum<T>>(
+    override val isNull: Boolean? = null,
+    override val equalTo: T? = null,
+    override val notEqualTo: T? = null,
+    override val notEqualToAll: List<T>? = null,
+    override val notEqualToAny: List<T>? = null,
+    override val distinctFrom: T? = null,
+    override val distinctFromAll: List<T>? = null,
+    override val distinctFromAny: List<T>? = null,
+    override val notDistinctFrom: T? = null,
+    override val `in`: List<T>? = null,
+    override val notIn: List<T>? = null,
+    override val lessThan: T? = null,
+    override val lessThanOrEqualTo: T? = null,
+    override val greaterThan: T? = null,
+    override val greaterThanOrEqualTo: T? = null,
+) : ComparableScalarFilter<T>
+
 data class StringFilter(
     override val isNull: Boolean? = null,
     override val equalTo: String? = null,
@@ -613,6 +631,35 @@ fun <T : Comparable<T>, S : T?> andFilterWithCompare(
     }
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it as List<S> }
+    }
+
+    return opAnd.op
+}
+
+@Suppress("UNCHECKED_CAST")
+fun <T : Enum<T>> andFilterWithCompareEnum(
+    column: Column<Int>,
+    filter: ComparableScalarFilter<T>?,
+): Op<Boolean>? {
+    filter ?: return null
+    val opAnd = OpAnd()
+
+    opAnd.andWhere(filter.lessThan) { column less it.ordinal }
+    opAnd.andWhere(filter.lessThanOrEqualTo) { column lessEq it.ordinal }
+    opAnd.andWhere(filter.greaterThan) { column greater it.ordinal }
+    opAnd.andWhere(filter.greaterThanOrEqualTo) { column greaterEq it.ordinal }
+
+    opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
+
+    opAnd.andWhere(filter.equalTo) { column eq it.ordinal }
+    opAnd.andNotWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it.ordinal }
+    opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it.ordinal) }
+    opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it.ordinal) }
+    if (!filter.`in`.isNullOrEmpty()) {
+        opAnd.andWhere(filter.`in`) { column inList it.map { it.ordinal } }
+    }
+    if (!filter.notIn.isNullOrEmpty()) {
+        opAnd.andWhere(filter.notIn) { column notInList it.map { it.ordinal } }
     }
 
     return opAnd.op

@@ -7,14 +7,13 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
-import org.jetbrains.exposed.v1.json.json
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
-import suwayomi.tachidesk.server.database.DBManager
+import suwayomi.tachidesk.manga.model.table.columns.unlimitedVarchar
 
 object ChapterTable : IntIdTable() {
     val url = varchar("url", 2048)
@@ -46,7 +45,7 @@ object ChapterTable : IntIdTable() {
     val version = long("version").default(0)
     val isSyncing = bool("is_syncing").default(false)
 
-    val memo = json<JsonObject>("memo", DBManager.format)
+    val memo = unlimitedVarchar("memo")
 }
 
 fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
@@ -69,5 +68,5 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         pageCount = chapterEntry[pageCount],
         lastModifiedAt = chapterEntry[lastModifiedAt],
         version = chapterEntry[version],
-        memo = chapterEntry[memo],
+        memo = Json.decodeFromString(chapterEntry[memo]),
     )

@@ -7,6 +7,8 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.ConfigurableSource
@@ -25,7 +27,6 @@ import suwayomi.tachidesk.manga.impl.Source.getSourcePreferencesRaw
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
@@ -41,35 +42,31 @@ class SourceType(
     val id: Long,
     val name: String,
     val lang: String,
+    val message: String?,
+    val contentRating: ContentRating,
     val iconUrl: String,
     val supportsLatest: Boolean,
     val isConfigurable: Boolean,
+    @GraphQLDeprecated("", ReplaceWith("contentRating"))
     val isNsfw: Boolean,
     val displayName: String,
+    val homeUrl: String?,
+    @GraphQLDeprecated("", ReplaceWith("homeUrl"))
     val baseUrl: String?,
 ) : Node {
-    constructor(source: SourceDataClass) : this(
-        id = source.id.toLong(),
-        name = source.name,
-        lang = source.lang,
-        iconUrl = source.iconUrl,
-        supportsLatest = source.supportsLatest,
-        isConfigurable = source.isConfigurable,
-        isNsfw = source.isNsfw,
-        displayName = source.displayName,
-        baseUrl = source.baseUrl,
-    )
-
     constructor(row: ResultRow, sourceExtension: ResultRow, catalogueSource: CatalogueSource) : this(
         id = row[SourceTable.id].value,
         name = row[SourceTable.name],
         lang = row[SourceTable.lang],
-        iconUrl = Extension.getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
+        message = row[SourceTable.message],
+        contentRating = ContentRating.valueOf(row[SourceTable.contentRating]),
+        iconUrl = Extension.proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
         supportsLatest = catalogueSource.supportsLatest,
         isConfigurable = catalogueSource is ConfigurableSource,
-        isNsfw = row[SourceTable.isNsfw],
+        isNsfw = row[SourceTable.contentRating] >= 3,
         displayName = catalogueSource.toString(),
-        baseUrl = catalogueSource.runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
+        homeUrl = runCatching { (catalogueSource as? HttpSource)?.getHomeUrl() }.getOrNull(),
+        baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
@@ -510,3 +507,33 @@ fun preferenceOf(preference: SourcePreference): Preference =
             throw RuntimeException("sealed class cannot have more subtypes!")
         }
     }
+
+enum class ContentRating {
+    SAFE,
+    SUGGESTIVE,
+    EROTICA,
+    PORNOGRAPHIC,
+    ;
+
+    @GraphQLIgnore
+    fun getValue() =
+        when (this) {
+            SAFE -> 0
+            SUGGESTIVE -> 1
+            EROTICA -> 2
+            PORNOGRAPHIC -> 3
+        }
+
+    @GraphQLIgnore
+    companion object {
+        @GraphQLIgnore
+        fun valueOf(contentRating: Int) =
+            when (contentRating) {
+                0 -> SAFE
+                1 -> SUGGESTIVE
+                2 -> EROTICA
+                3 -> PORNOGRAPHIC
+                else -> SAFE
+            }
+    }
+}

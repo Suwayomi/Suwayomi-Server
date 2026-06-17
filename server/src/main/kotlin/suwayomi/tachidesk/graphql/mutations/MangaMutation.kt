@@ -190,12 +190,13 @@ class MangaMutation {
             var mangaEntry =
                 transaction { MangaTable.selectAll().where { MangaTable.id eq id }.first() }
             val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
-            val sMangaUpdate = Manga.fetchMangaAndChapters(
-                mangaEntry = mangaEntry,
-                source = source,
-                fetchDetails = fetchManga,
-                fetchChapters = fetchChapters
-            )
+            val sMangaUpdate =
+                Manga.fetchMangaAndChapters(
+                    mangaEntry = mangaEntry,
+                    source = source,
+                    fetchDetails = fetchManga,
+                    fetchChapters = fetchChapters,
+                )
 
             Manga.updateMangaDatabase(mangaEntry, source, sMangaUpdate.manga)
             mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq id }.first() }
@@ -209,9 +210,8 @@ class MangaMutation {
                             .selectAll()
                             .where { ChapterTable.manga eq id }
                             .orderBy(ChapterTable.sourceOrder)
-                            .map { ChapterType(it) }
+                            .map { ChapterType(it) },
                     )
-
                 }
             FetchMangaAndChaptersPayload(
                 clientMutationId = clientMutationId,

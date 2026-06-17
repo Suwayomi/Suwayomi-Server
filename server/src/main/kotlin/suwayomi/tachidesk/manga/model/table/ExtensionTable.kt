@@ -10,8 +10,8 @@ package suwayomi.tachidesk.manga.model.table
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 
 object ExtensionTable : IntIdTable() {
-    val apkName = varchar("apk_name", 1024)
-    val repo = varchar("repo", 1024).nullable()
+    val apkName = varchar("apk_name", 1024).nullable()
+    val storeIndexUrl = varchar("store_index_url", 2048).nullable()
 
     // default is the local source icon from tachiyomi
     @Suppress("ktlint:standard:max-line-length")
@@ -23,10 +23,12 @@ object ExtensionTable : IntIdTable() {
 
     val name = varchar("name", 128)
     val pkgName = varchar("pkg_name", 128)
+    val apkUrl = varchar("apk_url", 2048)
+    val extensionLib = varchar("extension_lib", 16).nullable()
     val versionName = varchar("version_name", 16)
-    val versionCode = integer("version_code")
+    val versionCode = long("version_code")
     val lang = varchar("lang", 32)
-    val isNsfw = bool("is_nsfw")
+    val contentRating = integer("content_rating")
 
     val isInstalled = bool("is_installed").default(false)
     val hasUpdate = bool("has_update").default(false)

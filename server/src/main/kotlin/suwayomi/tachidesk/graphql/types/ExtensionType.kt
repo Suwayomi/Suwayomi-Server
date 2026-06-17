@@ -7,6 +7,8 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -20,29 +22,46 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
 class ExtensionType(
+    val storeIndexUrl: String?,
+    @GraphQLDeprecated("Removed in extension api v1.6", ReplaceWith("storeIndexUrl"))
     val repo: String?,
-    val apkName: String,
+    @GraphQLDescription("This will be nullable in the future")
+    val apkName: String?,
     val iconUrl: String,
     val name: String,
     val pkgName: String,
+    val apkUrl: String?,
+    val extensionLib: String?,
     val versionName: String,
+    @GraphQLDeprecated(
+        "Type was changed to Long, will be switched back to this variable name in the future.",
+        ReplaceWith("versionCodeLong"),
+    )
     val versionCode: Int,
+    val versionCodeLong: Long,
     val lang: String,
+    @GraphQLDeprecated("Removed in extension api v1.6", ReplaceWith("contentRating"))
     val isNsfw: Boolean,
+    val contentRating: ContentRating,
     val isInstalled: Boolean,
     val hasUpdate: Boolean,
     val isObsolete: Boolean,
 ) : Node {
     constructor(row: ResultRow) : this(
-        repo = row[ExtensionTable.repo],
-        apkName = row[ExtensionTable.apkName],
-        iconUrl = Extension.getExtensionIconUrl(row[ExtensionTable.apkName]),
+        storeIndexUrl = row[ExtensionTable.storeIndexUrl],
+        repo = row[ExtensionTable.storeIndexUrl],
+        apkName = row[ExtensionTable.apkName].orEmpty(),
+        iconUrl = Extension.proxyExtensionIconUrl(row[ExtensionTable.pkgName]),
         name = row[ExtensionTable.name],
         pkgName = row[ExtensionTable.pkgName],
+        apkUrl = row[ExtensionTable.apkUrl],
+        extensionLib = row[ExtensionTable.extensionLib],
         versionName = row[ExtensionTable.versionName],
-        versionCode = row[ExtensionTable.versionCode],
+        versionCode = row[ExtensionTable.versionCode].toInt(),
+        versionCodeLong = row[ExtensionTable.versionCode],
         lang = row[ExtensionTable.lang],
-        isNsfw = row[ExtensionTable.isNsfw],
+        isNsfw = row[ExtensionTable.contentRating] == 3,
+        contentRating = ContentRating.valueOf(row[ExtensionTable.contentRating]),
         isInstalled = row[ExtensionTable.isInstalled],
         hasUpdate = row[ExtensionTable.hasUpdate],
         isObsolete = row[ExtensionTable.isObsolete],
@@ -50,6 +69,9 @@ class ExtensionType(
 
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<String, SourceNodeList>("SourcesForExtensionDataLoader", pkgName)
+
+    fun extensionStore(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionStoreType> =
+        dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionStoreType>("ExtensionStoreForExtension", storeIndexUrl.orEmpty())
 }
 
 data class ExtensionNodeList(

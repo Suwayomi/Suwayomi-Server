@@ -24,6 +24,7 @@ import io.github.reactivecircus.cache4k.Cache
 import io.javalin.http.HttpStatus
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 import okhttp3.CacheControl
 import okhttp3.Response
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -105,24 +106,26 @@ object Manga {
                 genre = mangaEntry[MangaTable.genre]
                 status = mangaEntry[MangaTable.status]
                 update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
-                memo = mangaEntry[MangaTable.memo]
+                memo = Json.decodeFromString(mangaEntry[MangaTable.memo])
                 initialized = mangaEntry[MangaTable.initialized]
             }
-        val sChapters = transaction {
-            ChapterTable.selectAll()
-                .where { ChapterTable.manga eq mangaEntry[MangaTable.id] }
-                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                .map {
-                    SChapter.create().apply {
-                        url = it[ChapterTable.url]
-                        name = it[ChapterTable.name]
-                        chapter_number = it[ChapterTable.chapter_number]
-                        scanlator = it[ChapterTable.scanlator]
-                        date_upload = it[ChapterTable.date_upload]
-                        memo = it[ChapterTable.memo]
+        val sChapters =
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where { ChapterTable.manga eq mangaEntry[MangaTable.id] }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                    .map {
+                        SChapter.create().apply {
+                            url = it[ChapterTable.url]
+                            name = it[ChapterTable.name]
+                            chapter_number = it[ChapterTable.chapter_number]
+                            scanlator = it[ChapterTable.scanlator]
+                            date_upload = it[ChapterTable.date_upload]
+                            memo = Json.decodeFromString(it[ChapterTable.memo])
+                        }
                     }
-                }
-        }
+            }
 
         return source.getMangaUpdate(
             sManga,
@@ -137,12 +140,13 @@ object Manga {
             val mangaEntry =
                 transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
             val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference]) ?: return null
-            val sManga = fetchMangaAndChapters(
-                mangaEntry,
-                source,
-                fetchDetails = true,
-                fetchChapters = false
-            ).manga
+            val sManga =
+                fetchMangaAndChapters(
+                    mangaEntry,
+                    source,
+                    fetchDetails = true,
+                    fetchChapters = false,
+                ).manga
 
             updateMangaDatabase(mangaEntry, source, sManga)
         }

@@ -29,7 +29,11 @@ open class StubSource(
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getPopularManga"))
     override fun fetchPopularManga(page: Int): Observable<MangasPage> = Observable.error(getSourceNotInstalledException())
 
-    override suspend fun getSearchManga(page: Int, query: String, filters: FilterList): MangasPage = throw getSourceNotInstalledException()
+    override suspend fun getSearchManga(
+        page: Int,
+        query: String,
+        filters: FilterList,
+    ): MangasPage = throw getSourceNotInstalledException()
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
     override fun fetchSearchManga(
@@ -45,7 +49,12 @@ open class StubSource(
 
     override fun getFilterList(): FilterList = FilterList()
 
-    override suspend fun getMangaUpdate(manga: SManga, chapters: List<SChapter>, fetchDetails: Boolean, fetchChapters: Boolean): SMangaUpdate = throw getSourceNotInstalledException()
+    override suspend fun getMangaUpdate(
+        manga: SManga,
+        chapters: List<SChapter>,
+        fetchDetails: Boolean,
+        fetchChapters: Boolean,
+    ): SMangaUpdate = throw getSourceNotInstalledException()
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getMangaDetails"))
     override fun fetchMangaDetails(manga: SManga): Observable<SManga> = Observable.error(getSourceNotInstalledException())
