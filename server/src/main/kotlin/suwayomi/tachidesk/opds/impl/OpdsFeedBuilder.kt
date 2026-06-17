@@ -18,7 +18,6 @@ import suwayomi.tachidesk.opds.repository.ChapterRepository
 import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
-import suwayomi.tachidesk.opds.util.OpdsStringUtil
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale

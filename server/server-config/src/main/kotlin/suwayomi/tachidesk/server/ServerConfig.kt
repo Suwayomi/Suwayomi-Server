@@ -287,6 +287,7 @@ class ServerConfig(
                 replaceWith = "extensionStores",
                 message = "Replaced with extensionStores",
                 migrateConfigValue = {
+                    @Suppress("UNCHECKED_CAST")
                     (it.unwrapped() as? List<String>)
                         ?.map {
                             if (it.contains("github")) {

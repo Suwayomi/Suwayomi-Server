@@ -18,7 +18,6 @@ import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import rx.Observable
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
 import suwayomi.tachidesk.manga.impl.Search.FilterObject
 import suwayomi.tachidesk.manga.impl.Search.SerializableGroup
