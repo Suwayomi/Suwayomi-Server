@@ -41,12 +41,11 @@ class SearchTest : ApplicationTest() {
     ) : StubSource(id) {
         var mangas: List<SManga> = emptyList()
 
-        @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
-        override fun fetchSearchManga(
+        override suspend fun getSearchManga(
             page: Int,
             query: String,
             filters: FilterList,
-        ): Observable<MangasPage> = Observable.just(MangasPage(mangas, false))
+        ): MangasPage = MangasPage(mangas, false)
     }
 
     private val sourceId = 1L
