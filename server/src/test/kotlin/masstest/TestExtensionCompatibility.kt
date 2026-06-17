@@ -48,7 +48,6 @@ class TestExtensionCompatibility {
     private val failedToFetch = mutableListOf<Pair<HttpSource, Exception>>()
     private val mangaFailedToFetch = mutableListOf<Triple<HttpSource, SManga, Exception>>()
     private val chaptersToFetch = mutableListOf<Triple<HttpSource, SManga, SChapter>>()
-    private val chaptersFailedToFetch = mutableListOf<Triple<HttpSource, SManga, Throwable>>()
     private val chaptersPageListFailedToFetch = mutableListOf<Triple<HttpSource, Pair<SManga, SChapter>, Exception>>()
 
     @BeforeAll
@@ -133,10 +132,10 @@ class TestExtensionCompatibility {
                         semaphore.withPermit {
                             logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
                             try {
-                                repeat { source.getMangaDetails(manga) }
+                                repeat { source.getMangaUpdate(manga, emptyList(), true, true) }
                             } catch (e: Exception) {
                                 logger.warn {
-                                    "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                    "Failed to fetch manga info and chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
                                         manga,
                                     ).url}): ${e.message}"
                                 }
@@ -153,50 +152,6 @@ class TestExtensionCompatibility {
                 },
             )
             logger.info { "Now fetching manga chapters from ${mangaToFetch.size} sources" }
-
-            val chapterCount = AtomicInteger(1)
-            mangaToFetch
-                .filter { it.second.initialized }
-                .map { (source, manga) ->
-                    async {
-                        semaphore.withPermit {
-                            logger.info { "${chapterCount.getAndIncrement()} - Now fetching manga chapters from $source" }
-                            try {
-                                chaptersToFetch +=
-                                    Triple(
-                                        source,
-                                        manga,
-                                        repeat {
-                                            source.getChapterList(manga)
-                                        }.firstOrNull()
-                                            ?: throw Exception("Source returned no chapters"),
-                                    )
-                            } catch (e: Exception) {
-                                logger.warn {
-                                    "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
-                                        manga,
-                                    ).url}): ${e.message}"
-                                }
-                                chaptersFailedToFetch += Triple(source, manga, e)
-                            } catch (e: NoClassDefFoundError) {
-                                logger.warn {
-                                    "Failed to fetch manga chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
-                                        manga,
-                                    ).url}): ${e.message}"
-                                }
-                                chaptersFailedToFetch += Triple(source, manga, e)
-                            }
-                        }
-                    }
-                }.awaitAll()
-
-            File("$BASE_PATH/ChaptersFailedToFetch.txt").writeText(
-                chaptersFailedToFetch.joinToString("\n") { (source, manga, exception) ->
-                    "${source.name} (${source.lang}, ${source.id}):" +
-                        " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
-                        " ${exception.message}"
-                },
-            )
 
             val pageListCount = AtomicInteger(1)
             chaptersToFetch
