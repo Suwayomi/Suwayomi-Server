@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.dataLoaders.DownloadedChapterCountForMangaData
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForExtensionStore
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionStoreDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionStoreForExtension
 import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
@@ -81,6 +82,7 @@ class TachideskDataLoaderRegistryFactory {
                 ExtensionDataLoader(),
                 ExtensionForSourceDataLoader(),
                 ExtensionForExtensionStore(),
+                ExtensionStoreDataLoader(),
                 ExtensionStoreForExtension(),
                 TrackerDataLoader(),
                 TrackerStatusesDataLoader(),

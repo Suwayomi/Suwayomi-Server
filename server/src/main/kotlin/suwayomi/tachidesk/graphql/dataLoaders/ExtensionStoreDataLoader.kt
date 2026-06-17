@@ -16,6 +16,26 @@ import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
+class ExtensionStoreDataLoader : KotlinDataLoader<String, ExtensionStoreType> {
+    override val dataLoaderName = "ExtensionStoreDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionStoreType> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val manga =
+                        ExtensionStoreTable
+                            .selectAll()
+                            .where { ExtensionStoreTable.indexUrl inList ids }
+                            .map { ExtensionStoreType(it) }
+                            .associateBy { it.indexUrl }
+                    ids.map { manga[it] }
+                }
+            }
+        }
+}
+
 class ExtensionStoreForExtension : KotlinDataLoader<String, ExtensionStoreType> {
     override val dataLoaderName = "ExtensionStoreForExtension"
 
