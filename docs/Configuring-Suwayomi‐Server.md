@@ -172,7 +172,7 @@ server.maxLogFolderSize = "100mb"
 server.extensionStores = []
 server.maxSourcesInParallel = 6
 ```
-- `server.extensionStores` is a list of extension stores(previously called repositories) for custom sources. Uses the same format as Mihon; each entry is expected to be a string URL pointing to a JSON or PROTOBUF file representing the repository.
+- `server.extensionStores` is a list of extension stores (previously called repositories) for custom sources. Uses the same format as Mihon; each entry is expected to be a string URL pointing to a JSON or PROTOBUF file representing the repository.
 - `server.maxSourcesInParallel = 6` sets how many sources can do requests (updates, downloads) in parallel. Updates/downloads are grouped by source and all mangas of a source are updated/downloaded synchronously. Range: 1 <= n <= 20.
 
 ### Backup
