@@ -290,7 +290,7 @@ class ServerConfig(
                     @Suppress("UNCHECKED_CAST")
                     (it.unwrapped() as? List<String>)
                         ?.map {
-                            if (it.contains("github")) {
+                            if (it.contains("github.com")) {
                                 it.replace(repoMatchRegex) {
                                     "https://raw.githubusercontent.com/${it.groupValues[2]}/${it.groupValues[3]}/" +
                                         (it.groupValues.getOrNull(4)?.ifBlank { null } ?: "repo") +
@@ -304,7 +304,7 @@ class ServerConfig(
                 },
             ),
         readMigrated = { extensionStores.value },
-        setMigrated = { extensionStores.value = it },
+        setMigrated = { extensionStores.value = (extensionStores.value + it).distinct() },
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<String>",
@@ -1118,7 +1118,7 @@ class ServerConfig(
     val extensionStores: MutableStateFlow<List<String>> by ListSetting<String>(
         protoNumber = 97,
         group = SettingGroup.EXTENSION,
-        privacySafe = false,
+        privacySafe = true,
         defaultValue = emptyList(),
         itemValidator = { url ->
             if (url.isNotEmpty()) {
@@ -1128,11 +1128,7 @@ class ServerConfig(
             }
         },
         itemToValidValue = { url ->
-            if (url.isNotEmpty()) {
-                url
-            } else {
-                null
-            }
+            url.ifEmpty { null }
         },
         typeInfo =
             SettingsRegistry.PartialTypeInfo(

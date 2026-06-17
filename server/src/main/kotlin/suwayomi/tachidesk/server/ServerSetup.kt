@@ -525,6 +525,7 @@ fun applicationSetup() {
         serverConfig.extensionStores,
         { _ ->
             ExtensionStoreService.syncPrefsToDb()
+            ExtensionStoreService.syncDbToPrefs()
         },
         ignoreInitialValue = false,
     )

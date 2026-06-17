@@ -134,7 +134,7 @@ object ExtensionStoreService {
                     transaction {
                         ExtensionStoreTable.deleteWhere { ExtensionStoreTable.indexUrl eq oldIndexUrl }
                     }
-                    syncDbToPrefs()
+                    syncDbToPrefs(oldIndexUrl)
                 }
                 store
             } catch (e: Exception) {
@@ -144,7 +144,7 @@ object ExtensionStoreService {
         }
     }
 
-    fun syncDbToPrefs() {
+    fun syncDbToPrefs(keepRemoved: String? = null) {
         val dbStores =
             transaction {
                 ExtensionStoreTable
@@ -154,8 +154,8 @@ object ExtensionStoreService {
             }
 
         val currentPrefs = serverConfig.extensionStores.value.toSet()
-        val toAdd = dbStores - currentPrefs
-        val toRemove = currentPrefs - dbStores
+        val toAdd = (dbStores - currentPrefs - keepRemoved).filterNotNull()
+        val toRemove = (currentPrefs - dbStores + keepRemoved).filterNotNull()
 
         if (toAdd.isNotEmpty()) {
             serverConfig.extensionStores.value = (serverConfig.extensionStores.value + toAdd).distinct()
@@ -180,6 +180,12 @@ object ExtensionStoreService {
             try {
                 val store = fetch(url)
                 upsert(store)
+                if (store.indexUrl != url) {
+                    transaction {
+                        ExtensionStoreTable.deleteWhere { ExtensionStoreTable.indexUrl eq url }
+                    }
+                    syncDbToPrefs(url)
+                }
             } catch (e: Exception) {
                 logger.warn(e) { "Failed to sync preference store '$url' to database" }
             }
