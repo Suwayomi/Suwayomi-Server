@@ -125,24 +125,25 @@ object ExtensionStoreService {
                 ExtensionStoreTable.selectAll().toList()
             }
         var needsPrefUpdate = false
-        val updateStores = stores.mapNotNull { storeRow ->
-            val oldIndexUrl = storeRow[ExtensionStoreTable.indexUrl]
-            val oldName = storeRow[ExtensionStoreTable.name]
-            try {
-                val store = fetch(oldIndexUrl)
-                if (store.indexUrl != oldIndexUrl) {
-                    transaction {
-                        ExtensionStoreTable.deleteWhere { ExtensionStoreTable.indexUrl eq oldIndexUrl }
+        val updateStores =
+            stores.mapNotNull { storeRow ->
+                val oldIndexUrl = storeRow[ExtensionStoreTable.indexUrl]
+                val oldName = storeRow[ExtensionStoreTable.name]
+                try {
+                    val store = fetch(oldIndexUrl)
+                    if (store.indexUrl != oldIndexUrl) {
+                        transaction {
+                            ExtensionStoreTable.deleteWhere { ExtensionStoreTable.indexUrl eq oldIndexUrl }
+                        }
+                        needsPrefUpdate = true
                     }
-                    needsPrefUpdate = true
+                    upsert(store)
+                    store
+                } catch (e: Exception) {
+                    logger.warn(e) { "Failed to fetch extension store '$oldName ($oldIndexUrl)'" }
+                    null
                 }
-                upsert(store)
-                store
-            } catch (e: Exception) {
-                logger.warn(e) { "Failed to fetch extension store '$oldName ($oldIndexUrl)'" }
-                null
             }
-        }
         if (needsPrefUpdate) syncDbToPrefs()
         return updateStores
     }
