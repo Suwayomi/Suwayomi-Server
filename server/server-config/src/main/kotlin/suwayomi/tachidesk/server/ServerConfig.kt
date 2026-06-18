@@ -284,8 +284,7 @@ class ServerConfig(
         defaultValue = emptyList(),
         deprecated =
             SettingsRegistry.SettingDeprecated(
-                replaceWith = "extensionStores",
-                message = "Replaced with extensionStores",
+                message = "Replaced with addExtensionStore and removeExtensionStore mutations",
                 migrateConfigValue = {
                     @Suppress("UNCHECKED_CAST")
                     (it.unwrapped() as? List<String>)
@@ -304,7 +303,7 @@ class ServerConfig(
                 },
             ),
         readMigrated = { extensionStores.value },
-        setMigrated = { extensionStores.value = it?.distinct().orEmpty() },
+        setMigrated = { extensionStores.value = it.distinct() },
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<String>",
