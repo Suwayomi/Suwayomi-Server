@@ -16,7 +16,6 @@ import suwayomi.tachidesk.graphql.types.ExtensionStoreType
 import suwayomi.tachidesk.manga.impl.extension.ExtensionStoreService
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.serverConfig
 import java.util.concurrent.CompletableFuture
 
 class ExtensionStoreMutation {
