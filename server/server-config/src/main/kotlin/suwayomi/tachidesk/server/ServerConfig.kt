@@ -1120,6 +1120,7 @@ class ServerConfig(
         group = SettingGroup.EXTENSION,
         privacySafe = true,
         defaultValue = emptyList(),
+        requiresRestart = true,
         itemValidator = { url ->
             if (url.isNotEmpty()) {
                 null
