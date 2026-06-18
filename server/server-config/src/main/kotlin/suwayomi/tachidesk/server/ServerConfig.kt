@@ -304,7 +304,7 @@ class ServerConfig(
                 },
             ),
         readMigrated = { extensionStores.value },
-        setMigrated = { extensionStores.value = (extensionStores.value + it).distinct() },
+        setMigrated = { extensionStores.value = it?.distinct().orEmpty() },
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<String>",
