@@ -37,7 +37,7 @@ class ExtensionStoreType(
         isLegacy = row[ExtensionStoreTable.isLegacy],
     )
 
-    fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionNodeList> =
+    fun extensions(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionNodeList>("ExtensionForExtensionStore", indexUrl)
 }
 
