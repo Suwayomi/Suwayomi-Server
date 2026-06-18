@@ -50,6 +50,7 @@
     <!-- OPDS errors -->
     <string name="opds_error_manga_not_found">Series with ID %1$d not found.</string>
     <string name="opds_error_chapter_not_found">Chapter with index %1$d not found.</string>
+    <string name="opds_error_chapters_not_found">No chapters found or the source is unreachable on page %1$d.</string>
 
     <!-- OPDS facets (Filters and Sorting) -->
     <string name="opds_facetgroup_sort_order">Sort Order</string>
@@ -153,4 +154,7 @@
     <string name="login_label_login">Log In</string>
     <string name="login_placeholder_username">Type username...</string>
     <string name="login_placeholder_password">Secret...</string>
+
+    <string name="opds_chapter_title_oneshot">Oneshot</string>
+    <string name="opds_chapter_title_fallback">Chapter %1$s</string>
 </resources>

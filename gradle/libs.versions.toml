@@ -3,19 +3,19 @@ kotlin = "2.4.0"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 jvmTarget = "21"
-okhttp = "5.3.2" # Major version is locked by Tachiyomi extensions
+okhttp = "5.4.0" # Major version is locked by Tachiyomi extensions
 javalin = "7.2.2"
 jte = "3.2.4"
-jackson = "3.1.4" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
+jackson = "3.2.0" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "1.2.0"
-dex2jar = "2.4.36"
+dex2jar = "2.4.37"
 polyglot = "25.0.3"
 settings = "1.3.0"
 twelvemonkeys = "3.13.1"
 graphqlkotlin = "10.0.0"
 xmlserialization = "0.91.3"
 ktlint = "1.8.0"
-koin = "4.2.1"
+koin = "4.2.2"
 moko = "0.26.4"
 jcef = "144.0.15-g72717cf-chromium-144.0.7559.172-api-1.21-262-b37"
 
@@ -72,7 +72,7 @@ exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version
 exposed-kotlintime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
 postgres = "org.postgresql:postgresql:42.7.11"
 h2 = "com.h2database:h2:2.4.240"
-hikaricp = "com.zaxxer:HikariCP:7.0.2"
+hikaricp = "com.zaxxer:HikariCP:7.1.0"
 
 # Exposed Migrations
 exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.10.1"
@@ -145,7 +145,7 @@ twelvemonkeys-imageio-metadata = { module = "com.twelvemonkeys.imageio:imageio-m
 twelvemonkeys-imageio-jpeg = { module = "com.twelvemonkeys.imageio:imageio-jpeg", version.ref = "twelvemonkeys" }
 twelvemonkeys-imageio-webp = { module = "com.twelvemonkeys.imageio:imageio-webp", version.ref = "twelvemonkeys" }
 
-imageio-webp = "com.github.usefulness:webp-imageio:0.10.2"
+imageio-webp = "com.github.usefulness:webp-imageio:0.11.0"
 
 # Testing
 mockk = "io.mockk:mockk:1.14.11"
@@ -158,8 +158,6 @@ cronUtils = "com.cronutils:cron-utils:9.2.1"
 
 # Webview
 jcef = { module = "org.jetbrains.intellij.deps.jcef:jcef", version.ref = "jcef" }
-gluegen = "org.jogamp.gluegen:gluegen-rt:2.5.0"
-jogl = "org.jogamp.jogl:jogl-all:2.5.0"
 
 # User
 jwt = "com.auth0:java-jwt:4.5.2"

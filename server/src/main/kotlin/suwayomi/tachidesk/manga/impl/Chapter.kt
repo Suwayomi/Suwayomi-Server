@@ -104,9 +104,6 @@ object Chapter {
                     .associateBy({ it[ChapterTable.url] }, { it })
             }
 
-        val chapterIds = chapterList.map { dbChapterMap.getValue(it.url)[ChapterTable.id] }
-        val chapterMetas = getChaptersMetaMaps(chapterIds.map { it.value })
-
         return chapterList.mapIndexed { index, it ->
 
             val dbChapter = dbChapterMap.getValue(it.url)
@@ -128,10 +125,8 @@ object Chapter {
                 realUrl = dbChapter[ChapterTable.realUrl],
                 downloaded = dbChapter[ChapterTable.isDownloaded],
                 pageCount = dbChapter[ChapterTable.pageCount],
-                chapterCount = chapterList.size,
                 lastModifiedAt = dbChapter[ChapterTable.lastModifiedAt],
                 version = dbChapter[ChapterTable.version],
-                meta = chapterMetas.getValue(dbChapter[ChapterTable.id].value),
             )
         }
     }
@@ -194,7 +189,7 @@ object Chapter {
                     }
 
                 // new chapters after they have been added to the database for auto downloads
-                val insertedChapters = mutableListOf<ChapterDataClass>()
+                val insertedChapterIds = mutableListOf<Int>()
 
                 val chaptersToInsert = mutableListOf<ChapterDataClass>() // do not yet have an ID from the database
                 val chaptersToUpdate = mutableListOf<ChapterDataClass>()
@@ -309,7 +304,7 @@ object Chapter {
                                         }
                                     }
                                 }
-                            }.forEach { insertedChapters.add(ChapterTable.toDataClass(it)) }
+                            }.forEach { insertedChapterIds.add(it[ChapterTable.id].value) }
                     }
 
                     if (chaptersToUpdate.isNotEmpty()) {
@@ -354,6 +349,13 @@ object Chapter {
                 }
 
                 if (manga.inLibrary) {
+                    // We have to query the inserted chapters to get the up-to-date data. I.e. "last_modified_at" is not returned by the insert statement, due to being set by a DB trigger
+                    val insertedChapters =
+                        transaction {
+                            ChapterTable.selectAll().where { ChapterTable.id inList insertedChapterIds }.map(
+                                ChapterTable::toDataClass,
+                            )
+                        }
                     downloadNewChapters(mangaId, currentLatestChapterNumber, numberOfCurrentChapters, insertedChapters)
                 }
 
@@ -611,7 +613,7 @@ object Chapter {
                 .withDefault { emptyMap() }
         }
 
-    fun getChapterMetaMap(chapter: EntityID<Int>): Map<String, String> =
+    fun getChapterMetaMap(chapter: Int): Map<String, String> =
         transaction {
             ChapterMetaTable
                 .selectAll()

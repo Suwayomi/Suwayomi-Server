@@ -68,6 +68,7 @@ import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
 import org.cef.handler.CefPermissionHandler
+import org.cef.handler.CefRenderHandlerAdapter
 import org.cef.handler.CefRequestHandler
 import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.handler.CefResourceHandler
@@ -82,10 +83,13 @@ import org.cef.network.CefPostDataElement
 import org.cef.network.CefRequest
 import org.cef.network.CefResponse
 import org.koin.mp.KoinPlatformTools
+import java.awt.Rectangle
 import java.io.BufferedWriter
 import java.io.File
 import java.io.IOException
+import java.nio.ByteBuffer
 import java.util.concurrent.Executor
+import javax.swing.JPanel
 import kotlin.math.min
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
@@ -97,6 +101,7 @@ class KcefWebViewProvider(
     private val settings = KcefWebSettings()
     private var viewClient = WebViewClient()
     private var chromeClient = WebChromeClient()
+    private val renderHandler = RenderHandler()
     private val mappings: MutableList<FunctionMapping> = mutableListOf()
     private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
     private var initialRequestData: InitialRequestData? = null
@@ -522,6 +527,21 @@ class KcefWebViewProvider(
         }
     }
 
+    private class RenderHandler : CefRenderHandlerAdapter() {
+        override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, 1280, 2856)
+
+        override fun onPaint(
+            browser: CefBrowser,
+            popup: Boolean,
+            dirtyRects: Array<Rectangle>,
+            buffer: ByteBuffer,
+            width: Int,
+            height: Int,
+        ) {
+            // do nothing
+        }
+    }
+
     override fun init(
         javaScriptInterfaces: Map<String, Any>?,
         privateBrowsing: Boolean,
@@ -617,7 +637,7 @@ class KcefWebViewProvider(
             kcefClient!!
                 .createBrowser(
                     loadUrl,
-                    CefRendering.OFFSCREEN,
+                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
                     false,
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
@@ -642,7 +662,7 @@ class KcefWebViewProvider(
             kcefClient!!
                 .createBrowser(
                     url,
-                    CefRendering.OFFSCREEN,
+                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
                     false,
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
@@ -676,7 +696,7 @@ class KcefWebViewProvider(
             kcefClient!!
                 .createBrowser(
                     url,
-                    CefRendering.OFFSCREEN,
+                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
                     false,
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events

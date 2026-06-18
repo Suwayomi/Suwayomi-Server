@@ -15,16 +15,13 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.v1.core.SortOrder
 import suwayomi.tachidesk.graphql.types.AuthMode
@@ -1127,6 +1124,15 @@ class ServerConfig(
         defaultValue = false,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+    )
+    
+    val opdsSkipChapterMetadataFeed: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 96,
+        group = SettingGroup.OPDS,
+        privacySafe = true,
+        defaultValue = false,
+        description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader. KoSync strategies are applied, but PROMPT conflicts are ignored (treating local progress as priority)."
+
     )
 
     /** ****************************************************************** **/
