@@ -169,6 +169,8 @@ object ChapterRepository {
                     }
                 }
             }.awaitAll()
+                // Exclude unreachable chapters that are not downloaded and have no page count
+                .filter { it.downloaded || it.pageCount > 0 }
 
         return Pair(enrichedChapters, totalCount)
     }
