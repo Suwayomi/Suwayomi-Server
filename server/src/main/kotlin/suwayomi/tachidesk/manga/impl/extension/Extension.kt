@@ -28,7 +28,6 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
-import suwayomi.tachidesk.graphql.types.ContentRating
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
@@ -43,6 +42,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs

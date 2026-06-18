@@ -35,4 +35,9 @@ enum class ContentRating {
     SUGGESTIVE,
     EROTICA,
     PORNOGRAPHIC,
+    ;
+
+    companion object {
+        fun valueOf(contentRating: Int) = entries.find { it.ordinal == contentRating } ?: SAFE
+    }
 }

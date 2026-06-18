@@ -18,6 +18,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.extension.Extension
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 

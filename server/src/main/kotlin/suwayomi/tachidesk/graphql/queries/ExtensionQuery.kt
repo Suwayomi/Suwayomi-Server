@@ -41,9 +41,9 @@ import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
-import suwayomi.tachidesk.graphql.types.ContentRating
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 

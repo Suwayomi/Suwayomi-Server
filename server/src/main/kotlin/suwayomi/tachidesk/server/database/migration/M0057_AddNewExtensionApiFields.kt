@@ -8,8 +8,8 @@ package suwayomi.tachidesk.server.database.migration
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
-import suwayomi.tachidesk.graphql.types.ContentRating
 import suwayomi.tachidesk.graphql.types.DatabaseType
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
 import suwayomi.tachidesk.server.database.migration.helpers.UNLIMITED_TEXT
 import suwayomi.tachidesk.server.database.migration.helpers.toSqlName

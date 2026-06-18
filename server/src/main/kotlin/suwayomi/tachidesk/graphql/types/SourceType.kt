@@ -8,7 +8,6 @@
 package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
-import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.ConfigurableSource
@@ -27,6 +26,7 @@ import suwayomi.tachidesk.manga.impl.Source.getSourcePreferencesRaw
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
@@ -507,33 +507,3 @@ fun preferenceOf(preference: SourcePreference): Preference =
             throw RuntimeException("sealed class cannot have more subtypes!")
         }
     }
-
-enum class ContentRating {
-    SAFE,
-    SUGGESTIVE,
-    EROTICA,
-    PORNOGRAPHIC,
-    ;
-
-    @GraphQLIgnore
-    fun getValue() =
-        when (this) {
-            SAFE -> 0
-            SUGGESTIVE -> 1
-            EROTICA -> 2
-            PORNOGRAPHIC -> 3
-        }
-
-    @GraphQLIgnore
-    companion object {
-        @GraphQLIgnore
-        fun valueOf(contentRating: Int) =
-            when (contentRating) {
-                0 -> SAFE
-                1 -> SUGGESTIVE
-                2 -> EROTICA
-                3 -> PORNOGRAPHIC
-                else -> SAFE
-            }
-    }
-}

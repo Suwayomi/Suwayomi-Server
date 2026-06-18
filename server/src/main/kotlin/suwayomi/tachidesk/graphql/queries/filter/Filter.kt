@@ -28,7 +28,7 @@ import org.jetbrains.exposed.v1.core.upperCase
 import org.jetbrains.exposed.v1.core.wrap
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
-import suwayomi.tachidesk.graphql.types.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 
 class ILikeEscapeOp(
     expr1: Expression<*>,

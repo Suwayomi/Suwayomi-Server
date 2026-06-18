@@ -40,9 +40,9 @@ import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
-import suwayomi.tachidesk.graphql.types.ContentRating
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
+import suwayomi.tachidesk.manga.model.dataclass.ContentRating
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
 
@@ -112,7 +112,7 @@ class SourceQuery {
                         ContentRating.PORNOGRAPHIC.ordinal
                 }
             }
-            opAnd.andWhere(contentRating) { SourceTable.contentRating eq it.getValue() }
+            opAnd.andWhere(contentRating) { SourceTable.contentRating eq it.ordinal }
 
             return opAnd.op
         }
