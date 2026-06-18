@@ -12,7 +12,6 @@ import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -166,12 +165,17 @@ object NavigationRepository {
         transaction {
             val mangaCount = MangaTable.id.countDistinct().alias("manga_count")
 
-            val query =
+            var baseJoin =
                 SourceTable
                     .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
-                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+
+            if (activeFilters.categoryId != null) {
+                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+            }
+
+            val query =
+                baseJoin
                     .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName, mangaCount)
                     .where { MangaTable.inLibrary eq true }
 
@@ -227,7 +231,6 @@ object NavigationRepository {
                     .join(CategoryMangaTable, JoinType.INNER, CategoryTable.id, CategoryMangaTable.category)
                     .join(MangaTable, JoinType.INNER, CategoryMangaTable.manga, MangaTable.id)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
                     .select(CategoryTable.id, CategoryTable.name, mangaCount)
                     .where { MangaTable.inLibrary eq true }
 
@@ -262,11 +265,15 @@ object NavigationRepository {
         activeFilters: OpdsMangaFilter = OpdsMangaFilter(),
     ): Pair<List<OpdsGenreNavEntry>, Long> =
         transaction {
-            val query =
+            var baseJoin =
                 MangaTable
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
-                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+            if (activeFilters.categoryId != null) {
+                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+            }
+
+            val query =
+                baseJoin
                     .select(MangaTable.genre)
                     .where { MangaTable.inLibrary eq true }
 
@@ -321,11 +328,16 @@ object NavigationRepository {
         val statusCounts =
             transaction {
                 val countExpr = MangaTable.id.countDistinct().alias("manga_count")
-                val query =
+
+                var baseJoin =
                     MangaTable
                         .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                        .join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
-                        .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                if (activeFilters.categoryId != null) {
+                    baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                }
+
+                val query =
+                    baseJoin
                         .select(MangaTable.status, countExpr)
                         .where { MangaTable.inLibrary eq true }
 
@@ -368,11 +380,16 @@ object NavigationRepository {
     ): Pair<List<OpdsLanguageNavEntry>, Long> =
         transaction {
             val mangaCount = MangaTable.id.countDistinct().alias("manga_count")
-            val query =
+
+            var baseJoin =
                 SourceTable
                     .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
-                    .join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
-                    .join(ChapterTable, JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+            if (activeFilters.categoryId != null) {
+                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+            }
+
+            val query =
+                baseJoin
                     .select(SourceTable.lang, mangaCount)
                     .where { MangaTable.inLibrary eq true }
 

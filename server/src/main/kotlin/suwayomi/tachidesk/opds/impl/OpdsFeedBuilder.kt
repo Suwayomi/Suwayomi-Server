@@ -644,6 +644,16 @@ object OpdsFeedBuilder {
                 skipMetadata,
             )
 
+        // Return a not-found feed if all available chapters are filtered out as unreachable
+        if (skipMetadata && chapterEntries.isEmpty() && totalChapters > 0L) {
+            return buildNotFoundFeed(
+                baseUrl = baseUrl,
+                locale = locale,
+                idPath = "series/$mangaId/chapters",
+                title = MR.strings.opds_error_chapters_not_found.localized(locale, pageNum),
+            )
+        }
+
         // If no chapters are found in the database, attempt to fetch them from the source.
         if (chapterEntries.isEmpty() && totalChapters == 0L) {
             try {
