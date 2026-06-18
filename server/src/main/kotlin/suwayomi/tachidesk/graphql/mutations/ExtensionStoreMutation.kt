@@ -37,7 +37,7 @@ class ExtensionStoreMutation {
             val store = ExtensionStoreService.fetch(indexUrl)
 
             ExtensionStoreService.upsert(store)
-            serverConfig.extensionStores.value = (serverConfig.extensionStores.value + indexUrl).distinct()
+            ExtensionStoreService.syncDbToPrefs()
             val row =
                 transaction {
                     ExtensionStoreTable
@@ -82,7 +82,7 @@ class ExtensionStoreMutation {
                 }
             }
 
-            serverConfig.extensionStores.value = serverConfig.extensionStores.value.filterNot { it == indexUrl }
+            ExtensionStoreService.syncDbToPrefs()
 
             RemoveExtensionStorePayload(
                 clientMutationId = clientMutationId,
