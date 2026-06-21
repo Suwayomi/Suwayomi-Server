@@ -19,11 +19,15 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelated
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelatedResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALListItem
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALListItemStatus
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALManga
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALMangaRelated
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALOAuth
+import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALRelatedNode
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALSearchResult
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALUser
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALUserSearchResult
@@ -128,6 +132,39 @@ class MyAnimeListApi(
                     }
             }
         }
+
+    suspend fun getMangaRelated(id: Long): TrackRelatedResult =
+        withIOContext {
+            val url =
+                "$BASE_API_URL/manga"
+                    .toUri()
+                    .buildUpon()
+                    .appendPath(id.toString())
+                    // MAL returns each node with its default summary fields (id, title, main_picture).
+                    .appendQueryParameter("fields", "id,related_manga,recommendations")
+                    .build()
+            with(json) {
+                authClient
+                    .newCall(GET(url.toString()))
+                    .awaitSuccess()
+                    .parseAs<MALMangaRelated>()
+                    .let { result ->
+                        TrackRelatedResult(
+                            relations = result.relatedManga.map { it.node.toTrackRelated(it.relationType) },
+                            recommendations = result.recommendations.map { it.node.toTrackRelated(null) },
+                        )
+                    }
+            }
+        }
+
+    private fun MALRelatedNode.toTrackRelated(relationType: String?): TrackRelated =
+        TrackRelated(
+            remoteId = id,
+            title = title,
+            coverUrl = coverUrl,
+            trackingUrl = "https://myanimelist.net/manga/$id",
+            relationType = relationType,
+        )
 
     suspend fun updateItem(track: Track): Track =
         withIOContext {
