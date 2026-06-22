@@ -41,6 +41,7 @@ import suwayomi.tachidesk.graphql.types.TrackRelatedMangaType
 import suwayomi.tachidesk.graphql.types.TrackSearchType
 import suwayomi.tachidesk.graphql.types.TrackerNodeList
 import suwayomi.tachidesk.graphql.types.TrackerType
+import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelatedResult
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -562,7 +563,7 @@ class TrackQuery {
                 runCatching {
                     val remoteId =
                         getRemoteId(input.mangaId, TrackerManager.ANILIST)
-                            ?: title?.takeIf { anilist.isLoggedIn }?.let { anilist.search(it).firstOrNull()?.remote_id }
+                            ?: title?.takeIf { anilist.isLoggedIn }?.let { findRemoteIdByTitle(anilist, it) }
                     remoteId?.let { anilist.getRelated(it) }
                 }.onFailure { logger.warn(it) { "Failed to load AniList related manga for $input" } }
                     .getOrNull() ?: TrackRelatedResult()
@@ -572,7 +573,7 @@ class TrackQuery {
                 runCatching {
                     val remoteId =
                         getRemoteId(input.mangaId, TrackerManager.MYANIMELIST)
-                            ?: title?.takeIf { mal.isLoggedIn }?.let { mal.search(it).firstOrNull()?.remote_id }
+                            ?: title?.takeIf { mal.isLoggedIn }?.let { findRemoteIdByTitle(mal, it) }
                     remoteId?.let { mal.getRelated(it) }
                 }.onFailure { logger.warn(it) { "Failed to load MyAnimeList related manga for $input" } }
                     .getOrNull() ?: TrackRelatedResult()
@@ -606,7 +607,83 @@ class TrackQuery {
                 ?.get(TrackRecordTable.remoteId)
         }
 
+    /**
+     * Searches [tracker] for [title] and returns the remote id of the first result whose title is a
+     * confident match (see [isConfidentTitleMatch]). Returns `null` when no result matches well
+     * enough, so a loose/wrong top hit is never used to drive the related results.
+     */
+    private suspend fun findRemoteIdByTitle(
+        tracker: Tracker,
+        title: String,
+    ): Long? =
+        tracker
+            .search(title)
+            .firstOrNull { isConfidentTitleMatch(title, it.title) }
+            ?.remote_id
+
     companion object {
         private val logger = KotlinLogging.logger {}
+
+        private const val TITLE_MATCH_THRESHOLD = 0.9
+
+        /**
+         * Whether [candidate] is confidently the same title as [source]. Titles are normalized
+         * (lowercased, punctuation/whitespace collapsed) and considered a match when they are equal
+         * or have a Levenshtein similarity of at least [TITLE_MATCH_THRESHOLD]. This tolerates minor
+         * punctuation/spacing differences while rejecting clearly different entries.
+         */
+        private fun isConfidentTitleMatch(
+            source: String,
+            candidate: String,
+        ): Boolean {
+            val a = normalizeTitle(source)
+            val b = normalizeTitle(candidate)
+            if (a.isEmpty() || b.isEmpty()) {
+                return false
+            }
+            if (a == b) {
+                return true
+            }
+
+            val distance = levenshtein(a, b)
+            val similarity = 1.0 - distance.toDouble() / maxOf(a.length, b.length)
+            return similarity >= TITLE_MATCH_THRESHOLD
+        }
+
+        private fun normalizeTitle(title: String): String =
+            title
+                .lowercase()
+                .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+                .trim()
+
+        private fun levenshtein(
+            a: String,
+            b: String,
+        ): Int {
+            if (a == b) return 0
+            if (a.isEmpty()) return b.length
+            if (b.isEmpty()) return a.length
+
+            var previous = IntArray(b.length + 1) { it }
+            var current = IntArray(b.length + 1)
+
+            for (i in 1..a.length) {
+                current[0] = i
+                for (j in 1..b.length) {
+                    val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                    current[j] =
+                        minOf(
+                            current[j - 1] + 1,
+                            previous[j] + 1,
+                            previous[j - 1] + cost,
+                        )
+                }
+                val temp = previous
+                previous = current
+                current = temp
+            }
+
+            return previous[b.length]
+        }
     }
 }
