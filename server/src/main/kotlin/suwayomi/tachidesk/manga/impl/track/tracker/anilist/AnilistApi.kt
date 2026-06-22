@@ -167,8 +167,12 @@ class AnilistApi(
                                 |}
                             |}
                         |}
+                        |synonyms
                         |title {
                             |userPreferred
+                            |romaji
+                            |english
+                            |native
                         |}
                         |coverImage {
                             |large

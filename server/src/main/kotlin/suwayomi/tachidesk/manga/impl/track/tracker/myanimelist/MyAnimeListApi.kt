@@ -109,7 +109,7 @@ class MyAnimeListApi(
                     .appendPath(id.toString())
                     .appendQueryParameter(
                         "fields",
-                        "id,title,synopsis,num_chapters,mean,main_picture,status,media_type,start_date",
+                        "id,title,synopsis,num_chapters,mean,main_picture,status,media_type,start_date,alternative_titles",
                     ).build()
             with(json) {
                 authClient
@@ -120,6 +120,7 @@ class MyAnimeListApi(
                         TrackSearch.create(TrackerManager.MYANIMELIST).apply {
                             remote_id = it.id
                             title = it.title
+                            alternative_titles = it.alternativeTitles?.allTitles().orEmpty()
                             summary = it.synopsis
                             total_chapters = it.numChapters
                             score = it.mean

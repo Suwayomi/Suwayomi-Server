@@ -608,9 +608,11 @@ class TrackQuery {
         }
 
     /**
-     * Searches [tracker] for [title] and returns the remote id of the first result whose title is a
-     * confident match (see [isConfidentTitleMatch]). Returns `null` when no result matches well
-     * enough, so a loose/wrong top hit is never used to drive the related results.
+     * Searches [tracker] for [title] and returns the remote id of the first result that confidently
+     * matches (see [isConfidentTitleMatch]) against any of the result's titles, including
+     * alternative ones (romaji/english/native/synonyms) so a localized source title can still match
+     * a differently-named entry. Returns `null` when no result matches well enough, so a loose/wrong
+     * top hit is never used to drive the related results.
      */
     private suspend fun findRemoteIdByTitle(
         tracker: Tracker,
@@ -618,8 +620,9 @@ class TrackQuery {
     ): Long? =
         tracker
             .search(title)
-            .firstOrNull { isConfidentTitleMatch(title, it.title) }
-            ?.remote_id
+            .firstOrNull { result ->
+                (listOf(result.title) + result.alternative_titles).any { isConfidentTitleMatch(title, it) }
+            }?.remote_id
 
     companion object {
         private val logger = KotlinLogging.logger {}
