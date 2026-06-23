@@ -483,7 +483,7 @@ class LocalSource(
                             it[versionCode] = 0
                             it[lang] = LANG
                             it[extensionLib] = "1.2"
-                            it[contentRating] = 0
+                            it[contentWarning] = 0
                             it[isInstalled] = true
                         }
 

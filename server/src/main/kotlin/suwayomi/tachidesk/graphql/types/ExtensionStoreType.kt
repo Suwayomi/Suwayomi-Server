@@ -26,6 +26,7 @@ class ExtensionStoreType(
     val contactDiscord: String?,
     val indexUrl: String,
     val isLegacy: Boolean,
+    val extensionListUrl: String?,
 ) : Node {
     constructor(row: ResultRow) : this(
         name = row[ExtensionStoreTable.name],
@@ -35,6 +36,7 @@ class ExtensionStoreType(
         contactDiscord = row[ExtensionStoreTable.contactDiscord],
         indexUrl = row[ExtensionStoreTable.indexUrl],
         isLegacy = row[ExtensionStoreTable.isLegacy],
+        extensionListUrl = row[ExtensionStoreTable.extensionListUrl],
     )
 
     fun extensions(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionNodeList> =

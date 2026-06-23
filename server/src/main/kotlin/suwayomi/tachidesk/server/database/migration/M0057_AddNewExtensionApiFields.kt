@@ -9,7 +9,7 @@ package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
 import suwayomi.tachidesk.graphql.types.DatabaseType
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.server.database.migration.helpers.MAYBE_TYPE_PREFIX
 import suwayomi.tachidesk.server.database.migration.helpers.UNLIMITED_TEXT
 import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
@@ -43,12 +43,11 @@ class M0057_AddNewExtensionApiFields : SQLMigration() {
             }
         }
         ALTER TABLE EXTENSION ADD COLUMN apk_url VARCHAR(2048);
-        ALTER TABLE EXTENSION ADD COLUMN content_rating INTEGER DEFAULT 0;
-        UPDATE EXTENSION SET content_rating = ${ContentRating.PORNOGRAPHIC.ordinal} WHERE is_nsfw = TRUE;
+        ALTER TABLE EXTENSION ADD COLUMN content_warning INTEGER DEFAULT 0;
+        UPDATE EXTENSION SET content_warning = ${ContentWarning.MIXED.ordinal} WHERE is_nsfw = TRUE;
         ALTER TABLE EXTENSION DROP COLUMN is_nsfw;
-        ALTER TABLE SOURCE ADD COLUMN message $UNLIMITED_TEXT;
-        ALTER TABLE SOURCE ADD COLUMN content_rating INTEGER DEFAULT 0;
-        UPDATE SOURCE SET content_rating = ${ContentRating.PORNOGRAPHIC.ordinal} WHERE is_nsfw = TRUE;
+        ALTER TABLE SOURCE ADD COLUMN content_warning INTEGER DEFAULT 0;
+        UPDATE SOURCE SET content_warning = ${ContentWarning.MIXED.ordinal} WHERE is_nsfw = TRUE;
         ALTER TABLE SOURCE DROP COLUMN is_nsfw;
         
 

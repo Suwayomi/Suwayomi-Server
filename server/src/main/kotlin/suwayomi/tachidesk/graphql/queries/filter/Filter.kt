@@ -28,7 +28,7 @@ import org.jetbrains.exposed.v1.core.upperCase
 import org.jetbrains.exposed.v1.core.wrap
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 
 class ILikeEscapeOp(
     expr1: Expression<*>,
@@ -330,23 +330,23 @@ data class DoubleFilter(
         )
 }
 
-data class ContentRatingFilter(
+data class ContentWarningFilter(
     override val isNull: Boolean? = null,
-    override val equalTo: ContentRating? = null,
-    override val notEqualTo: ContentRating? = null,
-    override val notEqualToAll: List<ContentRating>? = null,
-    override val notEqualToAny: List<ContentRating>? = null,
-    override val distinctFrom: ContentRating? = null,
-    override val distinctFromAll: List<ContentRating>? = null,
-    override val distinctFromAny: List<ContentRating>? = null,
-    override val notDistinctFrom: ContentRating? = null,
-    override val `in`: List<ContentRating>? = null,
-    override val notIn: List<ContentRating>? = null,
-    override val lessThan: ContentRating? = null,
-    override val lessThanOrEqualTo: ContentRating? = null,
-    override val greaterThan: ContentRating? = null,
-    override val greaterThanOrEqualTo: ContentRating? = null,
-) : ComparableScalarFilter<ContentRating>
+    override val equalTo: ContentWarning? = null,
+    override val notEqualTo: ContentWarning? = null,
+    override val notEqualToAll: List<ContentWarning>? = null,
+    override val notEqualToAny: List<ContentWarning>? = null,
+    override val distinctFrom: ContentWarning? = null,
+    override val distinctFromAll: List<ContentWarning>? = null,
+    override val distinctFromAny: List<ContentWarning>? = null,
+    override val notDistinctFrom: ContentWarning? = null,
+    override val `in`: List<ContentWarning>? = null,
+    override val notIn: List<ContentWarning>? = null,
+    override val lessThan: ContentWarning? = null,
+    override val lessThanOrEqualTo: ContentWarning? = null,
+    override val greaterThan: ContentWarning? = null,
+    override val greaterThanOrEqualTo: ContentWarning? = null,
+) : ComparableScalarFilter<ContentWarning>
 
 data class StringFilter(
     override val isNull: Boolean? = null,

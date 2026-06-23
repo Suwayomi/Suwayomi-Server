@@ -26,7 +26,7 @@ import suwayomi.tachidesk.manga.impl.Source.getSourcePreferencesRaw
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
@@ -42,12 +42,11 @@ class SourceType(
     val id: Long,
     val name: String,
     val lang: String,
-    val message: String?,
-    val contentRating: ContentRating,
+    val contentWarning: ContentWarning,
     val iconUrl: String,
     val supportsLatest: Boolean,
     val isConfigurable: Boolean,
-    @GraphQLDeprecated("", ReplaceWith("contentRating"))
+    @GraphQLDeprecated("", ReplaceWith("contentWarning"))
     val isNsfw: Boolean,
     val displayName: String,
     val homeUrl: String?,
@@ -58,12 +57,11 @@ class SourceType(
         id = row[SourceTable.id].value,
         name = row[SourceTable.name],
         lang = row[SourceTable.lang],
-        message = row[SourceTable.message],
-        contentRating = ContentRating.valueOf(row[SourceTable.contentRating]),
+        contentWarning = ContentWarning.valueOf(row[SourceTable.contentWarning]),
         iconUrl = Extension.proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
         supportsLatest = catalogueSource.supportsLatest,
         isConfigurable = catalogueSource is ConfigurableSource,
-        isNsfw = row[SourceTable.contentRating] == ContentRating.PORNOGRAPHIC.ordinal,
+        isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
         displayName = catalogueSource.toString(),
         homeUrl = runCatching { (catalogueSource as? HttpSource)?.getHomeUrl() }.getOrNull(),
         baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),

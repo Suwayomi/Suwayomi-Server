@@ -95,6 +95,7 @@ class ExtensionStoreMutation {
                             contactDiscord = it.contactDiscord,
                             indexUrl = it.indexUrl,
                             isLegacy = it.isLegacy,
+                            extensionListUrl = it.extensionListUrl,
                         )
                     },
             )

@@ -9,7 +9,7 @@ package suwayomi.tachidesk.manga.impl.extension.github
 
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionInfo
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionSource
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionStore
@@ -49,7 +49,7 @@ fun NetworkLegacyExtension.toExtensionInfo(
         versionCode = code,
         versionName = version,
         lang = lang,
-        contentRating = if (nsfw == 1) ContentRating.PORNOGRAPHIC else ContentRating.SAFE,
+        contentWarning = if (nsfw == 1) ContentWarning.MIXED else ContentWarning.SAFE,
         sources =
             if (sources.isNullOrEmpty()) {
                 listOf(
@@ -59,7 +59,7 @@ fun NetworkLegacyExtension.toExtensionInfo(
                         lang = lang,
                         homeUrl = "",
                         message = null,
-                        contentRating = if (nsfw == 1) ContentRating.PORNOGRAPHIC else ContentRating.SAFE,
+                        contentWarning = if (nsfw == 1) ContentWarning.MIXED else ContentWarning.SAFE,
                     ),
                 )
             } else {
@@ -70,7 +70,7 @@ fun NetworkLegacyExtension.toExtensionInfo(
                         lang = source.lang,
                         homeUrl = source.baseUrl,
                         message = null,
-                        contentRating = if (nsfw == 1) ContentRating.PORNOGRAPHIC else ContentRating.SAFE,
+                        contentWarning = if (nsfw == 1) ContentWarning.MIXED else ContentWarning.SAFE,
                     )
                 }
             },

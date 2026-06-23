@@ -21,7 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
-import suwayomi.tachidesk.graphql.queries.filter.ContentRatingFilter
+import suwayomi.tachidesk.graphql.queries.filter.ContentWarningFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.IntFilter
@@ -43,7 +43,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
@@ -108,9 +108,9 @@ class ExtensionQuery {
         val versionCode: Int? = null,
         val versionCodeLong: Long? = null,
         val lang: String? = null,
-        @GraphQLDeprecated("", ReplaceWith("contentRating"))
+        @GraphQLDeprecated("", ReplaceWith("contentWarning"))
         val isNsfw: Boolean? = null,
-        val contentRating: ContentRating? = null,
+        val contentWarning: ContentWarning? = null,
         val isInstalled: Boolean? = null,
         val hasUpdate: Boolean? = null,
         val isObsolete: Boolean? = null,
@@ -129,10 +129,10 @@ class ExtensionQuery {
             opAnd.eq(versionCodeLong, ExtensionTable.versionCode)
             opAnd.eq(lang, ExtensionTable.lang)
             opAnd.eq(
-                isNsfw?.let { if (it) ContentRating.PORNOGRAPHIC.ordinal else ContentRating.SAFE.ordinal },
-                ExtensionTable.contentRating,
+                isNsfw?.let { if (it) ContentWarning.MIXED.ordinal else ContentWarning.SAFE.ordinal },
+                ExtensionTable.contentWarning,
             )
-            opAnd.eq(contentRating?.ordinal, ExtensionTable.contentRating)
+            opAnd.eq(contentWarning?.ordinal, ExtensionTable.contentWarning)
             opAnd.eq(isInstalled, ExtensionTable.isInstalled)
             opAnd.eq(hasUpdate, ExtensionTable.hasUpdate)
             opAnd.eq(isObsolete, ExtensionTable.isObsolete)
@@ -156,9 +156,9 @@ class ExtensionQuery {
         val versionCode: IntFilter? = null,
         val versionCodeLong: LongFilter? = null,
         val lang: StringFilter? = null,
-        @GraphQLDeprecated("", ReplaceWith("storeIndexUrl"))
+        @GraphQLDeprecated("", ReplaceWith("contentWarning"))
         val isNsfw: BooleanFilter? = null,
-        val contentRating: ContentRatingFilter? = null,
+        val contentWarning: ContentWarningFilter? = null,
         val isInstalled: BooleanFilter? = null,
         val hasUpdate: BooleanFilter? = null,
         val isObsolete: BooleanFilter? = null,
@@ -179,7 +179,7 @@ class ExtensionQuery {
                 andFilterWithCompareString(ExtensionTable.versionName, versionName),
                 andFilterWithCompare(ExtensionTable.versionCode, versionCodeLong),
                 andFilterWithCompareString(ExtensionTable.lang, lang),
-                andFilterWithCompareEnum(ExtensionTable.contentRating, contentRating),
+                andFilterWithCompareEnum(ExtensionTable.contentWarning, contentWarning),
                 andFilterWithCompare(ExtensionTable.isInstalled, isInstalled),
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
                 andFilterWithCompare(ExtensionTable.isObsolete, isObsolete),

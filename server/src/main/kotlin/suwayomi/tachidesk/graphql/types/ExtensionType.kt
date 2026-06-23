@@ -18,7 +18,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.extension.Extension
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
@@ -41,9 +41,9 @@ class ExtensionType(
     val versionCode: Int,
     val versionCodeLong: Long,
     val lang: String,
-    @GraphQLDeprecated("Removed in extension api v1.6", ReplaceWith("contentRating"))
+    @GraphQLDeprecated("Removed in extension api v1.6", ReplaceWith("contentWarning"))
     val isNsfw: Boolean,
-    val contentRating: ContentRating,
+    val contentWarning: ContentWarning,
     val isInstalled: Boolean,
     val hasUpdate: Boolean,
     val isObsolete: Boolean,
@@ -61,8 +61,8 @@ class ExtensionType(
         versionCode = row[ExtensionTable.versionCode].toInt(),
         versionCodeLong = row[ExtensionTable.versionCode],
         lang = row[ExtensionTable.lang],
-        isNsfw = row[ExtensionTable.contentRating] == ContentRating.PORNOGRAPHIC.ordinal,
-        contentRating = ContentRating.valueOf(row[ExtensionTable.contentRating]),
+        isNsfw = row[ExtensionTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+        contentWarning = ContentWarning.valueOf(row[ExtensionTable.contentWarning]),
         isInstalled = row[ExtensionTable.isInstalled],
         hasUpdate = row[ExtensionTable.hasUpdate],
         isObsolete = row[ExtensionTable.isObsolete],

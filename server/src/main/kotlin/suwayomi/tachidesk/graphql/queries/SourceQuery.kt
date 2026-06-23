@@ -15,13 +15,14 @@ import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
-import suwayomi.tachidesk.graphql.queries.filter.ContentRatingFilter
+import suwayomi.tachidesk.graphql.queries.filter.ContentWarningFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.LongFilter
@@ -42,7 +43,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
 
@@ -95,9 +96,9 @@ class SourceQuery {
         val id: Long? = null,
         val name: String? = null,
         val lang: String? = null,
-        @GraphQLDeprecated("replace with contentRating == ContentRating.PORNOGRAPHIC", ReplaceWith("contentRating"))
+        @GraphQLDeprecated("replace with contentWarning == ContentRating.MIXED", ReplaceWith("contentWarning"))
         val isNsfw: Boolean? = null,
-        val contentRating: ContentRating? = null,
+        val contentWarning: ContentWarning? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -106,13 +107,12 @@ class SourceQuery {
             opAnd.eq(lang, SourceTable.lang)
             opAnd.andWhere(isNsfw) {
                 if (it) {
-                    SourceTable.contentRating eq ContentRating.PORNOGRAPHIC.ordinal
+                    SourceTable.contentWarning greaterEq ContentWarning.MIXED.ordinal
                 } else {
-                    SourceTable.contentRating neq
-                        ContentRating.PORNOGRAPHIC.ordinal
+                    SourceTable.contentWarning less ContentWarning.MIXED.ordinal
                 }
             }
-            opAnd.andWhere(contentRating) { SourceTable.contentRating eq it.ordinal }
+            opAnd.andWhere(contentWarning) { SourceTable.contentWarning eq it.ordinal }
 
             return opAnd.op
         }
@@ -122,9 +122,9 @@ class SourceQuery {
         val id: LongFilter? = null,
         val name: StringFilter? = null,
         val lang: StringFilter? = null,
-        @GraphQLDeprecated("replace with contentRating == ContentRating.PORNOGRAPHIC", ReplaceWith("contentRating"))
+        @GraphQLDeprecated("replace with contentWarning", ReplaceWith("contentWarning"))
         val isNsfw: BooleanFilter? = null,
-        val contentRating: ContentRatingFilter? = null,
+        val contentWarning: ContentWarningFilter? = null,
         override val and: List<SourceFilter>? = null,
         override val or: List<SourceFilter>? = null,
         override val not: SourceFilter? = null,
@@ -134,7 +134,7 @@ class SourceQuery {
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
-                andFilterWithCompareEnum(SourceTable.contentRating, contentRating),
+                andFilterWithCompareEnum(SourceTable.contentWarning, contentWarning),
             )
     }
 

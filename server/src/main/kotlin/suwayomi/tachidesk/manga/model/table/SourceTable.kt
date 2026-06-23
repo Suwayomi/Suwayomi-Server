@@ -8,13 +8,11 @@ package suwayomi.tachidesk.manga.model.table
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
-import suwayomi.tachidesk.manga.model.table.columns.unlimitedVarchar
 
 object SourceTable : IdTable<Long>() {
     override val id = long("id").entityId()
     val name = varchar("name", 128)
     val lang = varchar("lang", 32)
     val extension = reference("extension", ExtensionTable)
-    val message = unlimitedVarchar("message").nullable()
-    val contentRating = integer("content_rating").default(0)
+    val contentWarning = integer("content_warning").default(0)
 }

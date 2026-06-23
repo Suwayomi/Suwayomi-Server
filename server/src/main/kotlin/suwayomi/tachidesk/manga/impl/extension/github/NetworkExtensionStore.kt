@@ -11,7 +11,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonNames
 import kotlinx.serialization.protobuf.ProtoNumber
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionInfo
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionSource
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionStore
@@ -23,12 +23,18 @@ data class NetworkExtensionStore(
     @ProtoNumber(2) val badgeLabel: String,
     @ProtoNumber(3) val signingKey: String,
     @ProtoNumber(4) val contact: Contact,
-    @ProtoNumber(5) val extensions: List<Extension>,
+    @ProtoNumber(101) val extensionList: ExtensionList?,
+    @ProtoNumber(102) val extensionListUrl: String?,
 ) : BaseNetworkExtensionStore {
     @Serializable
     data class Contact(
         @ProtoNumber(1) val website: String,
         @ProtoNumber(2) val discord: String?,
+    )
+
+    @Serializable
+    data class ExtensionList(
+        @ProtoNumber(1) val extensions: List<Extension>,
     )
 
     @Serializable
@@ -55,27 +61,23 @@ data class NetworkExtensionStore(
         @ProtoNumber(3) val language: String,
         @ProtoNumber(4) val homeUrl: String = "",
         @ProtoNumber(5) val mirrorUrls: List<String> = emptyList(),
-        @ProtoNumber(6) val contentRating: ContentRating = ContentRating.SAFE,
+        @ProtoNumber(6) val contentWarning: ContentWarning = ContentWarning.SAFE,
         @ProtoNumber(7) val message: String? = null,
     )
 
     @Serializable
-    enum class ContentRating {
+    enum class ContentWarning {
         @ProtoNumber(0)
-        @JsonNames("CONTENT_RATING_SAFE")
+        @JsonNames("CONTENT_WARNING_SAFE")
         SAFE,
 
         @ProtoNumber(1)
-        @JsonNames("CONTENT_RATING_SUGGESTIVE")
-        SUGGESTIVE,
+        @JsonNames("CONTENT_WARNING_MIXED")
+        MIXED,
 
         @ProtoNumber(2)
-        @JsonNames("CONTENT_RATING_EROTICA")
-        EROTICA,
-
-        @ProtoNumber(3)
-        @JsonNames("CONTENT_RATING_PORNOGRAPHIC")
-        PORNOGRAPHIC,
+        @JsonNames("CONTENT_WARNING_NSFW")
+        NSFW,
     }
 
     override fun toExtensionStore(indexUrl: String): ExtensionStore =
@@ -90,10 +92,11 @@ data class NetworkExtensionStore(
                     discord = contact.discord,
                 ),
             isLegacy = false,
+            extensionListUrl = extensionListUrl,
         )
 }
 
-fun NetworkExtensionStore.toExtensionInfos(store: ExtensionStore): List<ExtensionInfo> =
+fun NetworkExtensionStore.ExtensionList.toExtensionInfos(store: ExtensionStore): List<ExtensionInfo> =
     extensions.map { extension ->
         val lang = extension.sources.map { it.language }.toSet()
         ExtensionInfo(
@@ -106,13 +109,12 @@ fun NetworkExtensionStore.toExtensionInfos(store: ExtensionStore): List<Extensio
             versionCode = extension.versionCode,
             versionName = extension.versionName,
             lang = if (lang.size == 1) lang.first() else "all",
-            contentRating =
-                when (extension.sources.maxOfOrNull { it.contentRating }) {
-                    NetworkExtensionStore.ContentRating.SAFE -> ContentRating.SAFE
-                    NetworkExtensionStore.ContentRating.SUGGESTIVE -> ContentRating.SUGGESTIVE
-                    NetworkExtensionStore.ContentRating.EROTICA -> ContentRating.EROTICA
-                    NetworkExtensionStore.ContentRating.PORNOGRAPHIC -> ContentRating.PORNOGRAPHIC
-                    null -> ContentRating.SAFE
+            contentWarning =
+                when (extension.sources.maxOfOrNull { it.contentWarning }) {
+                    NetworkExtensionStore.ContentWarning.SAFE -> ContentWarning.SAFE
+                    NetworkExtensionStore.ContentWarning.MIXED -> ContentWarning.MIXED
+                    NetworkExtensionStore.ContentWarning.NSFW -> ContentWarning.NSFW
+                    null -> ContentWarning.SAFE
                 },
             sources =
                 extension.sources.map { source ->
@@ -122,12 +124,11 @@ fun NetworkExtensionStore.toExtensionInfos(store: ExtensionStore): List<Extensio
                         lang = source.language,
                         homeUrl = source.homeUrl,
                         message = source.message,
-                        contentRating =
-                            when (source.contentRating) {
-                                NetworkExtensionStore.ContentRating.SAFE -> ContentRating.SAFE
-                                NetworkExtensionStore.ContentRating.SUGGESTIVE -> ContentRating.SUGGESTIVE
-                                NetworkExtensionStore.ContentRating.EROTICA -> ContentRating.EROTICA
-                                NetworkExtensionStore.ContentRating.PORNOGRAPHIC -> ContentRating.PORNOGRAPHIC
+                        contentWarning =
+                            when (source.contentWarning) {
+                                NetworkExtensionStore.ContentWarning.SAFE -> ContentWarning.SAFE
+                                NetworkExtensionStore.ContentWarning.MIXED -> ContentWarning.MIXED
+                                NetworkExtensionStore.ContentWarning.NSFW -> ContentWarning.NSFW
                             },
                     )
                 },

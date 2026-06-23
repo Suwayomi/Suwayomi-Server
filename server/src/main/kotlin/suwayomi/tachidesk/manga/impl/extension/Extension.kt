@@ -32,6 +32,9 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MIN
+import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_CONTENT_WARNING
+import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_EXTENSION_LIB
+import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_NAME
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_NSFW
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_SOURCE_CLASS
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
@@ -42,7 +45,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
-import suwayomi.tachidesk.manga.model.dataclass.ContentRating
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -151,7 +154,10 @@ object Extension {
 //                throw Exception("This apk is not a signed with the official tachiyomi signature")
 //            }
 
-            val isNsfw = packageInfo.applicationInfo.metaData.getString(METADATA_NSFW) == "1"
+            var contentWarning = packageInfo.applicationInfo.metaData.getInt(METADATA_CONTENT_WARNING)
+            if (contentWarning == 0) {
+                contentWarning = packageInfo.applicationInfo.metaData.getInt(METADATA_NSFW)
+            }
 
             val className =
                 packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
@@ -184,9 +190,16 @@ object Extension {
                     }
 
                 val extensionName =
-                    packageInfo.applicationInfo.nonLocalizedLabel
-                        .toString()
-                        .substringAfter("Tachiyomi: ")
+                    packageInfo.applicationInfo.metaData.getString(METADATA_NAME)
+                        ?: packageInfo.applicationInfo.nonLocalizedLabel
+                            .toString()
+                            .substringAfter("Tachiyomi: ")
+
+                val extensionLibVersion =
+                    packageInfo.applicationInfo.metaData
+                        .getString(METADATA_EXTENSION_LIB)
+                        .takeUnless { it == "0" }
+                        ?: packageInfo.versionName.substringBeforeLast('.')
 
                 // update extension info
                 transaction {
@@ -197,14 +210,9 @@ object Extension {
                             it[this.pkgName] = packageInfo.packageName
                             it[versionName] = packageInfo.versionName
                             it[versionCode] = packageInfo.versionCode.toLong()
+                            it[extensionLib] = extensionLibVersion
                             it[lang] = extensionLang
-                            // todo will change
-                            it[contentRating] =
-                                if (isNsfw) {
-                                    ContentRating.PORNOGRAPHIC.ordinal
-                                } else {
-                                    ContentRating.SAFE.ordinal
-                                }
+                            it[this.contentWarning] = contentWarning
                         }
                     }
 
@@ -229,7 +237,7 @@ object Extension {
                             it[name] = httpSource.name
                             it[lang] = httpSource.lang
                             it[extension] = extensionId
-                            it[contentRating] = if (isNsfw) ContentRating.PORNOGRAPHIC.ordinal else ContentRating.SAFE.ordinal
+                            it[this.contentWarning] = contentWarning
                         }
                         logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
                     }
@@ -397,7 +405,7 @@ object Extension {
                 it[versionName] = targetExtension.versionName
                 it[versionCode] = targetExtension.versionCode
                 it[lang] = targetExtension.lang
-                it[contentRating] = targetExtension.contentRating.ordinal
+                it[contentWarning] = targetExtension.contentWarning.ordinal
                 it[iconUrl] = targetExtension.iconUrl
                 it[hasUpdate] = false
             }

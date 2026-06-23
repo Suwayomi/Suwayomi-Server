@@ -14,6 +14,7 @@ data class ExtensionStore(
     val signingKey: String,
     val contact: Contact,
     val isLegacy: Boolean,
+    val extensionListUrl: String?,
 ) {
     data class Contact(
         val website: String,

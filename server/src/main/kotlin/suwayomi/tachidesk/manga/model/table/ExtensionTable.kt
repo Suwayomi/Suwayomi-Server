@@ -28,7 +28,7 @@ object ExtensionTable : IntIdTable() {
     val versionName = varchar("version_name", 16)
     val versionCode = long("version_code")
     val lang = varchar("lang", 32)
-    val contentRating = integer("content_rating")
+    val contentWarning = integer("content_warning")
 
     val isInstalled = bool("is_installed").default(false)
     val hasUpdate = bool("has_update").default(false)

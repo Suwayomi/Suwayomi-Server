@@ -40,6 +40,11 @@ object PackageTools {
     const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"
     const val METADATA_SOURCE_FACTORY = "tachiyomi.extension.factory"
     const val METADATA_NSFW = "tachiyomi.extension.nsfw"
+
+    const val METADATA_NAME = "tachiyomix.name"
+    const val METADATA_EXTENSION_LIB = "tachiyomix.extensionLib"
+    const val METADATA_CONTENT_WARNING = "tachiyomix.contentWarning"
+
     const val LIB_VERSION_MIN = 1.3
     const val LIB_VERSION_MAX = 1.6
 

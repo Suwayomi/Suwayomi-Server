@@ -17,7 +17,7 @@ data class ExtensionInfo(
     val versionCode: Long,
     val versionName: String,
     val lang: String,
-    val contentRating: ContentRating,
+    val contentWarning: ContentWarning,
     val sources: List<ExtensionSource>,
 )
 
@@ -27,17 +27,16 @@ data class ExtensionSource(
     val lang: String,
     val homeUrl: String,
     val message: String?,
-    val contentRating: ContentRating,
+    val contentWarning: ContentWarning,
 )
 
-enum class ContentRating {
+enum class ContentWarning {
     SAFE,
-    SUGGESTIVE,
-    EROTICA,
-    PORNOGRAPHIC,
+    MIXED,
+    NSFW,
     ;
 
     companion object {
-        fun valueOf(contentRating: Int) = entries.find { it.ordinal == contentRating } ?: SAFE
+        fun valueOf(contentWarning: Int) = entries.find { it.ordinal == contentWarning } ?: SAFE
     }
 }
