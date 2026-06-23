@@ -1099,28 +1099,28 @@ class ServerConfig(
     )
 
     val syncOnChapterRead: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 96,
+        protoNumber = 100,
         defaultValue = false,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
     )
 
     val syncOnChapterOpen: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 97,
+        protoNumber = 101,
         defaultValue = false,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
     )
 
     val syncOnWebUIStart: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 98,
+        protoNumber = 102,
         defaultValue = false,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
     )
 
     val syncOnWebUIResume: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 99,
+        protoNumber = 103,
         defaultValue = false,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,

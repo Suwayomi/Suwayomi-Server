@@ -26,6 +26,7 @@ import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -208,9 +209,10 @@ object SyncYomiSyncService {
                 .putString("last_sync_etag", newETag)
                 .apply()
             logger.info { "SyncYomi push completed successfully" }
+            true
         } else if (response.code == HttpStatus.PRECONDITION_FAILED.code) {
-            // other clients updated remote data, will try next time
             logger.info { "SyncYomi push failed with 412 - another client updated remote data, will retry on next sync" }
+            false
         } else {
             val responseBody = response.body.string()
             logger.error { "SyncError: $responseBody" }
@@ -452,8 +454,9 @@ object SyncYomiSyncService {
                     }
 
                     localChapter != null && remoteChapter != null -> {
-                        // Use version number to decide which chapter to keep
-                        val chosenChapter =
+                        // Use version number to decide which chapter to keep as the base for metadata
+                        // (name, scanlator, source order, etc.).
+                        val baseChapter =
                             if (localChapter.version >= remoteChapter.version) {
                                 // If there are more chapter on remote, local sourceOrder will need to be updated to maintain correct source order.
                                 if (localChapters.size < remoteChapters.size) {
@@ -464,10 +467,21 @@ object SyncYomiSyncService {
                             } else {
                                 remoteChapter
                             }
+
+                        // Read progress must never regress when merging across devices: combine it
+                        // non-destructively (read = OR, bookmark = OR, lastPageRead = MAX), mirroring the
+                        // backup-restore semantics. Winner-takes-all by version would otherwise let a stale
+                        // remote chapter (e.g. pushed mid-reading with read=false) overwrite a local read=true.
+                        val mergedChapter =
+                            baseChapter.copy(
+                                read = localChapter.read || remoteChapter.read,
+                                bookmark = localChapter.bookmark || remoteChapter.bookmark,
+                                lastPageRead = max(localChapter.lastPageRead, remoteChapter.lastPageRead),
+                            )
                         logger.debug {
-                            "Merging chapter: ${chosenChapter.name}. Chosen version from: ${if (localChapter.version >= remoteChapter.version) "Local" else "Remote"}, Local version: ${localChapter.version}, Remote version: ${remoteChapter.version}."
+                            "Merging chapter: ${mergedChapter.name}. Base version from: ${if (localChapter.version >= remoteChapter.version) "Local" else "Remote"}, Local version: ${localChapter.version}, Remote version: ${remoteChapter.version}, read=${mergedChapter.read}, lastPageRead=${mergedChapter.lastPageRead}."
                         }
-                        chosenChapter
+                        mergedChapter
                     }
 
                     else -> {
