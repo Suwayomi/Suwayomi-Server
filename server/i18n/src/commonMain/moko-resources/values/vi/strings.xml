@@ -122,4 +122,6 @@
     <string name="webview_label_login_required">Cấu hình của bạn yêu cầu bạn phải đăng nhập. Vui lòng nhập tên người dùng và mật khẩu.</string>
     <string name="opds_linktitle_first_page">Trang đầu</string>
     <string name="opds_linktitle_last_page">Trang cuối</string>
+    <string name="opds_error_chapters_not_found">Không tìm thấy chương nào hoặc nguồn không thể truy cập tại trang %1$d.</string>
+    <string name="opds_chapter_title_fallback">Chương %1$s</string>
 </resources>

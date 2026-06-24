@@ -122,4 +122,7 @@
     <string name="opds_search_description">Ищите тайтлы в каталоге.</string>
     <string name="opds_error_manga_not_found">Тайтл с ID %1$d не найден.</string>
     <string name="opds_chapter_details_base">Тайтл: %1$s | %2$s</string>
+    <string name="opds_error_chapters_not_found">Главы не найдены или источник недоступен на странице %1$d.</string>
+    <string name="opds_chapter_title_fallback">Глава %1$s</string>
+    <string name="opds_chapter_title_oneshot">Ваншот</string>
 </resources>

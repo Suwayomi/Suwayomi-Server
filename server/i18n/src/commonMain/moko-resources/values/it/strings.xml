@@ -122,4 +122,6 @@
     <string name="login_label_login">Accedi</string>
     <string name="login_placeholder_username">Digita il nome utente...</string>
     <string name="login_placeholder_password">Segreto...</string>
+    <string name="opds_error_chapters_not_found">Nessun capitolo trovato o la fonte non è raggiungibile alla pagina %1$d.</string>
+    <string name="opds_chapter_title_fallback">Capitolo %1$s</string>
 </resources>

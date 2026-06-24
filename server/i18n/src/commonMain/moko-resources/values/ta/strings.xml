@@ -53,4 +53,7 @@
     <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
     <string name="opds_feeds_genre_specific_title">இசைவகை: %1$s</string>
+    <string name="opds_error_chapters_not_found">பக்கம் %1$d இல் அத்தியாயங்கள் எதுவும் காணப்படவில்லை அல்லது மூலத்தை அணுக முடியவில்லை.</string>
+    <string name="opds_chapter_title_oneshot">ஒன்-ஷாட்</string>
+    <string name="opds_chapter_title_fallback">அத்தியாயம் %1$s</string>
 </resources>

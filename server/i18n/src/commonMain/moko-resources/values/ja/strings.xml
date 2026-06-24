@@ -60,4 +60,7 @@
     <string name="opds_feeds_library_sources_title">ソース</string>
     <string name="opds_feeds_library_sources_entry_content">ソース別にライブラリ内のマンガを閲覧</string>
     <string name="opds_feeds_search_results_title">検索結果</string>
+    <string name="opds_error_chapters_not_found">ページ %1$d で章が見つからないか、ソースに接続できません。</string>
+    <string name="opds_chapter_title_oneshot">読み切り</string>
+    <string name="opds_chapter_title_fallback">第 %1$s 話</string>
 </resources>
