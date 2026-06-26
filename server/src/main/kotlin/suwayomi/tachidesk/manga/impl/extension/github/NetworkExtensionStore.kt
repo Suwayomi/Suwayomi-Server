@@ -116,8 +116,12 @@ fun NetworkExtensionStore.ExtensionList.toExtensionInfos(store: ExtensionStore):
             lang = if (lang.size == 1) lang.first() else "all",
             contentWarning =
                 when (extension.contentWarning) {
-                    NetworkExtensionStore.ContentWarning.SAFE, NetworkExtensionStore.ContentWarning.UNSPECIFIED -> ContentWarning.SAFE
+                    NetworkExtensionStore.ContentWarning.SAFE,
+                    NetworkExtensionStore.ContentWarning.UNSPECIFIED,
+                    -> ContentWarning.SAFE
+
                     NetworkExtensionStore.ContentWarning.MIXED -> ContentWarning.MIXED
+
                     NetworkExtensionStore.ContentWarning.NSFW -> ContentWarning.NSFW
                 },
             sources =
@@ -130,7 +134,9 @@ fun NetworkExtensionStore.ExtensionList.toExtensionInfos(store: ExtensionStore):
                         message = source.message,
                         contentWarning =
                             when (extension.contentWarning) { // todo source.contentWarning
-                                NetworkExtensionStore.ContentWarning.SAFE, NetworkExtensionStore.ContentWarning.UNSPECIFIED -> ContentWarning.SAFE
+                                NetworkExtensionStore.ContentWarning.SAFE,
+                                NetworkExtensionStore.ContentWarning.UNSPECIFIED,
+                                -> ContentWarning.SAFE
 
                                 NetworkExtensionStore.ContentWarning.MIXED -> ContentWarning.MIXED
 
