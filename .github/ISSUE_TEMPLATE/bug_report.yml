@@ -143,11 +143,13 @@ body:
       options:
         - label: I have searched the existing issues and this is a new ticket, **NOT** a duplicate or related to another open or closed issue.
           required: true
+        - label: I have checked the ongoing preview changelog of **[Suwayomi-WebUI](https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md)** and **[Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server/blob/master/CHANGELOG.md)** and this bug has **NOT** been listed as fixed
+          required: true
         - label: I have written a short but informative title (ideally less than ~100 characters).
           required: true
         - label: I have tried the troubleshooting guide described in [README.md](https://github.com/Suwayomi/Suwayomi-Server?tab=readme-ov-file#troubleshooting-and-support)
           required: true
-        - label: I have updated to the **[latest version](https://github.com/suwayomi/suwayomi-server/releases/latest)**.
+        - label: I have updated the (**[Suwayomi-WebUI](https://github.com/suwayomi/suwayomi-webui/releases/latest)** and **[Suwayomi-Server](https://github.com/suwayomi/suwayomi-server/releases/latest)**) to the latest versions
           required: true
         - label: I have filled out all of the requested information in this form, including specific version numbers.
           required: true
