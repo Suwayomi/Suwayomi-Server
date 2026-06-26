@@ -45,7 +45,8 @@ data class NetworkExtensionStore(
         @ProtoNumber(4) val extensionLib: String,
         @ProtoNumber(5) val versionCode: Long,
         @ProtoNumber(6) val versionName: String,
-        @ProtoNumber(7) val sources: List<Source>,
+        @ProtoNumber(7) val contentWarning: ContentWarning,
+        @ProtoNumber(8) val sources: List<Source>,
     )
 
     @Serializable
@@ -61,24 +62,29 @@ data class NetworkExtensionStore(
         @ProtoNumber(3) val language: String,
         @ProtoNumber(4) val homeUrl: String = "",
         @ProtoNumber(5) val mirrorUrls: List<String> = emptyList(),
-        @ProtoNumber(6) val contentWarning: ContentWarning = ContentWarning.SAFE,
+        // @ProtoNumber(6) val contentWarning: ContentWarning = ContentWarning.SAFE,
         @ProtoNumber(7) val message: String? = null,
     )
 
     @Serializable
     enum class ContentWarning {
         @ProtoNumber(0)
+        @JsonNames("CONTENT_WARNING_UNSPECIFIED")
+        UNSPECIFIED,
+
+        @ProtoNumber(1)
         @JsonNames("CONTENT_WARNING_SAFE")
         SAFE,
 
-        @ProtoNumber(1)
+        @ProtoNumber(2)
         @JsonNames("CONTENT_WARNING_MIXED")
         MIXED,
 
-        @ProtoNumber(2)
+        @ProtoNumber(3)
         @JsonNames("CONTENT_WARNING_NSFW")
         NSFW,
     }
+
 
     override fun toExtensionStore(indexUrl: String): ExtensionStore =
         ExtensionStore(
@@ -110,11 +116,10 @@ fun NetworkExtensionStore.ExtensionList.toExtensionInfos(store: ExtensionStore):
             versionName = extension.versionName,
             lang = if (lang.size == 1) lang.first() else "all",
             contentWarning =
-                when (extension.sources.maxOfOrNull { it.contentWarning }) {
-                    NetworkExtensionStore.ContentWarning.SAFE -> ContentWarning.SAFE
+                when (extension.contentWarning) {
+                    NetworkExtensionStore.ContentWarning.SAFE, NetworkExtensionStore.ContentWarning.UNSPECIFIED -> ContentWarning.SAFE
                     NetworkExtensionStore.ContentWarning.MIXED -> ContentWarning.MIXED
                     NetworkExtensionStore.ContentWarning.NSFW -> ContentWarning.NSFW
-                    null -> ContentWarning.SAFE
                 },
             sources =
                 extension.sources.map { source ->
@@ -125,8 +130,8 @@ fun NetworkExtensionStore.ExtensionList.toExtensionInfos(store: ExtensionStore):
                         homeUrl = source.homeUrl,
                         message = source.message,
                         contentWarning =
-                            when (source.contentWarning) {
-                                NetworkExtensionStore.ContentWarning.SAFE -> ContentWarning.SAFE
+                            when (extension.contentWarning) { // todo source.contentWarning
+                                NetworkExtensionStore.ContentWarning.SAFE, NetworkExtensionStore.ContentWarning.UNSPECIFIED -> ContentWarning.SAFE
                                 NetworkExtensionStore.ContentWarning.MIXED -> ContentWarning.MIXED
                                 NetworkExtensionStore.ContentWarning.NSFW -> ContentWarning.NSFW
                             },
