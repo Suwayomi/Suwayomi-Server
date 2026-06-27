@@ -27,6 +27,7 @@ import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
+import suwayomi.tachidesk.manga.impl.Novel
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
@@ -82,6 +83,8 @@ object BackupMangaHandler {
                     )
 
                 val mangaId = mangaRow[MangaTable.id].value
+
+                backupManga.isNovel = Novel.isNovelSource(mangaRow[MangaTable.sourceReference])
 
                 if (flags.includeClientData) {
                     backupManga.meta = Manga.getMangaMetaMap(mangaId)
