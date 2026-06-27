@@ -20,9 +20,9 @@ import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackRecordDataLoad
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackSearchDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DownloadedChapterCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
-import suwayomi.tachidesk.graphql.dataLoaders.ExtensionsForExtensionStore
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionStoreDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionsForExtensionStore
 import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.HasDuplicateChaptersForMangaDataLoader
