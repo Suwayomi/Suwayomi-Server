@@ -34,6 +34,7 @@ class M0057_AddNewExtensionApiFields : SQLMigration() {
             }
         }
         ALTER TABLE EXTENSION ALTER COLUMN store_index_url ${MAYBE_TYPE_PREFIX}VARCHAR(2048);
+        CREATE INDEX extension_store_index_url ON EXTENSION (store_index_url);
         ALTER TABLE EXTENSION ALTER COLUMN version_code ${MAYBE_TYPE_PREFIX}BIGINT;
         ALTER TABLE EXTENSION ALTER COLUMN apk_name DROP NOT NULL;
         ${
