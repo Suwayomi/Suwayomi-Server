@@ -31,7 +31,6 @@ import kotlinx.coroutines.sync.withPermit
 import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
-import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
@@ -311,10 +310,10 @@ class Updater : IUpdater {
         tracker[job.manga.id] =
             try {
                 logger.info { "Updating ${job.manga}" }
-                if (serverConfig.updateMangas.value || !job.manga.initialized) {
-                    Manga.getManga(job.manga.id, true)
-                }
-                Chapter.getChapterList(job.manga.id, true)
+                Manga.updateMangaAndChapters(
+                    job.manga.id,
+                    updateManga = serverConfig.updateMangas.value || !job.manga.initialized,
+                )
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {
                 logger.error(e) { "Error while updating ${job.manga}" }

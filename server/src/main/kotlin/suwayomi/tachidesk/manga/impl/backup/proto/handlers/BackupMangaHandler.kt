@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -76,6 +77,8 @@ object BackupMangaHandler {
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
                         lastModifiedAt = mangaRow[MangaTable.lastModifiedAt],
                         version = mangaRow[MangaTable.version],
+                        initialized = mangaRow[MangaTable.initialized],
+                        memo = Json.encodeToString(mangaRow[MangaTable.memo]).encodeToByteArray(),
                     )
 
                 val mangaId = mangaRow[MangaTable.id].value
@@ -238,6 +241,7 @@ object BackupMangaHandler {
 
                                 it[lastModifiedAt] = manga.lastModifiedAt
                                 it[version] = manga.version
+                                it[memo] = manga.memo.decodeToString()
                             }.value
                     } else {
                         val dbMangaId = dbManga[MangaTable.id].value
@@ -260,6 +264,7 @@ object BackupMangaHandler {
 
                             it[lastModifiedAt] = manga.lastModifiedAt
                             it[version] = manga.version
+                            it[memo] = manga.memo.decodeToString()
                         }
 
                         dbMangaId
@@ -351,6 +356,7 @@ object BackupMangaHandler {
 
                         this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
                         this[ChapterTable.version] = chapter.version
+                        this[ChapterTable.memo] = chapter.memo.decodeToString()
                     }.map { it[ChapterTable.id].value }
             } else {
                 emptyList()

@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -14,12 +15,14 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -146,11 +149,12 @@ class MangaMutation {
     )
 
     @RequireAuth
+    @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
     fun fetchManga(input: FetchMangaInput): CompletableFuture<FetchMangaPayload?> {
         val (clientMutationId, id) = input
 
         return future {
-            Manga.fetchManga(id)
+            Manga.updateMangaAndChapters(id, updateChapters = false)
 
             val manga =
                 transaction {
@@ -159,6 +163,49 @@ class MangaMutation {
             FetchMangaPayload(
                 clientMutationId = clientMutationId,
                 manga = MangaType(manga),
+            )
+        }
+    }
+
+    data class FetchMangaAndChaptersInput(
+        val clientMutationId: String? = null,
+        val id: Int,
+        val fetchManga: Boolean,
+        val fetchChapters: Boolean,
+    )
+
+    data class FetchMangaAndChaptersPayload(
+        val clientMutationId: String?,
+        val manga: MangaType,
+        val chapters: List<ChapterType>,
+    )
+
+    @RequireAuth
+    fun fetchMangaAndChapters(input: FetchMangaAndChaptersInput): CompletableFuture<FetchMangaAndChaptersPayload?> {
+        val (clientMutationId, id, fetchManga, fetchChapters) = input
+
+        return future {
+            Manga.updateMangaAndChapters(
+                mangaId = id,
+                updateManga = fetchManga,
+                updateChapters = fetchChapters,
+            )
+
+            val (manga, chapters) =
+                transaction {
+                    Pair(
+                        MangaTable.selectAll().where { MangaTable.id eq id }.first(),
+                        ChapterTable
+                            .selectAll()
+                            .where { ChapterTable.manga eq id }
+                            .orderBy(ChapterTable.sourceOrder)
+                            .map { ChapterType(it) },
+                    )
+                }
+            FetchMangaAndChaptersPayload(
+                clientMutationId = clientMutationId,
+                manga = MangaType(manga),
+                chapters = chapters,
             )
         }
     }

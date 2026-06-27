@@ -46,7 +46,7 @@ object ImageResponse {
     /**
      * Get a cached image response
      *
-     * Note: The caller should also call [clearCachedImage] when appropriate
+     * Note: The caller should also call [ImageResponse.clearCachedImage] when appropriate
      *
      * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
      * @param fileName what the saved cache file should be named

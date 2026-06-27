@@ -13,19 +13,22 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
+import suwayomi.tachidesk.graphql.queries.filter.ContentWarningFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.LongFilter
 import suwayomi.tachidesk.graphql.queries.filter.OpAnd
 import suwayomi.tachidesk.graphql.queries.filter.StringFilter
-import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEnum
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -39,6 +42,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.util.concurrent.CompletableFuture
 
@@ -91,14 +95,23 @@ class SourceQuery {
         val id: Long? = null,
         val name: String? = null,
         val lang: String? = null,
+        @GraphQLDeprecated("replace with contentWarning == ContentRating.MIXED", ReplaceWith("contentWarning"))
         val isNsfw: Boolean? = null,
+        val contentWarning: ContentWarning? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, SourceTable.id)
             opAnd.eq(name, SourceTable.name)
             opAnd.eq(lang, SourceTable.lang)
-            opAnd.eq(isNsfw, SourceTable.isNsfw)
+            opAnd.andWhere(isNsfw) {
+                if (it) {
+                    SourceTable.contentWarning greaterEq ContentWarning.MIXED.ordinal
+                } else {
+                    SourceTable.contentWarning less ContentWarning.MIXED.ordinal
+                }
+            }
+            opAnd.andWhere(contentWarning) { SourceTable.contentWarning eq it.ordinal }
 
             return opAnd.op
         }
@@ -108,7 +121,9 @@ class SourceQuery {
         val id: LongFilter? = null,
         val name: StringFilter? = null,
         val lang: StringFilter? = null,
+        @GraphQLDeprecated("replace with contentWarning", ReplaceWith("contentWarning"))
         val isNsfw: BooleanFilter? = null,
+        val contentWarning: ContentWarningFilter? = null,
         override val and: List<SourceFilter>? = null,
         override val or: List<SourceFilter>? = null,
         override val not: SourceFilter? = null,
@@ -118,7 +133,7 @@ class SourceQuery {
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
-                andFilterWithCompare(SourceTable.isNsfw, isNsfw),
+                andFilterWithCompareEnum(SourceTable.contentWarning, contentWarning),
             )
     }
 

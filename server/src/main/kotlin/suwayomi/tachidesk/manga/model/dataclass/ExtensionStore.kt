@@ -1,0 +1,23 @@
+package suwayomi.tachidesk.manga.model.dataclass
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+data class ExtensionStore(
+    val indexUrl: String,
+    val name: String,
+    val badgeLabel: String,
+    val signingKey: String,
+    val contact: Contact,
+    val isLegacy: Boolean,
+    val extensionListUrl: String?,
+) {
+    data class Contact(
+        val website: String,
+        val discord: String?,
+    )
+}

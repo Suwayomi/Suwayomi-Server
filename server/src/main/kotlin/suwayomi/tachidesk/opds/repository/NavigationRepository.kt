@@ -4,7 +4,6 @@ import dev.icerock.moko.resources.StringResource
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.alias
-import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.countDistinct
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
@@ -138,9 +137,9 @@ object NavigationRepository {
             val query =
                 SourceTable
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
+                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .where { ExtensionTable.isInstalled eq true }
-                    .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
+                    .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
 
             val totalCount = query.count()
@@ -152,7 +151,7 @@ object NavigationRepository {
                         OpdsSourceNavEntry(
                             id = it[SourceTable.id].value,
                             name = formatSourceName(it[SourceTable.name], it[SourceTable.lang]),
-                            iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
+                            iconUrl = it[ExtensionTable.pkgName].let { pkgName -> Extension.proxyExtensionIconUrl(pkgName) },
                             mangaCount = null,
                         )
                     }
@@ -177,13 +176,13 @@ object NavigationRepository {
 
             val query =
                 baseJoin
-                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName, mangaCount)
+                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName, mangaCount)
                     .where { MangaTable.inLibrary eq true }
 
             query.applyOpdsMangaFilter(activeFilters, excludeField = "source_id")
 
             query
-                .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
+                .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                 .orderBy(SourceTable.name to SortOrder.ASC)
 
             val totalCount = query.count()
@@ -199,7 +198,7 @@ object NavigationRepository {
                     OpdsSourceNavEntry(
                         id = it[SourceTable.id].value,
                         name = formatSourceName(it[SourceTable.name], it[SourceTable.lang]),
-                        iconUrl = it[ExtensionTable.apkName].let { apkName -> Extension.getExtensionIconUrl(apkName) },
+                        iconUrl = it[ExtensionTable.pkgName].let { pkgName -> Extension.proxyExtensionIconUrl(pkgName) },
                         mangaCount = it[mangaCount],
                     )
                 }
@@ -210,12 +209,12 @@ object NavigationRepository {
         transaction {
             SourceTable
                 .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                .select(SourceTable.name, SourceTable.lang, ExtensionTable.apkName)
+                .select(SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                 .where { SourceTable.id eq sourceId }
                 .firstOrNull()
                 ?.let {
                     val name = formatSourceName(it[SourceTable.name], it[SourceTable.lang])
-                    val icon = Extension.getExtensionIconUrl(it[ExtensionTable.apkName])
+                    val icon = Extension.proxyExtensionIconUrl(it[ExtensionTable.pkgName])
                     Pair(name, icon)
                 }
         }

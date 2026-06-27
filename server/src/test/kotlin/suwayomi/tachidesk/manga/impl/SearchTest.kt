@@ -18,7 +18,6 @@ import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import rx.Observable
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
 import suwayomi.tachidesk.manga.impl.Search.FilterObject
 import suwayomi.tachidesk.manga.impl.Search.SerializableGroup
@@ -41,12 +40,11 @@ class SearchTest : ApplicationTest() {
     ) : StubSource(id) {
         var mangas: List<SManga> = emptyList()
 
-        @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
-        override fun fetchSearchManga(
+        override suspend fun getSearchManga(
             page: Int,
             query: String,
             filters: FilterList,
-        ): Observable<MangasPage> = Observable.just(MangasPage(mangas, false))
+        ): MangasPage = MangasPage(mangas, false)
     }
 
     private val sourceId = 1L

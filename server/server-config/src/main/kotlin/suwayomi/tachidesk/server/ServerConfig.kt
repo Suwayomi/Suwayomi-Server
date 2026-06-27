@@ -276,30 +276,38 @@ class ServerConfig(
         description = "Ignore re-uploaded chapters from auto-download",
     )
 
-    val extensionRepos: MutableStateFlow<List<String>> by ListSetting<String>(
+    @Deprecated("Will get removed", replaceWith = ReplaceWith("extensionStores"))
+    val extensionRepos: MutableStateFlow<List<String>> by MigratedConfigValue(
         protoNumber = 22,
         group = SettingGroup.EXTENSION,
         privacySafe = false,
         defaultValue = emptyList(),
-        itemValidator = { url ->
-            if (url.matches(repoMatchRegex)) {
-                null
-            } else {
-                "Invalid repository URL format"
-            }
-        },
-        itemToValidValue = { url ->
-            if (url.matches(repoMatchRegex)) {
-                url
-            } else {
-                null
-            }
-        },
+        deprecated =
+            SettingsRegistry.SettingDeprecated(
+                message = "Replaced with addExtensionStore and removeExtensionStore mutations",
+                migrateConfigValue = {
+                    @Suppress("UNCHECKED_CAST")
+                    (it.unwrapped() as? List<String>)
+                        ?.map {
+                            if (it.contains("github.com")) {
+                                it.replace(repoMatchRegex) {
+                                    "https://raw.githubusercontent.com/${it.groupValues[2]}/${it.groupValues[3]}/" +
+                                        (it.groupValues.getOrNull(4)?.ifBlank { null } ?: "repo") +
+                                        "/" +
+                                        (it.groupValues.getOrNull(5)?.ifBlank { null } ?: "index.min.json")
+                                }
+                            } else {
+                                it
+                            }
+                        }
+                },
+            ),
+        readMigrated = { extensionStores.value },
+        setMigrated = { extensionStores.value = it.distinct() },
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<String>",
             ),
-        description = "example: [\"https://github.com/MY_ACCOUNT/MY_REPO/tree/repo\"]",
     )
 
     val maxSourcesInParallel: MutableStateFlow<Int> by IntSetting(
@@ -1104,7 +1112,29 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = false,
         description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader. KoSync strategies are applied, but PROMPT conflicts are ignored (treating local progress as priority)."
+    )
 
+    val extensionStores: MutableStateFlow<List<String>> by ListSetting<String>(
+        protoNumber = 97,
+        group = SettingGroup.EXTENSION,
+        privacySafe = true,
+        defaultValue = emptyList(),
+        requiresRestart = true,
+        itemValidator = { url ->
+            if (url.isNotEmpty()) {
+                null
+            } else {
+                "Invalid store URL format"
+            }
+        },
+        itemToValidValue = { url ->
+            url.ifEmpty { null }
+        },
+        typeInfo =
+            SettingsRegistry.PartialTypeInfo(
+                specificType = "List<String>",
+            ),
+        description = "List of extension store index URLs",
     )
 
     /** ****************************************************************** **/

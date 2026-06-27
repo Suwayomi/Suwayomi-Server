@@ -9,6 +9,7 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
@@ -75,6 +76,7 @@ object MangaList {
                         this[MangaTable.status] = it.status
                         this[MangaTable.thumbnail_url] = it.thumbnail_url
                         this[MangaTable.updateStrategy] = it.update_strategy.name
+                        this[MangaTable.memo] = Json.encodeToString(it.memo)
 
                         this[MangaTable.sourceReference] = sourceId
                     }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
@@ -103,6 +105,7 @@ object MangaList {
                             this[MangaTable.status] = sManga.status
                             this[MangaTable.thumbnail_url] = sManga.thumbnail_url ?: manga[MangaTable.thumbnail_url]
                             this[MangaTable.updateStrategy] = sManga.update_strategy.name
+                            this[MangaTable.memo] = Json.encodeToString(sManga.memo)
                             if (!sManga.thumbnail_url.isNullOrEmpty() && manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
                                 this[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
                                 Manga.clearThumbnail(manga[MangaTable.id].value)

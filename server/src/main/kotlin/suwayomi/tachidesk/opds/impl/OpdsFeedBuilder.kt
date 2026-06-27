@@ -3,6 +3,7 @@ package suwayomi.tachidesk.opds.impl
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.SortOrder
 import suwayomi.tachidesk.i18n.MR
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.opds.constants.OpdsConstants
@@ -17,7 +18,6 @@ import suwayomi.tachidesk.opds.repository.ChapterRepository
 import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
-import suwayomi.tachidesk.opds.util.OpdsStringUtil
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
@@ -657,8 +657,7 @@ object OpdsFeedBuilder {
         // If no chapters are found in the database, attempt to fetch them from the source.
         if (chapterEntries.isEmpty() && totalChapters == 0L) {
             try {
-                suwayomi.tachidesk.manga.impl.Chapter
-                    .fetchChapterList(mangaId)
+                Manga.updateMangaAndChapters(mangaId, updateManga = false)
 
                 // Re-query after fetching.
                 val (refetchedChapters, refetchedTotal) =

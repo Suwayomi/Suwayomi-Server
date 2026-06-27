@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.LikePattern
@@ -25,6 +26,7 @@ import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.Chapter
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
@@ -167,11 +169,12 @@ class ChapterMutation {
     )
 
     @RequireAuth
+    @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
     fun fetchChapters(input: FetchChaptersInput): CompletableFuture<FetchChaptersPayload?> {
         val (clientMutationId, mangaId) = input
 
         return future {
-            Chapter.fetchChapterList(mangaId)
+            Manga.updateMangaAndChapters(mangaId, updateManga = false)
 
             val chapters =
                 transaction {

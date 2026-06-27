@@ -55,7 +55,7 @@ object UpdateController {
         )
 
     /**
-     * Class made for handling return type in the documentation for [recentChapters],
+     * Class made for handling return type in the documentation for [UpdateController.recentChapters],
      * since OpenApi cannot handle runtime generics.
      */
     private class PagedMangaChapterListDataClass : PaginatedList<MangaChapterDataClass>(emptyList(), false)

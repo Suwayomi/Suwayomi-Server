@@ -45,7 +45,9 @@ object GetCatalogueSource {
                 ExtensionTable.selectAll().where { ExtensionTable.id eq extensionId }.first()
             }
 
-        val apkName = extensionRecord[ExtensionTable.apkName]
+        val apkName =
+            extensionRecord[ExtensionTable.apkName]
+                ?: throw NullPointerException("Missing apkName")
         val className = extensionRecord[ExtensionTable.classFQName]
         val jarName = apkName.substringBefore(".apk") + ".jar"
         val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
