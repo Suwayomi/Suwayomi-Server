@@ -539,34 +539,6 @@ object MangaController {
             },
         )
 
-    /** basic self-contained HTML reader page for a novel chapter */
-    val chapterReaderRetrieve =
-        handler(
-            pathParam<Int>("mangaId"),
-            pathParam<Int>("chapterIndex"),
-            documentWith = {
-                withOperation {
-                    summary("Basic novel reader page")
-                    description("Returns a minimal standalone HTML page that displays a novel chapter. Only valid for novel sources.")
-                }
-            },
-            behaviorOf = { ctx, mangaId, chapterIndex ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future {
-                    future {
-                        Novel.getChapterReaderHtml(mangaId = mangaId, chapterIndex = chapterIndex)
-                    }.thenApply { html ->
-                        ctx.header("content-type", "text/html; charset=utf-8")
-                        ctx.result(html)
-                    }
-                }
-            },
-            withResults = {
-                httpCode(HttpStatus.OK)
-                httpCode(HttpStatus.NOT_FOUND)
-            },
-        )
-
     val downloadChapter =
         handler(
             pathParam<Int>("chapterId"),

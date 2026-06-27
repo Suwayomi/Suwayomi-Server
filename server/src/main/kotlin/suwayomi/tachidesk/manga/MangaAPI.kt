@@ -81,8 +81,6 @@ object MangaAPI {
             get("{mangaId}/chapter/{chapterIndex}/page/{index}", MangaController.pageRetrieve)
 
             get("{mangaId}/chapter/{chapterIndex}/text", MangaController.chapterTextRetrieve)
-
-            get("{mangaId}/chapter/{chapterIndex}/read", MangaController.chapterReaderRetrieve)
         }
 
         path("chapter") {

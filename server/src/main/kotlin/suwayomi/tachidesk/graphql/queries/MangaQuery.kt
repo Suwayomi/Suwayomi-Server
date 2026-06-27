@@ -247,7 +247,6 @@ class MangaQuery {
         offset: Int? = null,
         isNovel: Boolean? = null,
     ): MangaNodeList {
-        // Novels are kept out of manga results unless explicitly requested with isNovel = true.
         val novelSourceIds = Novel.novelSourceIds()
         val queryResults =
             transaction {

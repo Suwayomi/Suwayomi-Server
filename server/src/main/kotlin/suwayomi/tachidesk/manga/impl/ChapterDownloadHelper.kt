@@ -11,6 +11,7 @@ import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -47,18 +48,20 @@ object ChapterDownloadHelper {
         scope: CoroutineScope,
         step: suspend (DownloadQueueItem?, Boolean) -> Unit,
     ): Boolean {
-        val sourceId =
-            transaction {
-                MangaTable
-                    .select(MangaTable.sourceReference)
-                    .where { MangaTable.id eq mangaId }
-                    .first()[MangaTable.sourceReference]
+        if (GetSource.hasNovelSource()) {
+            val sourceId =
+                transaction {
+                    MangaTable
+                        .select(MangaTable.sourceReference)
+                        .where { MangaTable.id eq mangaId }
+                        .first()[MangaTable.sourceReference]
+                }
+            if (Novel.isNovelSource(sourceId)) {
+                val result = Novel.downloadChapterText(mangaId, chapterId)
+                download.progress = 1f
+                step(download, false)
+                return result
             }
-        if (Novel.isNovelSource(sourceId)) {
-            val result = Novel.downloadChapterText(mangaId, chapterId)
-            download.progress = 1f
-            step(download, false)
-            return result
         }
         return provider(mangaId, chapterId).download().execute(download, scope, step)
     }

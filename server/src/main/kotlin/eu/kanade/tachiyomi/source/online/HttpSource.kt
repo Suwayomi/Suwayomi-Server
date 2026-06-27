@@ -337,7 +337,6 @@ abstract class HttpSource : CatalogueSource {
      */
     @Suppress("DEPRECATION")
     override suspend fun getPageList(chapter: SChapter): List<Page> {
-        // novel chapter is one text page, skip the page-list fetch
         if (isNovelSource) {
             return listOf(Page(0, chapter.url))
         }
