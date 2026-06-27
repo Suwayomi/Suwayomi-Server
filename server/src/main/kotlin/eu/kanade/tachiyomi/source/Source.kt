@@ -26,6 +26,19 @@ interface Source {
         get() = ""
 
     /**
+     * Whether this source provides novel (text-based) content instead of manga (image-based).
+     * Novel sources return chapter content via [fetchPageText]; novel extensions override this getter.
+     */
+    val isNovelSource: Boolean
+        get() = false
+
+    /**
+     * Fetches the text content for a novel page. Only meaningful when [isNovelSource] is true; a
+     * novel chapter is a single [Page] whose text is returned here.
+     */
+    suspend fun fetchPageText(page: Page): String = throw UnsupportedOperationException("Not a novel source")
+
+    /**
      * Whether the source has support for latest updates.
      */
     val supportsLatest: Boolean
