@@ -10,7 +10,7 @@ package suwayomi.tachidesk.manga.model.table
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 
 object ExtensionStoreTable : IntIdTable() {
-    val indexUrl = varchar("index_url", 2048)
+    val indexUrl = varchar("index_url", 2048).uniqueIndex()
     val name = varchar("name", 256)
     val badgeLabel = varchar("badge_label", 32)
     val signingKey = varchar("signing_key", 512)

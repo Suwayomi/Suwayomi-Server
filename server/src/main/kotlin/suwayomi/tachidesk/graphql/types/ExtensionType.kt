@@ -72,7 +72,7 @@ class ExtensionType(
         dataFetchingEnvironment.getValueFromDataLoader<String, SourceNodeList>("SourcesForExtensionDataLoader", pkgName)
 
     fun extensionStore(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionStoreType> =
-        dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionStoreType>("ExtensionStoreForExtension", storeIndexUrl.orEmpty())
+        dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionStoreType>("ExtensionStoreDataLoader", storeIndexUrl.orEmpty())
 }
 
 data class ExtensionNodeList(

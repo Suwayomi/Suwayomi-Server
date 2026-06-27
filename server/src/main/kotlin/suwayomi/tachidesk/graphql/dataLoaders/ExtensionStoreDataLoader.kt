@@ -24,40 +24,20 @@ class ExtensionStoreDataLoader : KotlinDataLoader<String, ExtensionStoreType> {
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val manga =
-                        ExtensionStoreTable
-                            .selectAll()
-                            .where { ExtensionStoreTable.indexUrl inList ids }
-                            .map { ExtensionStoreType(it) }
-                            .associateBy { it.indexUrl }
-                    ids.map { manga[it] }
-                }
-            }
-        }
-}
-
-class ExtensionStoreForExtension : KotlinDataLoader<String, ExtensionStoreType> {
-    override val dataLoaderName = "ExtensionStoreForExtension"
-
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionStoreType> =
-        DataLoaderFactory.newDataLoader<String, ExtensionStoreType> { ids ->
-            future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
                     val extensionStoreByIndexUrl =
                         ExtensionStoreTable
                             .selectAll()
                             .where { ExtensionStoreTable.indexUrl inList ids }
                             .map { ExtensionStoreType(it) }
                             .associateBy { it.indexUrl }
-                    ids.map { (extensionStoreByIndexUrl[it]) }
+                    ids.map { extensionStoreByIndexUrl[it] }
                 }
             }
         }
 }
 
-class ExtensionForExtensionStore : KotlinDataLoader<String, ExtensionNodeList> {
-    override val dataLoaderName = "ExtensionForExtensionStore"
+class ExtensionsForExtensionStore : KotlinDataLoader<String, ExtensionNodeList> {
+    override val dataLoaderName = "ExtensionsForExtensionStore"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionNodeList> =
         DataLoaderFactory.newDataLoader<String, ExtensionNodeList> { ids ->
