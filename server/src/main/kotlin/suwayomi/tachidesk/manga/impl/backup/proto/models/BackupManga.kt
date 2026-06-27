@@ -39,7 +39,7 @@ data class BackupManga(
     @ProtoNumber(106) var lastModifiedAt: Long = 0,
     @ProtoNumber(109) var version: Long = 0,
     @ProtoNumber(111) var initialized: Boolean = false,
-    @ProtoNumber(13) var memo: ByteArray = JsonObjectEmptyBytes,
+    @ProtoNumber(112) var memo: ByteArray = JsonObjectEmptyBytes,
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 )
