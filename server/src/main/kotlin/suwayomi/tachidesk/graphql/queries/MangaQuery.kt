@@ -18,6 +18,8 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.notInList
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -45,6 +47,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.manga.impl.Novel
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -242,7 +245,10 @@ class MangaQuery {
         first: Int? = null,
         last: Int? = null,
         offset: Int? = null,
+        isNovel: Boolean? = null,
     ): MangaNodeList {
+        // Novels are kept out of manga results unless explicitly requested with isNovel = true.
+        val novelSourceIds = Novel.novelSourceIds()
         val queryResults =
             transaction {
                 val mangaIdsQuery =
@@ -252,6 +258,16 @@ class MangaQuery {
                         .withDistinct()
 
                 mangaIdsQuery.applyOps(condition, filter)
+
+                if (novelSourceIds.isNotEmpty()) {
+                    if (isNovel == true) {
+                        mangaIdsQuery.andWhere { MangaTable.sourceReference inList novelSourceIds }
+                    } else {
+                        mangaIdsQuery.andWhere { MangaTable.sourceReference notInList novelSourceIds }
+                    }
+                } else if (isNovel == true) {
+                    mangaIdsQuery.andWhere { MangaTable.sourceReference inList listOf(-1L) }
+                }
 
                 val res =
                     MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
