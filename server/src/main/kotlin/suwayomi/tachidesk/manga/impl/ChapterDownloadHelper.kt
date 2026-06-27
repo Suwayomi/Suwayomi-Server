@@ -46,7 +46,22 @@ object ChapterDownloadHelper {
         download: DownloadQueueItem,
         scope: CoroutineScope,
         step: suspend (DownloadQueueItem?, Boolean) -> Unit,
-    ): Boolean = provider(mangaId, chapterId).download().execute(download, scope, step)
+    ): Boolean {
+        val sourceId =
+            transaction {
+                MangaTable
+                    .select(MangaTable.sourceReference)
+                    .where { MangaTable.id eq mangaId }
+                    .first()[MangaTable.sourceReference]
+            }
+        if (Novel.isNovelSource(sourceId)) {
+            val result = Novel.downloadChapterText(mangaId, chapterId)
+            download.progress = 1f
+            step(download, false)
+            return result
+        }
+        return provider(mangaId, chapterId).download().execute(download, scope, step)
+    }
 
     // return the appropriate provider based on how the download was saved. For the logic is simple but will evolve when new types of downloads are available
     private fun provider(
