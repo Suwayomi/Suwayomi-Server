@@ -305,8 +305,7 @@ object SyncYomiSyncService {
 
         logger.debug { "Starting merge. Local list size: ${localMangaListSafe.size}, Remote list size: ${remoteMangaListSafe.size}" }
 
-        fun mangaCompositeKey(manga: BackupManga): String =
-            "${manga.source}|${manga.url}|${manga.title.lowercase().trim()}|${manga.author?.lowercase()?.trim()}"
+        fun mangaCompositeKey(manga: BackupManga): String = "${manga.source}|${manga.url}"
 
         // Create maps using composite keys
         val localMangaMap = localMangaListSafe.associateBy { mangaCompositeKey(it) }
@@ -415,7 +414,7 @@ object SyncYomiSyncService {
             return remoteChapters // If not syncing chapters, keep remote untouched
         }
 
-        fun chapterCompositeKey(chapter: BackupChapter): String = "${chapter.url}|${chapter.name}|${chapter.chapterNumber}"
+        fun chapterCompositeKey(chapter: BackupChapter): String = chapter.url
 
         val localChapterMap = localChapters.associateBy { chapterCompositeKey(it) }
         val remoteChapterMap = remoteChapters.associateBy { chapterCompositeKey(it) }
