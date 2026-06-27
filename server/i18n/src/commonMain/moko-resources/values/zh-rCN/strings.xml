@@ -122,4 +122,7 @@
     <string name="login_placeholder_username">输入用户名…</string>
     <string name="login_placeholder_password">密匙…</string>
     <string name="label_error">错误</string>
+    <string name="opds_error_chapters_not_found">第 %1$d 页未找到任何章节，或图源无法访问。</string>
+    <string name="opds_chapter_title_fallback">第 %1$s 章</string>
+    <string name="opds_chapter_title_oneshot">单篇</string>
 </resources>

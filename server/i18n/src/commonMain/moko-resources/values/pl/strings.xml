@@ -76,4 +76,6 @@
     <string name="opds_facet_filter_all">Wszystkie</string>
     <string name="opds_facet_filter_downloaded">Pobrane</string>
     <string name="opds_facet_filter_ongoing">Trwające</string>
+    <string name="opds_error_chapters_not_found">Nie znaleziono rozdziałów lub źródło jest nieosiągalne na stronie %1$d.</string>
+    <string name="opds_chapter_title_fallback">Rozdział %1$s</string>
 </resources>

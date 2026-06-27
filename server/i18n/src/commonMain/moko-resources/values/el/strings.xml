@@ -122,4 +122,6 @@
     <string name="login_label_login">Σύνδεση</string>
     <string name="login_placeholder_username">Πληκτρολόγησε όνομα χρήστη...</string>
     <string name="login_placeholder_password">Μυστικό...</string>
+    <string name="opds_error_chapters_not_found">Δεν βρέθηκαν κεφάλαια ή η πηγή είναι μη διαθέσιμη στη σελίδα %1$d.</string>
+    <string name="opds_chapter_title_fallback">Κεφάλαιο %1$s</string>
 </resources>

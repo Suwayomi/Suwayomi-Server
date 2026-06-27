@@ -122,4 +122,7 @@
     <string name="login_label_login">Se connecter</string>
     <string name="login_placeholder_username">Tapez le nom d\'utilisateur…</string>
     <string name="login_placeholder_password">Secret…</string>
+    <string name="opds_error_chapters_not_found">Aucun chapitre trouvé ou la source est inaccessible à la page %1$d.</string>
+    <string name="opds_chapter_title_fallback">Chapitre %1$s</string>
+    <string name="opds_chapter_title_oneshot">One shot</string>
 </resources>

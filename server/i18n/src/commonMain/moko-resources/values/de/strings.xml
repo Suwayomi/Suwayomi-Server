@@ -8,7 +8,7 @@
     <string name="opds_feeds_root">Suwayomi OPDS Katalog</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Details</string>
     <string name="opds_feeds_sources_title">Alle Quellen</string>
-    <string name="opds_feeds_genres_title">Genres</string>
+    <string name="opds_feeds_genres_title">Genren</string>
     <string name="opds_feeds_genres_entry_content">Durchsuche Serien nach Genre</string>
     <string name="opds_feeds_status_entry_content">Durchsuche Serien nach Publikationsstatus</string>
     <string name="opds_feeds_languages_title">Sprachen</string>
@@ -122,4 +122,7 @@
     <string name="webview_label_login_required">Deine Konfiguration erfordert die Anmeldung. Bitte gib Benutzername und Passwort ein.</string>
     <string name="opds_linktitle_first_page">Erste Seite</string>
     <string name="opds_linktitle_last_page">Letzte Seite</string>
+    <string name="opds_error_chapters_not_found">Keine Kapitel gefunden oder die Quelle ist nicht erreichbar auf Seite %1$d.</string>
+    <string name="opds_chapter_title_fallback">Kapitel %1$s</string>
+    <string name="opds_chapter_title_oneshot">Oneshot</string>
 </resources>
