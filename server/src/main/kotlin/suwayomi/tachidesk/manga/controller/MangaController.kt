@@ -505,7 +505,6 @@ object MangaController {
             },
         )
 
-    /** get the text/HTML body of a novel chapter */
     val chapterTextRetrieve =
         handler(
             pathParam<Int>("mangaId"),

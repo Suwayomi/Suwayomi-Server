@@ -22,10 +22,6 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Text-based (novel) chapter content. The image pipeline ([Page]) does not apply: a novel chapter
- * is a single page whose body is HTML/text returned by [eu.kanade.tachiyomi.source.Source.fetchPageText].
- */
 object Novel {
     private val logger = KotlinLogging.logger {}
 
@@ -39,16 +35,11 @@ object Novel {
         return source.isNovelSource.also { isNovelCache[sourceId] = it }
     }
 
-    /** Source ids whose catalogue source serves novels. Used to keep novels out of manga queries. */
     fun novelSourceIds(): Set<Long> {
         val ids = transaction { SourceTable.selectAll().map { it[SourceTable.id].value } }
         return ids.filterTo(mutableSetOf()) { isNovelSource(it) }
     }
 
-    /**
-     * Returns the HTML/text body of a novel chapter. Reads the downloaded file when present,
-     * otherwise fetches live from the source.
-     */
     suspend fun getChapterText(
         mangaId: Int,
         chapterIndex: Int,
@@ -88,10 +79,7 @@ object Novel {
         return source.fetchPageText(Page(0, chapterUrl))
     }
 
-    /**
-     * Fetches and writes the novel chapter body to the download folder. Returns true on success.
-     * Marking [ChapterTable.isDownloaded] is handled by the caller (the downloader).
-     */
+    /** Fetches and writes the novel chapter body to the download folder. Returns true on success. */
     suspend fun downloadChapterText(
         mangaId: Int,
         chapterId: Int,

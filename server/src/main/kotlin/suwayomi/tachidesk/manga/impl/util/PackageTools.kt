@@ -45,7 +45,7 @@ object PackageTools {
     const val METADATA_EXTENSION_LIB = "tachiyomix.extensionLib"
     const val METADATA_CONTENT_WARNING = "tachiyomix.contentWarning"
 
-    // Tsundoku novel (text-based) extensions declare a parallel feature/metadata namespace.
+    // Tsundoku novel namespace
     const val NOVEL_EXTENSION_FEATURE = "tachiyomi.novelextension"
     const val NOVEL_METADATA_SOURCE_CLASS = "tachiyomi.novelextension.class"
     const val NOVEL_METADATA_NSFW = "tachiyomi.novelextension.nsfw"
