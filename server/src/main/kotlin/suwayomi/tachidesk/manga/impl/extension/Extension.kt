@@ -371,7 +371,7 @@ object Extension {
 
                 SourceTable.deleteWhere { SourceTable.extension eq extensionId }
 
-                if (extensionRecord[ExtensionTable.isObsolete]) {
+                if (extensionRecord[ExtensionTable.isObsolete] || extensionRecord[ExtensionTable.apkUrl] == null) {
                     ExtensionTable.deleteWhere { ExtensionTable.pkgName eq pkgName }
                 } else {
                     ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
