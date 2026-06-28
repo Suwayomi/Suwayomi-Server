@@ -14,7 +14,7 @@ import org.koin.core.context.stopKoin
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.server.applicationSetup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.test.BASE_PATH
@@ -51,7 +51,7 @@ class CloudFlareTest {
                 Source
                     .getSourceList()
                     .firstNotNullOf { it.id.toLong().takeIf { it == 3122156392225024195L } }
-                    .let(GetCatalogueSource::getCatalogueSourceOrNull) as HttpSource
+                    .let(GetSource::getSourceOrNull) as HttpSource
         }
         setLoggingEnabled(true)
     }

@@ -26,9 +26,9 @@ import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Source.preferenceScreenMap
 import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.unregisterSource
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -43,7 +43,7 @@ object Source {
     fun getSourceList(): List<SourceDataClass> {
         return transaction {
             SourceTable.selectAll().mapNotNull {
-                val catalogueSource = getCatalogueSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
+                val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
                 val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
@@ -64,7 +64,7 @@ object Source {
     fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
         return transaction {
             val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
-            val catalogueSource = getCatalogueSourceOrNull(sourceId) ?: return@transaction null
+            val catalogueSource = getSourceOrNull(sourceId) ?: return@transaction null
             val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
@@ -107,7 +107,7 @@ object Source {
         }
 
     fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
 
         if (source is ConfigurableSource) {
             val sourceShardPreferences = source.sourcePreferences()
@@ -157,7 +157,7 @@ object Source {
         pref.callChangeListener(newValue)
 
         // must reload the source because a preference was changed
-        unregisterCatalogueSource(sourceId)
+        unregisterSource(sourceId)
     }
 
     fun getSourcesMetaMaps(ids: List<Long>): Map<Long, Map<String, String>> =

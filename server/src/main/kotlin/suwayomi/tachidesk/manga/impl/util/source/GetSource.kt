@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga.impl.util.source
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
@@ -22,14 +21,14 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.ConcurrentHashMap
 
-object GetCatalogueSource {
+object GetSource {
     private val logger = KotlinLogging.logger { }
 
-    private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>()
+    private val sourceCache = ConcurrentHashMap<Long, Source>()
     private val applicationDirs: ApplicationDirs by injectLazy()
 
-    private fun getCatalogueSource(sourceId: Long): CatalogueSource? {
-        val cachedResult: CatalogueSource? = sourceCache[sourceId]
+    private fun getSource(sourceId: Long): Source? {
+        val cachedResult: Source? = sourceCache[sourceId]
         if (cachedResult != null) {
             return cachedResult
         }
@@ -62,25 +61,25 @@ object GetCatalogueSource {
         return sourceCache[sourceId]!!
     }
 
-    fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? =
+    fun getSourceOrNull(sourceId: Long): Source? =
         try {
-            getCatalogueSource(sourceId)
+            getSource(sourceId)
         } catch (e: Exception) {
             logger.warn(e) { "getCatalogueSource($sourceId) failed" }
             null
         }
 
-    fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource = getCatalogueSourceOrNull(sourceId) ?: StubSource(sourceId)
+    fun getSourceOrStub(sourceId: Long): Source = getSourceOrNull(sourceId) ?: StubSource(sourceId)
 
-    fun registerCatalogueSource(sourcePair: Pair<Long, CatalogueSource>) {
+    fun registerSource(sourcePair: Pair<Long, Source>) {
         sourceCache += sourcePair
     }
 
-    fun unregisterCatalogueSource(sourceId: Long) {
+    fun unregisterSource(sourceId: Long) {
         sourceCache.remove(sourceId)
     }
 
-    fun unregisterAllCatalogueSources() {
+    fun unregisterAllSources() {
         (sourceCache - 0L).forEach { (id, _) ->
             sourceCache.remove(id)
         }

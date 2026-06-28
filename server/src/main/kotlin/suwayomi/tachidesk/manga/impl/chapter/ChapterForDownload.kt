@@ -23,7 +23,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -77,7 +77,7 @@ suspend fun refreshChapterPageList(
     return mutex.withLock {
         val chapterEntry = existingChapterEntry ?: transaction { ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first() }
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
-        val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
+        val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
         val pageList =
             source

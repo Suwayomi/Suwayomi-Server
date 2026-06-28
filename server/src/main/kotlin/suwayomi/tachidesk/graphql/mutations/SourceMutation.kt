@@ -28,7 +28,7 @@ import suwayomi.tachidesk.graphql.types.preferenceOf
 import suwayomi.tachidesk.graphql.types.updateFilterList
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.Source
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -256,7 +256,7 @@ class SourceMutation {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
-            val source = GetCatalogueSource.getCatalogueSourceOrNull(sourceId)!!
+            val source = GetSource.getSourceOrNull(sourceId)!!
             val mangasPage =
                 when (type) {
                     FetchSourceMangaType.SEARCH -> {

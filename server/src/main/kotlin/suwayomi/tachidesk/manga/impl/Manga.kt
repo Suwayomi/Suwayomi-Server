@@ -11,7 +11,7 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
-import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
@@ -41,8 +41,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
 import suwayomi.tachidesk.manga.impl.util.network.await
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
@@ -91,7 +91,7 @@ object Manga {
 
     suspend fun fetchMangaAndChapters(
         mangaEntry: ResultRow,
-        source: CatalogueSource,
+        source: Source,
         fetchDetails: Boolean,
         fetchChapters: Boolean,
     ): SMangaUpdate {
@@ -139,7 +139,7 @@ object Manga {
         return mangaInfoMutex.get(mangaId) { Mutex() }.withLock {
             val mangaEntry =
                 transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
-            val source = getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference]) ?: return null
+            val source = getSourceOrNull(mangaEntry[MangaTable.sourceReference]) ?: return null
             val sManga =
                 fetchMangaAndChapters(
                     mangaEntry,
@@ -161,7 +161,7 @@ object Manga {
             var mangaEntry =
                 transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
             val source =
-                getCatalogueSourceOrNull(mangaEntry[MangaTable.sourceReference])
+                getSourceOrNull(mangaEntry[MangaTable.sourceReference])
                     ?: throw NullPointerException("Missing source ${mangaEntry[MangaTable.sourceReference]}")
             val mangaUpdate =
                 fetchMangaAndChapters(
@@ -186,7 +186,7 @@ object Manga {
 
     fun updateMangaDatabase(
         mangaEntry: ResultRow,
-        source: CatalogueSource,
+        source: Source,
         sManga: SManga,
     ): SManga {
         transaction {
@@ -412,7 +412,7 @@ object Manga {
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
-        return when (val source = getCatalogueSourceOrStub(sourceId)) {
+        return when (val source = getSourceOrStub(sourceId)) {
             is HttpSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
                     fetchHttpSourceMangaThumbnail(source, mangaEntry)

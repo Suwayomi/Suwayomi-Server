@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.onEach
 import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
@@ -62,7 +62,7 @@ class NetworkHelper(
         userAgent
             .drop(1)
             .onEach {
-                GetCatalogueSource.unregisterAllCatalogueSources() // need to reset the headers
+                GetSource.unregisterAllSources() // need to reset the headers
             }.launchIn(GlobalScope)
     }
 
