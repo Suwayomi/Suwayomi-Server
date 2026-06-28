@@ -155,11 +155,13 @@ object Extension {
 
             var contentWarning = packageInfo.applicationInfo.metaData.getInt(METADATA_CONTENT_WARNING)
             if (contentWarning == 0) {
-                contentWarning = packageInfo.applicationInfo.metaData.getString(METADATA_CONTENT_WARNING)
+                contentWarning = packageInfo.applicationInfo.metaData
+                    .getString(METADATA_CONTENT_WARNING)
                     ?.toIntOrNull()
                     ?: 0
                 if (contentWarning == 0) {
-                    contentWarning = packageInfo.applicationInfo.metaData.getString(METADATA_NSFW)
+                    contentWarning = packageInfo.applicationInfo.metaData
+                        .getString(METADATA_NSFW)
                         ?.toIntOrNull()
                         ?: 0
                 }
