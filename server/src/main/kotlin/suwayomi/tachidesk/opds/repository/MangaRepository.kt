@@ -22,7 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -231,7 +231,7 @@ object MangaRepository {
         pageNum: Int,
         sort: String,
     ): Pair<List<OpdsMangaAcqEntry>, Boolean> {
-        val source = GetCatalogueSource.getCatalogueSourceOrStub(sourceId)
+        val source = GetSource.getSourceOrStub(sourceId)
         val mangasPage: MangasPage =
             if (sort == "latest" && source.supportsLatest) {
                 source.getLatestUpdates(pageNum)

@@ -7,14 +7,14 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
 import kotlinx.serialization.Serializable
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import uy.kohesive.injekt.injectLazy
 
@@ -24,7 +24,7 @@ object Search {
         searchTerm: String,
         pageNum: Int,
     ): PagedMangaListDataClass {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val searchManga = source.getSearchManga(pageNum, searchTerm, getFilterListOf(source))
         return searchManga.processEntries(sourceId)
     }
@@ -34,7 +34,7 @@ object Search {
         pageNum: Int,
         filter: FilterData,
     ): PagedMangaListDataClass {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
         val searchManga = source.getSearchManga(pageNum, filter.searchTerm ?: "", filterList)
         return searchManga.processEntries(sourceId)
@@ -43,7 +43,7 @@ object Search {
     private val filterListCache = mutableMapOf<Long, FilterList>()
 
     private fun getFilterListOf(
-        source: CatalogueSource,
+        source: Source,
         reset: Boolean = false,
     ): FilterList {
         if (reset || !filterListCache.containsKey(source.id)) {
@@ -56,7 +56,7 @@ object Search {
         sourceId: Long,
         reset: Boolean,
     ): List<FilterObject> {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
 
         return getFilterListOf(source, reset).list.map {
             FilterObject(
@@ -111,7 +111,7 @@ object Search {
         sourceId: Long,
         changes: List<FilterChange>,
     ) {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val filterList = getFilterListOf(source, false)
         updateFilterList(filterList, changes)
     }
@@ -169,7 +169,7 @@ object Search {
         sourceId: Long,
         changes: List<FilterChange>,
     ): FilterList {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val filterList = source.getFilterList()
         return updateFilterList(filterList, changes)
     }

@@ -11,7 +11,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -37,7 +37,7 @@ private fun getMangaDir(
 private fun getMangaDir(mangaId: Int): String =
     transaction {
         val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
-        val source = GetCatalogueSource.getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
+        val source = GetSource.getSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
         getMangaDir(mangaEntry[MangaTable.title], source.toString())
     }

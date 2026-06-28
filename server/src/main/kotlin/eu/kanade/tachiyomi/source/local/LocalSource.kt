@@ -44,7 +44,7 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.registerSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -497,7 +497,7 @@ class LocalSource(
             }
 
             val fs = LocalSourceFileSystem(applicationDirs)
-            registerCatalogueSource(ID to LocalSource(fs, LocalCoverManager(fs)))
+            registerSource(ID to LocalSource(fs, LocalCoverManager(fs)))
         }
     }
 }

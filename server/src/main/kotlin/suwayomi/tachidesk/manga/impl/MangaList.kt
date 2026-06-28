@@ -19,7 +19,7 @@ import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -36,7 +36,7 @@ object MangaList {
         require(pageNum > 0) {
             "pageNum = $pageNum is not in valid range"
         }
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val mangasPage =
             if (popular) {
                 source.getPopularManga(pageNum)

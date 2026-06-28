@@ -10,7 +10,6 @@ package suwayomi.tachidesk.manga.impl.extension
 import android.net.Uri
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
-import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.local.LocalSource
@@ -41,7 +40,7 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.network.await
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
@@ -182,12 +181,12 @@ object Extension {
             try {
                 // collect sources from the extension
                 val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
-                val sources: List<CatalogueSource> =
+                val sources: List<Source> =
                     when (extensionMainClassInstance) {
                         is Source -> listOf(extensionMainClassInstance)
                         is SourceFactory -> extensionMainClassInstance.createSources()
                         else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
-                    }.map { it as CatalogueSource }
+                    }
 
                 val langs = sources.map { it.lang }.toSet()
                 val extensionLang =
@@ -398,7 +397,7 @@ object Extension {
             PackageTools.jarLoaderMap.remove(jarPath)?.close()
 
             // clear all loaded sources
-            sources.forEach { GetCatalogueSource.unregisterCatalogueSource(it) }
+            sources.forEach { GetSource.unregisterSource(it) }
 
             File(jarPath).delete()
         }

@@ -7,7 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
@@ -38,7 +38,7 @@ import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
@@ -119,7 +119,7 @@ object Chapter {
                     transaction {
                         MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
                     }
-                val source = getCatalogueSourceOrStub(mangaEntry[MangaTable.sourceReference])
+                val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
                 val chapters =
                     Manga
@@ -139,7 +139,7 @@ object Chapter {
     fun updateChapterListDatabase(
         mangaEntry: ResultRow,
         chapters: List<SChapter>,
-        source: CatalogueSource,
+        source: Source,
     ): List<SChapter> {
         val currentLatestChapterNumber = Manga.getLatestChapter(mangaEntry[MangaTable.id].value)?.chapterNumber ?: 0f
         val numberOfCurrentChapters = getCountOfMangaChapters(mangaEntry[MangaTable.id].value)

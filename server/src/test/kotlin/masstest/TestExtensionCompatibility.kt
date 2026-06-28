@@ -28,7 +28,7 @@ import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.updateExtension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
@@ -82,7 +82,7 @@ class TestExtensionCompatibility {
                     .filter {
                         // filter local source
                         it.id.toLong() != 0L
-                    }.map { getCatalogueSourceOrNull(it.id.toLong())!! as HttpSource }
+                    }.map { getSourceOrNull(it.id.toLong())!! as HttpSource }
         }
         setLoggingEnabled(true)
         File("$BASE_PATH/sources.txt").writeText(sources.joinToString("\n") { "${it.name} - ${it.lang.uppercase()} - ${it.id}" })
