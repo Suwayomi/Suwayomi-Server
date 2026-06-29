@@ -115,6 +115,7 @@ object BackupMangaHandler {
                                     sourceOrder = chapters.size - it[ChapterTable.sourceOrder],
                                     lastModifiedAt = it[ChapterTable.lastModifiedAt],
                                     version = it[ChapterTable.version],
+                                    memo = it[ChapterTable.memo].encodeToByteArray(),
                                 ).apply {
                                     if (flags.includeClientData) {
                                         this.meta = chapterToMeta[it[ChapterTable.id].value] ?: emptyMap()
