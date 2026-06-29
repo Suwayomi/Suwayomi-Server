@@ -238,6 +238,7 @@ object Manga {
                 it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
 
                 it[MangaTable.updateStrategy] = sManga.update_strategy.name
+                it[MangaTable.memo] = Json.encodeToString(sManga.memo)
             }
         }
 
