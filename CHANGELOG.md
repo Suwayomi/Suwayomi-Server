@@ -25,8 +25,10 @@ This allows you to sync your server manga with other Mihon-based forks! As long 
 #### Support Extension API v1.6
 This update allows Suwayomi to load and use v1.6 extensions, it is a minor improvement over the existing 1.4 extension API that cleans up much of what we had! It is the basis of future extension APIs that will allow for further development.
 
+This also allows us to move to Mihon's Extension Store system and replace our Extension Repo system. Old Extension Repos are still compatible and will be automatically migrated if they move to the Extension Store system.
+
 > [!WARNING]
-> Please back up your extension repos, because of the new extension stores system you may lose them in the update process and may need to re-add them.
+> Please back up your Extension Repos, because of the new Extension Stores system you may lose them in the update process and may need to re-add them.
 
 ### Added
 - (**Sync**) Added [SyncYomi](https://github.com/syncyomi/syncyomi) support
