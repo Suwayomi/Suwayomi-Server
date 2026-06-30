@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Sync**) Added [SyncYomi](https://github.com/syncyomi/syncyomi) support
 - (**OPDS**) Add option to skip chapter metadata feed providing direct stream/download links
 - (**Extension/API**) Support Extensions API v1.6
+- (**Tracker/API**) Add mutation to bind existing track record
 
 ### Changed
 - (**Database/H2**) Use the latest H2 database engine
