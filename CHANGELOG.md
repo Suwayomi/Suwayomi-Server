@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension/API**) Fix GQL handling of extensions without an extension store
 - (**Build/Bundler**) Fix build continuing if errors happen
 - (**Build/Bundler**) Remove jogamp from build script
+- (**Build/Bundler**) Fix chmod attempts on Windows Java
 
 ## [v2.3.2223] + [WebUI: v20260509.01] - 2026-06-30
 
