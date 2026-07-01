@@ -161,8 +161,10 @@ download_electron() {
 
 setup_jre() {
   if [ -d "jre" ]; then
-    chmod +x ./jre/bin/java || error $LINENO "Failed to set java executable permission" 1
-    chmod +x ./jre/lib/jspawnhelper || error $LINENO "Failed to set jspawnhelper executable permission" 1
+    if [ ! -f "./jre/bin/java.exe" ]; then
+      chmod +x ./jre/bin/java || error $LINENO "Failed to set java executable permission" 1
+      chmod +x ./jre/lib/jspawnhelper || error $LINENO "Failed to set jspawnhelper executable permission" 1
+    fi
     mv "jre" "$RELEASE_NAME/jre" || error $LINENO "Failed to move jre" 1
   else
     if [ ! -f "$JRE" ]; then
@@ -176,6 +178,11 @@ setup_jre() {
       tar xvf "$JRE" || error $LINENO "Failed to extract JRE tar" 1
     fi
     mv "$JRE_DIR" "$RELEASE_NAME/jre" || error $LINENO "Failed to move extracted JRE" 1
+
+    if [ ! -f "$RELEASE_NAME/jre/bin/java.exe" ]; then
+      chmod +x "$RELEASE_NAME/jre/bin/java" || error $LINENO "Failed to set java executable permission" 1
+      chmod +x "$RELEASE_NAME/jre/lib/jspawnhelper" || error $LINENO "Failed to set jspawnhelper executable permission" 1
+    fi
   fi
 }
 
