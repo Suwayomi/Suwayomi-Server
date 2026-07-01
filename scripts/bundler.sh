@@ -49,7 +49,6 @@ main() {
   case "$OS" in
     debian-all)
       RELEASE="$RELEASE_NAME.deb"
-      download_jogamp "linux-*" # it's easier to bundle them ourselves than to handle Debian's path conventions
       make_deb_package
       move_release_to_output_dir
       ;;
@@ -57,7 +56,6 @@ main() {
       JRE="$ZULU_RELEASE-ca-$JRE_RELEASE-linux_x64.zip"
       JRE_DIR="${JRE%.*}"
       JRE_URL="https://cdn.azul.com/zulu/bin/$JRE"
-      download_jogamp "linux-amd64"
       setup_jre
 
       RELEASE="$RELEASE_NAME.AppImage"
@@ -77,7 +75,6 @@ main() {
       ELECTRON="electron-$electron_version-linux-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
-      download_jogamp "linux-amd64"
       setup_jre
       tree "$RELEASE_NAME"
 
@@ -92,7 +89,6 @@ main() {
       ELECTRON="electron-$electron_version-darwin-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
-      download_jogamp "macosx-universal"
       setup_jre
       tree "$RELEASE_NAME"
 
@@ -107,7 +103,6 @@ main() {
       ELECTRON="electron-$electron_version-darwin-arm64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
-      download_jogamp "macosx-universal"
       setup_jre
       tree "$RELEASE_NAME"
 
@@ -122,7 +117,6 @@ main() {
       ELECTRON="electron-$electron_version-win32-x64.zip"
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
-      download_jogamp "windows-amd64"
       setup_jre
       tree "$RELEASE_NAME"
 
@@ -155,18 +149,6 @@ download_launcher() {
   fi
   curl -fL "$LAUNCHER_URL" -o "Suwayomi-Launcher.jar" || error $LINENO "Failed to download launcher JAR" 1
   mv "Suwayomi-Launcher.jar" "$RELEASE_NAME/Suwayomi-Launcher.jar" || error $LINENO "Failed to move launcher JAR" 1
-}
-
-download_jogamp() {
-  local platform="$1"
-  if [ ! -f jogamp-all-platforms.7z ]; then
-    curl -f "https://jogamp.org/deployment/jogamp-current/archive/jogamp-all-platforms.7z" -o jogamp-all-platforms.7z || error $LINENO "Failed to download jogamp archive" 1
-  fi
-
-  7z x jogamp-all-platforms.7z "jogamp-all-platforms/lib/$platform/" || error $LINENO "Failed to extract jogamp archive" 1
-  mkdir -p "$RELEASE_NAME/natives/"
-  mv jogamp-all-platforms/lib/* "$RELEASE_NAME/natives/" || error $LINENO "Failed to move natives" 1
-  rm -rf jogamp-all-platforms
 }
 
 download_electron() {
@@ -237,7 +219,6 @@ make_deb_package() {
   local upstream_source="suwayomi-server_$RELEASE_VERSION.orig.tar.gz"
 
   mkdir "$RELEASE_NAME/$source_dir/" || error $LINENO "Failed to create source directory" 1
-  mv "$RELEASE_NAME/natives" "$RELEASE_NAME/$source_dir/natives" || error $LINENO "Failed to move natives" 1
   mv "$RELEASE_NAME/Suwayomi-Launcher.jar" "$RELEASE_NAME/$source_dir/Suwayomi-Launcher.jar" || error $LINENO "Failed to move launcher jar" 1
   cp "$JAR" "$RELEASE_NAME/$source_dir/Suwayomi-Server.jar" || error $LINENO "Failed to copy server jar" 1
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
@@ -329,9 +310,6 @@ make_windows_package() {
   find "$RELEASE_NAME/electron" \
   | wixl-heat --var var.SourceDir -p "$RELEASE_NAME/" \
     --directory-ref electron --component-group electron >"$RELEASE_NAME/electron.wxs" || error $LINENO "Failed to heat electron" 1
-  find "$RELEASE_NAME/natives" \
-  | wixl-heat --var var.SourceDir -p "$RELEASE_NAME/" \
-    --directory-ref natives --component-group natives >"$RELEASE_NAME/natives.wxs" || error $LINENO "Failed to heat natives" 1
 
   find "$RELEASE_NAME/bin" \
   | wixl-heat --var var.SourceDir -p "$RELEASE_NAME/" \
@@ -342,7 +320,7 @@ make_windows_package() {
 
   wixl -D ProductVersion="$RELEASE_VERSION" -D SourceDir="$RELEASE_NAME" \
     -D Icon="$icon" --arch "$arch" "scripts/resources/msi/suwayomi-server-$arch.wxs" \
-    "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" "$RELEASE_NAME/natives.wxs" "$RELEASE_NAME/bin.wxs" -o "$RELEASE" || error $LINENO "Windows package build failed" 1
+    "$RELEASE_NAME/jre.wxs" "$RELEASE_NAME/electron.wxs" "$RELEASE_NAME/bin.wxs" -o "$RELEASE" || error $LINENO "Windows package build failed" 1
 }
 
 # Error handler
