@@ -40,6 +40,7 @@ This also allows us to move to Mihon's Extension Store system and replace our Ex
 
 ### Added
 - (**Sync**) Added [SyncYomi](https://github.com/syncyomi/syncyomi) support
+- (**Sync/SyncYomi**) Add trigger settings to start sync automatically on chapter read, chapter open, client start, and client resume
 - (**OPDS**) Add option to skip chapter metadata feed providing direct stream/download links
 - (**Extension/API**) Support Extensions API v1.6
 - (**Tracker/API**) Add mutation to bind existing track record
@@ -51,6 +52,7 @@ This also allows us to move to Mihon's Extension Store system and replace our Ex
 - (**Extension/Android**) Switch MessageQueue to LegacyMessageQueue from ConcurrentMessageQueue
 
 ### Fixed
+- (**Sync/SyncYomi**) Improve push log messages: clarify success outcome and 412 precondition-failed scenario with descriptive context
 - (**CloudFlareInterceptor**) Don't send the `cf_clearance` cookie back to Flaresolverr
 - (**WebUI**) Handle serving non-default webui with "bundled"
 - (**WebUI**) Wait until WebUI is ready to open in browser
