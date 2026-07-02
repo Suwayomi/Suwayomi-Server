@@ -132,6 +132,7 @@ object ExtensionsList {
                                     // Always update icon url and repo
                                     this[ExtensionTable.iconUrl] = foundExtension.iconUrl
                                     this[ExtensionTable.storeIndexUrl] = foundExtension.storeIndexUrl
+                                    this[ExtensionTable.apkUrl] = foundExtension.apkUrl
 
                                     // add these because batch updates need matching columns
                                     this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
