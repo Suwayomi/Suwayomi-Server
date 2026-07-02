@@ -336,6 +336,14 @@ abstract class HttpSource : CatalogueSource {
      * @param chapter the chapter whose page list has to be fetched.
      */
     @Suppress("DEPRECATION")
+    override suspend fun getPageList(chapter: SChapter): List<Page> {
+        if (isNovelSource) {
+            return listOf(Page(0, chapter.url))
+        }
+        return fetchPageList(chapter).awaitSingle()
+    }
+
+    @Suppress("DEPRECATION")
     @Deprecated("Use the suspend API instead", ReplaceWith("getPageList"))
     override fun fetchPageList(chapter: SChapter): Observable<List<Page>> =
         client
@@ -418,10 +426,14 @@ abstract class HttpSource : CatalogueSource {
     )
     protected open fun imageUrlParse(response: Response): String = throw UnsupportedOperationException()
 
-    suspend fun getImage(page: Page): Response =
-        client
+    suspend fun getImage(page: Page): Response {
+        if (isNovelSource) {
+            throw UnsupportedOperationException("Novel source has no images; use fetchPageText")
+        }
+        return client
             .newCachelessCallWithProgress(imageRequest(page), page)
             .awaitSuccess()
+    }
 
     /**
      * Returns the request for getting the source image. Override only if it's needed to override

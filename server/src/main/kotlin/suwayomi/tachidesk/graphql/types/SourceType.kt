@@ -52,6 +52,7 @@ class SourceType(
     val homeUrl: String?,
     @GraphQLDeprecated("", ReplaceWith("homeUrl"))
     val baseUrl: String?,
+    val isNovel: Boolean,
 ) : Node {
     constructor(row: ResultRow, sourceExtension: ResultRow, source: Source) : this(
         id = row[SourceTable.id].value,
@@ -65,6 +66,7 @@ class SourceType(
         displayName = source.toString(),
         homeUrl = runCatching { (source as? HttpSource)?.getHomeUrl() }.getOrNull(),
         baseUrl = runCatching { (source as? HttpSource)?.baseUrl }.getOrNull(),
+        isNovel = source.isNovelSource,
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =

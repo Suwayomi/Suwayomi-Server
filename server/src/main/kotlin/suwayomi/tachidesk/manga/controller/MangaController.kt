@@ -20,6 +20,7 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
+import suwayomi.tachidesk.manga.impl.Novel
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
@@ -500,6 +501,39 @@ object MangaController {
             },
             withResults = {
                 image(HttpStatus.OK)
+                httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    val chapterTextRetrieve =
+        handler(
+            pathParam<Int>("mangaId"),
+            pathParam<Int>("chapterIndex"),
+            queryParam<Boolean?>("updateProgress"),
+            documentWith = {
+                withOperation {
+                    summary("Get a novel chapter's text")
+                    description("Get the HTML/text body of a novel chapter. Only valid for novel sources.")
+                }
+            },
+            behaviorOf = { ctx, mangaId, chapterIndex, updateProgress ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+
+                ctx.future {
+                    future {
+                        Novel.getChapterText(mangaId = mangaId, chapterIndex = chapterIndex)
+                    }.thenApply { text ->
+                        ctx.header("content-type", "text/html; charset=utf-8")
+                        ctx.result(text)
+
+                        if (updateProgress == true) {
+                            Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = 0)
+                        }
+                    }
+                }
+            },
+            withResults = {
+                httpCode(HttpStatus.OK)
                 httpCode(HttpStatus.NOT_FOUND)
             },
         )

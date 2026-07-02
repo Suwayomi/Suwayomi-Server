@@ -45,6 +45,11 @@ object PackageTools {
     const val METADATA_EXTENSION_LIB = "tachiyomix.extensionLib"
     const val METADATA_CONTENT_WARNING = "tachiyomix.contentWarning"
 
+    // Tsundoku novel namespace
+    const val NOVEL_EXTENSION_FEATURE = "tachiyomi.novelextension"
+    const val NOVEL_METADATA_SOURCE_CLASS = "tachiyomi.novelextension.class"
+    const val NOVEL_METADATA_NSFW = "tachiyomi.novelextension.nsfw"
+
     const val LIB_VERSION_MIN = 1.3
     const val LIB_VERSION_MAX = 1.6
 
