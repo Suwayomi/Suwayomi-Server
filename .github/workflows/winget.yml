@@ -1,19 +1,52 @@
 name: Publish to WinGet
+
 on:
   workflow_dispatch:
     inputs:
       version:
         description: Version
         required: false
+        type: string
+  release:
+    types: [published]
 
 jobs:
   publish:
     runs-on: windows-latest # action can only be run on windows
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="$(gh release view --json tagName -q .tagName)"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Sync winget-pkgs fork with upstream
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_PUBLISH_PAT }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/Suwayomi/winget-pkgs/merge-upstream" \
+            -f branch=master
+
       - uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: Suwayomi.Suwayomi-Server
           installers-regex: '.*x64.msi$'
           token: ${{ secrets.WINGET_PUBLISH_PAT }}
-          version: ${{ inputs.version || github.ref_name }}
-          release-tag: ${{ inputs.version || github.ref_name  }}
+          version: ${{ steps.version.outputs.version }}
+          release-tag: ${{ steps.version.outputs.version }}
