@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -165,7 +166,7 @@ object Chapter {
                 genre = mangaEntry[MangaTable.genre]
                 status = mangaEntry[MangaTable.status]
                 update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
-                memo = Json.decodeFromString(mangaEntry[MangaTable.memo])
+                memo = mangaEntry[MangaTable.memo]
                 initialized = mangaEntry[MangaTable.initialized]
             }
         uniqueChapters.forEach { chapter ->
@@ -280,7 +281,7 @@ object Chapter {
                         this[ChapterTable.fetchedAt] = chapter.fetchedAt
                         this[ChapterTable.manga] = chapter.mangaId
                         this[ChapterTable.realUrl] = chapter.realUrl
-                        this[ChapterTable.memo] = Json.encodeToString(chapter.memo)
+                        this[ChapterTable.memo] = chapter.memo
                         this[ChapterTable.isRead] = false
                         this[ChapterTable.isBookmarked] = false
                         this[ChapterTable.isDownloaded] = false
@@ -331,7 +332,7 @@ object Chapter {
                             this[ChapterTable.realUrl] = it.realUrl
                             this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
                             this[ChapterTable.version] = it.version
-                            this[ChapterTable.memo] = Json.encodeToString(it.memo)
+                            this[ChapterTable.memo] = it.memo
                             this[ChapterTable.isDownloaded] = currentChapter.downloaded
                             this[ChapterTable.pageCount] = currentChapter.pageCount
 

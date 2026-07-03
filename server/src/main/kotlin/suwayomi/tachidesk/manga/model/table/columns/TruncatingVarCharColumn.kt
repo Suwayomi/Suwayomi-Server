@@ -2,7 +2,9 @@ package suwayomi.tachidesk.manga.model.table.columns
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.ColumnType
 import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.TextColumnType
 import org.jetbrains.exposed.v1.core.VarCharColumnType
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.serverConfig
@@ -40,8 +42,10 @@ fun Table.truncatingVarchar(
 fun Table.unlimitedVarchar(
     name: String,
     collate: String? = null,
-): Column<String> =
+): Column<String> = registerColumn(name, unlimitedVarcharType(collate))
+
+fun unlimitedVarcharType(collate: String? = null): ColumnType<String> =
     when (serverConfig.databaseType.value) {
-        DatabaseType.H2 -> truncatingVarchar(name, Int.MAX_VALUE, collate)
-        DatabaseType.POSTGRESQL -> text(name, collate)
+        DatabaseType.H2 -> VarCharColumnType(Int.MAX_VALUE, collate)
+        DatabaseType.POSTGRESQL -> TextColumnType(collate)
     }
