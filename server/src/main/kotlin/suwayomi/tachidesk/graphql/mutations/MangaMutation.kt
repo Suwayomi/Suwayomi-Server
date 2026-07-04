@@ -188,16 +188,17 @@ class MangaMutation {
         val (clientMutationId, id, fetchManga, fetchChapters) = input
 
         return future {
-            val error = try {
-                Manga.updateMangaAndChapters(
-                    mangaId = id,
-                    updateManga = fetchManga,
-                    updateChapters = fetchChapters,
-                )
-                null
-            } catch (e: Exception) {
-                e
-            }
+            val error =
+                try {
+                    Manga.updateMangaAndChapters(
+                        mangaId = id,
+                        updateManga = fetchManga,
+                        updateChapters = fetchChapters,
+                    )
+                    null
+                } catch (e: Exception) {
+                    e
+                }
 
             val (manga, chapters) =
                 transaction {
@@ -211,21 +212,19 @@ class MangaMutation {
                     )
                 }
             @Suppress("UNCHECKED_CAST")
-            DataFetcherResult.newResult<FetchMangaAndChaptersPayload>()
+            DataFetcherResult
+                .newResult<FetchMangaAndChaptersPayload>()
                 .data(
                     FetchMangaAndChaptersPayload(
                         clientMutationId = clientMutationId,
                         manga = MangaType(manga),
                         chapters = chapters,
-                    )
-                )
-                .also {
+                    ),
+                ).also {
                     if (error != null) {
                         it.error(error.toGraphQLError())
                     }
-                }
-                .build() as DataFetcherResult<FetchMangaAndChaptersPayload?>?
-
+                }.build() as DataFetcherResult<FetchMangaAndChaptersPayload?>?
         }
     }
 
