@@ -3,6 +3,8 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.server.extensions.toGraphQLError
+import graphql.execution.DataFetcherResult
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -181,15 +183,21 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun fetchMangaAndChapters(input: FetchMangaAndChaptersInput): CompletableFuture<FetchMangaAndChaptersPayload?> {
+    fun fetchMangaAndChapters(input: FetchMangaAndChaptersInput): CompletableFuture<DataFetcherResult<FetchMangaAndChaptersPayload?>> {
         val (clientMutationId, id, fetchManga, fetchChapters) = input
 
         return future {
-            Manga.updateMangaAndChapters(
-                mangaId = id,
-                updateManga = fetchManga,
-                updateChapters = fetchChapters,
-            )
+            val error =
+                try {
+                    Manga.updateMangaAndChapters(
+                        mangaId = id,
+                        updateManga = fetchManga,
+                        updateChapters = fetchChapters,
+                    )
+                    null
+                } catch (e: Exception) {
+                    e
+                }
 
             val (manga, chapters) =
                 transaction {
@@ -202,11 +210,20 @@ class MangaMutation {
                             .map { ChapterType(it) },
                     )
                 }
-            FetchMangaAndChaptersPayload(
-                clientMutationId = clientMutationId,
-                manga = MangaType(manga),
-                chapters = chapters,
-            )
+            @Suppress("UNCHECKED_CAST")
+            DataFetcherResult
+                .newResult<FetchMangaAndChaptersPayload>()
+                .data(
+                    FetchMangaAndChaptersPayload(
+                        clientMutationId = clientMutationId,
+                        manga = MangaType(manga),
+                        chapters = chapters,
+                    ),
+                ).also {
+                    if (error != null) {
+                        it.error(error.toGraphQLError())
+                    }
+                }.build() as DataFetcherResult<FetchMangaAndChaptersPayload?>
         }
     }
 

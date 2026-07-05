@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - .
 
 ### Changed
-- .
+- (**Manga/API**) Return partial responses for Manga And Chapters query
 
 ### Fixed
 - .
