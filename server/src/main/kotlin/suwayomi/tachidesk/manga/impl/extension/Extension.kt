@@ -166,8 +166,10 @@ object Extension {
                 }
             }
 
-            val sourceClass = packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)!!
-                .trim()
+            val sourceClass =
+                packageInfo.applicationInfo.metaData
+                    .getString(METADATA_SOURCE_CLASS)!!
+                    .trim()
 
             val className =
                 if (sourceClass.startsWith(".")) {
