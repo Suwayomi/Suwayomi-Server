@@ -26,6 +26,17 @@ interface Source {
         get() = ""
 
     /**
+     * Whether this source provides novel content.
+     */
+    val isNovelSource: Boolean
+        get() = false
+
+    /**
+     * Fetches the text content for a novel page.
+     */
+    suspend fun fetchPageText(page: Page): String = throw UnsupportedOperationException("Not a novel source")
+
+    /**
      * Whether the source has support for latest updates.
      */
     val supportsLatest: Boolean

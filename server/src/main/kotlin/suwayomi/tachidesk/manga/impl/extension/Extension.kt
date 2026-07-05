@@ -36,6 +36,9 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_EXTENSION_LIB
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_NAME
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_NSFW
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_SOURCE_CLASS
+import suwayomi.tachidesk.manga.impl.util.PackageTools.NOVEL_EXTENSION_FEATURE
+import suwayomi.tachidesk.manga.impl.util.PackageTools.NOVEL_METADATA_NSFW
+import suwayomi.tachidesk.manga.impl.util.PackageTools.NOVEL_METADATA_SOURCE_CLASS
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
@@ -130,7 +133,9 @@ object Extension {
         }
 
         if (!isInstalled || forceReinstall) {
-            if (!packageInfo.reqFeatures.orEmpty().any { it.name == EXTENSION_FEATURE }) {
+            val features = packageInfo.reqFeatures.orEmpty().mapNotNull { it.name }
+            val isNovelExtension = NOVEL_EXTENSION_FEATURE in features
+            if (EXTENSION_FEATURE !in features && !isNovelExtension) {
                 throw Exception("This apk is not a Tachiyomi extension")
             }
 
@@ -152,6 +157,9 @@ object Extension {
 //                throw Exception("This apk is not a signed with the official tachiyomi signature")
 //            }
 
+            val nsfwKey = if (isNovelExtension) NOVEL_METADATA_NSFW else METADATA_NSFW
+            val classKey = if (isNovelExtension) NOVEL_METADATA_SOURCE_CLASS else METADATA_SOURCE_CLASS
+
             var contentWarning = packageInfo.applicationInfo.metaData.getInt(METADATA_CONTENT_WARNING)
             if (contentWarning == 0) {
                 contentWarning = packageInfo.applicationInfo.metaData
@@ -160,14 +168,14 @@ object Extension {
                     ?: 0
                 if (contentWarning == 0) {
                     contentWarning = packageInfo.applicationInfo.metaData
-                        .getString(METADATA_NSFW)
+                        .getString(nsfwKey)
                         ?.toIntOrNull()
                         ?: 0
                 }
             }
 
             val className =
-                packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
+                packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(classKey)
 
             logger.debug { "Main class for extension is $className" }
 

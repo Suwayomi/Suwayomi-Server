@@ -71,6 +71,8 @@ object GetSource {
 
     fun getSourceOrStub(sourceId: Long): Source = getSourceOrNull(sourceId) ?: StubSource(sourceId)
 
+    fun hasNovelSource(): Boolean = sourceCache.values.any { it.isNovelSource }
+
     fun registerSource(sourcePair: Pair<Long, Source>) {
         sourceCache += sourcePair
     }
