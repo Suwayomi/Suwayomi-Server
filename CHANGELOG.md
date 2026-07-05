@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Manga/API**) Return partial responses for Manga And Chapters query
 
 ### Fixed
-- .
+- (**Database/H2**) Use temporary file for H2 migration tools download
 
 ## [v2.3.2232] - 2026-07-03
 

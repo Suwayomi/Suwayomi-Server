@@ -130,9 +130,12 @@ object H2Migration {
                     )
                 }
 
-                output.outputStream().use { out ->
+                val tmp = output.resolveSibling(output.name + ".tmp")
+                tmp.outputStream().use { out ->
                     response.body.byteStream().copyTo(out)
                 }
+                tmp.copyTo(output)
+                tmp.deleteExisting()
             }
 
         logger.info { "Saved: ${output.absolutePathString()}" }
