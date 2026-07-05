@@ -223,7 +223,7 @@ class MangaMutation {
                     if (error != null) {
                         it.error(error.toGraphQLError())
                     }
-                }.build() as DataFetcherResult<FetchMangaAndChaptersPayload?>?
+                }.build() as DataFetcherResult<FetchMangaAndChaptersPayload?>
         }
     }
 
