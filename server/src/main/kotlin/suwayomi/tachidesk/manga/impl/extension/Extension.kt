@@ -166,8 +166,15 @@ object Extension {
                 }
             }
 
+            val sourceClass = packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)!!
+                .trim()
+
             val className =
-                packageInfo.packageName + packageInfo.applicationInfo.metaData.getString(METADATA_SOURCE_CLASS)
+                if (sourceClass.startsWith(".")) {
+                    packageInfo.packageName + sourceClass
+                } else {
+                    sourceClass
+                }
 
             logger.debug { "Main class for extension is $className" }
 
