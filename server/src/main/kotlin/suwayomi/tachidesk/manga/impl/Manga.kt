@@ -198,7 +198,13 @@ object Manga {
                         ""
                     }
                 if (remoteTitle.isNotEmpty() && remoteTitle != mangaEntry[MangaTable.title]) {
-                    val canUpdateTitle = updateMangaDownloadDir(mangaEntry[MangaTable.title], source.toString(), remoteTitle)
+                    val canUpdateTitle =
+                        updateMangaDownloadDir(
+                            mangaEntry[MangaTable.id].value,
+                            mangaEntry[MangaTable.title],
+                            source.toString(),
+                            remoteTitle,
+                        )
 
                     if (canUpdateTitle) {
                         it[MangaTable.title] = remoteTitle

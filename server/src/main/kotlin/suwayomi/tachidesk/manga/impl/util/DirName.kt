@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -19,10 +20,68 @@ import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.util.SafePath
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantReadWriteLock
 
 private val applicationDirs: ApplicationDirs by injectLazy()
 
 private val logger = KotlinLogging.logger { }
+
+private object UpdateLockManager {
+    private val lockByManga = ConcurrentHashMap<Int, CountedLock>()
+
+    private data class CountedLock(
+        val lock: ReentrantReadWriteLock = ReentrantReadWriteLock(),
+        val holders: AtomicInteger = AtomicInteger(0),
+    )
+
+    private fun acquire(mangaId: Int): CountedLock =
+        lockByManga.compute(mangaId) { _, existing ->
+            val mangaLock = existing ?: CountedLock()
+            mangaLock.holders.incrementAndGet()
+            mangaLock
+        }!!
+
+    private fun release(
+        mangaId: Int,
+        lock: CountedLock,
+    ) {
+        if (lock.holders.decrementAndGet() == 0) {
+            lockByManga.remove(mangaId, lock)
+        }
+    }
+
+    fun <T> withChapterRename(
+        mangaId: Int,
+        action: () -> T,
+    ): T {
+        val mangaLock = acquire(mangaId)
+
+        mangaLock.lock.readLock().lock()
+        try {
+            return action()
+        } finally {
+            mangaLock.lock.readLock().unlock()
+            release(mangaId, mangaLock)
+        }
+    }
+
+    fun <T> withMangaRename(
+        mangaId: Int,
+        action: () -> T,
+    ): T {
+        val mangaLock = acquire(mangaId)
+
+        mangaLock.lock.writeLock().lock()
+        try {
+            return action()
+        } finally {
+            mangaLock.lock.writeLock().unlock()
+            release(mangaId, mangaLock)
+        }
+    }
+}
 
 private fun getMangaDir(
     title: String,
@@ -44,28 +103,30 @@ private fun getMangaDir(mangaId: Int): String =
 
 private fun getChapterDir(
     mangaId: Int,
+    title: String,
+    scanlator: String?,
+): String {
+    val chapterDir =
+        SafePath.buildValidFilename(
+            when {
+                scanlator != null -> "${scanlator}_$title"
+                else -> title
+            },
+        )
+
+    return getMangaDir(mangaId) + "/" + chapterDir
+}
+
+private fun getChapterDir(
+    mangaId: Int,
     chapterId: Int,
 ): String =
     transaction {
-        // Get chapter data and build chapter-specific directory name
         val chapterEntry = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
-
-        val chapterDir =
-            SafePath.buildValidFilename(
-                when {
-                    chapterEntry[ChapterTable.scanlator] != null -> {
-                        "${chapterEntry[ChapterTable.scanlator]}_${chapterEntry[ChapterTable.name]}"
-                    }
-
-                    else -> {
-                        chapterEntry[ChapterTable.name]
-                    }
-                },
-            )
 
         // Get manga directory and combine with chapter directory
         // Note: This creates a nested transaction, but Exposed handles this with useNestedTransactions=true
-        getMangaDir(mangaId) + "/$chapterDir"
+        getChapterDir(mangaId, chapterEntry[ChapterTable.name], chapterEntry[ChapterTable.scanlator])
     }
 
 fun getThumbnailDownloadPath(mangaId: Int): String = applicationDirs.thumbnailDownloadsRoot + "/$mangaId"
@@ -84,6 +145,12 @@ fun getMangaCacheDir(
 
 fun getChapterDownloadPath(
     mangaId: Int,
+    title: String,
+    scanlator: String?,
+): String = applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, title, scanlator)
+
+fun getChapterDownloadPath(
+    mangaId: Int,
     chapterId: Int,
 ): String = applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
 
@@ -94,10 +161,16 @@ fun getChapterCbzPath(
 
 fun getChapterCachePath(
     mangaId: Int,
+    title: String,
+    scanlator: String?,
+): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, title, scanlator)
+
+fun getChapterCachePath(
+    mangaId: Int,
     chapterId: Int,
 ): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)
 
-private fun updateDownloadDir(
+private fun updateDir(
     currentDir: String,
     newDir: String,
 ): Boolean {
@@ -126,24 +199,53 @@ private fun updateDownloadDir(
     }
 }
 
-/** return value says if rename/move was successful */
-fun updateMangaDownloadDir(
-    title: String,
-    sourceName: String,
-    newTitle: String,
+private fun updateDownloadDir(
+    currentDownloadDir: String,
+    newDownloadDir: String,
+    currentCacheDir: String,
+    newCacheDir: String,
 ): Boolean {
-    val currentDownloadDir = getMangaDownloadDir(title, sourceName)
-    val newDownloadDir = getMangaDownloadDir(newTitle, sourceName)
-
-    val renamed = updateDownloadDir(currentDownloadDir, newDownloadDir)
+    val renamed = updateDir(currentDownloadDir, newDownloadDir)
 
     val tryToKeepCachedFilesUsable = renamed
     if (tryToKeepCachedFilesUsable) {
-        val currentCacheDir = getMangaCacheDir(title, sourceName)
-        val newCacheDir = getMangaCacheDir(newTitle, sourceName)
-
-        updateDownloadDir(currentCacheDir, newCacheDir)
+        updateDir(currentCacheDir, newCacheDir)
     }
 
     return renamed
 }
+
+fun updateChapterDownloadDir(
+    oldChapter: ChapterDataClass,
+    newChapter: ChapterDataClass,
+): Boolean {
+    check(oldChapter.id == newChapter.id) { "Chapters must have the same id" }
+    check(oldChapter.mangaId == newChapter.mangaId) { "Chapters must be from the same manga" }
+
+    return UpdateLockManager.withChapterRename(oldChapter.mangaId) {
+        val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
+        val newDownloadDir = getChapterDownloadPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
+
+        val currentCacheDir = getChapterCachePath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
+        val newCacheDir = getChapterCachePath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
+
+        updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
+    }
+}
+
+/** return value says if rename/move was successful */
+fun updateMangaDownloadDir(
+    mangaId: Int,
+    title: String,
+    sourceName: String,
+    newTitle: String,
+): Boolean =
+    UpdateLockManager.withMangaRename(mangaId) {
+        val currentDownloadDir = getMangaDownloadDir(title, sourceName)
+        val newDownloadDir = getMangaDownloadDir(newTitle, sourceName)
+
+        val currentCacheDir = getMangaCacheDir(title, sourceName)
+        val newCacheDir = getMangaCacheDir(newTitle, sourceName)
+
+        updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
+    }
