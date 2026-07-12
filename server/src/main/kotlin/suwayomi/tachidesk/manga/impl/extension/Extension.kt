@@ -264,7 +264,10 @@ object Extension {
                 PackageTools.jarLoaderMap.remove(jarFilePath)?.close()
                 File(jarFilePath).delete()
 
-                uninstallExtension(pkgName)
+                try {
+                    uninstallExtension(pkgName)
+                } catch (_: Throwable) {
+                }
                 throw e
             }
         } else {
