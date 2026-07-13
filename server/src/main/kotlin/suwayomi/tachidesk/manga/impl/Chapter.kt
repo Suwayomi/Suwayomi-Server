@@ -15,8 +15,6 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.chapter.ChapterSanitizer.sanitize
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -38,7 +36,6 @@ import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
-import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
@@ -95,45 +92,21 @@ object Chapter {
         }
 
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
-        val chapterList = fetchChapterList(mangaId)
+        Manga.updateMangaAndChapters(
+            mangaId,
+            updateManga = false,
+            updateChapters = true,
+        )
 
-        val dbChapterMap =
-            transaction {
-                ChapterTable
-                    .selectAll()
-                    .where { ChapterTable.manga eq mangaId }
-                    .associateBy({ it[ChapterTable.url] }, { it })
-            }
-
-        return chapterList.map {
-            val dbChapter = dbChapterMap.getValue(it.url)
-            ChapterTable.toDataClass(dbChapter)
+        return transaction {
+            ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq mangaId }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                .map {
+                    ChapterTable.toDataClass(it)
+                }
         }
-    }
-
-    suspend fun fetchChapterList(mangaId: Int): List<SChapter> {
-        val mutex = Manga.mangaInfoMutex.get(mangaId) { Mutex() }
-        val chapterList =
-            mutex.withLock {
-                val mangaEntry =
-                    transaction {
-                        MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
-                    }
-                val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
-
-                val chapters =
-                    Manga
-                        .fetchMangaAndChapters(
-                            mangaEntry = mangaEntry,
-                            source = source,
-                            fetchDetails = false,
-                            fetchChapters = true,
-                        ).chapters
-
-                updateChapterListDatabase(mangaEntry, chapters, source)
-            }
-
-        return chapterList
     }
 
     fun updateChapterListDatabase(
