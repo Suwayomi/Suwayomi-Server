@@ -26,6 +26,8 @@ import xyz.nulldev.androidcompat.pm.toPackageInfo
 import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -147,7 +149,23 @@ object PackageTools {
         }
     }
 
+    private val lockByJar = ConcurrentHashMap<String, ReentrantReadWriteLock>()
+
     val jarLoaderMap = mutableMapOf<String, URLClassLoader>()
+
+    fun <T> blockJarUsageWhile(
+        jars: List<Path>,
+        block: () -> T,
+    ): T {
+        val writeLocks = jars.map { lockByJar.getOrPut(it.absolutePathString()) { ReentrantReadWriteLock() }.writeLock() }
+
+        writeLocks.forEach { it.lock() }
+        try {
+            return block()
+        } finally {
+            writeLocks.forEach { it.unlock() }
+        }
+    }
 
     /**
      * loads the extension main class called [className] from the jar located at [jarPath]
@@ -157,17 +175,24 @@ object PackageTools {
         jar: Path,
         className: String,
     ): Any {
+        val jarPath = jar.absolutePathString()
+
+        val readLock = lockByJar.getOrPut(jarPath) { ReentrantReadWriteLock() }.readLock()
+
+        readLock.lock()
         try {
-            logger.debug { "loading jar with path: ${jar.absolutePathString()}" }
-            val classLoader = jarLoaderMap[jar.absolutePathString()] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
+            logger.debug { "loading jar with path: $jarPath" }
+            val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
             val classToLoad = Class.forName(className, false, classLoader)
 
-            jarLoaderMap[jar.absolutePathString()] = classLoader
+            jarLoaderMap[jarPath] = classLoader
 
             return classToLoad.getDeclaredConstructor().newInstance()
         } catch (e: Exception) {
-            logger.error(e) { "Failed to load jar with path: ${jar.absolutePathString()}" }
+            logger.error(e) { "Failed to load jar with path: $jarPath" }
             throw e
+        } finally {
+            readLock.unlock()
         }
     }
 }
