@@ -480,18 +480,6 @@ object Extension {
         }
     }
 
-    private fun extractAndCacheJarIcon(
-        zipFile: ZipFile,
-        pkgName: String,
-    ) {
-        try {
-            val iconStream = ResourceArscIconParser.extractIcon(zipFile)
-            cacheIcon(pkgName, iconStream)
-        } catch (e: Exception) {
-            logger.warn(e) { "Failed to extract icon from JAR $pkgName" }
-        }
-    }
-
     private fun cacheIcon(
         pkgName: String,
         inputStream: InputStream,
