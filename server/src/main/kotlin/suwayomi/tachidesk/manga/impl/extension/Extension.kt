@@ -87,27 +87,22 @@ object Extension {
             } ?: throw NullPointerException("Could not find extension for $pkgName")
         val jarUrl = extension[ExtensionTable.jarUrl]
         val apkUrl = extension[ExtensionTable.apkUrl]
+        val fetchToTemp: suspend (String) -> Path = { url ->
+            val name = Uri.parse(jarUrl).lastPathSegment!!
+            val savePath = Path(applicationDirs.tempRoot) / "extensions" / name
+            // download jar file
+            downloadExtension(url, savePath)
+
+            savePath
+        }
+
         return when {
             jarUrl != null -> {
-                installJAR {
-                    val jarName = Uri.parse(jarUrl).lastPathSegment!!
-                    val jarSavePath = Path(applicationDirs.tempRoot) / "extensions" / jarName
-                    // download jar file
-                    downloadExtension(jarUrl, jarSavePath)
-
-                    jarSavePath
-                }
+                installJAR { fetchToTemp(jarUrl) }
             }
 
             apkUrl != null -> {
-                installAPK {
-                    val apkName = Uri.parse(apkUrl).lastPathSegment!!
-                    val apkSavePath = Path(applicationDirs.tempRoot) / "extensions" / apkName
-                    // download apk file
-                    downloadExtension(apkUrl, apkSavePath)
-
-                    apkSavePath
-                }
+                installAPK { fetchToTemp(apkUrl) }
             }
 
             else -> {
