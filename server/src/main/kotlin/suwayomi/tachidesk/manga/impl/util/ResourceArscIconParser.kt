@@ -16,36 +16,6 @@ object ResourceArscIconParser {
         val path: String,
     )
 
-    fun extractIcon(
-        jar: Path,
-        iconPath: Path,
-    ) {
-        ZipFile
-            .builder()
-            .setPath(jar)
-            .get()
-            .use { zip ->
-                val packages =
-                    zip
-                        .getInputStream(zip.getEntry("resources.arsc"))
-                        .use { ArscParser(it.readBytes()).parse() }
-
-                val icon =
-                    packages
-                        .flatMap { it.iconCandidates() }
-                        .maxByOrNull { it.density }
-                        ?: return
-
-                val entry = zip.getEntry(icon.path) ?: return
-
-                zip.getInputStream(entry).use {
-                    iconPath.outputStream().use { out ->
-                        it.copyTo(out)
-                    }
-                }
-            }
-    }
-
     fun extractIcon(zip: ZipFile): InputStream {
         val packages =
             zip

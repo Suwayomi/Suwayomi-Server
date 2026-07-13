@@ -136,6 +136,7 @@ object AndroidManifestParser {
         val pathPattern: String? = null,
     )
 
+    @OptIn(ExperimentalXmlUtilApi::class)
     private val xml =
         XML {
             autoPolymorphic = false
