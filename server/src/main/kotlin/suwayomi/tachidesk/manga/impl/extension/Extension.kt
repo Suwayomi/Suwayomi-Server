@@ -80,7 +80,7 @@ object Extension {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs: ApplicationDirs by injectLazy()
 
-    suspend fun installExtension(pkgName: String): Int {
+    suspend fun installExtension(pkgName: String): String {
         logger.debug { "Installing $pkgName" }
         val extension =
             transaction {
@@ -119,7 +119,7 @@ object Extension {
     suspend fun installExternalExtension(
         inputStream: InputStream,
         extensionName: String,
-    ): Int {
+    ): String {
         val copyToExtensionsRoot = {
             val rootPath = Path(applicationDirs.extensionsRoot)
             val downloadedFile = rootPath.resolve(extensionName).normalize()
@@ -147,21 +147,22 @@ object Extension {
     suspend fun installAPK(
         forceReinstall: Boolean = false,
         fetcher: suspend () -> String,
-    ): Int {
+    ): String {
         val apkFile = Path(fetcher())
+
+        val packageInfo = getPackageInfo(apkFile)
+        val pkgName = packageInfo.packageName
 
         // check if we don't have the extension already installed
         // if it's installed and we want to update, it first has to be uninstalled
         val isInstalled =
             transaction {
-                ExtensionTable.selectAll().where { ExtensionTable.apkName eq apkFile.name }.firstOrNull()
+                ExtensionTable.select(ExtensionTable.isInstalled).where { ExtensionTable.pkgName eq pkgName }.firstOrNull()
             }?.get(ExtensionTable.isInstalled) ?: false
 
         val dirPathWithoutType = "${applicationDirs.extensionsRoot}/${apkFile.nameWithoutExtension}"
         val jarFile = Path("$dirPathWithoutType.jar")
 
-        val packageInfo = getPackageInfo(apkFile)
-        val pkgName = packageInfo.packageName
         if (isInstalled && forceReinstall) {
             uninstallExtension(pkgName)
         }
@@ -210,7 +211,7 @@ object Extension {
 
             val className =
                 if (sourceClass.startsWith(".")) {
-                    packageInfo.packageName + sourceClass
+                    pkgName + sourceClass
                 } else {
                     sourceClass
                 }
@@ -219,7 +220,7 @@ object Extension {
 
             dex2jar(apkFile, jarFile)
             extractAssetsFromApk(apkFile, jarFile)
-            extractAndCacheApkIcon(apkFile, packageInfo.packageName)
+            extractAndCacheApkIcon(apkFile, pkgName)
 
             // clean up
             apkFile.deleteIfExists()
@@ -243,13 +244,11 @@ object Extension {
                     extensionName,
                     extensionLibVersion,
                     apkFile.name,
-                    packageInfo.packageName,
+                    pkgName,
                     packageInfo.versionName,
                     packageInfo.versionCode,
                     contentWarning
                 )
-
-                return 201 // we installed successfully
             } catch (e: Throwable) {
                 // free up the file descriptor if exists
                 PackageTools.jarLoaderMap.remove(jarFile.absolutePathString())?.close()
@@ -261,35 +260,35 @@ object Extension {
                 }
                 throw e
             }
-        } else {
-            return 302 // extension was already installed
         }
+        return pkgName
     }
 
     suspend fun installJAR(
         forceReinstall: Boolean = false,
         fetcher: suspend () -> String,
-    ): Int {
+    ): String {
         val jarFile = Path(fetcher())
-
-        // check if we don't have the extension already installed
-        // if it's installed and we want to update, it first has to be uninstalled
-        val isInstalled =
-            transaction {
-                ExtensionTable.selectAll().where { ExtensionTable.apkName eq (jarFile.nameWithoutExtension + ".apk") }.firstOrNull()
-            }?.get(ExtensionTable.isInstalled) ?: false
 
         val jarZip = ZipFile.builder()
             .setPath(jarFile)
             .get()
+
 
         return jarZip.use { jarZip ->
             val manifest = jarZip.getInputStream(jarZip.getEntry("AndroidManifest.xml"))
                 .use {
                     AndroidManifestParser.parse(it)
                 }
-
             val pkgName = manifest.packageName
+
+            // check if we don't have the extension already installed
+            // if it's installed and we want to update, it first has to be uninstalled
+            val isInstalled =
+                transaction {
+                    ExtensionTable.select(ExtensionTable.isInstalled).where { ExtensionTable.pkgName eq pkgName }.firstOrNull()
+                }?.get(ExtensionTable.isInstalled) ?: false
+
             if (isInstalled && forceReinstall) {
                 uninstallExtension(pkgName)
             }
@@ -362,13 +361,11 @@ object Extension {
                         extensionName,
                         extensionLibVersion,
                         jarFile.name.removeSuffix(".jar") + ".apk",
-                        manifest.packageName,
+                        pkgName,
                         manifest.versionName,
                         manifest.versionCode!!,
                         contentWarning
                     )
-
-                    return@use 201 // we installed successfully
                 } catch (e: Throwable) {
                     // free up the file descriptor if exists
                     PackageTools.jarLoaderMap.remove(jarFile.absolutePathString())?.close()
@@ -379,9 +376,8 @@ object Extension {
                     } catch (_: Exception) {}
                     throw e
                 }
-            } else {
-                return@use 302 // extension was already installed
             }
+            return@use pkgName
         }
     }
 
@@ -613,7 +609,7 @@ object Extension {
         }
     }
 
-    suspend fun updateExtension(pkgName: String): Int {
+    suspend fun updateExtension(pkgName: String): String {
         val targetExtension = ExtensionsList.updateMap.remove(pkgName)!!
         uninstallExtension(pkgName)
         transaction {
