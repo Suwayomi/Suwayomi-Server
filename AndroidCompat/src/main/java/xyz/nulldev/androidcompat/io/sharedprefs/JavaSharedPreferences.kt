@@ -57,17 +57,19 @@ class JavaSharedPreferences(
         PropertiesSettings(
             properties,
             onModify = { properties ->
-                try {
-                    if (properties.isEmpty) {
-                        file.deleteIfExists()
-                    } else {
-                        file.createParentDirectories()
-                        file.outputStream().use {
-                            properties.storeToXML(it, null)
+                synchronized(key) {
+                    try {
+                        if (properties.isEmpty) {
+                            file.deleteIfExists()
+                        } else {
+                            file.createParentDirectories()
+                            file.outputStream().use {
+                                properties.storeToXML(it, null)
+                            }
                         }
+                    } catch (e: Exception) {
+                        logger.error(e) { "Error saving settings in $key" }
                     }
-                } catch (e: Exception) {
-                    logger.error(e) { "Error saving settings in $key" }
                 }
             },
         )
