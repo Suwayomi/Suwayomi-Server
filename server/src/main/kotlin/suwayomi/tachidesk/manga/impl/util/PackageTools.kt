@@ -32,6 +32,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.nameWithoutExtension
+import kotlin.io.path.readBytes
 import kotlin.io.path.relativeTo
 
 object PackageTools {
@@ -60,7 +61,7 @@ object PackageTools {
         // adopted from com.googlecode.dex2jar.tools.Dex2jarCmd.doCommandLine
         // source at: https://github.com/DexPatcher/dex2jar/tree/v2.1-20190905-lanchon/dex-tools/src/main/java/com/googlecode/dex2jar/tools/Dex2jarCmd.java
 
-        val reader = MultiDexFileReader.open(Files.readAllBytes(dexFile))
+        val reader = MultiDexFileReader.open(dexFile.readBytes())
         val handler = BaksmaliBaseDexExceptionHandler()
         Dex2jar
             .from(reader)
