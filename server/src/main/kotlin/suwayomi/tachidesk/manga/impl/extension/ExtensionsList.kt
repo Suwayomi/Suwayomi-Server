@@ -133,6 +133,7 @@ object ExtensionsList {
                                     this[ExtensionTable.iconUrl] = foundExtension.iconUrl
                                     this[ExtensionTable.storeIndexUrl] = foundExtension.storeIndexUrl
                                     this[ExtensionTable.apkUrl] = foundExtension.apkUrl
+                                    this[ExtensionTable.jarUrl] = foundExtension.jarUrl
 
                                     // add these because batch updates need matching columns
                                     this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
@@ -176,6 +177,7 @@ object ExtensionsList {
                                     this[ExtensionTable.lang] = foundExtension.lang
                                     this[ExtensionTable.contentWarning] = foundExtension.contentWarning.ordinal
                                     this[ExtensionTable.apkUrl] = foundExtension.apkUrl
+                                    this[ExtensionTable.jarUrl] = foundExtension.jarUrl
                                     this[ExtensionTable.iconUrl] = foundExtension.iconUrl
                                 }
                             }.toExecutable()
@@ -193,6 +195,7 @@ object ExtensionsList {
                         this[ExtensionTable.lang] = foundExtension.lang
                         this[ExtensionTable.contentWarning] = foundExtension.contentWarning.ordinal
                         this[ExtensionTable.apkUrl] = foundExtension.apkUrl
+                        this[ExtensionTable.jarUrl] = foundExtension.jarUrl
                         this[ExtensionTable.iconUrl] = foundExtension.iconUrl
                     }
                 }

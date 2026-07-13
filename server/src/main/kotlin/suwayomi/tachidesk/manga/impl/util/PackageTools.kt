@@ -30,6 +30,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.relativeTo
 
 object PackageTools {
@@ -52,15 +54,13 @@ object PackageTools {
      * Convert dex to jar, a wrapper for the dex2jar library
      */
     fun dex2jar(
-        dexFile: String,
-        jarFile: String,
-        fileNameWithoutType: String,
+        dexFile: Path,
+        jarFile: Path,
     ) {
         // adopted from com.googlecode.dex2jar.tools.Dex2jarCmd.doCommandLine
         // source at: https://github.com/DexPatcher/dex2jar/tree/v2.1-20190905-lanchon/dex-tools/src/main/java/com/googlecode/dex2jar/tools/Dex2jarCmd.java
 
-        val jarFilePath = File(jarFile).toPath()
-        val reader = MultiDexFileReader.open(Files.readAllBytes(File(dexFile).toPath()))
+        val reader = MultiDexFileReader.open(Files.readAllBytes(dexFile))
         val handler = BaksmaliBaseDexExceptionHandler()
         Dex2jar
             .from(reader)
@@ -73,10 +73,10 @@ object PackageTools {
             .noCode(false)
             .skipExceptions(false)
             .dontSanitizeNames(true)
-            .to(jarFilePath)
+            .to(jarFile)
         if (handler.hasException()) {
             val rootPath = Path(applicationDirs.extensionsRoot)
-            val errorFile: Path = rootPath.resolve("$fileNameWithoutType-error.txt")
+            val errorFile: Path = rootPath.resolve("${dexFile.nameWithoutExtension}-error.txt")
             logger.error {
                 """
                 Detail Error Information in File ${errorFile.relativeTo(rootPath)}
@@ -89,15 +89,14 @@ object PackageTools {
             }
             handler.dump(errorFile, emptyArray<String>())
         } else {
-            BytecodeEditor.fixAndroidClasses(jarFilePath)
+            BytecodeEditor.fixAndroidClasses(jarFile)
         }
     }
 
     /** A modified version of `xyz.nulldev.androidcompat.pm.InstalledPackage.info` */
-    fun getPackageInfo(apkFilePath: String): PackageInfo {
-        val apk = File(apkFilePath)
-        return ApkParsers.getMetaInfo(apk).toPackageInfo(apk).apply {
-            val parsed = ApkFile(apk)
+    fun getPackageInfo(apkFile: Path): PackageInfo {
+        return ApkParsers.getMetaInfo(apkFile.toFile()).toPackageInfo(apkFile.toFile()).apply {
+            val parsed = ApkFile(apkFile.toFile())
             val dbFactory = DocumentBuilderFactory.newInstance()
             val dBuilder = dbFactory.newDocumentBuilder()
             val doc =
@@ -156,19 +155,19 @@ object PackageTools {
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
     fun loadExtensionSources(
-        jarPath: String,
+        jar: Path,
         className: String,
     ): Any {
         try {
-            logger.debug { "loading jar with path: $jarPath" }
-            val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(Path(jarPath).toUri().toURL()))
+            logger.debug { "loading jar with path: ${jar.absolutePathString()}" }
+            val classLoader = jarLoaderMap[jar.absolutePathString()] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
             val classToLoad = Class.forName(className, false, classLoader)
 
-            jarLoaderMap[jarPath] = classLoader
+            jarLoaderMap[jar.absolutePathString()] = classLoader
 
             return classToLoad.getDeclaredConstructor().newInstance()
         } catch (e: Exception) {
-            logger.error(e) { "Failed to load jar with path: $jarPath" }
+            logger.error(e) { "Failed to load jar with path: ${jar.absolutePathString()}" }
             throw e
         }
     }

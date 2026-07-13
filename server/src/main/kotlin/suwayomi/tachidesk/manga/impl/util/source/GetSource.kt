@@ -20,6 +20,8 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.io.path.Path
+import kotlin.io.path.div
 
 object GetSource {
     private val logger = KotlinLogging.logger { }
@@ -49,7 +51,7 @@ object GetSource {
                 ?: throw NullPointerException("Missing apkName")
         val className = extensionRecord[ExtensionTable.classFQName]
         val jarName = apkName.substringBefore(".apk") + ".jar"
-        val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
+        val jarPath = Path(applicationDirs.extensionsRoot) / jarName
 
         when (val instance = loadExtensionSources(jarPath, className)) {
             is Source -> listOf(instance)

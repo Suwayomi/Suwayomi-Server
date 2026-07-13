@@ -110,6 +110,7 @@ dex2jar-tools = { module = "de.femtopedia.dex2jar:dex-tools", version.ref = "dex
 # APK
 apk-parser = "net.dongliu:apk-parser:2.6.10"
 apksig = "com.android.tools.build:apksig:9.2.1"
+axml = "com.github.Aliucord:axml:ed26565eb0"
 
 # Xml
 xmlpull = "xmlpull:xmlpull:1.1.3.4a"
@@ -215,6 +216,7 @@ shared = [
     "dex2jar-translator",
     "dex2jar-tools",
     "apk-parser",
+    "axml",
     "jackson-annotations",
     "jcef",
 ]
