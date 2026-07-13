@@ -103,6 +103,7 @@ class ExtensionQuery {
         val name: String? = null,
         val pkgName: String? = null,
         val apkUrl: String? = null,
+        val jarUrl: String? = null,
         val extensionLib: String? = null,
         val versionName: String? = null,
         val versionCode: Int? = null,
@@ -122,6 +123,7 @@ class ExtensionQuery {
             opAnd.eq(apkName, ExtensionTable.apkName)
             opAnd.eq(iconUrl, ExtensionTable.iconUrl)
             opAnd.eq(apkUrl, ExtensionTable.apkUrl)
+            opAnd.eq(jarUrl, ExtensionTable.jarUrl)
             opAnd.eq(name, ExtensionTable.name)
             opAnd.eq(extensionLib, ExtensionTable.extensionLib)
             opAnd.eq(versionName, ExtensionTable.versionName)
@@ -150,6 +152,7 @@ class ExtensionQuery {
         val name: StringFilter? = null,
         val pkgName: StringFilter? = null,
         val apkUrl: StringFilter? = null,
+        val jarUrl: StringFilter? = null,
         val versionName: StringFilter? = null,
         val extensionLib: StringFilter? = null,
         @GraphQLDeprecated("", ReplaceWith("versionCodeLong"))
@@ -175,6 +178,7 @@ class ExtensionQuery {
                 andFilterWithCompareString(ExtensionTable.name, name),
                 andFilterWithCompareString(ExtensionTable.pkgName, pkgName),
                 andFilterWithCompareString(ExtensionTable.apkUrl, apkUrl),
+                andFilterWithCompareString(ExtensionTable.jarUrl, jarUrl),
                 andFilterWithCompareString(ExtensionTable.extensionLib, extensionLib),
                 andFilterWithCompareString(ExtensionTable.versionName, versionName),
                 andFilterWithCompare(ExtensionTable.versionCode, versionCodeLong),

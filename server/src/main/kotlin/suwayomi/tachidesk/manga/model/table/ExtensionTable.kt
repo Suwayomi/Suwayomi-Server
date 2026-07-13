@@ -24,6 +24,7 @@ object ExtensionTable : IntIdTable() {
     val name = varchar("name", 128)
     val pkgName = varchar("pkg_name", 128)
     val apkUrl = varchar("apk_url", 2048).nullable()
+    val jarUrl = varchar("jar_url", 2048).nullable()
     val extensionLib = varchar("extension_lib", 16).nullable()
     val versionName = varchar("version_name", 16)
     val versionCode = long("version_code")

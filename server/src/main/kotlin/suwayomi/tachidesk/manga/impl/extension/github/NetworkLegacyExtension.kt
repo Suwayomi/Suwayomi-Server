@@ -44,6 +44,7 @@ fun NetworkLegacyExtension.toExtensionInfo(
         name = name.substringAfter("Tachiyomi: "),
         pkgName = pkg,
         apkUrl = "$storeBaseUrl/apk/$apk",
+        jarUrl = null,
         iconUrl = "$storeBaseUrl/icon/$pkg.png",
         extensionLib = version.substringBeforeLast('.'),
         versionCode = code,

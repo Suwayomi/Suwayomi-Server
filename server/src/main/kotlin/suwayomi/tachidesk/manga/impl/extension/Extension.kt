@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl.extension
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.content.pm.PackageInfo
 import android.net.Uri
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -17,9 +18,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.bean.Icon
 import okhttp3.CacheControl
-import okio.buffer
-import okio.sink
-import okio.source
+import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
@@ -27,6 +26,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.manga.impl.util.AndroidManifestParser
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
@@ -39,6 +39,7 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_SOURCE_CLASS
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
+import suwayomi.tachidesk.manga.impl.util.ResourceArscIconParser
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
@@ -48,241 +49,421 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
-import java.io.File
-import java.io.FileOutputStream
 import java.io.InputStream
+import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
+import kotlin.io.path.copyTo
+import kotlin.io.path.createDirectories
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.deleteRecursively
+import kotlin.io.path.div
+import kotlin.io.path.exists
+import kotlin.io.path.inputStream
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.name
+import kotlin.io.path.nameWithoutExtension
 import kotlin.io.path.outputStream
+import kotlin.io.path.relativeTo
+import kotlin.io.path.walk
 
 object Extension {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs: ApplicationDirs by injectLazy()
 
-    suspend fun installExtension(pkgName: String): Int {
+    private suspend fun fetchExtensionFile(url: String): Path {
+        val name = Uri.parse(url).lastPathSegment!!
+        val savePath = Path(applicationDirs.tempRoot) / "extensions" / name
+        // download jar file
+        downloadExtension(url, savePath)
+
+        return savePath
+    }
+
+    suspend fun installExtension(pkgName: String): String {
         logger.debug { "Installing $pkgName" }
-        val apkUrl =
+        val extension =
             transaction {
                 ExtensionTable
-                    .select(ExtensionTable.apkUrl)
+                    .select(ExtensionTable.apkUrl, ExtensionTable.jarUrl)
                     .where { ExtensionTable.pkgName eq pkgName }
                     .firstOrNull()
-                    ?.get(ExtensionTable.apkUrl)
-            } ?: throw NullPointerException("Could not find extension $pkgName")
+            } ?: throw NullPointerException("Could not find extension for $pkgName")
+        val jarUrl = extension[ExtensionTable.jarUrl]
+        val apkUrl = extension[ExtensionTable.apkUrl]
 
-        return installAPK {
-            val apkName = Uri.parse(apkUrl).lastPathSegment!!
-            val apkSavePath = "${applicationDirs.extensionsRoot}/$apkName"
-            // download apk file
-            downloadAPKFile(apkUrl, apkSavePath)
+        return when {
+            jarUrl != null -> {
+                installExtension {
+                    val jar = fetchExtensionFile(jarUrl)
+                    val manifest = extractAndParseAndroidManifest(jar)
+                    ExtensionPackage.Jar(jar, manifest)
+                }
+            }
 
-            apkSavePath
+            apkUrl != null -> {
+                installExtension {
+                    val apk = fetchExtensionFile(apkUrl)
+                    val packageInfo = getPackageInfo(apk)
+                    ExtensionPackage.Apk(apk, packageInfo)
+                }
+            }
+
+            else -> {
+                throw NullPointerException("Could not find extension url for $pkgName")
+            }
         }
+    }
+
+    private fun copyToExtensionsRoot(
+        inputStream: InputStream,
+        extensionName: String,
+    ): Path {
+        val rootPath = Path(applicationDirs.tempRoot) / "extensions"
+        val downloadedFile = rootPath.resolve(extensionName).normalize()
+        check(downloadedFile.startsWith(rootPath) && downloadedFile.parent == rootPath) {
+            "File '$extensionName' is not a valid extension file"
+        }
+        logger.debug { "Saving jar at $extensionName" }
+        // download jar file
+        downloadedFile.createParentDirectories()
+        downloadedFile.outputStream().buffered().use { out ->
+            inputStream.use {
+                it.copyTo(out)
+            }
+        }
+        return downloadedFile
     }
 
     suspend fun installExternalExtension(
         inputStream: InputStream,
-        apkName: String,
-    ): Int =
-        installAPK(true) {
-            val rootPath = Path(applicationDirs.extensionsRoot)
-            val downloadedFile = rootPath.resolve(apkName).normalize()
-            check(downloadedFile.startsWith(rootPath) && downloadedFile.parent == rootPath) {
-                "File '$apkName' is not a valid extension file"
-            }
-            logger.debug { "Saving apk at $apkName" }
-            // download apk file
-            downloadedFile.outputStream().sink().buffer().use { sink ->
-                inputStream.source().use { source ->
-                    sink.writeAll(source)
-                    sink.flush()
-                }
-            }
-            downloadedFile.absolutePathString()
-        }
-
-    suspend fun installAPK(
-        forceReinstall: Boolean = false,
-        fetcher: suspend () -> String,
-    ): Int {
-        val apkFilePath = fetcher()
-        val apkName = File(apkFilePath).name
-
-        // check if we don't have the extension already installed
-        // if it's installed and we want to update, it first has to be uninstalled
-        val isInstalled =
-            transaction {
-                ExtensionTable.selectAll().where { ExtensionTable.apkName eq apkName }.firstOrNull()
-            }?.get(ExtensionTable.isInstalled) ?: false
-
-        val fileNameWithoutType = apkName.substringBefore(".apk")
-
-        val dirPathWithoutType = "${applicationDirs.extensionsRoot}/$fileNameWithoutType"
-        val jarFilePath = "$dirPathWithoutType.jar"
-
-        val packageInfo = getPackageInfo(apkFilePath)
-        val pkgName = packageInfo.packageName
-        if (isInstalled && forceReinstall) {
-            uninstallExtension(pkgName)
-        }
-
-        if (!isInstalled || forceReinstall) {
-            if (!packageInfo.reqFeatures.orEmpty().any { it.name == EXTENSION_FEATURE }) {
-                throw Exception("This apk is not a Tachiyomi extension")
-            }
-
-            // Validate lib version
-            val libVersion = packageInfo.versionName.substringBeforeLast('.').toDouble()
-            if (libVersion < LIB_VERSION_MIN || libVersion > LIB_VERSION_MAX) {
-                throw Exception(
-                    "Lib version is $libVersion, while only versions " +
-                        "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed",
+        extensionName: String,
+    ): String =
+        when {
+            extensionName.endsWith(".jar") -> {
+                installExtension(
+                    true,
+                    {
+                        val jar = copyToExtensionsRoot(inputStream, extensionName)
+                        val manifest = extractAndParseAndroidManifest(jar)
+                        ExtensionPackage.Jar(jar, manifest)
+                    },
                 )
             }
 
-            // TODO: allow trusting keys
-//            val signatureHash = getSignatureHash(packageInfo)
-
-//            if (signatureHash == null) {
-//                throw Exception("Package $pkgName isn't signed")
-//            } else if (signatureHash !in trustedSignatures) {
-//                throw Exception("This apk is not a signed with the official tachiyomi signature")
-//            }
-
-            var contentWarning = packageInfo.applicationInfo.metaData.getInt(METADATA_CONTENT_WARNING)
-            if (contentWarning == 0) {
-                contentWarning = packageInfo.applicationInfo.metaData
-                    .getString(METADATA_CONTENT_WARNING)
-                    ?.toIntOrNull()
-                    ?: 0
-                if (contentWarning == 0) {
-                    contentWarning = packageInfo.applicationInfo.metaData
-                        .getString(METADATA_NSFW)
-                        ?.toIntOrNull()
-                        ?: 0
-                }
+            extensionName.endsWith(".apk") -> {
+                installExtension(
+                    true,
+                    {
+                        val apk = copyToExtensionsRoot(inputStream, extensionName)
+                        val packageInfo = getPackageInfo(apk)
+                        ExtensionPackage.Apk(apk, packageInfo)
+                    },
+                )
             }
 
-            val sourceClass =
-                packageInfo.applicationInfo.metaData
-                    .getString(METADATA_SOURCE_CLASS)!!
-                    .trim()
+            else -> {
+                throw NullPointerException("Could not find extension type for $extensionName")
+            }
+        }
 
-            val className =
-                if (sourceClass.startsWith(".")) {
-                    packageInfo.packageName + sourceClass
-                } else {
-                    sourceClass
+    sealed class ExtensionPackage {
+        abstract val file: Path
+        abstract val metadata: PackageMetadata
+
+        // Abstract hook for type-specific preprocessing
+        abstract suspend fun prepareJarAndIcons(extensionsRoot: Path): Path
+
+        class Apk(
+            override val file: Path,
+            val packageInfo: PackageInfo,
+        ) : ExtensionPackage() {
+            override val metadata =
+                PackageMetadata(
+                    packageName = packageInfo.packageName,
+                    versionName = packageInfo.versionName,
+                    versionCode = packageInfo.versionCode,
+                    reqFeatures = packageInfo.reqFeatures.orEmpty().map { it.name },
+                    metaData = MetadataProvider.FromPackageInfo(packageInfo.applicationInfo.metaData),
+                    label = packageInfo.applicationInfo.nonLocalizedLabel?.toString(),
+                )
+
+            override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
+                val jarFile = extensionsRoot / (file.nameWithoutExtension + ".jar")
+                dex2jar(file, jarFile)
+                extractAssetsFromApk(file, jarFile)
+                extractAndCacheApkIcon(file, metadata.packageName)
+                file.deleteExisting()
+                return jarFile
+            }
+        }
+
+        class Jar(
+            override val file: Path,
+            val manifest: AndroidManifestParser.AndroidManifest,
+        ) : ExtensionPackage() {
+            override val metadata =
+                PackageMetadata(
+                    packageName = manifest.packageName,
+                    versionName = manifest.versionName!!,
+                    versionCode = manifest.versionCode!!,
+                    reqFeatures = manifest.usesFeatures.mapNotNull { it.name },
+                    metaData = MetadataProvider.FromManifest(manifest.application!!.metaData),
+                    label = manifest.application.label,
+                )
+
+            override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
+                val jarFile = extensionsRoot / file.name
+
+                ZipFile.builder().setPath(file).get().use { jarZip ->
+                    try {
+                        cacheIcon(
+                            metadata.packageName,
+                            ResourceArscIconParser.extractIcon(jarZip),
+                        )
+                    } catch (e: Exception) {
+                        logger.warn(e) { "Failed to extract icon from JAR ${metadata.packageName}" }
+                    }
                 }
 
-            logger.debug { "Main class for extension is $className" }
+                file.copyTo(jarFile)
+                file.deleteExisting()
+                return jarFile
+            }
+        }
+    }
 
-            dex2jar(apkFilePath, jarFilePath, fileNameWithoutType)
-            extractAssetsFromApk(apkFilePath, jarFilePath)
-            extractAndCacheApkIcon(apkFilePath, packageInfo.packageName)
+    data class PackageMetadata(
+        val packageName: String,
+        val versionName: String,
+        val versionCode: Int,
+        val reqFeatures: List<String>,
+        val metaData: MetadataProvider,
+        val label: String?,
+    )
 
-            // clean up
-            File(apkFilePath).delete()
+    sealed interface MetadataProvider {
+        fun getString(key: String): String?
+
+        fun getInt(key: String): Int
+
+        class FromPackageInfo(
+            private val bundle: android.os.Bundle,
+        ) : MetadataProvider {
+            override fun getString(key: String): String? = bundle.getString(key)
+
+            override fun getInt(key: String): Int = bundle.getInt(key) ?: 0
+        }
+
+        class FromManifest(
+            private val list: List<AndroidManifestParser.MetaData>,
+        ) : MetadataProvider {
+            override fun getString(key: String): String? = list.find { it.name == key }?.value
+
+            override fun getInt(key: String): Int = getString(key)?.toIntOrNull() ?: 0
+        }
+    }
+
+    suspend fun installExtension(
+        forceReinstall: Boolean = false,
+        fetchPackage: suspend () -> ExtensionPackage,
+    ): String {
+        val extPackage = fetchPackage()
+        val metadata = extPackage.metadata
+        val pkgName = metadata.packageName
+
+        val isInstalled =
+            transaction {
+                ExtensionTable
+                    .select(ExtensionTable.isInstalled)
+                    .where { ExtensionTable.pkgName eq pkgName }
+                    .firstOrNull()
+            }?.get(ExtensionTable.isInstalled) ?: false
+
+        if (isInstalled) {
+            if (forceReinstall) {
+                uninstallExtension(pkgName)
+            } else {
+                extPackage.file.deleteExisting()
+                return pkgName
+            }
+        }
+
+        if (!metadata.reqFeatures.contains(EXTENSION_FEATURE)) {
+            extPackage.file.deleteExisting()
+            throw Exception("This file is not a Tachiyomi extension")
+        }
+
+        val libVersion = metadata.versionName.substringBeforeLast('.').toDouble()
+        if (libVersion < LIB_VERSION_MIN || libVersion > LIB_VERSION_MAX) {
+            extPackage.file.deleteExisting()
+            throw Exception(
+                "Lib version is $libVersion, while only versions " +
+                    "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed",
+            )
+        }
+
+        var contentWarning =
+            extPackage.metadata
+                .metaData
+                .getInt(METADATA_CONTENT_WARNING)
+        if (contentWarning == 0) {
+            contentWarning = extPackage.metadata
+                .metaData
+                .getString(METADATA_CONTENT_WARNING)
+                ?.toIntOrNull() ?: 0
+            if (contentWarning == 0) {
+                contentWarning = extPackage.metadata
+                    .metaData
+                    .getString(METADATA_NSFW)
+                    ?.toIntOrNull() ?: 0
+            }
+        }
+
+        val sourceClass =
+            metadata.metaData
+                .getString(METADATA_SOURCE_CLASS)!!
+                .trim()
+
+        val className =
+            if (sourceClass.startsWith(".")) {
+                pkgName + sourceClass
+            } else {
+                sourceClass
+            }
+
+        logger.debug { "Main class for extension is $className" }
+
+        val extensionsRoot = Path(applicationDirs.extensionsRoot)
+        val jarFile = extPackage.prepareJarAndIcons(extensionsRoot)
+
+        try {
+            val extensionName =
+                metadata.metaData.getString(METADATA_NAME)
+                    ?: metadata.label?.substringAfter("Tachiyomi: ")
+                    ?: throw Exception("Could not resolve extension name")
+
+            val extensionLibVersion =
+                metadata.metaData
+                    .getString(METADATA_EXTENSION_LIB)
+                    .takeUnless { it == "0" }
+                    ?: metadata.versionName.substringBeforeLast('.')
+
+            val apkName =
+                when (extPackage) {
+                    is ExtensionPackage.Apk -> extPackage.file.name
+                    is ExtensionPackage.Jar -> jarFile.name.removeSuffix(".jar") + ".apk"
+                }
+
+            setupJar(
+                jarFile = jarFile,
+                className = className,
+                extensionName = extensionName,
+                extensionLibVersion = extensionLibVersion,
+                apkName = apkName,
+                pkgName = pkgName,
+                versionName = metadata.versionName,
+                versionCode = metadata.versionCode,
+                contentWarning = contentWarning,
+            )
+        } catch (e: Throwable) {
+            // free up the file descriptor if exists
+            PackageTools.jarLoaderMap.remove(jarFile.absolutePathString())?.close()
+            jarFile.deleteIfExists()
 
             try {
-                // collect sources from the extension
-                val extensionMainClassInstance = loadExtensionSources(jarFilePath, className)
-                val sources: List<Source> =
-                    when (extensionMainClassInstance) {
-                        is Source -> listOf(extensionMainClassInstance)
-                        is SourceFactory -> extensionMainClassInstance.createSources()
-                        else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
-                    }
-
-                val langs = sources.map { it.lang }.toSet()
-                val extensionLang =
-                    when (langs.size) {
-                        0 -> ""
-                        1 -> langs.first()
-                        else -> "all"
-                    }
-
-                val extensionName =
-                    packageInfo.applicationInfo.metaData.getString(METADATA_NAME)
-                        ?: packageInfo.applicationInfo.nonLocalizedLabel
-                            .toString()
-                            .substringAfter("Tachiyomi: ")
-
-                val extensionLibVersion =
-                    packageInfo.applicationInfo.metaData
-                        .getString(METADATA_EXTENSION_LIB)
-                        .takeUnless { it == "0" }
-                        ?: packageInfo.versionName.substringBeforeLast('.')
-
-                // update extension info
-                transaction {
-                    if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
-                        ExtensionTable.insert {
-                            it[this.apkName] = apkName
-                            it[name] = extensionName
-                            it[this.pkgName] = packageInfo.packageName
-                            it[versionName] = packageInfo.versionName
-                            it[versionCode] = packageInfo.versionCode.toLong()
-                            it[extensionLib] = extensionLibVersion
-                            it[lang] = extensionLang
-                            it[this.contentWarning] = contentWarning
-                        }
-                    }
-
-                    ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
-                        it[this.apkName] = apkName
-                        it[this.isInstalled] = true
-                        it[this.classFQName] = className
-                        it[versionName] = packageInfo.versionName
-                        it[versionCode] = packageInfo.versionCode.toLong()
-                    }
-
-                    val extensionId =
-                        ExtensionTable
-                            .selectAll()
-                            .where { ExtensionTable.pkgName eq pkgName }
-                            .first()[ExtensionTable.id]
-                            .value
-
-                    sources.forEach { httpSource ->
-                        SourceTable.insert {
-                            it[id] = httpSource.id
-                            it[name] = httpSource.name
-                            it[lang] = httpSource.lang
-                            it[extension] = extensionId
-                            it[this.contentWarning] = contentWarning
-                        }
-                        logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
-                    }
-                }
-                return 201 // we installed successfully
-            } catch (e: Throwable) {
-                // free up the file descriptor if exists
-                PackageTools.jarLoaderMap.remove(jarFilePath)?.close()
-                File(jarFilePath).delete()
-
-                try {
-                    uninstallExtension(pkgName)
-                } catch (_: Throwable) {
-                }
-                throw e
+                uninstallExtension(pkgName)
+            } catch (_: Throwable) {
             }
-        } else {
-            return 302 // extension was already installed
+            throw e
+        }
+        return pkgName
+    }
+
+    private fun setupJar(
+        jarFile: Path,
+        className: String,
+        extensionName: String,
+        extensionLibVersion: String,
+        apkName: String,
+        pkgName: String,
+        versionName: String,
+        versionCode: Int,
+        contentWarning: Int,
+    ) {
+        // collect sources from the extension
+        val extensionMainClassInstance = loadExtensionSources(jarFile, className)
+        val sources: List<Source> =
+            when (extensionMainClassInstance) {
+                is Source -> listOf(extensionMainClassInstance)
+                is SourceFactory -> extensionMainClassInstance.createSources()
+                else -> throw RuntimeException("Unknown source class type! ${extensionMainClassInstance.javaClass}")
+            }
+
+        val langs = sources.map { it.lang }.toSet()
+        val extensionLang =
+            when (langs.size) {
+                0 -> ""
+                1 -> langs.first()
+                else -> "all"
+            }
+
+        // update extension info
+        transaction {
+            if (ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.firstOrNull() == null) {
+                ExtensionTable.insert {
+                    it[this.apkName] = apkName
+                    it[name] = extensionName
+                    it[this.pkgName] = pkgName
+                    it[this.versionName] = versionName
+                    it[this.versionCode] = versionCode.toLong()
+                    it[extensionLib] = extensionLibVersion
+                    it[lang] = extensionLang
+                    it[this.contentWarning] = contentWarning
+                }
+            }
+
+            ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
+                it[this.apkName] = apkName
+                it[this.isInstalled] = true
+                it[this.classFQName] = className
+                it[this.versionName] = versionName
+                it[this.versionCode] = versionCode.toLong()
+            }
+
+            val extensionId =
+                ExtensionTable
+                    .selectAll()
+                    .where { ExtensionTable.pkgName eq pkgName }
+                    .first()[ExtensionTable.id]
+                    .value
+
+            sources.forEach { httpSource ->
+                SourceTable.insert {
+                    it[id] = httpSource.id
+                    it[name] = httpSource.name
+                    it[lang] = httpSource.lang
+                    it[extension] = extensionId
+                    it[this.contentWarning] = contentWarning
+                }
+                logger.debug { "Installed source ${httpSource.name} (${httpSource.lang}) with id:${httpSource.id}" }
+            }
         }
     }
 
     private fun extractAndCacheApkIcon(
-        apkFilePath: String,
+        apkFile: Path,
         pkgName: String,
     ) {
-        val iconCacheDir = "${applicationDirs.extensionsRoot}/icon"
         try {
             val iconData =
-                ApkFile(File(apkFilePath)).use { apk ->
+                ApkFile(apkFile.toFile()).use { apk ->
                     apk.allIcons
                         .filterIsInstance<Icon>()
                         .mapNotNull { it.data?.let { data -> data to it.density } }
@@ -293,31 +474,36 @@ object Extension {
                 logger.warn { "No icon found in APK $pkgName" }
                 return
             }
-
-            File(iconCacheDir).mkdirs()
-            clearCachedImage(iconCacheDir, pkgName)
-            saveImage("$iconCacheDir/$pkgName", iconData.inputStream(), null)
+            cacheIcon(pkgName, iconData.inputStream())
         } catch (e: Exception) {
             logger.warn(e) { "Failed to extract icon from APK $pkgName" }
         }
     }
 
-    private fun extractAssetsFromApk(
-        apkPath: String,
-        jarPath: String,
+    private fun cacheIcon(
+        pkgName: String,
+        inputStream: InputStream,
     ) {
-        val apkFile = File(apkPath)
-        val jarFile = File(jarPath)
+        val iconCacheDir = Path(applicationDirs.extensionsRoot) / "icon"
+        iconCacheDir.createDirectories()
+        clearCachedImage(iconCacheDir.absolutePathString(), pkgName)
+        saveImage("$iconCacheDir/$pkgName", inputStream, null)
+    }
 
-        val assetsFolder = File("${apkFile.parent}/${apkFile.nameWithoutExtension}_assets")
-        assetsFolder.mkdir()
+    @OptIn(ExperimentalPathApi::class)
+    private fun extractAssetsFromApk(
+        apkFile: Path,
+        jarFile: Path,
+    ) {
+        val assetsFolder = apkFile.parent / "${apkFile.nameWithoutExtension}_assets"
+        assetsFolder.createDirectories()
         ZipInputStream(apkFile.inputStream()).use { zipInputStream ->
             var zipEntry = zipInputStream.nextEntry
             while (zipEntry != null) {
                 if (zipEntry.name.startsWith("assets/") && !zipEntry.isDirectory) {
-                    val assetFile = File(assetsFolder, zipEntry.name)
-                    assetFile.parentFile.mkdirs()
-                    FileOutputStream(assetFile).use { outputStream ->
+                    val assetFile = assetsFolder / zipEntry.name
+                    assetFile.createParentDirectories()
+                    assetFile.outputStream().use { outputStream ->
                         zipInputStream.copyTo(outputStream)
                     }
                 }
@@ -325,9 +511,9 @@ object Extension {
             }
         }
 
-        val tempJarFile = File("${jarFile.parent}/${jarFile.nameWithoutExtension}_temp.jar")
+        val tempJarFile = jarFile.parent / "${jarFile.nameWithoutExtension}_temp.jar"
         ZipInputStream(jarFile.inputStream()).use { jarZipInputStream ->
-            ZipOutputStream(FileOutputStream(tempJarFile)).use { jarZipOutputStream ->
+            ZipOutputStream(tempJarFile.outputStream()).use { jarZipOutputStream ->
                 var zipEntry = jarZipInputStream.nextEntry
                 while (zipEntry != null) {
                     if (!zipEntry.name.startsWith("META-INF/")) {
@@ -336,8 +522,8 @@ object Extension {
                     }
                     zipEntry = jarZipInputStream.nextEntry
                 }
-                assetsFolder.walkTopDown().forEach { file ->
-                    if (file.isFile) {
+                assetsFolder.walk().forEach { file ->
+                    if (file.isRegularFile()) {
                         jarZipOutputStream.putNextEntry(ZipEntry(file.relativeTo(assetsFolder).toString().replace("\\", "/")))
                         file.inputStream().use { inputStream ->
                             inputStream.copyTo(jarZipOutputStream)
@@ -348,17 +534,25 @@ object Extension {
             }
         }
 
-        jarFile.delete()
-        tempJarFile.renameTo(jarFile)
+        jarFile.deleteIfExists()
+        tempJarFile.copyTo(jarFile)
+        tempJarFile.deleteExisting()
 
         assetsFolder.deleteRecursively()
     }
 
+    private fun extractAndParseAndroidManifest(jar: Path): AndroidManifestParser.AndroidManifest =
+        ZipFile.builder().setPath(jar).get().use { jarZip ->
+            jarZip.getInputStream(jarZip.getEntry("AndroidManifest.xml")).use {
+                AndroidManifestParser.parse(it)
+            }
+        }
+
     private val network: NetworkHelper by injectLazy()
 
-    private suspend fun downloadAPKFile(
+    private suspend fun downloadExtension(
         url: String,
-        savePath: String,
+        savePath: Path,
     ) {
         val response =
             network.client
@@ -366,11 +560,10 @@ object Extension {
                     GET(url, cache = CacheControl.FORCE_NETWORK),
                 ).await()
 
-        val downloadedFile = File(savePath)
-        downloadedFile.sink().buffer().use { sink ->
-            response.body.source().use { source ->
-                sink.writeAll(source)
-                sink.flush()
+        savePath.createParentDirectories()
+        response.body.byteStream().use {
+            savePath.outputStream().buffered().use { out ->
+                it.copyTo(out)
             }
         }
     }
@@ -382,7 +575,7 @@ object Extension {
         val fileNameWithoutType =
             extensionRecord[ExtensionTable.apkName]?.substringBefore(".apk")
                 ?: throw NullPointerException("Missing $pkgName apkName")
-        val jarPath = "${applicationDirs.extensionsRoot}/$fileNameWithoutType.jar"
+        val jarPath = Path(applicationDirs.extensionsRoot) / "$fileNameWithoutType.jar"
         val sources =
             transaction {
                 val extensionId = extensionRecord[ExtensionTable.id].value
@@ -404,18 +597,18 @@ object Extension {
                 sources
             }
 
-        if (File(jarPath).exists()) {
+        if (jarPath.exists()) {
             // free up the file descriptor if exists
-            PackageTools.jarLoaderMap.remove(jarPath)?.close()
+            PackageTools.jarLoaderMap.remove(jarPath.absolutePathString())?.close()
 
             // clear all loaded sources
             sources.forEach { GetSource.unregisterSource(it) }
 
-            File(jarPath).delete()
+            jarPath.deleteExisting()
         }
     }
 
-    suspend fun updateExtension(pkgName: String): Int {
+    suspend fun updateExtension(pkgName: String): String {
         val targetExtension = ExtensionsList.updateMap.remove(pkgName)!!
         uninstallExtension(pkgName)
         transaction {

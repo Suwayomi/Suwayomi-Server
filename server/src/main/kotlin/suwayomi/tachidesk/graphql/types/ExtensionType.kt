@@ -32,6 +32,7 @@ class ExtensionType(
     val name: String,
     val pkgName: String,
     val apkUrl: String?,
+    val jarUrl: String?,
     val extensionLib: String?,
     val versionName: String,
     @GraphQLDeprecated(
@@ -56,6 +57,7 @@ class ExtensionType(
         name = row[ExtensionTable.name],
         pkgName = row[ExtensionTable.pkgName],
         apkUrl = row[ExtensionTable.apkUrl],
+        jarUrl = row[ExtensionTable.jarUrl],
         extensionLib = row[ExtensionTable.extensionLib],
         versionName = row[ExtensionTable.versionName],
         versionCode = row[ExtensionTable.versionCode].toInt(),

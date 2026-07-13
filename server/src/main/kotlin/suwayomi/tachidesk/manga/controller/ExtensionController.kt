@@ -63,8 +63,6 @@ object ExtensionController {
                 ctx.future {
                     future {
                         Extension.installExtension(pkgName)
-                    }.thenApply {
-                        ctx.status(it)
                     }
                 }
             },
@@ -99,8 +97,6 @@ object ExtensionController {
                             uploadedFile.content(),
                             uploadedFile.filename(),
                         )
-                    }.thenApply {
-                        ctx.status(it)
                     }
                 }
             },
@@ -126,8 +122,6 @@ object ExtensionController {
                 ctx.future {
                     future {
                         Extension.updateExtension(pkgName)
-                    }.thenApply {
-                        ctx.status(it)
                     }
                 }
             },

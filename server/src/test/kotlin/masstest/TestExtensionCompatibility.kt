@@ -27,6 +27,7 @@ import suwayomi.tachidesk.manga.impl.Source.getSourceList
 import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.updateExtension
+import suwayomi.tachidesk.manga.impl.extension.ExtensionStoreService
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList.getExtensionList
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
@@ -50,6 +51,8 @@ class TestExtensionCompatibility {
     private val chaptersToFetch = mutableListOf<Triple<HttpSource, SManga, SChapter>>()
     private val chaptersPageListFailedToFetch = mutableListOf<Triple<HttpSource, Pair<SManga, SChapter>, Exception>>()
 
+    val repos = listOf<String>()
+
     @BeforeAll
     fun setup() {
         val dataRoot = File(BASE_PATH).absolutePath
@@ -57,6 +60,14 @@ class TestExtensionCompatibility {
         Looper.clearMainLooperForTest()
         SettingsRegistry.clear()
         applicationSetup()
+        repos.forEach {
+            val store =
+                runBlocking {
+                    ExtensionStoreService.fetch(it)
+                }
+            ExtensionStoreService.upsert(store)
+        }
+        ExtensionStoreService.syncDbToPrefs()
         setLoggingEnabled(false)
 
         runBlocking {
@@ -72,7 +83,10 @@ class TestExtensionCompatibility {
                     }
 
                     else -> {
-                        uninstallExtension(it.pkgName)
+                        try {
+                            uninstallExtension(it.pkgName)
+                        } catch (_: Exception) {
+                        }
                         installExtension(it.pkgName)
                     }
                 }
@@ -135,9 +149,9 @@ class TestExtensionCompatibility {
                                 repeat { source.getMangaUpdate(manga, emptyList(), true, true) }
                             } catch (e: Exception) {
                                 logger.warn {
-                                    "Failed to fetch manga info and chapters from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                    "Failed to fetch manga info and chapters from $source for ${manga.title} (${source.getMangaUrl(
                                         manga,
-                                    ).url}): ${e.message}"
+                                    )}): ${e.message}"
                                 }
                                 mangaFailedToFetch += Triple(source, manga, e)
                             }
@@ -147,7 +161,7 @@ class TestExtensionCompatibility {
             File("$BASE_PATH/MangaFailedToFetch.txt").writeText(
                 mangaFailedToFetch.joinToString("\n") { (source, manga, exception) ->
                     "${source.name} (${source.lang}, ${source.id}):" +
-                        " ${manga.title} (${source.mangaDetailsRequest(manga).url}):" +
+                        " ${manga.title} (${source.getMangaUrl(manga)}):" +
                         " ${exception.message}"
                 },
             )
@@ -163,9 +177,9 @@ class TestExtensionCompatibility {
                                 repeat { source.getPageList(chapter) }
                             } catch (e: Exception) {
                                 logger.warn {
-                                    "Failed to fetch manga info from $source for ${manga.title} (${source.mangaDetailsRequest(
+                                    "Failed to fetch manga info from $source for ${manga.title} (${source.getMangaUrl(
                                         manga,
-                                    ).url}): ${e.message}"
+                                    )}): ${e.message}"
                                 }
                                 chaptersPageListFailedToFetch += Triple(source, manga to chapter, e)
                             }
@@ -176,7 +190,7 @@ class TestExtensionCompatibility {
             File("$BASE_PATH/ChapterPageListFailedToFetch.txt").writeText(
                 chaptersPageListFailedToFetch.joinToString("\n") { (source, manga, exception) ->
                     "${source.name} (${source.lang}, ${source.id}):" +
-                        " ${manga.first.title} (${source.mangaDetailsRequest(manga.first).url}):" +
+                        " ${manga.first.title} (${source.getMangaUrl(manga.first)}):" +
                         " ${manga.second.name} (${manga.second.url}): ${exception.message}"
                 },
             )

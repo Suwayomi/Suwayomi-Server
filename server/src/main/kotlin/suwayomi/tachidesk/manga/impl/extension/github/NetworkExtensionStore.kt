@@ -53,6 +53,8 @@ data class NetworkExtensionStore(
     data class Resources(
         @ProtoNumber(1) val apkUrl: String,
         @ProtoNumber(2) val iconUrl: String,
+        // Keiyoushi specific output
+        @ProtoNumber(501) val jarUrl: String? = null,
     )
 
     @Serializable
@@ -109,6 +111,7 @@ fun NetworkExtensionStore.ExtensionList.toExtensionInfos(store: ExtensionStore):
             name = extension.name,
             pkgName = extension.packageName,
             apkUrl = extension.resources.apkUrl,
+            jarUrl = extension.resources.jarUrl,
             iconUrl = extension.resources.iconUrl,
             extensionLib = extension.extensionLib,
             versionCode = extension.versionCode,
