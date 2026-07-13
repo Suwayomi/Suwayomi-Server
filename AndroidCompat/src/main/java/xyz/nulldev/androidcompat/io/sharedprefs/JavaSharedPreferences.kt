@@ -15,6 +15,10 @@ import com.russhwolf.settings.serialization.decodeValue
 import com.russhwolf.settings.serialization.decodeValueOrNull
 import com.russhwolf.settings.serialization.encodeValue
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.SetSerializer
@@ -22,6 +26,8 @@ import kotlinx.serialization.builtins.serializer
 import xyz.nulldev.androidcompat.util.SafePath
 import xyz.nulldev.ts.config.ApplicationRootDir
 import java.util.Properties
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.io.path.Path
 import kotlin.io.path.createParentDirectories
 import kotlin.io.path.deleteIfExists
@@ -107,16 +113,30 @@ class JavaSharedPreferences(
 
     override fun contains(key: String): Boolean = key in preferences.keys
 
-    private fun save(): Boolean {
-        synchronized(key) {
+    private fun getSnapshot(): Properties =
+        synchronized(properties) {
+            Properties().apply { putAll(properties) }
+        }
+
+    @OptIn(ExperimentalAtomicApi::class)
+    private var pendingAsyncSave = AtomicBoolean(false)
+
+    @OptIn(ExperimentalAtomicApi::class)
+    private var dirty = AtomicBoolean(false)
+
+    private fun save(properties: Properties): Boolean =
+        synchronized(file) {
             try {
                 if (properties.isEmpty) {
                     file.deleteIfExists()
                 } else {
                     file.createParentDirectories()
-                    file.outputStream().use {
+
+                     file.outputStream().use {
                         properties.storeToXML(it, null)
                     }
+
+
                 }
 
                 return true
@@ -125,10 +145,43 @@ class JavaSharedPreferences(
                 return false
             }
         }
+
+    private fun save(): Boolean = save(getSnapshot())
+
+    @OptIn(DelicateCoroutinesApi::class, ExperimentalAtomicApi::class)
+    private fun startAsyncSaver() {
+        if (!pendingAsyncSave.compareAndSet(false, true)) {
+            return
+        }
+
+        GlobalScope.launch(Dispatchers.IO) {
+            while (true) {
+                dirty.store(false)
+
+                save(getSnapshot())
+
+                if (!dirty.load()) {
+                    pendingAsyncSave.store(false)
+
+                    if (dirty.load() && pendingAsyncSave.compareAndSet(false, true)) {
+                        continue
+                    }
+
+                    break
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalAtomicApi::class)
+    private fun saveAsync() {
+        dirty.store(true)
+
+        startAsyncSaver()
     }
 
     override fun edit(): SharedPreferences.Editor =
-        Editor(preferences, ::save) { key ->
+        Editor(preferences, ::save, ::saveAsync) { key ->
             listeners.forEach { (_, listener) ->
                 listener(key)
             }
@@ -137,6 +190,7 @@ class JavaSharedPreferences(
     class Editor(
         private val preferences: Settings,
         private val save: () -> Boolean,
+        private val saveAsync: () -> Unit,
         private val notify: (String) -> Unit,
     ) : SharedPreferences.Editor {
         private val actions = mutableListOf<Action>()
@@ -229,7 +283,7 @@ class JavaSharedPreferences(
 
         override fun apply() {
             addToPreferences()
-            save()
+            saveAsync()
         }
 
         private fun addToPreferences() {
