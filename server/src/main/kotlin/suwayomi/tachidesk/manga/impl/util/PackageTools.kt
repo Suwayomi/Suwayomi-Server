@@ -95,46 +95,47 @@ object PackageTools {
     /** A modified version of `xyz.nulldev.androidcompat.pm.InstalledPackage.info` */
     fun getPackageInfo(apkFile: Path): PackageInfo =
         ApkParsers.getMetaInfo(apkFile.toFile()).toPackageInfo(apkFile.toFile()).apply {
-            val parsed = ApkFile(apkFile.toFile())
-            val dbFactory = DocumentBuilderFactory.newInstance()
-            val dBuilder = dbFactory.newDocumentBuilder()
-            val doc =
-                parsed.manifestXml.byteInputStream().use {
-                    dBuilder.parse(it)
-                }
+            ApkFile(apkFile.toFile()).use { parsed ->
+                val dbFactory = DocumentBuilderFactory.newInstance()
+                val dBuilder = dbFactory.newDocumentBuilder()
+                val doc =
+                    parsed.manifestXml.byteInputStream().use {
+                        dBuilder.parse(it)
+                    }
 
-            logger.trace { parsed.manifestXml }
+                logger.trace { parsed.manifestXml }
 
-            applicationInfo.metaData =
-                Bundle().apply {
-                    val appTag = doc.getElementsByTagName("application").item(0)
+                applicationInfo.metaData =
+                    Bundle().apply {
+                        val appTag = doc.getElementsByTagName("application").item(0)
 
-                    appTag
-                        ?.childNodes
-                        ?.toList()
-                        .orEmpty()
-                        .asSequence()
-                        .filter {
-                            it.nodeType == Node.ELEMENT_NODE
-                        }.map {
-                            it as Element
-                        }.filter {
-                            it.tagName == "meta-data"
-                        }.forEach {
-                            putString(
-                                it.attributes.getNamedItem("android:name").nodeValue,
-                                it.attributes.getNamedItem("android:value").nodeValue,
-                            )
-                        }
-                }
+                        appTag
+                            ?.childNodes
+                            ?.toList()
+                            .orEmpty()
+                            .asSequence()
+                            .filter {
+                                it.nodeType == Node.ELEMENT_NODE
+                            }.map {
+                                it as Element
+                            }.filter {
+                                it.tagName == "meta-data"
+                            }.forEach {
+                                putString(
+                                    it.attributes.getNamedItem("android:name").nodeValue,
+                                    it.attributes.getNamedItem("android:value").nodeValue,
+                                )
+                            }
+                    }
 
-            signatures =
-                (
-                    parsed.apkSingers.flatMap { it.certificateMetas }
-                    // + parsed.apkV2Singers.flatMap { it.certificateMetas }
-                ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                    .map { Signature(it.data) }
-                    .toTypedArray()
+                signatures =
+                    (
+                        parsed.apkSingers.flatMap { it.certificateMetas }
+                        // + parsed.apkV2Singers.flatMap { it.certificateMetas }
+                    ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
+                        .map { Signature(it.data) }
+                        .toTypedArray()
+            }
         }
 
     fun getSignatureHash(pkgInfo: PackageInfo): String? {
