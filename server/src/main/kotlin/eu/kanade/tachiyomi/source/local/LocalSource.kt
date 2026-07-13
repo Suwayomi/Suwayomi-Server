@@ -148,6 +148,7 @@ class LocalSource(
         // Fetch chapters of all the manga
         mangas.forEach { manga ->
             runBlocking {
+                getMangaDetails(manga)
                 val chapters = getChapterList(manga)
                 if (chapters.isNotEmpty()) {
                     val chapter = chapters.last()
