@@ -102,6 +102,7 @@ object Extension {
                     jarSavePath
                 }
             }
+
             apkUrl != null -> {
                 installAPK {
                     val apkName = Uri.parse(apkUrl).lastPathSegment!!
@@ -112,7 +113,10 @@ object Extension {
                     apkSavePath
                 }
             }
-            else -> throw NullPointerException("Could not find extension url for $pkgName")
+
+            else -> {
+                throw NullPointerException("Could not find extension url for $pkgName")
+            }
         }
     }
 
@@ -247,7 +251,7 @@ object Extension {
                     pkgName,
                     packageInfo.versionName,
                     packageInfo.versionCode,
-                    contentWarning
+                    contentWarning,
                 )
             } catch (e: Throwable) {
                 // free up the file descriptor if exists
@@ -270,16 +274,19 @@ object Extension {
     ): String {
         val jarFile = Path(fetcher())
 
-        val jarZip = ZipFile.builder()
-            .setPath(jarFile)
-            .get()
-
+        val jarZip =
+            ZipFile
+                .builder()
+                .setPath(jarFile)
+                .get()
 
         return jarZip.use { jarZip ->
-            val manifest = jarZip.getInputStream(jarZip.getEntry("AndroidManifest.xml"))
-                .use {
-                    AndroidManifestParser.parse(it)
-                }
+            val manifest =
+                jarZip
+                    .getInputStream(jarZip.getEntry("AndroidManifest.xml"))
+                    .use {
+                        AndroidManifestParser.parse(it)
+                    }
             val pkgName = manifest.packageName
 
             // check if we don't have the extension already installed
@@ -316,20 +323,23 @@ object Extension {
                 //     throw Exception("This apk is not a signed with the official tachiyomi signature")
                 // }
 
-                fun List<AndroidManifestParser.MetaData>.getString(name: String): String? {
-                    return this.find { it.name == name }?.value
-                }
+                fun List<AndroidManifestParser.MetaData>.getString(name: String): String? = this.find { it.name == name }?.value
 
-                var contentWarning = manifest.application!!.metaData.getString(METADATA_CONTENT_WARNING)
-                    ?.toIntOrNull()
+                var contentWarning =
+                    manifest.application!!
+                        .metaData
+                        .getString(METADATA_CONTENT_WARNING)
+                        ?.toIntOrNull()
                 if (contentWarning == null) {
-                    contentWarning = manifest.application.metaData.getString(METADATA_NSFW)
+                    contentWarning = manifest.application.metaData
+                        .getString(METADATA_NSFW)
                         ?.toIntOrNull()
                         ?: 0
                 }
 
                 val sourceClass =
-                    manifest.application.metaData.getString(METADATA_SOURCE_CLASS)!!
+                    manifest.application.metaData
+                        .getString(METADATA_SOURCE_CLASS)!!
                         .trim()
 
                 val className =
@@ -364,7 +374,7 @@ object Extension {
                         pkgName,
                         manifest.versionName,
                         manifest.versionCode!!,
-                        contentWarning
+                        contentWarning,
                     )
                 } catch (e: Throwable) {
                     // free up the file descriptor if exists
@@ -373,7 +383,8 @@ object Extension {
 
                     try {
                         uninstallExtension(pkgName)
-                    } catch (_: Exception) {}
+                    } catch (_: Exception) {
+                    }
                     throw e
                 }
             }
@@ -408,7 +419,6 @@ object Extension {
                 1 -> langs.first()
                 else -> "all"
             }
-
 
         // update extension info
         transaction {

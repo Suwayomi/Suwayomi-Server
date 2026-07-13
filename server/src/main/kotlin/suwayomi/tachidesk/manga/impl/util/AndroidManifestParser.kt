@@ -22,21 +22,16 @@ object AndroidManifestParser {
     data class AndroidManifest(
         @XmlSerialName("package", "", "")
         val packageName: String,
-
         @XmlSerialName("versionCode", ANDROID_NS, "android")
         val versionCode: Int? = null,
-
         @XmlSerialName("versionName", ANDROID_NS, "android")
         val versionName: String? = null,
-
         @XmlElement(true)
         @XmlSerialName("uses-sdk", "", "")
         val usesSdk: UsesSdk? = null,
-
         @XmlElement(true)
         @XmlSerialName("uses-feature", "", "")
         val usesFeatures: List<UsesFeature> = emptyList(),
-
         @XmlElement(true)
         @XmlSerialName("application", "", "")
         val application: Application? = null,
@@ -47,7 +42,6 @@ object AndroidManifestParser {
     data class UsesSdk(
         @XmlSerialName("minSdkVersion", ANDROID_NS, "android")
         val minSdkVersion: Int? = null,
-
         @XmlSerialName("targetSdkVersion", ANDROID_NS, "android")
         val targetSdkVersion: Int? = null,
     )
@@ -64,20 +58,15 @@ object AndroidManifestParser {
     data class Application(
         @XmlSerialName("label", ANDROID_NS, "android")
         val label: String? = null,
-
         @XmlSerialName("icon", ANDROID_NS, "android")
         val icon: String? = null,
-
         @XmlSerialName("allowBackup", ANDROID_NS, "android")
         val allowBackup: Boolean? = null,
-
         @XmlSerialName("extractNativeLibs", ANDROID_NS, "android")
         val extractNativeLibs: Boolean? = null,
-
         @XmlElement(true)
         @XmlSerialName("meta-data", "", "")
         val metaData: List<MetaData> = emptyList(),
-
         @XmlElement(true)
         @XmlSerialName("activity", "", "")
         val activities: List<Activity> = emptyList(),
@@ -88,10 +77,8 @@ object AndroidManifestParser {
     data class MetaData(
         @XmlSerialName("name", ANDROID_NS, "android")
         val name: String,
-
         @XmlSerialName("value", ANDROID_NS, "android")
         val value: String? = null,
-
         @XmlSerialName("resource", ANDROID_NS, "android")
         val resource: String? = null,
     )
@@ -101,13 +88,10 @@ object AndroidManifestParser {
     data class Activity(
         @XmlSerialName("name", ANDROID_NS, "android")
         val name: String,
-
         @XmlSerialName("exported", ANDROID_NS, "android")
         val exported: Boolean? = null,
-
         @XmlSerialName("theme", ANDROID_NS, "android")
         val theme: String? = null,
-
         @XmlElement(true)
         @XmlSerialName("intent-filter", "", "")
         val intentFilters: List<IntentFilter> = emptyList(),
@@ -119,11 +103,9 @@ object AndroidManifestParser {
         @XmlElement(true)
         @XmlSerialName("action", "", "")
         val actions: List<Action> = emptyList(),
-
         @XmlElement(true)
         @XmlSerialName("category", "", "")
         val categories: List<Category> = emptyList(),
-
         @XmlElement(true)
         @XmlSerialName("data", "", "")
         val data: List<Data> = emptyList(),
@@ -148,24 +130,22 @@ object AndroidManifestParser {
     data class Data(
         @XmlSerialName("scheme", ANDROID_NS, "android")
         val scheme: String? = null,
-
         @XmlSerialName("host", ANDROID_NS, "android")
         val host: String? = null,
-
         @XmlSerialName("pathPattern", ANDROID_NS, "android")
         val pathPattern: String? = null,
     )
 
-    private val xml = XML {
-        autoPolymorphic = false
-        repairNamespaces = true
-        xmlDeclMode = XmlDeclMode.Minimal
-        defaultPolicy {
-            unknownChildHandler = UnknownChildHandler { _, _, _, _, _ -> emptyList() }
+    private val xml =
+        XML {
+            autoPolymorphic = false
+            repairNamespaces = true
+            xmlDeclMode = XmlDeclMode.Minimal
+            defaultPolicy {
+                unknownChildHandler = UnknownChildHandler { _, _, _, _, _ -> emptyList() }
+            }
         }
-    }
 
     @OptIn(ExperimentalXmlUtilApi::class)
-    fun parse(input: InputStream): AndroidManifest =
-        xml.decodeFromReader(AndroidManifest.serializer(), KtXmlReader(input))
+    fun parse(input: InputStream): AndroidManifest = xml.decodeFromReader(AndroidManifest.serializer(), KtXmlReader(input))
 }

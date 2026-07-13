@@ -94,8 +94,8 @@ object PackageTools {
     }
 
     /** A modified version of `xyz.nulldev.androidcompat.pm.InstalledPackage.info` */
-    fun getPackageInfo(apkFile: Path): PackageInfo {
-        return ApkParsers.getMetaInfo(apkFile.toFile()).toPackageInfo(apkFile.toFile()).apply {
+    fun getPackageInfo(apkFile: Path): PackageInfo =
+        ApkParsers.getMetaInfo(apkFile.toFile()).toPackageInfo(apkFile.toFile()).apply {
             val parsed = ApkFile(apkFile.toFile())
             val dbFactory = DocumentBuilderFactory.newInstance()
             val dBuilder = dbFactory.newDocumentBuilder()
@@ -137,7 +137,6 @@ object PackageTools {
                     .map { Signature(it.data) }
                     .toTypedArray()
         }
-    }
 
     fun getSignatureHash(pkgInfo: PackageInfo): String? {
         val signatures = pkgInfo.signatures

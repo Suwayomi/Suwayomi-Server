@@ -18,19 +18,23 @@ object ResourceArscIconParser {
 
     fun extractIcon(
         jar: Path,
-        iconPath: Path
+        iconPath: Path,
     ) {
-        ZipFile.builder()
+        ZipFile
+            .builder()
             .setPath(jar)
             .get()
             .use { zip ->
-                val packages = zip.getInputStream(zip.getEntry("resources.arsc"))
-                    .use { ArscParser(it.readBytes()).parse() }
+                val packages =
+                    zip
+                        .getInputStream(zip.getEntry("resources.arsc"))
+                        .use { ArscParser(it.readBytes()).parse() }
 
-                val icon = packages
-                    .flatMap { it.iconCandidates() }
-                    .maxByOrNull { it.density }
-                    ?: return
+                val icon =
+                    packages
+                        .flatMap { it.iconCandidates() }
+                        .maxByOrNull { it.density }
+                        ?: return
 
                 val entry = zip.getEntry(icon.path) ?: return
 
@@ -42,19 +46,21 @@ object ResourceArscIconParser {
             }
     }
 
-    fun extractIcon(
-        zip: ZipFile,
-    ): InputStream {
-        val packages = zip.getInputStream(zip.getEntry("resources.arsc"))
-            .use { ArscParser(it.readBytes()).parse() }
+    fun extractIcon(zip: ZipFile): InputStream {
+        val packages =
+            zip
+                .getInputStream(zip.getEntry("resources.arsc"))
+                .use { ArscParser(it.readBytes()).parse() }
 
-        val icon = packages
-            .flatMap { it.iconCandidates() }
-            .maxByOrNull { it.density }
-            ?: throw NullPointerException("No valid icons")
+        val icon =
+            packages
+                .flatMap { it.iconCandidates() }
+                .maxByOrNull { it.density }
+                ?: throw NullPointerException("No valid icons")
 
-        val entry = zip.getEntry(icon.path)
-            ?: throw NullPointerException("Icon ${icon.path} missing")
+        val entry =
+            zip.getEntry(icon.path)
+                ?: throw NullPointerException("Icon ${icon.path} missing")
 
         return zip.getInputStream(entry)
     }
@@ -76,19 +82,22 @@ object ResourceArscIconParser {
             }
 
     private fun Config.density(): Int =
-        ByteBuffer.wrap(id)
+        ByteBuffer
+            .wrap(id)
             .order(ByteOrder.LITTLE_ENDIAN)
             .getShort(14)
             .toInt() and 0xffff
 
-    private val rasterExtensions = setOf(
-        "png",
-        "webp",
-        "jpg",
-        "jpeg",
-    )
+    private val rasterExtensions =
+        setOf(
+            "png",
+            "webp",
+            "jpg",
+            "jpeg",
+        )
 
     private fun isRasterImage(path: String): Boolean =
-        path.substringAfterLast('.', "")
+        path
+            .substringAfterLast('.', "")
             .lowercase() in rasterExtensions
 }
