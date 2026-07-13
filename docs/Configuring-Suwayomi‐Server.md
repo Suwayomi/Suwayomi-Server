@@ -294,6 +294,10 @@ server.syncDataTracking = true
 server.syncDataHistory = true
 server.syncDataCategories = true
 server.syncInterval = "0s"
+server.syncOnChapterRead = false
+server.syncOnChapterOpen = false
+server.syncOnWebUIStart = false
+server.syncOnWebUIResume = false
 ```
 - `server.syncYomiEnabled` controls whether SyncYomi is enabled.
 - `server.syncYomiHost` base URL of the SyncYomi server instance. e.g. `http://localhost:8282`
@@ -304,6 +308,10 @@ server.syncInterval = "0s"
 - `server.syncDataHistory` enables syncing reading history.
 - `server.syncDataCategories` enables syncing categories.
 - `server.syncInterval` interval between automatic sync operations. Use `0s` to disable.
+- `server.syncOnChapterRead` triggers a sync whenever a chapter is marked as read.
+- `server.syncOnChapterOpen` triggers a sync whenever a chapter is opened in the reader.
+- `server.syncOnWebUIStart` triggers a sync when the WebUI is first loaded.
+- `server.syncOnWebUIResume` triggers a sync when the WebUI tab regains focus.
 
 **Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+PostgreSQL. Please be aware that PostgreSQL support is currently still in beta.
 

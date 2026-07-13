@@ -162,7 +162,7 @@ class ServerConfig(
         protoNumber = 9,
         group = SettingGroup.WEB_UI,
         privacySafe = true,
-        defaultValue = WebUIFlavor.WEBUI,
+        defaultValue = WebUIFlavor.CUSTOM,
         enumClass = WebUIFlavor::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.WebUIFlavor")),
     )
@@ -1106,6 +1106,34 @@ class ServerConfig(
         privacySafe = true,
     )
 
+    val syncOnChapterRead: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 100,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncOnChapterOpen: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 101,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncOnWebUIStart: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 102,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+
+    val syncOnWebUIResume: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 103,
+        defaultValue = false,
+        group = SettingGroup.SYNCYOMI,
+        privacySafe = true,
+    )
+    
     val opdsSkipChapterMetadataFeed: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 96,
         group = SettingGroup.OPDS,

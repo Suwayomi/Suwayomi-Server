@@ -20,6 +20,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -32,6 +33,7 @@ import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.serverConfig
 import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -121,6 +123,11 @@ class ChapterMutation {
                     KoreaderSyncService.pushProgress(chapterId)
                 }
             }
+        }
+
+        // SyncYomi trigger on chapter read
+        if (patch.isRead == true && serverConfig.syncOnChapterRead.value) {
+            SyncManager.startSync()
         }
     }
 
@@ -408,6 +415,11 @@ class ChapterMutation {
         val paramsMap = input.toParams()
 
         return future {
+            // SyncYomi trigger on chapter open (fires once when chapter is opened, not on every page)
+            if (serverConfig.syncOnChapterOpen.value) {
+                SyncManager.startSync()
+            }
+
             var chapter = getChapterDownloadReadyById(chapterId)
             val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
             var syncConflictInfo: SyncConflictInfoType? = null

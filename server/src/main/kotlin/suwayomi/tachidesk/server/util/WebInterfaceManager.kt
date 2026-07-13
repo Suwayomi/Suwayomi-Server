@@ -136,14 +136,15 @@ object WebInterfaceManager {
     fun getAboutInfo(): AboutWebUI {
         val currentVersion = getLocalVersion()
 
+        val isCustomFlavor = serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM
         val failedToGetVersion = currentVersion == "r-1"
-        if (failedToGetVersion) {
+        if (failedToGetVersion && !isCustomFlavor) {
             throw Exception("Failed to get current version")
         }
 
         return AboutWebUI(
             channel = serverConfig.webUIChannel.value,
-            tag = currentVersion,
+            tag = if (failedToGetVersion) "custom" else currentVersion,
             updateTimestamp = preferences.getLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()),
         )
     }
