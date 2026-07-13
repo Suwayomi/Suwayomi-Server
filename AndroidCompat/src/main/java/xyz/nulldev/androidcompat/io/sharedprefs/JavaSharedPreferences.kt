@@ -31,7 +31,7 @@ import kotlin.io.path.outputStream
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
 class JavaSharedPreferences(
-    key: String,
+    private val key: String,
 ) : SharedPreferences {
     companion object {
         private val logger = KotlinLogging.logger {}
@@ -53,26 +53,8 @@ class JavaSharedPreferences(
                 logger.error(e) { "Error loading settings from $key" }
             }
         }
-    private val preferences =
-        PropertiesSettings(
-            properties,
-            onModify = { properties ->
-                synchronized(key) {
-                    try {
-                        if (properties.isEmpty) {
-                            file.deleteIfExists()
-                        } else {
-                            file.createParentDirectories()
-                            file.outputStream().use {
-                                properties.storeToXML(it, null)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        logger.error(e) { "Error saving settings in $key" }
-                    }
-                }
-            },
-        )
+    private val preferences = PropertiesSettings(properties)
+
     private val listeners = mutableMapOf<SharedPreferences.OnSharedPreferenceChangeListener, (String) -> Unit>()
 
     // TODO: 2021-05-29 Need to find a way to get this working with all pref types
@@ -125,8 +107,28 @@ class JavaSharedPreferences(
 
     override fun contains(key: String): Boolean = key in preferences.keys
 
+    private fun save(): Boolean {
+        synchronized(key) {
+            try {
+                if (properties.isEmpty) {
+                    file.deleteIfExists()
+                } else {
+                    file.createParentDirectories()
+                    file.outputStream().use {
+                        properties.storeToXML(it, null)
+                    }
+                }
+
+                return true
+            } catch (e: Exception) {
+                logger.error(e) { "Error saving settings $key" }
+                return false
+            }
+        }
+    }
+
     override fun edit(): SharedPreferences.Editor =
-        Editor(preferences) { key ->
+        Editor(preferences, ::save) { key ->
             listeners.forEach { (_, listener) ->
                 listener(key)
             }
@@ -134,6 +136,7 @@ class JavaSharedPreferences(
 
     class Editor(
         private val preferences: Settings,
+        private val save: () -> Boolean,
         private val notify: (String) -> Unit,
     ) : SharedPreferences.Editor {
         private val actions = mutableListOf<Action>()
@@ -221,11 +224,12 @@ class JavaSharedPreferences(
 
         override fun commit(): Boolean {
             addToPreferences()
-            return true
+            return save()
         }
 
         override fun apply() {
             addToPreferences()
+            save()
         }
 
         private fun addToPreferences() {
