@@ -2,16 +2,12 @@ package suwayomi.tachidesk.manga.impl.util
 
 import kotlinx.serialization.Serializable
 import nl.adaptivity.xmlutil.ExperimentalXmlUtilApi
-import nl.adaptivity.xmlutil.QName
 import nl.adaptivity.xmlutil.XmlDeclMode
-import nl.adaptivity.xmlutil.XmlReader
 import nl.adaptivity.xmlutil.core.KtXmlReader
-import nl.adaptivity.xmlutil.serialization.InputKind
 import nl.adaptivity.xmlutil.serialization.UnknownChildHandler
 import nl.adaptivity.xmlutil.serialization.XML
 import nl.adaptivity.xmlutil.serialization.XmlElement
 import nl.adaptivity.xmlutil.serialization.XmlSerialName
-import nl.adaptivity.xmlutil.serialization.structure.XmlDescriptor
 import java.io.InputStream
 
 object AndroidManifestParser {

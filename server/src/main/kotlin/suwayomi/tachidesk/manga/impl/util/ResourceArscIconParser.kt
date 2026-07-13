@@ -7,8 +7,6 @@ import pxb.android.arsc.Config
 import pxb.android.arsc.Pkg
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.nio.file.Path
-import kotlin.io.path.outputStream
 
 object ResourceArscIconParser {
     private data class IconCandidate(
