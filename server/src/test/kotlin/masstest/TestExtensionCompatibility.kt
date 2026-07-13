@@ -61,9 +61,10 @@ class TestExtensionCompatibility {
         SettingsRegistry.clear()
         applicationSetup()
         repos.forEach {
-            val store = runBlocking {
-                ExtensionStoreService.fetch(it)
-            }
+            val store =
+                runBlocking {
+                    ExtensionStoreService.fetch(it)
+                }
             ExtensionStoreService.upsert(store)
         }
         ExtensionStoreService.syncDbToPrefs()
@@ -84,7 +85,8 @@ class TestExtensionCompatibility {
                     else -> {
                         try {
                             uninstallExtension(it.pkgName)
-                        } catch (_: Exception) {}
+                        } catch (_: Exception) {
+                        }
                         installExtension(it.pkgName)
                     }
                 }
