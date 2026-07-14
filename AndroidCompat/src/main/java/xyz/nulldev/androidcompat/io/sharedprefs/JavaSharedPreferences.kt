@@ -28,10 +28,13 @@ import java.util.Properties
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.io.path.Path
+import kotlin.io.path.copyTo
 import kotlin.io.path.createParentDirectories
+import kotlin.io.path.deleteExisting
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
+import kotlin.io.path.name
 import kotlin.io.path.outputStream
 
 @OptIn(ExperimentalSerializationApi::class, ExperimentalSettingsApi::class)
@@ -192,11 +195,15 @@ class JavaSharedPreferences(
                 } else {
                     file.createParentDirectories()
 
-                     file.outputStream().use {
+                    val tempFile = file.resolveSibling("${file.name}.tmp")
+
+                    tempFile.outputStream().use {
                         properties.storeToXML(it, null)
                     }
 
-
+                    file.deleteIfExists()
+                    tempFile.copyTo(file)
+                    tempFile.deleteExisting()
                 }
 
                 return true
