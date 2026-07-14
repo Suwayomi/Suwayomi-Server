@@ -177,7 +177,7 @@ public class CustomContext extends Context {
     public SharedPreferences getSharedPreferences(@NotNull File file, int mode) {
         String path = file.getAbsolutePath().replace('\\', '/');
         int firstSlash = path.indexOf("/");
-        return new JavaSharedPreferences(path.substring(firstSlash));
+        return getSharedPreferences(path.substring(firstSlash), mode);
     }
 
     @Override
