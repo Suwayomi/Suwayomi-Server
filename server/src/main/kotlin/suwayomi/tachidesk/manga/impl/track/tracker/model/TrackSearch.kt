@@ -35,6 +35,12 @@ class TrackSearch : Track {
 
     var artists: List<String> = emptyList()
 
+    /**
+     * Alternative titles for this entry (e.g. romaji/english/native/synonyms). Not persisted; used
+     * to confidently match a manga title against a search result across naming/language variants.
+     */
+    var alternative_titles: List<String> = emptyList()
+
     var cover_url: String = ""
 
     var summary: String = ""

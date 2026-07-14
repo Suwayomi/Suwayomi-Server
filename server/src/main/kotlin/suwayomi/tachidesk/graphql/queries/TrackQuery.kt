@@ -3,9 +3,12 @@ package suwayomi.tachidesk.graphql.queries
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -34,10 +37,14 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.TrackRecordNodeList
 import suwayomi.tachidesk.graphql.types.TrackRecordType
+import suwayomi.tachidesk.graphql.types.TrackRelatedMangaType
 import suwayomi.tachidesk.graphql.types.TrackSearchType
 import suwayomi.tachidesk.graphql.types.TrackerNodeList
 import suwayomi.tachidesk.graphql.types.TrackerType
+import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelatedResult
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.manga.model.table.insertAll
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -526,4 +533,160 @@ class TrackQuery {
                 },
             )
         }
+
+    data class MangaRelatedInput(
+        val mangaId: Int,
+    )
+
+    data class MangaRelatedPayload(
+        val anilistRelations: List<TrackRelatedMangaType>,
+        val anilistRecommendations: List<TrackRelatedMangaType>,
+        val myanimelistRelations: List<TrackRelatedMangaType>,
+        val myanimelistRecommendations: List<TrackRelatedMangaType>,
+    )
+
+    /**
+     * Returns the relations and recommendations for [mangaId] from AniList and MyAnimeList.
+     *
+     * The remote media id is resolved from an existing track record when available, otherwise the
+     * manga title is searched on the (logged-in) tracker and the top hit is used. Failures for a
+     * single tracker (e.g. not logged in, no match, network error) yield an empty list for that
+     * tracker rather than failing the whole query.
+     */
+    @RequireAuth
+    fun mangaRelated(input: MangaRelatedInput): CompletableFuture<MangaRelatedPayload> =
+        future {
+            val title = getMangaTitle(input.mangaId)
+
+            val anilist = TrackerManager.aniList
+            val anilistResult =
+                runCatching {
+                    val remoteId =
+                        getRemoteId(input.mangaId, TrackerManager.ANILIST)
+                            ?: title?.takeIf { anilist.isLoggedIn }?.let { findRemoteIdByTitle(anilist, it) }
+                    remoteId?.let { anilist.getRelated(it) }
+                }.onFailure { logger.warn(it) { "Failed to load AniList related manga for $input" } }
+                    .getOrNull() ?: TrackRelatedResult()
+
+            val mal = TrackerManager.myAnimeList
+            val malResult =
+                runCatching {
+                    val remoteId =
+                        getRemoteId(input.mangaId, TrackerManager.MYANIMELIST)
+                            ?: title?.takeIf { mal.isLoggedIn }?.let { findRemoteIdByTitle(mal, it) }
+                    remoteId?.let { mal.getRelated(it) }
+                }.onFailure { logger.warn(it) { "Failed to load MyAnimeList related manga for $input" } }
+                    .getOrNull() ?: TrackRelatedResult()
+
+            MangaRelatedPayload(
+                anilistRelations = anilistResult.relations.map { TrackRelatedMangaType(it) },
+                anilistRecommendations = anilistResult.recommendations.map { TrackRelatedMangaType(it) },
+                myanimelistRelations = malResult.relations.map { TrackRelatedMangaType(it) },
+                myanimelistRecommendations = malResult.recommendations.map { TrackRelatedMangaType(it) },
+            )
+        }
+
+    private fun getMangaTitle(mangaId: Int): String? =
+        transaction {
+            MangaTable
+                .selectAll()
+                .where { MangaTable.id eq mangaId }
+                .firstOrNull()
+                ?.get(MangaTable.title)
+        }
+
+    private fun getRemoteId(
+        mangaId: Int,
+        trackerId: Int,
+    ): Long? =
+        transaction {
+            TrackRecordTable
+                .selectAll()
+                .where { (TrackRecordTable.mangaId eq mangaId) and (TrackRecordTable.trackerId eq trackerId) }
+                .firstOrNull()
+                ?.get(TrackRecordTable.remoteId)
+        }
+
+    /**
+     * Searches [tracker] for [title] and returns the remote id of the first result that confidently
+     * matches (see [isConfidentTitleMatch]) against any of the result's titles, including
+     * alternative ones (romaji/english/native/synonyms) so a localized source title can still match
+     * a differently-named entry. Returns `null` when no result matches well enough, so a loose/wrong
+     * top hit is never used to drive the related results.
+     */
+    private suspend fun findRemoteIdByTitle(
+        tracker: Tracker,
+        title: String,
+    ): Long? =
+        tracker
+            .search(title)
+            .firstOrNull { result ->
+                (listOf(result.title) + result.alternative_titles).any { isConfidentTitleMatch(title, it) }
+            }?.remote_id
+
+    companion object {
+        private val logger = KotlinLogging.logger {}
+
+        private const val TITLE_MATCH_THRESHOLD = 0.9
+
+        /**
+         * Whether [candidate] is confidently the same title as [source]. Titles are normalized
+         * (lowercased, punctuation/whitespace collapsed) and considered a match when they are equal
+         * or have a Levenshtein similarity of at least [TITLE_MATCH_THRESHOLD]. This tolerates minor
+         * punctuation/spacing differences while rejecting clearly different entries.
+         */
+        private fun isConfidentTitleMatch(
+            source: String,
+            candidate: String,
+        ): Boolean {
+            val a = normalizeTitle(source)
+            val b = normalizeTitle(candidate)
+            if (a.isEmpty() || b.isEmpty()) {
+                return false
+            }
+            if (a == b) {
+                return true
+            }
+
+            val distance = levenshtein(a, b)
+            val similarity = 1.0 - distance.toDouble() / maxOf(a.length, b.length)
+            return similarity >= TITLE_MATCH_THRESHOLD
+        }
+
+        private fun normalizeTitle(title: String): String =
+            title
+                .lowercase()
+                .replace(Regex("[^\\p{L}\\p{N}]+"), " ")
+                .trim()
+
+        private fun levenshtein(
+            a: String,
+            b: String,
+        ): Int {
+            if (a == b) return 0
+            if (a.isEmpty()) return b.length
+            if (b.isEmpty()) return a.length
+
+            var previous = IntArray(b.length + 1) { it }
+            var current = IntArray(b.length + 1)
+
+            for (i in 1..a.length) {
+                current[0] = i
+                for (j in 1..b.length) {
+                    val cost = if (a[i - 1] == b[j - 1]) 0 else 1
+                    current[j] =
+                        minOf(
+                            current[j - 1] + 1,
+                            previous[j] + 1,
+                            previous[j - 1] + cost,
+                        )
+                }
+                val temp = previous
+                previous = current
+                current = temp
+            }
+
+            return previous[b.length]
+        }
+    }
 }
