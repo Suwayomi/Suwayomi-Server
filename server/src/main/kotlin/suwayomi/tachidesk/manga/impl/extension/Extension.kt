@@ -71,7 +71,6 @@ import kotlin.io.path.deleteExisting
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.div
-import kotlin.io.path.extension
 import kotlin.io.path.inputStream
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.isSameFileAs
@@ -158,7 +157,7 @@ object Extension {
     ): String =
         when {
             extensionName.endsWith(".jar") -> {
-                installExtension(forceReinstall = true) {
+                installExtension(isExternal = true) {
                     val jar = copyToExtensionsRoot(inputStream, extensionName)
                     val manifest = extractAndParseAndroidManifest(jar)
                     ExtensionPackage.Jar(jar, manifest)
@@ -166,7 +165,7 @@ object Extension {
             }
 
             extensionName.endsWith(".apk") -> {
-                installExtension(forceReinstall = true) {
+                installExtension(isExternal = true) {
                     val apk = copyToExtensionsRoot(inputStream, extensionName)
                     val packageInfo = getPackageInfo(apk)
                     ExtensionPackage.Apk(apk, packageInfo)
@@ -185,6 +184,16 @@ object Extension {
         // Abstract hook for type-specific preprocessing
         abstract suspend fun prepareJarAndIcons(extensionsRoot: Path): Path
 
+        fun getApkName(): String {
+            val apkNameWithVersion = file.nameWithoutExtension + "-v${metadata.versionName}" + ".apk"
+
+            return if (file.name.contains(metadata.versionName)) {
+                file.name.substringBeforeLast(".") + ".apk"
+            } else {
+                apkNameWithVersion
+            }
+        }
+
         class Apk(
             override val file: Path,
             val packageInfo: PackageInfo,
@@ -200,7 +209,7 @@ object Extension {
                 )
 
             override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
-                val jarFile = extensionsRoot / (file.nameWithoutExtension + ".jar")
+                val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
                 dex2jar(file, jarFile)
                 extractAssetsFromApk(file, jarFile)
                 extractAndCacheApkIcon(file, metadata.packageName)
@@ -224,7 +233,7 @@ object Extension {
                 )
 
             override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
-                val jarFile = extensionsRoot / file.name
+                val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
 
                 ZipFile.builder().setPath(file).get().use { jarZip ->
                     try {
@@ -342,7 +351,7 @@ object Extension {
     }
 
     suspend fun installExtension(
-        forceReinstall: Boolean = false,
+        isExternal: Boolean = false,
         isUpdate: Boolean = false,
         fetchPackage: suspend () -> ExtensionPackage,
     ): String {
@@ -350,15 +359,20 @@ object Extension {
         val metadata = extPackage.metadata
         val pkgName = metadata.packageName
 
-        val isInstalled =
+        val extension =
             transaction {
                 ExtensionTable
-                    .select(ExtensionTable.isInstalled)
-                    .where { ExtensionTable.pkgName eq pkgName }
+                    .select(
+                        ExtensionTable.isInstalled,
+                        ExtensionTable.versionCode,
+                    ).where { ExtensionTable.pkgName eq pkgName }
                     .firstOrNull()
-            }?.get(ExtensionTable.isInstalled) ?: isUpdate
+            }
 
-        if (isInstalled && !forceReinstall && !isUpdate) {
+        val isInstalled = extension?.get(ExtensionTable.isInstalled) ?: isUpdate
+        val isExternalUpdate = isExternal && metadata.versionCode > (extension?.get(ExtensionTable.versionCode) ?: -1)
+
+        if (isInstalled && !isExternalUpdate && !isUpdate) {
             extPackage.file.deleteExisting()
             return pkgName
         }
@@ -419,11 +433,7 @@ object Extension {
             }
 
         return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) {
-            val apkName =
-                when (extPackage) {
-                    is ExtensionPackage.Apk -> extPackage.file.name
-                    is ExtensionPackage.Jar -> jarFile.name.removeSuffix(".jar") + ".apk"
-                }
+            val apkName = extPackage.getApkName()
 
             dbTransaction {
                 try {
