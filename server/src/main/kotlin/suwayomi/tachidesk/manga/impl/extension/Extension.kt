@@ -374,7 +374,7 @@ object Extension {
 
         if (isInstalled && !isExternalUpdate && !isUpdate) {
             extPackage.file.deleteExisting()
-            return pkgName
+            throw Exception("Extension \"$pkgName (v${metadata.versionName})\" already installed")
         }
 
         if (!metadata.reqFeatures.contains(EXTENSION_FEATURE)) {
