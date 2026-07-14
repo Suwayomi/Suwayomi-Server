@@ -72,7 +72,7 @@ exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "e
 exposed-javatime = { module = "org.jetbrains.exposed:exposed-java-time", version.ref = "exposed" }
 exposed-kotlintime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
 exposed-json = { module = "org.jetbrains.exposed:exposed-json ", version.ref = "exposed" }
-postgres = "org.postgresql:postgresql:42.7.11"
+postgres = "org.postgresql:postgresql:42.7.13"
 h2 = "com.h2database:h2:2.4.240"
 hikaricp = "com.zaxxer:HikariCP:7.1.0"
 
