@@ -25,6 +25,7 @@ import io.javalin.http.HttpStatus
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import okhttp3.CacheControl
 import okhttp3.Response
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -106,7 +107,7 @@ object Manga {
                 genre = mangaEntry[MangaTable.genre]
                 status = mangaEntry[MangaTable.status]
                 update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
-                memo = Json.decodeFromString(mangaEntry[MangaTable.memo])
+                memo = mangaEntry[MangaTable.memo]
                 initialized = mangaEntry[MangaTable.initialized]
             }
         val sChapters =
@@ -122,7 +123,7 @@ object Manga {
                             chapter_number = it[ChapterTable.chapter_number]
                             scanlator = it[ChapterTable.scanlator]
                             date_upload = it[ChapterTable.date_upload]
-                            memo = Json.decodeFromString(it[ChapterTable.memo])
+                            memo = it[ChapterTable.memo]
                         }
                     }
             }
@@ -238,7 +239,7 @@ object Manga {
                 it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
 
                 it[MangaTable.updateStrategy] = sManga.update_strategy.name
-                it[MangaTable.memo] = Json.encodeToString(sManga.memo)
+                it[MangaTable.memo] = sManga.memo
             }
         }
 
