@@ -14,6 +14,7 @@ import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.parser.ConfigDocument
+import dorkbox.updates.Updates
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
@@ -428,6 +429,7 @@ fun applicationSetup() {
     )
 
     // create system tray
+    Updates.ENABLE = false
     serverConfig.subscribeTo(
         serverConfig.systemTrayEnabled,
         { systemTrayEnabled ->
