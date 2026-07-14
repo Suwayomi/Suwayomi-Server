@@ -210,6 +210,7 @@ object Extension {
 
             override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
                 val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
+                jarFile.deleteIfExists()
                 dex2jar(file, jarFile)
                 extractAssetsFromApk(file, jarFile)
                 extractAndCacheApkIcon(file, metadata.packageName)
@@ -234,6 +235,8 @@ object Extension {
 
             override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
                 val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
+
+                jarFile.deleteIfExists()
 
                 ZipFile.builder().setPath(file).get().use { jarZip ->
                     try {
