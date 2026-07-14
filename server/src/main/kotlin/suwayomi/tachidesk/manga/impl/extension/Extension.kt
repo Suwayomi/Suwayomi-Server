@@ -690,30 +690,28 @@ object Extension {
     fun uninstallExtension(pkgName: String) {
         logger.debug { "Uninstalling $pkgName" }
 
-        val extensionRecord = transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
-        val jarPath = getJarPath(extensionRecord)
-        val sources =
-            transaction {
-                val extensionId = extensionRecord[ExtensionTable.id].value
+        transaction {
+            val extensionRecord = ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first()
+            val extensionId = extensionRecord[ExtensionTable.id].value
 
-                val sources = SourceTable.selectAll().where { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
+            val sources = SourceTable.selectAll().where { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
 
-                SourceTable.deleteWhere { SourceTable.extension eq extensionId }
+            SourceTable.deleteWhere { SourceTable.extension eq extensionId }
 
-                if (extensionRecord[ExtensionTable.isObsolete] || extensionRecord[ExtensionTable.apkUrl] == null) {
-                    ExtensionTable.deleteWhere { ExtensionTable.pkgName eq pkgName }
-                } else {
-                    ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
-                        it[isInstalled] = false
-                        it[hasUpdate] = false
-                        it[apkName] = null
-                    }
+            if (extensionRecord[ExtensionTable.isObsolete] || extensionRecord[ExtensionTable.apkUrl] == null) {
+                ExtensionTable.deleteWhere { ExtensionTable.pkgName eq pkgName }
+            } else {
+                ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
+                    it[isInstalled] = false
+                    it[hasUpdate] = false
+                    it[apkName] = null
                 }
-
-                unload(extensionRecord, sources)
-
-                getJarPath(extensionRecord).deleteIfExists()
             }
+
+            unload(extensionRecord, sources)
+
+            getJarPath(extensionRecord).deleteIfExists()
+        }
     }
 
     suspend fun updateExtension(pkgName: String): String {
