@@ -275,7 +275,7 @@ object Extension {
         ) : MetadataProvider {
             override fun getString(key: String): String? = bundle.getString(key)
 
-            override fun getInt(key: String): Int = bundle.getInt(key) ?: 0
+            override fun getInt(key: String): Int = bundle.getInt(key)
         }
 
         class FromManifest(
