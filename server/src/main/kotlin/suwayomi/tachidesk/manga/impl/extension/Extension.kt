@@ -312,11 +312,11 @@ object Extension {
     ) {
         val jarPath = getJarPath(apkName)
 
-        // free up the file descriptor if exists
-        PackageTools.jarLoaderMap.remove(jarPath.absolutePathString())?.close()
-
         // clear all loaded sources
         sources.forEach { GetSource.unregisterSource(it) }
+
+        // free up the file descriptor if exists
+        PackageTools.jarLoaderMap.remove(jarPath.absolutePathString())?.close()
     }
 
     private fun unload(
