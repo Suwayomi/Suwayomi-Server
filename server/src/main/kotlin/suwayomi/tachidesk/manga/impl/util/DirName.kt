@@ -8,6 +8,8 @@ package suwayomi.tachidesk.manga.impl.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -27,61 +29,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 private val applicationDirs: ApplicationDirs by injectLazy()
 
 private val logger = KotlinLogging.logger { }
-
-private object UpdateLockManager {
-    private val lockByManga = ConcurrentHashMap<Int, CountedLock>()
-
-    private data class CountedLock(
-        val lock: ReentrantReadWriteLock = ReentrantReadWriteLock(),
-        val holders: AtomicInteger = AtomicInteger(0),
-    )
-
-    private fun acquire(mangaId: Int): CountedLock =
-        lockByManga.compute(mangaId) { _, existing ->
-            val mangaLock = existing ?: CountedLock()
-            mangaLock.holders.incrementAndGet()
-            mangaLock
-        }!!
-
-    private fun release(
-        mangaId: Int,
-        lock: CountedLock,
-    ) {
-        if (lock.holders.decrementAndGet() == 0) {
-            lockByManga.remove(mangaId, lock)
-        }
-    }
-
-    fun <T> withChapterRename(
-        mangaId: Int,
-        action: () -> T,
-    ): T {
-        val mangaLock = acquire(mangaId)
-
-        mangaLock.lock.readLock().lock()
-        try {
-            return action()
-        } finally {
-            mangaLock.lock.readLock().unlock()
-            release(mangaId, mangaLock)
-        }
-    }
-
-    fun <T> withMangaRename(
-        mangaId: Int,
-        action: () -> T,
-    ): T {
-        val mangaLock = acquire(mangaId)
-
-        mangaLock.lock.writeLock().lock()
-        try {
-            return action()
-        } finally {
-            mangaLock.lock.writeLock().unlock()
-            release(mangaId, mangaLock)
-        }
-    }
-}
 
 private fun getMangaDir(
     title: String,
@@ -215,14 +162,16 @@ private fun updateDownloadDir(
     return renamed
 }
 
-fun updateChapterDownloadDir(
+private val mutexByManga = ConcurrentHashMap<Int, Mutex>()
+
+suspend fun updateChapterDownloadDir(
     oldChapter: ChapterDataClass,
     newChapter: ChapterDataClass,
 ): Boolean {
     require(oldChapter.id == newChapter.id) { "Chapters must have the same id" }
     require(oldChapter.mangaId == newChapter.mangaId) { "Chapters must be from the same manga" }
 
-    return UpdateLockManager.withChapterRename(oldChapter.mangaId) {
+    return mutexByManga.getOrPut(oldChapter.mangaId) { Mutex() }.withLock {
         val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
         val newDownloadDir = getChapterDownloadPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
 
@@ -234,13 +183,13 @@ fun updateChapterDownloadDir(
 }
 
 /** return value says if rename/move was successful */
-fun updateMangaDownloadDir(
+suspend fun updateMangaDownloadDir(
     mangaId: Int,
     title: String,
     sourceName: String,
     newTitle: String,
 ): Boolean =
-    UpdateLockManager.withMangaRename(mangaId) {
+    mutexByManga.getOrPut(mangaId) { Mutex() }.withLock {
         val currentDownloadDir = getMangaDownloadDir(title, sourceName)
         val newDownloadDir = getMangaDownloadDir(newTitle, sourceName)
 
