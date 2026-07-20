@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased] (Preview)
 
 ### Added
-- .
+- (**Downloads**) Try to preserve downloaded files during a chapter list update for chapters with title and/or scanlator change
 
 ### Changed
 - .
