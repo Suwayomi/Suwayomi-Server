@@ -16,6 +16,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
@@ -113,17 +114,17 @@ object KoreaderSyncService {
         return deviceId
     }
 
-    private fun getOrGenerateChapterHash(chapterId: Int): String? {
-        return transaction {
+    private suspend fun getOrGenerateChapterHash(chapterId: Int): String? {
+        return suspendTransaction {
             val chapterRow =
                 ChapterTable
                     .select(ChapterTable.koreaderHash, ChapterTable.manga, ChapterTable.isDownloaded)
                     .where { ChapterTable.id eq chapterId }
-                    .firstOrNull() ?: return@transaction null
+                    .firstOrNull() ?: return@suspendTransaction null
 
             val existingHash = chapterRow[ChapterTable.koreaderHash]
             if (!existingHash.isNullOrBlank()) {
-                return@transaction existingHash
+                return@suspendTransaction existingHash
             }
 
             val mangaId = chapterRow[ChapterTable.manga].value

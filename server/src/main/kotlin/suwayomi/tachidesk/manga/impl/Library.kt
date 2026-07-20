@@ -96,7 +96,8 @@ object Library {
                 if (inLibrary) {
                     ThumbnailDownloadHelper.download(mangaId)
                 } else {
-                    ThumbnailDownloadHelper.delete(mangaId)
+                    ThumbnailDownloadHelper
+                        .delete(mangaId)
                 }
             } catch (e: Exception) {
                 // ignore

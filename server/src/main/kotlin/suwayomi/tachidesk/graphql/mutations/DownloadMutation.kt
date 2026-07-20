@@ -32,21 +32,23 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): DeleteDownloadedChaptersPayload? {
+    fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): CompletableFuture<DeleteDownloadedChaptersPayload?> {
         val (clientMutationId, chapters) = input
 
-        Chapter.deleteChapters(chapters)
+        return future {
+            Chapter.deleteChapters(chapters)
 
-        return DeleteDownloadedChaptersPayload(
-            clientMutationId = clientMutationId,
-            chapters =
-                transaction {
-                    ChapterTable
-                        .selectAll()
-                        .where { ChapterTable.id inList chapters }
-                        .map { ChapterType(it) }
-                },
-        )
+            DeleteDownloadedChaptersPayload(
+                clientMutationId = clientMutationId,
+                chapters =
+                    transaction {
+                        ChapterTable
+                            .selectAll()
+                            .where { ChapterTable.id inList chapters }
+                            .map { ChapterType(it) }
+                    },
+            )
+        }
     }
 
     data class DeleteDownloadedChapterInput(
@@ -60,18 +62,20 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): DeleteDownloadedChapterPayload? {
+    fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): CompletableFuture<DeleteDownloadedChapterPayload?> {
         val (clientMutationId, chapter) = input
 
-        Chapter.deleteChapters(listOf(chapter))
+        return future {
+            Chapter.deleteChapters(listOf(chapter))
 
-        return DeleteDownloadedChapterPayload(
-            clientMutationId = clientMutationId,
-            chapters =
-                transaction {
-                    ChapterType(ChapterTable.selectAll().where { ChapterTable.id eq chapter }.first())
-                },
-        )
+            DeleteDownloadedChapterPayload(
+                clientMutationId = clientMutationId,
+                chapters =
+                    transaction {
+                        ChapterType(ChapterTable.selectAll().where { ChapterTable.id eq chapter }.first())
+                    },
+            )
+        }
     }
 
     data class EnqueueChapterDownloadsInput(

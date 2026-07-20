@@ -33,6 +33,7 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -535,7 +536,7 @@ object Chapter {
         val change: ChapterChange?,
     )
 
-    fun modifyChapters(
+    suspend fun modifyChapters(
         input: MangaChapterBatchEditInput,
         mangaId: Int? = null,
     ) {
@@ -711,11 +712,11 @@ object Chapter {
         }
     }
 
-    fun deleteChapter(
+    suspend fun deleteChapter(
         mangaId: Int,
         chapterIndex: Int,
     ) {
-        transaction {
+        suspendTransaction {
             val chapterId =
                 ChapterTable
                     .selectAll()
@@ -731,14 +732,14 @@ object Chapter {
         }
     }
 
-    private fun deleteChapters(
+    private suspend fun deleteChapters(
         input: MangaChapterBatchEditInput,
         mangaId: Int? = null,
     ) {
         if (input.chapterIds != null) {
             deleteChapters(input.chapterIds)
         } else if (input.chapterIndexes != null && mangaId != null) {
-            transaction {
+            suspendTransaction {
                 val chapterIds =
                     ChapterTable
                         .select(ChapterTable.manga, ChapterTable.id)
@@ -759,8 +760,8 @@ object Chapter {
         }
     }
 
-    fun deleteChapters(chapterIds: List<Int>) {
-        transaction {
+    suspend fun deleteChapters(chapterIds: List<Int>) {
+        suspendTransaction {
             ChapterTable
                 .select(ChapterTable.manga, ChapterTable.id)
                 .where { ChapterTable.id inList chapterIds }
