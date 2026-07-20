@@ -307,7 +307,9 @@ object Chapter {
                         val deletedChapter =
                             deletedDownloadedChapterByChapterNumber[chapter.chapterNumber] ?: return@filter false
 
-                        val isPreservable = updateChapterDownloadDir(deletedChapter, chapter)
+                        // For a new (unrecognized) chapter, we have to handle the existing downloads as obsolete since we can't assume that the pages are still the same
+                        val isSameScanlator = chapter.scanlator == deletedChapter.scanlator
+                        val isPreservable = isSameScanlator && updateChapterDownloadDir(deletedChapter, chapter)
 
                         isPreservable
                     }
