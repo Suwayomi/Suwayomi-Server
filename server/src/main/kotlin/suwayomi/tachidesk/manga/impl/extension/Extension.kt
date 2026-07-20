@@ -54,6 +54,7 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.database.dbSuspendTransaction
 import suwayomi.tachidesk.server.database.dbTransaction
 import uy.kohesive.injekt.injectLazy
 import java.io.InputStream
@@ -438,7 +439,7 @@ object Extension {
         return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) {
             val apkName = extPackage.getApkName()
 
-            dbTransaction {
+            dbSuspendTransaction {
                 try {
                     val extensionName =
                         metadata.metaData.getString(METADATA_NAME)
@@ -485,7 +486,7 @@ object Extension {
         }
     }
 
-    private fun setupJar(
+    private suspend fun setupJar(
         jarFile: Path,
         className: String,
         extensionName: String,

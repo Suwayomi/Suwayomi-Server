@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -41,15 +41,15 @@ private fun getMangaDir(
     return "$sourceDir/$mangaDir"
 }
 
-private fun getMangaDir(mangaId: Int): String =
-    transaction {
+private suspend fun getMangaDir(mangaId: Int): String =
+    suspendTransaction {
         val mangaEntry = MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
         val source = GetSource.getSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
         getMangaDir(mangaEntry[MangaTable.title], source.toString())
     }
 
-private fun getChapterDir(
+private suspend fun getChapterDir(
     mangaId: Int,
     title: String,
     scanlator: String?,
@@ -65,11 +65,11 @@ private fun getChapterDir(
     return getMangaDir(mangaId) + "/" + chapterDir
 }
 
-private fun getChapterDir(
+private suspend fun getChapterDir(
     mangaId: Int,
     chapterId: Int,
 ): String =
-    transaction {
+    suspendTransaction {
         val chapterEntry = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
 
         // Get manga directory and combine with chapter directory
@@ -84,36 +84,36 @@ fun getMangaDownloadDir(
     sourceName: String,
 ): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(title, sourceName)
 
-fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
+suspend fun getMangaDownloadDir(mangaId: Int): String = applicationDirs.mangaDownloadsRoot + "/" + getMangaDir(mangaId)
 
 fun getMangaCacheDir(
     title: String,
     sourceName: String,
 ): String = applicationDirs.tempMangaCacheRoot + "/" + getMangaDir(title, sourceName)
 
-fun getChapterDownloadPath(
+suspend fun getChapterDownloadPath(
     mangaId: Int,
     title: String,
     scanlator: String?,
 ): String = applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, title, scanlator)
 
-fun getChapterDownloadPath(
+suspend fun getChapterDownloadPath(
     mangaId: Int,
     chapterId: Int,
 ): String = applicationDirs.mangaDownloadsRoot + "/" + getChapterDir(mangaId, chapterId)
 
-fun getChapterCbzPath(
+suspend fun getChapterCbzPath(
     mangaId: Int,
     chapterId: Int,
 ): String = getChapterDownloadPath(mangaId, chapterId) + ".cbz"
 
-fun getChapterCachePath(
+suspend fun getChapterCachePath(
     mangaId: Int,
     title: String,
     scanlator: String?,
 ): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, title, scanlator)
 
-fun getChapterCachePath(
+suspend fun getChapterCachePath(
     mangaId: Int,
     chapterId: Int,
 ): String = applicationDirs.tempMangaCacheRoot + "/" + getChapterDir(mangaId, chapterId)

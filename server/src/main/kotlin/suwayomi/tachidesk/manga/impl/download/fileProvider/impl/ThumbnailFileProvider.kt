@@ -36,7 +36,7 @@ class ThumbnailFileProvider(
         return getCachedImageResponse(filePath, filePathWithoutExt)
     }
 
-    override fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
+    override suspend fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
 
     private suspend fun downloadImpl(): Boolean {
         val isExistingFile = getFilePath() != null
@@ -56,7 +56,7 @@ class ThumbnailFileProvider(
 
     override fun download(): FileDownload0Args = FileDownload0Args(::downloadImpl)
 
-    override fun delete(): Boolean {
+    override suspend fun delete(): Boolean {
         val filePath = getFilePath()
         if (filePath.isNullOrEmpty()) {
             return true

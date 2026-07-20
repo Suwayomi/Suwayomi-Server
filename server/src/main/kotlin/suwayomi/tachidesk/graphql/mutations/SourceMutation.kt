@@ -16,6 +16,7 @@ import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.FilterChange
@@ -68,36 +69,36 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMeta(input: DeleteSourceMetaInput): DeleteSourceMetaPayload? {
+    fun deleteSourceMeta(input: DeleteSourceMetaInput): CompletableFuture<DeleteSourceMetaPayload?> {
         val (clientMutationId, sourceId, key) = input
 
-        val (meta, source) =
-            transaction {
-                val meta =
-                    SourceMetaTable
-                        .selectAll()
-                        .where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
-                        .firstOrNull()
+        return future {
+            val (meta, source) =
+                suspendTransaction {
+                    val meta =
+                        SourceMetaTable
+                            .selectAll()
+                            .where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                            .firstOrNull()
 
-                SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                    SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
 
-                val source =
-                    transaction {
+                    val source =
                         SourceTable
                             .selectAll()
                             .where { SourceTable.id eq sourceId }
                             .firstOrNull()
                             ?.let { SourceType(it) }
-                    }
 
-                if (meta != null) {
-                    SourceMetaType(meta)
-                } else {
-                    null
-                } to source
-            }
+                    if (meta != null) {
+                        SourceMetaType(meta)
+                    } else {
+                        null
+                    } to source
+                }
 
-        return DeleteSourceMetaPayload(clientMutationId, meta, source)
+            DeleteSourceMetaPayload(clientMutationId, meta, source)
+        }
     }
 
     data class SetSourceMetasItem(
@@ -117,41 +118,43 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMetas(input: SetSourceMetasInput): SetSourceMetasPayload? {
+    fun setSourceMetas(input: SetSourceMetasInput): CompletableFuture<SetSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
-        val metaBySourceId =
-            items
-                .flatMap { item ->
-                    val metaMap = item.metas.associate { it.key to it.value }
-                    item.sourceIds.map { sourceId -> sourceId to metaMap }
-                }.groupBy({ it.first }, { it.second })
-                .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
+        return future {
+            val metaBySourceId =
+                items
+                    .flatMap { item ->
+                        val metaMap = item.metas.associate { it.key to it.value }
+                        item.sourceIds.map { sourceId -> sourceId to metaMap }
+                    }.groupBy({ it.first }, { it.second })
+                    .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
 
-        Source.modifySourceMetas(metaBySourceId)
+            Source.modifySourceMetas(metaBySourceId)
 
-        val allSourceIds = metaBySourceId.keys
-        val allMetaKeys = metaBySourceId.values.flatMap { it.keys }.distinct()
+            val allSourceIds = metaBySourceId.keys
+            val allMetaKeys = metaBySourceId.values.flatMap { it.keys }.distinct()
 
-        val (updatedMetas, sources) =
-            transaction {
-                val updatedMetas =
-                    SourceMetaTable
-                        .selectAll()
-                        .where { (SourceMetaTable.ref inList allSourceIds) and (SourceMetaTable.key inList allMetaKeys) }
-                        .map { SourceMetaType(it) }
+            val (updatedMetas, sources) =
+                suspendTransaction {
+                    val updatedMetas =
+                        SourceMetaTable
+                            .selectAll()
+                            .where { (SourceMetaTable.ref inList allSourceIds) and (SourceMetaTable.key inList allMetaKeys) }
+                            .map { SourceMetaType(it) }
 
-                val sources =
-                    SourceTable
-                        .selectAll()
-                        .where { SourceTable.id inList allSourceIds }
-                        .mapNotNull { SourceType(it) }
-                        .distinctBy { it.id }
+                    val sources =
+                        SourceTable
+                            .selectAll()
+                            .where { SourceTable.id inList allSourceIds }
+                            .mapNotNull { SourceType(it) }
+                            .distinctBy { it.id }
 
-                updatedMetas to sources
-            }
+                    updatedMetas to sources
+                }
 
-        return SetSourceMetasPayload(clientMutationId, updatedMetas, sources)
+            SetSourceMetasPayload(clientMutationId, updatedMetas, sources)
+        }
     }
 
     data class DeleteSourceMetasItem(
@@ -172,62 +175,64 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMetas(input: DeleteSourceMetasInput): DeleteSourceMetasPayload? {
+    fun deleteSourceMetas(input: DeleteSourceMetasInput): CompletableFuture<DeleteSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
-        items.forEach { item ->
-            require(!item.keys.isNullOrEmpty() || !item.prefixes.isNullOrEmpty()) {
-                "Either 'keys' or 'prefixes' must be provided for each item"
+        return future {
+            items.forEach { item ->
+                require(!item.keys.isNullOrEmpty() || !item.prefixes.isNullOrEmpty()) {
+                    "Either 'keys' or 'prefixes' must be provided for each item"
+                }
             }
-        }
 
-        val (allDeletedMetas, allSourceIds) =
-            transaction {
-                val deletedMetas = mutableListOf<SourceMetaType>()
-                val sourceIds = mutableSetOf<Long>()
+            val (allDeletedMetas, allSourceIds) =
+                transaction {
+                    val deletedMetas = mutableListOf<SourceMetaType>()
+                    val sourceIds = mutableSetOf<Long>()
 
-                items.forEach { item ->
-                    val keyCondition: Op<Boolean>? =
-                        item.keys?.takeIf { it.isNotEmpty() }?.let { SourceMetaTable.key inList it }
+                    items.forEach { item ->
+                        val keyCondition: Op<Boolean>? =
+                            item.keys?.takeIf { it.isNotEmpty() }?.let { SourceMetaTable.key inList it }
 
-                    val prefixCondition: Op<Boolean>? =
-                        item.prefixes
-                            ?.filter { it.isNotEmpty() }
-                            ?.map { (SourceMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
-                            ?.reduceOrNull { acc, op -> acc or op }
+                        val prefixCondition: Op<Boolean>? =
+                            item.prefixes
+                                ?.filter { it.isNotEmpty() }
+                                ?.map { (SourceMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                                ?.reduceOrNull { acc, op -> acc or op }
 
-                    val metaKeyCondition =
-                        if (keyCondition != null && prefixCondition != null) {
-                            keyCondition or prefixCondition
-                        } else {
-                            keyCondition ?: prefixCondition!!
-                        }
+                        val metaKeyCondition =
+                            if (keyCondition != null && prefixCondition != null) {
+                                keyCondition or prefixCondition
+                            } else {
+                                keyCondition ?: prefixCondition!!
+                            }
 
-                    val condition = (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
+                        val condition = (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
 
-                    deletedMetas +=
-                        SourceMetaTable
-                            .selectAll()
-                            .where { condition }
-                            .map { SourceMetaType(it) }
+                        deletedMetas +=
+                            SourceMetaTable
+                                .selectAll()
+                                .where { condition }
+                                .map { SourceMetaType(it) }
 
-                    SourceMetaTable.deleteWhere { condition }
-                    sourceIds += item.sourceIds
+                        SourceMetaTable.deleteWhere { condition }
+                        sourceIds += item.sourceIds
+                    }
+
+                    deletedMetas to sourceIds
                 }
 
-                deletedMetas to sourceIds
-            }
+            val sources =
+                suspendTransaction {
+                    SourceTable
+                        .selectAll()
+                        .where { SourceTable.id inList allSourceIds }
+                        .mapNotNull { SourceType(it) }
+                        .distinctBy { it.id }
+                }
 
-        val sources =
-            transaction {
-                SourceTable
-                    .selectAll()
-                    .where { SourceTable.id inList allSourceIds }
-                    .mapNotNull { SourceType(it) }
-                    .distinctBy { it.id }
-            }
-
-        return DeleteSourceMetasPayload(clientMutationId, allDeletedMetas, sources)
+            DeleteSourceMetasPayload(clientMutationId, allDeletedMetas, sources)
+        }
     }
 
     enum class FetchSourceMangaType {
@@ -319,27 +324,29 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun updateSourcePreference(input: UpdateSourcePreferenceInput): UpdateSourcePreferencePayload? {
+    fun updateSourcePreference(input: UpdateSourcePreferenceInput): CompletableFuture<UpdateSourcePreferencePayload?> {
         val (clientMutationId, sourceId, change) = input
 
-        Source.setSourcePreference(sourceId, change.position, "") { preference ->
-            when (preference) {
-                is SwitchPreferenceCompat -> change.switchState
-                is CheckBoxPreference -> change.checkBoxState
-                is EditTextPreference -> change.editTextState
-                is ListPreference -> change.listState
-                is MultiSelectListPreference -> change.multiSelectState?.toSet()
-                else -> throw RuntimeException("sealed class cannot have more subtypes!")
-            } ?: throw Exception("Expected change to ${preference::class.simpleName}")
-        }
+        return future {
+            Source.setSourcePreference(sourceId, change.position, "") { preference ->
+                when (preference) {
+                    is SwitchPreferenceCompat -> change.switchState
+                    is CheckBoxPreference -> change.checkBoxState
+                    is EditTextPreference -> change.editTextState
+                    is ListPreference -> change.listState
+                    is MultiSelectListPreference -> change.multiSelectState?.toSet()
+                    else -> throw RuntimeException("sealed class cannot have more subtypes!")
+                } ?: throw Exception("Expected change to ${preference::class.simpleName}")
+            }
 
-        return UpdateSourcePreferencePayload(
-            clientMutationId = clientMutationId,
-            preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
-            source =
-                transaction {
-                    SourceType(SourceTable.selectAll().where { SourceTable.id eq sourceId }.first())!!
-                },
-        )
+            UpdateSourcePreferencePayload(
+                clientMutationId = clientMutationId,
+                preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
+                source =
+                    suspendTransaction {
+                        SourceType(SourceTable.selectAll().where { SourceTable.id eq sourceId }.first())!!
+                    },
+            )
+        }
     }
 }
