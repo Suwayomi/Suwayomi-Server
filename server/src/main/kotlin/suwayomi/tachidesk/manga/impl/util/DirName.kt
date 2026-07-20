@@ -219,8 +219,8 @@ fun updateChapterDownloadDir(
     oldChapter: ChapterDataClass,
     newChapter: ChapterDataClass,
 ): Boolean {
-    check(oldChapter.id == newChapter.id) { "Chapters must have the same id" }
-    check(oldChapter.mangaId == newChapter.mangaId) { "Chapters must be from the same manga" }
+    require(oldChapter.id == newChapter.id) { "Chapters must have the same id" }
+    require(oldChapter.mangaId == newChapter.mangaId) { "Chapters must be from the same manga" }
 
     return UpdateLockManager.withChapterRename(oldChapter.mangaId) {
         val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
