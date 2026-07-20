@@ -454,7 +454,7 @@ object Extension {
 
                     val unloadOldJar = isInstalled
                     if (unloadOldJar) {
-                        unload(pkgName, true)
+                        unload(pkgName = pkgName, withSources = true)
                     }
 
                     setupJar(
@@ -474,7 +474,7 @@ object Extension {
                         oldJarFile.deleteExisting()
                     }
                 } catch (e: Throwable) {
-                    unload(apkName)
+                    unload(apkName = apkName)
 
                     jarFile.deleteIfExists()
 
