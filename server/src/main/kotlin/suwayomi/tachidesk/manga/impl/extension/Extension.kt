@@ -453,7 +453,7 @@ object Extension {
 
                     val unloadOldJar = isInstalled
                     if (unloadOldJar) {
-                        unload(pkgName, true)
+                        unload(pkgName = pkgName, withSources = true)
                     }
 
                     setupJar(
