@@ -474,7 +474,7 @@ object Extension {
                         oldJarFile.deleteExisting()
                     }
                 } catch (e: Throwable) {
-                    unload(apkName)
+                    unload(apkName = apkName)
 
                     jarFile.deleteIfExists()
 
