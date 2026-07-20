@@ -15,6 +15,8 @@ import com.googlecode.d2j.reader.MultiDexFileReader
 import com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler
 import eu.kanade.tachiyomi.util.lang.Hash
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.ApkParsers
 import org.w3c.dom.Element
@@ -27,7 +29,6 @@ import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.locks.ReentrantReadWriteLock
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -149,21 +150,22 @@ object PackageTools {
         }
     }
 
-    private val lockByJar = ConcurrentHashMap<String, ReentrantReadWriteLock>()
+    private val lockByJar = ConcurrentHashMap<String, Mutex>()
 
     val jarLoaderMap = mutableMapOf<String, URLClassLoader>()
 
-    fun <T> blockJarUsageWhile(
+    suspend fun <T> blockJarUsageWhile(
         jars: List<Path>,
-        block: () -> T,
+        block: suspend () -> T,
     ): T {
-        val writeLocks = jars.map { lockByJar.getOrPut(it.absolutePathString()) { ReentrantReadWriteLock() }.writeLock() }
+        val mutexes = jars.map { lockByJar.getOrPut(it.absolutePathString()) { Mutex() } }
 
-        writeLocks.forEach { it.lock() }
+        mutexes.forEach { it.lock() }
+
         try {
             return block()
         } finally {
-            writeLocks.forEach { it.unlock() }
+            mutexes.forEach { it.unlock() }
         }
     }
 
@@ -171,28 +173,27 @@ object PackageTools {
      * loads the extension main class called [className] from the jar located at [jarPath]
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
-    fun loadExtensionSources(
+    suspend fun loadExtensionSources(
         jar: Path,
         className: String,
     ): Any {
         val jarPath = jar.absolutePathString()
 
-        val readLock = lockByJar.getOrPut(jarPath) { ReentrantReadWriteLock() }.readLock()
+        val mutex = lockByJar.getOrPut(jarPath) { Mutex() }
 
-        readLock.lock()
-        try {
-            logger.debug { "loading jar with path: $jarPath" }
-            val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
-            val classToLoad = Class.forName(className, false, classLoader)
+        mutex.withLock {
+            try {
+                logger.debug { "loading jar with path: $jarPath" }
+                val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
+                val classToLoad = Class.forName(className, false, classLoader)
 
-            jarLoaderMap[jarPath] = classLoader
+                jarLoaderMap[jarPath] = classLoader
 
-            return classToLoad.getDeclaredConstructor().newInstance()
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to load jar with path: $jarPath" }
-            throw e
-        } finally {
-            readLock.unlock()
+                return classToLoad.getDeclaredConstructor().newInstance()
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to load jar with path: $jarPath" }
+                throw e
+            }
         }
     }
 }

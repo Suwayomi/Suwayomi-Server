@@ -30,7 +30,7 @@ class FolderProvider(
     mangaId: Int,
     chapterId: Int,
 ) : ChaptersFilesProvider<RegularFile>(mangaId, chapterId) {
-    override fun getImageFiles(): List<RegularFile> {
+    override suspend fun getImageFiles(): List<RegularFile> {
         val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
 
         if (!chapterFolder.exists()) {
@@ -44,9 +44,9 @@ class FolderProvider(
             .map(::RegularFile)
     }
 
-    override fun getImageInputStream(image: RegularFile): FileInputStream = FileInputStream(image.file)
+    override suspend fun getImageInputStream(image: RegularFile): FileInputStream = FileInputStream(image.file)
 
-    override fun extractExistingDownload() {
+    override suspend fun extractExistingDownload() {
         // nothing to do
     }
 
@@ -58,7 +58,7 @@ class FolderProvider(
         File(cacheChapterDir).copyRecursively(folder, true)
     }
 
-    override fun delete(): Boolean {
+    override suspend fun delete(): Boolean {
         val chapterDirPath = getChapterDownloadPath(mangaId, chapterId)
         val chapterDir = File(chapterDirPath)
         if (!chapterDir.exists()) {
@@ -77,7 +77,7 @@ class FolderProvider(
         return chapterDirDeleted
     }
 
-    override fun getAsArchiveStream(): Pair<InputStream, Long> {
+    override suspend fun getAsArchiveStream(): Pair<InputStream, Long> {
         val chapterDir = File(getChapterDownloadPath(mangaId, chapterId))
 
         if (!chapterDir.exists() || !chapterDir.isDirectory || chapterDir.listFiles().isNullOrEmpty()) {
@@ -108,7 +108,7 @@ class FolderProvider(
         return ByteArrayInputStream(zipData) to zipData.size.toLong()
     }
 
-    override fun getArchiveSize(): Long {
+    override suspend fun getArchiveSize(): Long {
         val chapterDir = File(getChapterDownloadPath(mangaId, chapterId))
         if (!chapterDir.exists() || !chapterDir.isDirectory) return 0L
         // Approximation: actual CBZ size is slightly larger due to ZIP metadata, but sufficient for Content-Length header.

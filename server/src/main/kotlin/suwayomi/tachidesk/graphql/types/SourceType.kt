@@ -29,6 +29,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 import androidx.preference.CheckBoxPreference as SourceCheckBoxPreference
 import androidx.preference.EditTextPreference as SourceEditTextPreference
@@ -73,16 +74,16 @@ class SourceType(
     fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> =
         dataFetchingEnvironment.getValueFromDataLoader<Long, ExtensionType>("ExtensionForSourceDataLoader", id)
 
-    fun preferences(): List<Preference> = getSourcePreferencesRaw(id).map { preferenceOf(it) }
+    fun preferences(): CompletableFuture<List<Preference>> = future { getSourcePreferencesRaw(id).map { preferenceOf(it) } }
 
-    fun filters(): List<Filter> = getSourceOrStub(id).getFilterList().map { filterOf(it) }
+    fun filters(): CompletableFuture<List<Filter>> = future { getSourceOrStub(id).getFilterList().map { filterOf(it) } }
 
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<SourceMetaType>> =
         dataFetchingEnvironment.getValueFromDataLoader<Long, List<SourceMetaType>>("SourceMetaDataLoader", id)
 }
 
 @Suppress("ktlint:standard:function-naming")
-fun SourceType(row: ResultRow): SourceType? {
+suspend fun SourceType(row: ResultRow): SourceType? {
     val catalogueSource =
         GetSource
             .getSourceOrNull(row[SourceTable.id].value)

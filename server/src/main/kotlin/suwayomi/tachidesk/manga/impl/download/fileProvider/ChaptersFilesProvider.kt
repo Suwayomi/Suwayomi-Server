@@ -70,11 +70,11 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 ) : DownloadedFilesProvider {
     protected val logger = KotlinLogging.logger {}
 
-    protected abstract fun getImageFiles(): List<Type>
+    protected abstract suspend fun getImageFiles(): List<Type>
 
-    protected abstract fun getImageInputStream(image: Type): InputStream
+    protected abstract suspend fun getImageInputStream(image: Type): InputStream
 
-    fun getImageImpl(index: Int): Pair<InputStream, String> {
+    suspend fun getImageImpl(index: Int): Pair<InputStream, String> {
         val images = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.sortedBy { it.getName() }
 
         if (images.isEmpty()) {
@@ -87,14 +87,14 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         return Pair(getImageInputStream(image).buffered(), MimeUtils.guessMimeTypeFromExtension(imageFileType) ?: "image/$imageFileType")
     }
 
-    fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
+    suspend fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
 
-    override fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
+    override suspend fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
 
     /**
      * Extract the existing download to the base download folder (see [getChapterDownloadPath])
      */
-    protected abstract fun extractExistingDownload()
+    protected abstract suspend fun extractExistingDownload()
 
     protected abstract suspend fun handleSuccessfulDownload()
 
@@ -211,9 +211,9 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     override fun download(): FileDownload3Args<DownloadQueueItem, CoroutineScope, suspend (DownloadQueueItem?, Boolean) -> Unit> =
         FileDownload3Args(::downloadImpl)
 
-    abstract override fun delete(): Boolean
+    abstract override suspend fun delete(): Boolean
 
-    abstract fun getAsArchiveStream(): Pair<InputStream, Long>
+    abstract suspend fun getAsArchiveStream(): Pair<InputStream, Long>
 
-    abstract fun getArchiveSize(): Long
+    abstract suspend fun getArchiveSize(): Long
 }

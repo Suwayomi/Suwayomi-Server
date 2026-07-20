@@ -23,6 +23,7 @@ import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Source.preferenceScreenMap
 import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
@@ -40,8 +41,8 @@ import xyz.nulldev.androidcompat.androidimpl.CustomContext
 object Source {
     private val logger = KotlinLogging.logger {}
 
-    fun getSourceList(): List<SourceDataClass> {
-        return transaction {
+    suspend fun getSourceList(): List<SourceDataClass> {
+        return suspendTransaction {
             SourceTable.selectAll().mapNotNull {
                 val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
                 val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
@@ -61,10 +62,10 @@ object Source {
         }
     }
 
-    fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
-        return transaction {
-            val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
-            val catalogueSource = getSourceOrNull(sourceId) ?: return@transaction null
+    suspend fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
+        return suspendTransaction {
+            val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@suspendTransaction null
+            val catalogueSource = getSourceOrNull(sourceId) ?: return@suspendTransaction null
             val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
@@ -101,12 +102,12 @@ object Source {
     /**
      *  Gets a source's PreferenceScreen, puts the result into [preferenceScreenMap]
      */
-    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> =
+    suspend fun getSourcePreferences(sourceId: Long): List<PreferenceObject> =
         getSourcePreferencesRaw(sourceId).map {
             PreferenceObject(it::class.java.simpleName, it)
         }
 
-    fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
+    suspend fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
         val source = getSourceOrStub(sourceId)
 
         if (source is ConfigurableSource) {

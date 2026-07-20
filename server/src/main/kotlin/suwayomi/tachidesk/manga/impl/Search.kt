@@ -52,7 +52,7 @@ object Search {
         return filterListCache[source.id]!!
     }
 
-    fun getFilterList(
+    suspend fun getFilterList(
         sourceId: Long,
         reset: Boolean,
     ): List<FilterObject> {
@@ -107,7 +107,7 @@ object Search {
         val filter: Filter<*>,
     )
 
-    fun setFilter(
+    suspend fun setFilter(
         sourceId: Long,
         changes: List<FilterChange>,
     ) {
@@ -165,7 +165,7 @@ object Search {
         return filterList
     }
 
-    fun buildFilterList(
+    suspend fun buildFilterList(
         sourceId: Long,
         changes: List<FilterChange>,
     ): FilterList {
