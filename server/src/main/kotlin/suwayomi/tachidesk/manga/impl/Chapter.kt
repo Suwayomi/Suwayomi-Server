@@ -33,6 +33,7 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
@@ -137,7 +138,7 @@ object Chapter {
         return chapterList
     }
 
-    fun updateChapterListDatabase(
+    suspend fun updateChapterListDatabase(
         mangaEntry: ResultRow,
         chapters: List<SChapter>,
         source: Source,
@@ -261,7 +262,7 @@ object Chapter {
                 }
             }
 
-        transaction {
+        suspendTransaction {
             // we got some clean up due
             if (chaptersIdsToDelete.isNotEmpty()) {
                 DownloadManager.dequeue(chaptersIdsToDelete)
@@ -298,16 +299,37 @@ object Chapter {
                             deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                 this[ChapterTable.fetchedAt] = it
                             }
-
-                            deletedDownloadedChapterByChapterNumber[chapter.chapterNumber]?.let {
-                                val isDownloadPreservable = updateChapterDownloadDir(it, chapter)
-                                if (isDownloadPreservable) {
-                                    this[ChapterTable.isDownloaded] = true
-                                    this[ChapterTable.pageCount] = it.pageCount
-                                }
-                            }
                         }
                     }.forEach { insertedChapterIds.add(it[ChapterTable.id].value) }
+
+                val chaptersToPreserveDownload =
+                    chaptersToInsert.filter { chapter ->
+                        val deletedChapter =
+                            deletedDownloadedChapterByChapterNumber[chapter.chapterNumber] ?: return@filter false
+
+                        val isPreservable = updateChapterDownloadDir(deletedChapter, chapter)
+
+                        isPreservable
+                    }
+
+                val insertedChapters =
+                    ChapterTable.selectAll().where { ChapterTable.id inList insertedChapterIds }.map(
+                        ChapterTable::toDataClass,
+                    )
+
+                if (chaptersToPreserveDownload.isNotEmpty()) {
+                    BatchUpdateStatement(ChapterTable).apply {
+                        chaptersToPreserveDownload
+                            .filter { chapterToPreserve ->
+                                insertedChapters.any { it.id == chapterToPreserve.id }
+                            }.forEach {
+                                addBatch(EntityID(it.id, ChapterTable))
+
+                                this[ChapterTable.isDownloaded] = true
+                                this[ChapterTable.pageCount] = it.pageCount
+                            }
+                    }
+                }
             }
 
             if (chaptersToUpdate.isNotEmpty()) {
@@ -341,7 +363,7 @@ object Chapter {
                             }
                         }
                     }.toExecutable()
-                    .execute(this@transaction)
+                    .execute(this@suspendTransaction)
             }
 
             MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id].value }) {
