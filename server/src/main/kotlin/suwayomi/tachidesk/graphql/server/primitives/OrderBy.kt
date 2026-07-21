@@ -65,6 +65,27 @@ fun <T> Query.applyBeforeAfter(
     }
 }
 
+fun <T : OrderBy<*>, Id : Any> Query.applySort(
+    sort: List<Order<T>>,
+    before: Id?,
+    last: Id?,
+): Query {
+    sort.forEach { order ->
+        val orderByColumn = order.by.column
+        val orderType = order.byType.maybeSwap(last ?: before)
+
+        this.orderBy(orderByColumn to orderType)
+    }
+
+    return this
+}
+
+data class PaginationInfo<Id : Any>(
+    val total: Long,
+    val firstResult: ResultRow? = null,
+    val lastResult: ResultRow? = null,
+)
+
 @JvmName("greaterNotUniqueIntKey")
 fun <T : Comparable<T>> greaterNotUnique(
     column: Column<T>,

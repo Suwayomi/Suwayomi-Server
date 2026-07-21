@@ -29,6 +29,7 @@ import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySort
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -162,32 +163,30 @@ class TrackQuery {
                         }
                 }
 
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(TrackerOrder(TrackerOrderBy.ID, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderType = orderByType.maybeSwap(last ?: before)
+                val baseSort = listOf(TrackerOrder(TrackerOrderBy.ID, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                actualSort.forEach { (orderBy, orderByType) ->
+                    val orderType = orderByType.maybeSwap(last ?: before)
 
-                        res =
-                            when (orderType) {
-                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> {
-                                    when (orderBy) {
-                                        TrackerOrderBy.ID -> res.sortedByDescending { it.id }
-                                        TrackerOrderBy.NAME -> res.sortedByDescending { it.name }
-                                        TrackerOrderBy.IS_LOGGED_IN -> res.sortedByDescending { it.isLoggedIn }
-                                    }
-                                }
-
-                                SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
-                                    when (orderBy) {
-                                        TrackerOrderBy.ID -> res.sortedBy { it.id }
-                                        TrackerOrderBy.NAME -> res.sortedBy { it.name }
-                                        TrackerOrderBy.IS_LOGGED_IN -> res.sortedBy { it.isLoggedIn }
-                                    }
+                    res =
+                        when (orderType) {
+                            SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> {
+                                when (orderBy) {
+                                    TrackerOrderBy.ID -> res.sortedByDescending { it.id }
+                                    TrackerOrderBy.NAME -> res.sortedByDescending { it.name }
+                                    TrackerOrderBy.IS_LOGGED_IN -> res.sortedByDescending { it.isLoggedIn }
                                 }
                             }
-                    }
+
+                            SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
+                                when (orderBy) {
+                                    TrackerOrderBy.ID -> res.sortedBy { it.id }
+                                    TrackerOrderBy.NAME -> res.sortedBy { it.name }
+                                    TrackerOrderBy.IS_LOGGED_IN -> res.sortedBy { it.isLoggedIn }
+                                }
+                            }
+                        }
                 }
 
                 val total = res.size
@@ -434,17 +433,11 @@ class TrackQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(TrackRecordOrder(TrackRecordOrderBy.ID, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
+                val baseSort = listOf(TrackRecordOrder(TrackRecordOrderBy.ID, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                        res.orderBy(orderByColumn to orderType)
-                    }
-                }
+                res.applySort(actualSort, before, last)
 
                 val total = res.count()
                 val firstResult = res.firstOrNull()?.get(TrackRecordTable.id)?.value

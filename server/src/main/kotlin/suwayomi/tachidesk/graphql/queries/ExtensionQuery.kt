@@ -38,6 +38,7 @@ import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySort
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -219,17 +220,11 @@ class ExtensionQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
+                val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                        res.orderBy(orderByColumn to orderType)
-                    }
-                }
+                res.applySort(actualSort, before, last)
 
                 val total = res.count()
                 val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
