@@ -49,6 +49,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
+import kotlin.collections.any
 
 class MangaQuery {
     @RequireAuth
@@ -220,6 +221,12 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
                 andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
             )
+
+        fun isFilteringForCategories(): Boolean =
+            this.categoryId != null ||
+                this.or?.any { it.isFilteringForCategories() } != null ||
+                this.and?.any { it.isFilteringForCategories() } != null ||
+                this.not?.isFilteringForCategories() != null
     }
 
     @RequireAuth
@@ -250,11 +257,14 @@ class MangaQuery {
                         .leftJoin(CategoryMangaTable)
                         .select(MangaTable.id)
                         .withDistinct()
-
-                mangaIdsQuery.applyOps(condition, filter)
+                        .applyOps(condition, filter)
 
                 val res =
-                    MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
+                    if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
+                        MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
+                    } else {
+                        MangaTable.selectAll().applyOps(condition, filter)
+                    }
 
                 if (order != null || orderBy != null || (last != null || before != null)) {
                     val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
