@@ -15,6 +15,7 @@ import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
@@ -31,6 +32,8 @@ import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySort
+import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -133,21 +136,16 @@ class MetaQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(MetaOrder(MetaOrderBy.KEY, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { MetaOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
+                val baseSort = listOf(MetaOrder(MetaOrderBy.KEY, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { MetaOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                        res.orderBy(orderByColumn to orderType)
+                res.applySort(actualSort, before, last)
+
+                val (total, firstResult, lastResult) =
+                    res.getPaginationInfo(actualSort, before, last, { it?.get(GlobalMetaTable.key) }) {
+                        GlobalMetaTable.select(GlobalMetaTable.key)
                     }
-                }
-
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(GlobalMetaTable.key)
-                val lastResult = res.lastOrNull()?.get(GlobalMetaTable.key)
 
                 res.applyBeforeAfter(
                     before = before,
