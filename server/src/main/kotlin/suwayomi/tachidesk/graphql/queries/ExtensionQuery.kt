@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -39,6 +40,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySort
+import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -226,9 +228,10 @@ class ExtensionQuery {
 
                 res.applySort(actualSort, before, last)
 
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
-                val lastResult = res.lastOrNull()?.get(ExtensionTable.pkgName)
+                val (total, firstResult, lastResult) =
+                    res.getPaginationInfo(actualSort, before, last, { it?.get(ExtensionTable.pkgName) }) {
+                        ExtensionTable.select(ExtensionTable.pkgName)
+                    }
 
                 res.applyBeforeAfter(
                     before = before,

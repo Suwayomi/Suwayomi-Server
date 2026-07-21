@@ -1,16 +1,21 @@
 package suwayomi.tachidesk.graphql.server.primitives
 
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.ColumnSet
+import org.jetbrains.exposed.v1.core.FieldSet
 import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.select
 
 interface OrderBy<T> {
     val column: Column<*>
@@ -26,6 +31,16 @@ interface Order<By : OrderBy<*>> {
     val by: By
     val byType: SortOrder?
 }
+
+fun SortOrder.reversed() =
+    when (this) {
+        SortOrder.ASC -> SortOrder.DESC
+        SortOrder.DESC -> SortOrder.ASC
+        SortOrder.ASC_NULLS_FIRST -> SortOrder.DESC_NULLS_LAST
+        SortOrder.ASC_NULLS_LAST -> SortOrder.DESC_NULLS_FIRST
+        SortOrder.DESC_NULLS_FIRST -> SortOrder.ASC_NULLS_LAST
+        SortOrder.DESC_NULLS_LAST -> SortOrder.ASC_NULLS_FIRST
+    }
 
 fun SortOrder?.maybeSwap(value: Any?): SortOrder =
     if (value != null) {
@@ -69,22 +84,68 @@ fun <T : OrderBy<*>, Id : Any> Query.applySort(
     sort: List<Order<T>>,
     before: Id?,
     last: Id?,
+    reverse: Boolean = false,
 ): Query {
     sort.forEach { order ->
         val orderByColumn = order.by.column
         val orderType = order.byType.maybeSwap(last ?: before)
 
-        this.orderBy(orderByColumn to orderType)
+        val finalOrderType =
+            if (reverse) {
+                orderType.reversed()
+            } else {
+                orderType
+            }
+
+        this.orderBy(orderByColumn to finalOrderType)
     }
 
     return this
 }
 
-data class PaginationInfo<Id : Any>(
+data class PaginationInfo<T : Any>(
     val total: Long,
-    val firstResult: ResultRow? = null,
-    val lastResult: ResultRow? = null,
+    val firstResult: T? = null,
+    val lastResult: T? = null,
 )
+
+fun <T : OrderBy<*>, V : Any> Query.getPaginationInfo(
+    sort: List<Order<T>>,
+    before: Cursor?,
+    last: Int?,
+    selectValue: (resultRow: ResultRow?) -> V?,
+    select: ColumnSet.(FieldSet) -> Query,
+): PaginationInfo<V> =
+    PaginationInfo(
+        total = this.count(),
+        firstResult =
+            this
+                .copy()
+                .adjustSelect(select)
+                .applySort(sort, before, last)
+                .limit(1)
+                .firstOrNull()
+                ?.let(selectValue),
+        lastResult =
+            this
+                .copy()
+                .adjustSelect(select)
+                .applySort(sort, before, last, true)
+                .limit(1)
+                .firstOrNull()
+                ?.let(selectValue),
+    )
+
+fun <T : OrderBy<*>, Id : Any> Query.getPaginationInfo(
+    sort: List<Order<T>>,
+    before: Cursor?,
+    last: Int?,
+    table: IdTable<Id>,
+    idColumn: Column<EntityID<Id>>,
+): PaginationInfo<Id> =
+    getPaginationInfo<T, Id>(sort, before, last, { it?.get(idColumn)?.value }) {
+        table.select(idColumn)
+    }
 
 @JvmName("greaterNotUniqueIntKey")
 fun <T : Comparable<T>> greaterNotUnique(

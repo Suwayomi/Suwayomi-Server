@@ -38,6 +38,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySort
+import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -240,9 +241,7 @@ class ChapterQuery {
 
                 res.applySort(actualSort, before, last)
 
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(ChapterTable.id)?.value
-                val lastResult = res.lastOrNull()?.get(ChapterTable.id)?.value
+                val (total, firstResult, lastResult) = res.getPaginationInfo(actualSort, before, last, ChapterTable, ChapterTable.id)
 
                 res.applyBeforeAfter(
                     before = before,

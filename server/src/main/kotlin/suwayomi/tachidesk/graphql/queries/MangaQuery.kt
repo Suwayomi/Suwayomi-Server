@@ -41,6 +41,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySort
+import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.MangaNodeList
@@ -270,11 +271,9 @@ class MangaQuery {
                 val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
                 val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                res.applySort(actualSort, before, last)
+                val (total, firstResult, lastResult) = res.getPaginationInfo(actualSort, before, last, MangaTable, MangaTable.id)
 
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(MangaTable.id)?.value
-                val lastResult = res.lastOrNull()?.get(MangaTable.id)?.value
+                res.applySort(actualSort, before, last)
 
                 res.applyBeforeAfter(
                     before = before,
