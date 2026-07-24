@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="opds_feeds_root">⁧קטלוג ‏OPDS‏ של ‏Suwayomi‏⁩</string>
+    <string name="opds_feeds_manga_chapters">⁧פרקים של ‏%1$s‏⁩</string>
+    <string name="opds_feeds_chapter_details">⁧‏%1$s‏ | ‏%2$s‏ | ‏פרטי הפרק⁩</string>
+    <string name="opds_feeds_history_title">היסטוריה</string>
+    <string name="opds_feeds_history_entry_content">פרקים שנקראו לאחרונה</string>
+    <string name="opds_feeds_all_series_in_library_title">כל הסדרות</string>
+    <string name="opds_feeds_all_series_in_library_entry_content">עיון בכל הסדרות שנשמרו בספרייה</string>
+    <string name="opds_feeds_library_sources_title">מקורות</string>
+    <string name="opds_feeds_library_sources_entry_content">עיון בסדרות לפי המקור</string>
+    <string name="opds_feeds_categories_title">קטגוריות</string>
+    <string name="opds_feeds_categories_entry_content">עיון בסדרות לפי הקטגוריות</string>
+    <string name="opds_feeds_genres_title">ז׳אנרים</string>
+    <string name="opds_feeds_genres_entry_content">עיון בסדרות לפי תגיות הז׳אנר</string>
+    <string name="opds_feeds_status_title">סטטוס</string>
+    <string name="opds_feeds_status_entry_content">עיון בסדרות לפי סטטוס הפרסום</string>
+    <string name="opds_feeds_languages_title">שפות</string>
+    <string name="opds_feeds_languages_entry_content">עיון בסדרות לפי שפת התוכן</string>
+    <string name="opds_feeds_library_updates_title">היסטוריית עדכוני הספרייה</string>
+    <string name="opds_feeds_library_updates_entry_content">פרקים מהספרייה שהתעדכנו לאחרונה</string>
+    <string name="opds_feeds_search_results_title">תוצאות החיפוש</string>
+    <string name="opds_feeds_sources_title">כל המקורות</string>
+    <string name="opds_feeds_category_specific_title">⁧קטגוריה: ‏%1$s‏⁩</string>
+</resources>
