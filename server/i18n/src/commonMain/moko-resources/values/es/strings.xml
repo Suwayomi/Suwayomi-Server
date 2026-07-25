@@ -124,4 +124,5 @@
     <string name="opds_linktitle_last_page">Última página</string>
     <string name="opds_error_chapters_not_found">No se encontraron capítulos o la fuente no está disponible en la página %1$d.</string>
     <string name="opds_chapter_title_fallback">Capítulo %1$s</string>
+    <string name="opds_chapter_title_oneshot">Oneshot</string>
 </resources>
