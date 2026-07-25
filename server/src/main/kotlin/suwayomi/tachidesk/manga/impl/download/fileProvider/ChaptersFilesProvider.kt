@@ -78,7 +78,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         val images = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.sortedBy { it.getName() }
 
         if (images.isEmpty()) {
-            throw Exception("no downloaded images found")
+            throw NoSuchElementException("no downloaded images found")
         }
 
         val image = images[index]
