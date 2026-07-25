@@ -12,6 +12,7 @@ data class ExtensionInfo(
     val name: String,
     val pkgName: String,
     val apkUrl: String,
+    val jarUrl: String?,
     val iconUrl: String,
     val extensionLib: String,
     val versionCode: Long,

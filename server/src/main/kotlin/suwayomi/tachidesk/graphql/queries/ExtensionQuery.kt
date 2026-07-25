@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -38,6 +39,8 @@ import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySort
+import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -103,6 +106,7 @@ class ExtensionQuery {
         val name: String? = null,
         val pkgName: String? = null,
         val apkUrl: String? = null,
+        val jarUrl: String? = null,
         val extensionLib: String? = null,
         val versionName: String? = null,
         val versionCode: Int? = null,
@@ -122,6 +126,7 @@ class ExtensionQuery {
             opAnd.eq(apkName, ExtensionTable.apkName)
             opAnd.eq(iconUrl, ExtensionTable.iconUrl)
             opAnd.eq(apkUrl, ExtensionTable.apkUrl)
+            opAnd.eq(jarUrl, ExtensionTable.jarUrl)
             opAnd.eq(name, ExtensionTable.name)
             opAnd.eq(extensionLib, ExtensionTable.extensionLib)
             opAnd.eq(versionName, ExtensionTable.versionName)
@@ -150,6 +155,7 @@ class ExtensionQuery {
         val name: StringFilter? = null,
         val pkgName: StringFilter? = null,
         val apkUrl: StringFilter? = null,
+        val jarUrl: StringFilter? = null,
         val versionName: StringFilter? = null,
         val extensionLib: StringFilter? = null,
         @GraphQLDeprecated("", ReplaceWith("versionCodeLong"))
@@ -175,6 +181,7 @@ class ExtensionQuery {
                 andFilterWithCompareString(ExtensionTable.name, name),
                 andFilterWithCompareString(ExtensionTable.pkgName, pkgName),
                 andFilterWithCompareString(ExtensionTable.apkUrl, apkUrl),
+                andFilterWithCompareString(ExtensionTable.jarUrl, jarUrl),
                 andFilterWithCompareString(ExtensionTable.extensionLib, extensionLib),
                 andFilterWithCompareString(ExtensionTable.versionName, versionName),
                 andFilterWithCompare(ExtensionTable.versionCode, versionCodeLong),
@@ -215,21 +222,16 @@ class ExtensionQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
+                val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                        res.orderBy(orderByColumn to orderType)
+                res.applySort(actualSort, before, last)
+
+                val (total, firstResult, lastResult) =
+                    res.getPaginationInfo(actualSort, before, last, { it?.get(ExtensionTable.pkgName) }) {
+                        ExtensionTable.select(ExtensionTable.pkgName)
                     }
-                }
-
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
-                val lastResult = res.lastOrNull()?.get(ExtensionTable.pkgName)
 
                 res.applyBeforeAfter(
                     before = before,

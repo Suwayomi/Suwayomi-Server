@@ -179,10 +179,10 @@ class ExtensionMutation {
         val (clientMutationId, extensionFile) = input
 
         return future {
-            Extension.installExternalExtension(extensionFile.content(), extensionFile.filename())
+            val pkgName = Extension.installExternalExtension(extensionFile.content(), extensionFile.filename())
 
             val dbExtension =
-                transaction { ExtensionTable.selectAll().where { ExtensionTable.apkName eq extensionFile.filename() }.first() }
+                transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
 
             InstallExternalExtensionPayload(
                 clientMutationId,

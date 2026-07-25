@@ -33,12 +33,14 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.updateChapterDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
@@ -136,7 +138,7 @@ object Chapter {
         return chapterList
     }
 
-    fun updateChapterListDatabase(
+    suspend fun updateChapterListDatabase(
         mangaEntry: ResultRow,
         chapters: List<SChapter>,
         source: Source,
@@ -240,7 +242,7 @@ object Chapter {
         val deletedChapterNumbers = TreeSet<Float>()
         val deletedReadChapterNumbers = TreeSet<Float>()
         val deletedBookmarkedChapterNumbers = TreeSet<Float>()
-        val deletedDownloadedChapterNumberToChapter = mutableMapOf<Float, ChapterDataClass>()
+        val deletedDownloadedChapterByChapterNumber = mutableMapOf<Float, ChapterDataClass>()
         val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
@@ -251,7 +253,7 @@ object Chapter {
                 if (!chapterUrls.contains(dbChapter.url)) {
                     if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
                     if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
-                    if (dbChapter.downloaded) deletedDownloadedChapterNumberToChapter[dbChapter.chapterNumber] = dbChapter
+                    if (dbChapter.downloaded) deletedDownloadedChapterByChapterNumber[dbChapter.chapterNumber] = dbChapter
                     deletedChapterNumbers.add(dbChapter.chapterNumber)
                     deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
                     dbChapter.id
@@ -260,7 +262,7 @@ object Chapter {
                 }
             }
 
-        transaction {
+        suspendTransaction {
             // we got some clean up due
             if (chaptersIdsToDelete.isNotEmpty()) {
                 DownloadManager.dequeue(chaptersIdsToDelete)
@@ -297,22 +299,39 @@ object Chapter {
                             deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                 this[ChapterTable.fetchedAt] = it
                             }
-
-                            deletedDownloadedChapterNumberToChapter[chapter.chapterNumber]?.let {
-                                val hasDownloadedPages = it.pageCount > 0
-                                val isSameName = it.name == chapter.name
-                                val isSameScanlator = it.scanlator == chapter.scanlator
-
-                                // Only preserve download status for chapters with the same name and of the same scanlator; otherwise,
-                                // the downloaded files won't be found anyway
-                                val isDownloadPreservable = hasDownloadedPages && isSameName && isSameScanlator
-                                if (isDownloadPreservable) {
-                                    this[ChapterTable.isDownloaded] = true
-                                    this[ChapterTable.pageCount] = it.pageCount
-                                }
-                            }
                         }
                     }.forEach { insertedChapterIds.add(it[ChapterTable.id].value) }
+
+                val chaptersToPreserveDownload =
+                    chaptersToInsert.filter { chapter ->
+                        val deletedChapter =
+                            deletedDownloadedChapterByChapterNumber[chapter.chapterNumber] ?: return@filter false
+
+                        // For a new (unrecognized) chapter, we have to handle the existing downloads as obsolete in case the scanlator changed because we can't assume that the pages are still the same
+                        val isSameScanlator = chapter.scanlator == deletedChapter.scanlator
+                        val isPreservable = isSameScanlator && updateChapterDownloadDir(deletedChapter, chapter)
+
+                        isPreservable
+                    }
+
+                val insertedChapters =
+                    ChapterTable.selectAll().where { ChapterTable.id inList insertedChapterIds }.map(
+                        ChapterTable::toDataClass,
+                    )
+
+                if (chaptersToPreserveDownload.isNotEmpty()) {
+                    BatchUpdateStatement(ChapterTable).apply {
+                        chaptersToPreserveDownload
+                            .filter { chapterToPreserve ->
+                                insertedChapters.any { it.id == chapterToPreserve.id }
+                            }.forEach {
+                                addBatch(EntityID(it.id, ChapterTable))
+
+                                this[ChapterTable.isDownloaded] = true
+                                this[ChapterTable.pageCount] = it.pageCount
+                            }
+                    }
+                }
             }
 
             if (chaptersToUpdate.isNotEmpty()) {
@@ -339,17 +358,14 @@ object Chapter {
                                 return@forEach
                             }
 
-                            val isSameScanlator = currentChapter.scanlator == it.scanlator
-                            val isSameName = currentChapter.name == it.name
-
-                            val isDownloadPreservable = isSameName && isSameScanlator
+                            val isDownloadPreservable = updateChapterDownloadDir(currentChapter, it)
                             if (!isDownloadPreservable) {
                                 this[ChapterTable.isDownloaded] = false
                                 this[ChapterTable.pageCount] = -1
                             }
                         }
                     }.toExecutable()
-                    .execute(this@transaction)
+                    .execute(this@suspendTransaction)
             }
 
             MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id].value }) {

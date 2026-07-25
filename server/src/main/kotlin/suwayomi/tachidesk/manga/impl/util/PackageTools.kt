@@ -23,13 +23,14 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.pm.InstalledPackage.Companion.toList
 import xyz.nulldev.androidcompat.pm.toPackageInfo
-import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
-import java.nio.file.Files
 import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.nameWithoutExtension
+import kotlin.io.path.readBytes
 import kotlin.io.path.relativeTo
 
 object PackageTools {
@@ -52,15 +53,13 @@ object PackageTools {
      * Convert dex to jar, a wrapper for the dex2jar library
      */
     fun dex2jar(
-        dexFile: String,
-        jarFile: String,
-        fileNameWithoutType: String,
+        dexFile: Path,
+        jarFile: Path,
     ) {
         // adopted from com.googlecode.dex2jar.tools.Dex2jarCmd.doCommandLine
         // source at: https://github.com/DexPatcher/dex2jar/tree/v2.1-20190905-lanchon/dex-tools/src/main/java/com/googlecode/dex2jar/tools/Dex2jarCmd.java
 
-        val jarFilePath = File(jarFile).toPath()
-        val reader = MultiDexFileReader.open(Files.readAllBytes(File(dexFile).toPath()))
+        val reader = MultiDexFileReader.open(dexFile.readBytes())
         val handler = BaksmaliBaseDexExceptionHandler()
         Dex2jar
             .from(reader)
@@ -73,10 +72,10 @@ object PackageTools {
             .noCode(false)
             .skipExceptions(false)
             .dontSanitizeNames(true)
-            .to(jarFilePath)
+            .to(jarFile)
         if (handler.hasException()) {
             val rootPath = Path(applicationDirs.extensionsRoot)
-            val errorFile: Path = rootPath.resolve("$fileNameWithoutType-error.txt")
+            val errorFile: Path = rootPath.resolve("${dexFile.nameWithoutExtension}-error.txt")
             logger.error {
                 """
                 Detail Error Information in File ${errorFile.relativeTo(rootPath)}
@@ -89,56 +88,55 @@ object PackageTools {
             }
             handler.dump(errorFile, emptyArray<String>())
         } else {
-            BytecodeEditor.fixAndroidClasses(jarFilePath)
+            BytecodeEditor.fixAndroidClasses(jarFile)
         }
     }
 
     /** A modified version of `xyz.nulldev.androidcompat.pm.InstalledPackage.info` */
-    fun getPackageInfo(apkFilePath: String): PackageInfo {
-        val apk = File(apkFilePath)
-        return ApkParsers.getMetaInfo(apk).toPackageInfo(apk).apply {
-            val parsed = ApkFile(apk)
-            val dbFactory = DocumentBuilderFactory.newInstance()
-            val dBuilder = dbFactory.newDocumentBuilder()
-            val doc =
-                parsed.manifestXml.byteInputStream().use {
-                    dBuilder.parse(it)
-                }
+    fun getPackageInfo(apkFile: Path): PackageInfo =
+        ApkParsers.getMetaInfo(apkFile.toFile()).toPackageInfo(apkFile.toFile()).apply {
+            ApkFile(apkFile.toFile()).use { parsed ->
+                val dbFactory = DocumentBuilderFactory.newInstance()
+                val dBuilder = dbFactory.newDocumentBuilder()
+                val doc =
+                    parsed.manifestXml.byteInputStream().use {
+                        dBuilder.parse(it)
+                    }
 
-            logger.trace { parsed.manifestXml }
+                logger.trace { parsed.manifestXml }
 
-            applicationInfo.metaData =
-                Bundle().apply {
-                    val appTag = doc.getElementsByTagName("application").item(0)
+                applicationInfo.metaData =
+                    Bundle().apply {
+                        val appTag = doc.getElementsByTagName("application").item(0)
 
-                    appTag
-                        ?.childNodes
-                        ?.toList()
-                        .orEmpty()
-                        .asSequence()
-                        .filter {
-                            it.nodeType == Node.ELEMENT_NODE
-                        }.map {
-                            it as Element
-                        }.filter {
-                            it.tagName == "meta-data"
-                        }.forEach {
-                            putString(
-                                it.attributes.getNamedItem("android:name").nodeValue,
-                                it.attributes.getNamedItem("android:value").nodeValue,
-                            )
-                        }
-                }
+                        appTag
+                            ?.childNodes
+                            ?.toList()
+                            .orEmpty()
+                            .asSequence()
+                            .filter {
+                                it.nodeType == Node.ELEMENT_NODE
+                            }.map {
+                                it as Element
+                            }.filter {
+                                it.tagName == "meta-data"
+                            }.forEach {
+                                putString(
+                                    it.attributes.getNamedItem("android:name").nodeValue,
+                                    it.attributes.getNamedItem("android:value").nodeValue,
+                                )
+                            }
+                    }
 
-            signatures =
-                (
-                    parsed.apkSingers.flatMap { it.certificateMetas }
-                    // + parsed.apkV2Singers.flatMap { it.certificateMetas }
-                ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                    .map { Signature(it.data) }
-                    .toTypedArray()
+                signatures =
+                    (
+                        parsed.apkSingers.flatMap { it.certificateMetas }
+                        // + parsed.apkV2Singers.flatMap { it.certificateMetas }
+                    ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
+                        .map { Signature(it.data) }
+                        .toTypedArray()
+            }
         }
-    }
 
     fun getSignatureHash(pkgInfo: PackageInfo): String? {
         val signatures = pkgInfo.signatures
@@ -156,19 +154,19 @@ object PackageTools {
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
     fun loadExtensionSources(
-        jarPath: String,
+        jar: Path,
         className: String,
     ): Any {
         try {
-            logger.debug { "loading jar with path: $jarPath" }
-            val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(Path(jarPath).toUri().toURL()))
+            logger.debug { "loading jar with path: ${jar.absolutePathString()}" }
+            val classLoader = jarLoaderMap[jar.absolutePathString()] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
             val classToLoad = Class.forName(className, false, classLoader)
 
-            jarLoaderMap[jarPath] = classLoader
+            jarLoaderMap[jar.absolutePathString()] = classLoader
 
             return classToLoad.getDeclaredConstructor().newInstance()
         } catch (e: Exception) {
-            logger.error(e) { "Failed to load jar with path: $jarPath" }
+            logger.error(e) { "Failed to load jar with path: ${jar.absolutePathString()}" }
             throw e
         }
     }

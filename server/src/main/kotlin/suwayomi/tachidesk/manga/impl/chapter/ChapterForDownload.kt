@@ -14,6 +14,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -88,6 +89,7 @@ suspend fun refreshChapterPageList(
                         scanlator = chapterEntry[ChapterTable.scanlator]
                         chapter_number = chapterEntry[ChapterTable.chapter_number]
                         date_upload = chapterEntry[ChapterTable.date_upload]
+                        memo = Json.decodeFromString(chapterEntry[ChapterTable.memo])
                     },
                 ).mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
 
