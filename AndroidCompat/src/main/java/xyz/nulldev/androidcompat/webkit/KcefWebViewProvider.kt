@@ -900,7 +900,10 @@ class KcefWebViewProvider(
         )
     }
 
-    override fun removeJavascriptInterface(interfaceName: String): Unit = throw RuntimeException("Stub!")
+    override fun removeJavascriptInterface(interfaceName: String) {
+        val removed = mappings.removeAll { it.interfaceName == interfaceName }
+        Log.v(TAG, if (removed) "Removed interface mappings for $interfaceName" else "No interface mappings for $interfaceName to remove")
+    }
 
     override fun createWebMessageChannel(): Array<WebMessagePort> = throw RuntimeException("Stub!")
 
