@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 
 
 ### Fixed
-- 
+- (**Chapter**) Clear history and reading progress when marking chapters as unread
 
 ## [v2.4.2366] + [WebUI: v20260929.01] - 2026-09-29
 
