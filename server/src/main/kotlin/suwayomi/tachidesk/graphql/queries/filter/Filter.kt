@@ -141,10 +141,12 @@ interface HasGetOp {
     fun getOp(): Op<Boolean>?
 }
 
-fun Query.applyOps(vararg ops: HasGetOp?) {
+fun Query.applyOps(vararg ops: HasGetOp?): Query {
     ops.mapNotNull { it?.getOp() }.forEach {
         andWhere { it }
     }
+
+    return this
 }
 
 interface Filter<T : Filter<T>> : HasGetOp {

@@ -40,15 +40,17 @@ import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySort
+import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
-import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
+import kotlin.collections.any
 
 class MangaQuery {
     @RequireAuth
@@ -220,6 +222,12 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
                 andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
             )
+
+        fun isFilteringForCategories(): Boolean =
+            this.categoryId != null ||
+                this.or?.any { it.isFilteringForCategories() } != null ||
+                this.and?.any { it.isFilteringForCategories() } != null ||
+                this.not?.isFilteringForCategories() != null
     }
 
     @RequireAuth
@@ -250,27 +258,22 @@ class MangaQuery {
                         .leftJoin(CategoryMangaTable)
                         .select(MangaTable.id)
                         .withDistinct()
-
-                mangaIdsQuery.applyOps(condition, filter)
+                        .applyOps(condition, filter)
 
                 val res =
-                    MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
-
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
-
-                        res.orderBy(orderByColumn to orderType)
+                    if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
+                        MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
+                    } else {
+                        MangaTable.selectAll().applyOps(condition, filter)
                     }
-                }
 
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(MangaTable.id)?.value
-                val lastResult = res.lastOrNull()?.get(MangaTable.id)?.value
+                val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+
+                val (total, firstResult, lastResult) = res.getPaginationInfo(actualSort, before, last, MangaTable, MangaTable.id)
+
+                res.applySort(actualSort, before, last)
 
                 res.applyBeforeAfter(
                     before = before,
