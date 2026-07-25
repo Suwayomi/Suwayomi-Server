@@ -37,8 +37,7 @@ import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
-import suwayomi.tachidesk.graphql.server.primitives.applySort
-import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.SourceNodeList
@@ -171,9 +170,7 @@ class SourceQuery {
                     val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
                     val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                    res.applySort(actualSort, before, last)
-
-                    val (total, firstResult, lastResult) = res.getPaginationInfo(actualSort, before, last, SourceTable, SourceTable.id)
+                    val (total, firstResult, lastResult) = res.applySortAndGetPaginationInfo(actualSort, before, last, SourceTable.id)
 
                     res.applyBeforeAfter(
                         before = before,
