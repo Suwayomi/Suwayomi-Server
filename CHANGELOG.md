@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - (**Tracker**) Fix Shikimori
+- (**Chapter**) Clear history and reading progress when marking chapters as unread
 
 ## [v2.3.2243] - 2026-07-13
 
