@@ -138,20 +138,26 @@ object JavalinSetup {
                 config.events.serverStarted {
                     val addresses =
                         try {
-                            getIPv4Addresses()
+                            when (serverConfig.ip.value) {
+                                "0.0.0.0" -> listOf("127.0.0.1") + getIPv4Addresses()
+                                else -> listOf("127.0.0.1", serverConfig.ip.value)
+                            }
                         } catch (e: Exception) {
                             logger.warn(e) { "Error getting IPv4 addresses" }
-                            emptyList()
+                            listOf("127.0.0.1")
                         }
+
                     logger.info {
                         val port = serverConfig.port.value
-                        """
-                        Server is available at:
-                          http://127.0.0.1:$port
-                        """.trimIndent() +
-                            addresses.joinToString(prefix = "\n  ", separator = "\n  ") {
-                                "http://$it:$port"
-                            }
+                        buildString {
+                            appendLine("Server is available at:")
+
+                            addresses
+                                .distinct()
+                                .forEach { address ->
+                                    appendLine("  http://$address:$port")
+                                }
+                        }.trimEnd()
                     }
                     if (serverConfig.initialOpenInBrowserEnabled.value) {
                         scope.launch {
