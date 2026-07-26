@@ -15,10 +15,9 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.chapter.ChapterSanitizer.sanitize
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -39,7 +38,6 @@ import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
-import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.updateChapterDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
@@ -97,45 +95,21 @@ object Chapter {
         }
 
     private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
-        val chapterList = fetchChapterList(mangaId)
+        Manga.updateMangaAndChapters(
+            mangaId,
+            updateManga = false,
+            updateChapters = true,
+        )
 
-        val dbChapterMap =
-            transaction {
-                ChapterTable
-                    .selectAll()
-                    .where { ChapterTable.manga eq mangaId }
-                    .associateBy({ it[ChapterTable.url] }, { it })
-            }
-
-        return chapterList.map {
-            val dbChapter = dbChapterMap.getValue(it.url)
-            ChapterTable.toDataClass(dbChapter)
+        return transaction {
+            ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq mangaId }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                .map {
+                    ChapterTable.toDataClass(it)
+                }
         }
-    }
-
-    suspend fun fetchChapterList(mangaId: Int): List<SChapter> {
-        val mutex = Manga.mangaInfoMutex.get(mangaId) { Mutex() }
-        val chapterList =
-            mutex.withLock {
-                val mangaEntry =
-                    transaction {
-                        MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
-                    }
-                val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
-
-                val chapters =
-                    Manga
-                        .fetchMangaAndChapters(
-                            mangaEntry = mangaEntry,
-                            source = source,
-                            fetchDetails = false,
-                            fetchChapters = true,
-                        ).chapters
-
-                updateChapterListDatabase(mangaEntry, chapters, source)
-            }
-
-        return chapterList
     }
 
     suspend fun updateChapterListDatabase(
@@ -167,7 +141,7 @@ object Chapter {
                 genre = mangaEntry[MangaTable.genre]
                 status = mangaEntry[MangaTable.status]
                 update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
-                memo = Json.decodeFromString(mangaEntry[MangaTable.memo])
+                memo = mangaEntry[MangaTable.memo]
                 initialized = mangaEntry[MangaTable.initialized]
             }
         uniqueChapters.forEach { chapter ->
@@ -282,7 +256,7 @@ object Chapter {
                         this[ChapterTable.fetchedAt] = chapter.fetchedAt
                         this[ChapterTable.manga] = chapter.mangaId
                         this[ChapterTable.realUrl] = chapter.realUrl
-                        this[ChapterTable.memo] = Json.encodeToString(chapter.memo)
+                        this[ChapterTable.memo] = chapter.memo
                         this[ChapterTable.isRead] = false
                         this[ChapterTable.isBookmarked] = false
                         this[ChapterTable.isDownloaded] = false
@@ -350,7 +324,7 @@ object Chapter {
                             this[ChapterTable.realUrl] = it.realUrl
                             this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
                             this[ChapterTable.version] = it.version
-                            this[ChapterTable.memo] = Json.encodeToString(it.memo)
+                            this[ChapterTable.memo] = it.memo
                             this[ChapterTable.isDownloaded] = currentChapter.downloaded
                             this[ChapterTable.pageCount] = currentChapter.pageCount
 
