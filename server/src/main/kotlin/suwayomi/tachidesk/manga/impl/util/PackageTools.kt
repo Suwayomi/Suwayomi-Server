@@ -156,16 +156,40 @@ object PackageTools {
 
     suspend fun <T> blockJarUsageWhile(
         jars: List<Path>,
-        block: suspend () -> T,
+        block: suspend (loadSources: (jar: Path, className: String) -> Any) -> T,
     ): T {
         val mutexes = jars.map { lockByJar.getOrPut(it.absolutePathString()) { Mutex() } }
 
         mutexes.forEach { it.lock() }
 
         try {
-            return block()
+            return block { jar, className ->
+                check(jar in jars) { "Lock for $jar is not held" }
+
+                loadExtensionSourcesWithLockHeld(jar, className)
+            }
         } finally {
             mutexes.forEach { it.unlock() }
+        }
+    }
+
+    private fun loadExtensionSourcesWithLockHeld(
+        jar: Path,
+        className: String,
+    ): Any {
+        val jarPath = jar.absolutePathString()
+
+        try {
+            logger.debug { "loading jar with path: $jarPath" }
+            val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
+            val classToLoad = Class.forName(className, false, classLoader)
+
+            jarLoaderMap[jarPath] = classLoader
+
+            return classToLoad.getDeclaredConstructor().newInstance()
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to load jar with path: $jarPath" }
+            throw e
         }
     }
 
@@ -177,23 +201,10 @@ object PackageTools {
         jar: Path,
         className: String,
     ): Any {
-        val jarPath = jar.absolutePathString()
-
-        val mutex = lockByJar.getOrPut(jarPath) { Mutex() }
+        val mutex = lockByJar.getOrPut(jar.absolutePathString()) { Mutex() }
 
         mutex.withLock {
-            try {
-                logger.debug { "loading jar with path: $jarPath" }
-                val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
-                val classToLoad = Class.forName(className, false, classLoader)
-
-                jarLoaderMap[jarPath] = classLoader
-
-                return classToLoad.getDeclaredConstructor().newInstance()
-            } catch (e: Exception) {
-                logger.error(e) { "Failed to load jar with path: $jarPath" }
-                throw e
-            }
+            return loadExtensionSourcesWithLockHeld(jar, className)
         }
     }
 }

@@ -436,7 +436,7 @@ object Extension {
                 null
             }
 
-        return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) {
+        return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) { loadExtensionSources ->
             val apkName = extPackage.getApkName()
 
             dbSuspendTransaction {
@@ -458,7 +458,7 @@ object Extension {
                     }
 
                     setupJar(
-                        jarFile = jarFile,
+                        extensionMainClassInstance = loadExtensionSources(jarFile, className),
                         className = className,
                         extensionName = extensionName,
                         extensionLibVersion = extensionLibVersion,
@@ -486,8 +486,8 @@ object Extension {
         }
     }
 
-    private suspend fun setupJar(
-        jarFile: Path,
+    private fun setupJar(
+        extensionMainClassInstance: Any,
         className: String,
         extensionName: String,
         extensionLibVersion: String,
@@ -498,7 +498,6 @@ object Extension {
         contentWarning: Int,
     ) {
         // collect sources from the extension
-        val extensionMainClassInstance = loadExtensionSources(jarFile, className)
         val httpSources: List<Source> =
             when (extensionMainClassInstance) {
                 is Source -> listOf(extensionMainClassInstance)
