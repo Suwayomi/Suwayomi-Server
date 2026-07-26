@@ -130,8 +130,9 @@ class Bangumi(
             // If no username is set, the API returns the user ID as a strings
             val username = api.getUsername()
             saveCredentials(username, oauth.accessToken)
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
             logout()
+            throw e
         }
     }
 

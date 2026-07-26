@@ -135,6 +135,7 @@ class Shikimori(
             saveCredentials(user.toString(), oauth.accessToken)
         } catch (e: Throwable) {
             logout()
+            throw e
         }
     }
 
