@@ -70,7 +70,7 @@ object Track {
         if (input.callbackUrl != null) {
             tracker.authCallback(input.callbackUrl)
         } else {
-            tracker.login(input.username ?: "", input.password ?: "")
+            tracker.loginImpl(input.username ?: "", input.password ?: "")
         }
     }
 

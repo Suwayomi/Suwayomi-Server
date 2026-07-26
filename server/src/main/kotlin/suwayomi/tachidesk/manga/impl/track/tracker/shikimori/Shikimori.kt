@@ -122,20 +122,16 @@ class Shikimori(
         login(token)
     }
 
-    override suspend fun login(
+    override suspend fun loginImpl(
         username: String,
         password: String,
     ) = login(password)
 
     suspend fun login(code: String) {
-        try {
-            val oauth = api.accessToken(code)
-            interceptor.newAuth(oauth)
-            val user = api.getCurrentUser()
-            saveCredentials(user.toString(), oauth.accessToken)
-        } catch (e: Throwable) {
-            logout()
-        }
+        val oauth = api.accessToken(code)
+        interceptor.newAuth(oauth)
+        val user = api.getCurrentUser()
+        saveCredentials(user.toString(), oauth.accessToken)
     }
 
     fun saveToken(oauth: SMOAuth?) {

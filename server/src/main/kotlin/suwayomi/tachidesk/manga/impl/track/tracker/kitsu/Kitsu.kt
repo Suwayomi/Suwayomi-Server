@@ -123,7 +123,7 @@ class Kitsu(
         return track
     }
 
-    override suspend fun login(
+    override suspend fun loginImpl(
         username: String,
         password: String,
     ) {
