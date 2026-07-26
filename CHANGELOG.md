@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**SystemTray**) Disable DorkBox update requests
 
 ### Fixed
-- .
+- (**Tracker**) Fix Shikimori
 
 ## [v2.3.2243] - 2026-07-13
 
