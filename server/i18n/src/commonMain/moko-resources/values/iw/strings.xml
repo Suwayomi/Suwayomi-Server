@@ -59,4 +59,20 @@
     <string name="opds_facet_filter_unread_only">לא נקראו</string>
     <string name="opds_facet_filter_read_only">נקראו</string>
     <string name="opds_facet_filter_downloaded">בהורדות</string>
+    <string name="opds_facet_all_sources">כל המקורות</string>
+    <string name="opds_facet_all_categories">כל הקטגוריות</string>
+    <string name="opds_facet_all_statuses">כל הסטטוסים</string>
+    <string name="opds_facet_all_languages">כל השפות</string>
+    <string name="opds_facet_all_genres">כל הז׳אנרים</string>
+    <string name="opds_linktitle_search_catalog">חיפוש בקטלוג</string>
+    <string name="opds_linktitle_first_page">העמוד הראשון</string>
+    <string name="opds_linktitle_previous_page">העמוד הקודם</string>
+    <string name="opds_linktitle_next_page">העמוד הבא</string>
+    <string name="opds_linktitle_last_page">העמוד האחרון</string>
+    <string name="opds_linktitle_stream_pages_start">קריאה מקוונת</string>
+    <string name="opds_linktitle_stream_pages_continue">המשך קריאה מקוונת</string>
+    <string name="opds_linktitle_stream_pages_start_local">קריאה מקוונת (התקדמות מקומית)</string>
+    <string name="opds_linktitle_stream_pages_continue_local">המשך קריאה מקוונת (התקדמות מקומית)</string>
+    <string name="opds_linktitle_download_cbz">הורדת CBZ</string>
+    <string name="opds_linktitle_chapter_cover">כריכת הפרק</string>
 </resources>
