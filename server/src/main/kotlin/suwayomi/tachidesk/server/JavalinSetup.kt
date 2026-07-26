@@ -47,6 +47,8 @@ import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.ServerSubpath
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
+import java.net.Inet4Address
+import java.net.NetworkInterface
 import java.net.URI
 import java.net.URLEncoder
 import java.util.Locale
@@ -134,6 +136,29 @@ object JavalinSetup {
                 }
 
                 config.events.serverStarted {
+                    val addresses =
+                        try {
+                            when (serverConfig.ip.value) {
+                                "0.0.0.0" -> listOf("127.0.0.1") + getIPv4Addresses()
+                                else -> listOf("127.0.0.1", serverConfig.ip.value)
+                            }
+                        } catch (e: Exception) {
+                            logger.warn(e) { "Error getting IPv4 addresses" }
+                            listOf("127.0.0.1")
+                        }
+
+                    logger.info {
+                        val port = serverConfig.port.value
+                        buildString {
+                            appendLine("Server is available at:")
+
+                            addresses
+                                .distinct()
+                                .forEach { address ->
+                                    appendLine("  http://$address:$port")
+                                }
+                        }.trimEnd()
+                    }
                     if (serverConfig.initialOpenInBrowserEnabled.value) {
                         scope.launch {
                             withTimeoutOrNull(10.seconds) {
@@ -205,7 +230,9 @@ object JavalinSetup {
 
         beforeMatched { ctx ->
             val isWebManifest =
-                listOf("site.webmanifest", "manifest.json", "login.html").any { ctx.path().endsWith(it) }
+                listOf("site.webmanifest", "manifest.json", "login.html").any {
+                    ctx.path().endsWith(it)
+                }
             val isPageIcon =
                 ctx.path().startsWith('/') &&
                     !ctx.path().substring(1).contains('/') &&
@@ -234,7 +261,8 @@ object JavalinSetup {
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
                 val url =
-                    "$loginPath?redirect=" + URLEncoder.encode(ctx.path() + (ctx.queryString()?.let { "?" + it } ?: ""), Charsets.UTF_8)
+                    "$loginPath?redirect=" +
+                        URLEncoder.encode(ctx.path() + (ctx.queryString()?.let { "?" + it } ?: ""), Charsets.UTF_8)
                 ctx.header("Location", url)
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
@@ -342,4 +370,19 @@ object JavalinSetup {
 
         return item ?: set().also { setAttribute(attribute, it) }
     }
+
+    fun getIPv4Addresses(): List<String> =
+        NetworkInterface
+            .getNetworkInterfaces()
+            .asSequence()
+            .flatMap { networkInterface ->
+                if (!networkInterface.isUp || networkInterface.isLoopback) {
+                    return@flatMap emptySequence()
+                }
+
+                networkInterface.inetAddresses
+                    .asSequence()
+                    .filterIsInstance<Inet4Address>()
+                    .map { address -> address.hostAddress }
+            }.toList()
 }
