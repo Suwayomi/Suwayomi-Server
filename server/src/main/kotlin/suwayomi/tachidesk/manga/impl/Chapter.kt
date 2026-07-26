@@ -328,7 +328,7 @@ object Chapter {
                                 addBatch(EntityID(it.id, ChapterTable))
 
                                 this[ChapterTable.isDownloaded] = true
-                                this[ChapterTable.pageCount] = it.pageCount
+                                this[ChapterTable.pageCount] = deletedDownloadedChapterByChapterNumber[it.chapterNumber]!!.pageCount
                             }
                     }
                 }
