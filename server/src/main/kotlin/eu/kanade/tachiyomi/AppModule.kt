@@ -52,22 +52,22 @@ fun createAppModule(app: Application): Module {
 //
 //        addSingletonFactory { LibrarySyncManager(app) }
 
-        single {
+        single<Json> {
             Json {
                 ignoreUnknownKeys = true
                 explicitNulls = false
             }
         }
 
-        single {
-            XML {
-                defaultPolicy {
+        single<XML> {
+            XML.v1 {
+                policy {
                     ignoreUnknownChildren()
+                    autoPolymorphic = true
                 }
-                autoPolymorphic = true
                 xmlDeclMode = XmlDeclMode.Charset
-                indent = 2
                 xmlVersion = XmlVersion.XML10
+                setIndent(2)
             }
         }
 
