@@ -21,18 +21,18 @@ import java.io.File
 import java.io.InputStream
 
 object ChapterDownloadHelper {
-    fun getImage(
+    suspend fun getImage(
         mangaId: Int,
         chapterId: Int,
         index: Int,
     ): Pair<InputStream, String> = provider(mangaId, chapterId).getImage().execute(index)
 
-    fun getImageCount(
+    suspend fun getImageCount(
         mangaId: Int,
         chapterId: Int,
     ): Int = provider(mangaId, chapterId).getImageCount()
 
-    fun delete(
+    suspend fun delete(
         mangaId: Int,
         chapterId: Int,
     ): Boolean = provider(mangaId, chapterId).delete()
@@ -49,7 +49,7 @@ object ChapterDownloadHelper {
     ): Boolean = provider(mangaId, chapterId).download().execute(download, scope, step)
 
     // return the appropriate provider based on how the download was saved. For the logic is simple but will evolve when new types of downloads are available
-    private fun provider(
+    private suspend fun provider(
         mangaId: Int,
         chapterId: Int,
     ): ChaptersFilesProvider<*> {
@@ -60,12 +60,12 @@ object ChapterDownloadHelper {
         return FolderProvider(mangaId, chapterId)
     }
 
-    fun getArchiveStreamWithSize(
+    suspend fun getArchiveStreamWithSize(
         mangaId: Int,
         chapterId: Int,
     ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
 
-    fun getChapterArchiveSize(
+    suspend fun getChapterArchiveSize(
         mangaId: Int,
         chapterId: Int,
     ): Long = provider(mangaId, chapterId).getArchiveSize()
@@ -119,7 +119,7 @@ object ChapterDownloadHelper {
             Pair(chapter, safeFileName)
         }
 
-    fun getCbzForDownload(
+    suspend fun getCbzForDownload(
         chapterId: Int,
         markAsRead: Boolean?,
     ): Triple<InputStream, String, Long> {
@@ -141,7 +141,7 @@ object ChapterDownloadHelper {
         return Triple(cbzFile.first, fileName, cbzFile.second)
     }
 
-    fun getCbzMetadataForDownload(chapterId: Int): Pair<String, Long> { // fileName, fileSize
+    suspend fun getCbzMetadataForDownload(chapterId: Int): Pair<String, Long> { // fileName, fileSize
         val (chapterData, fileName) = getChapterWithCbzFileName(chapterId)
 
         val fileSize = provider(chapterData.mangaId, chapterData.id).getArchiveSize()

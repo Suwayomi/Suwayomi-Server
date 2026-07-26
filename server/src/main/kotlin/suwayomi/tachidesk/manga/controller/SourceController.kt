@@ -38,8 +38,12 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.json(Source.getSourceList())
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        ctx.json(Source.getSourceList())
+                    }
+                }
             },
             withResults = {
                 json<Array<SourceDataClass>>(HttpStatus.OK)
@@ -57,8 +61,12 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.json(Source.getSource(sourceId)!!)
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        ctx.json(Source.getSource(sourceId)!!)
+                    }
+                }
             },
             withResults = {
                 json<SourceDataClass>(HttpStatus.OK)
@@ -125,8 +133,12 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.json(Source.getSourcePreferences(sourceId))
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        ctx.json(Source.getSourcePreferences(sourceId))
+                    }
+                }
             },
             withResults = {
                 json<Array<Source.PreferenceObject>>(HttpStatus.OK)
@@ -166,8 +178,12 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, reset ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.json(Search.getFilterList(sourceId, reset))
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        ctx.json(Search.getFilterList(sourceId, reset))
+                    }
+                }
             },
             withResults = {
                 json<Array<Search.FilterObject>>(HttpStatus.OK)
@@ -189,15 +205,19 @@ object SourceController {
                 body<Array<FilterChange>>()
             },
             behaviorOf = { ctx, sourceId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val filterChange =
-                    try {
-                        json.decodeFromString<List<FilterChange>>(ctx.body())
-                    } catch (e: Exception) {
-                        listOf(json.decodeFromString<FilterChange>(ctx.body()))
-                    }
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        val filterChange =
+                            try {
+                                json.decodeFromString<List<FilterChange>>(ctx.body())
+                            } catch (e: Exception) {
+                                listOf(json.decodeFromString<FilterChange>(ctx.body()))
+                            }
 
-                ctx.json(Search.setFilter(sourceId, filterChange))
+                        ctx.json(Search.setFilter(sourceId, filterChange))
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)

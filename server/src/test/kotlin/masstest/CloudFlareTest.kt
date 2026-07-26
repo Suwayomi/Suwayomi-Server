@@ -51,7 +51,7 @@ class CloudFlareTest {
                 Source
                     .getSourceList()
                     .firstNotNullOf { it.id.toLong().takeIf { it == 3122156392225024195L } }
-                    .let(GetSource::getSourceOrNull) as HttpSource
+                    .let { GetSource.getSourceOrNull(it) } as HttpSource
         }
         setLoggingEnabled(true)
     }

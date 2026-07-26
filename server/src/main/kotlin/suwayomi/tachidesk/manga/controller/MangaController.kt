@@ -291,9 +291,13 @@ object MangaController {
                 body<Chapter.MangaChapterBatchEditInput>()
             },
             behaviorOf = { ctx, mangaId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body())
-                Chapter.modifyChapters(input, mangaId)
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        val input = json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body())
+                        Chapter.modifyChapters(input, mangaId)
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -311,15 +315,19 @@ object MangaController {
                 body<Chapter.ChapterBatchEditInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
-                Chapter.modifyChapters(
-                    Chapter.MangaChapterBatchEditInput(
-                        input.chapterIds,
-                        null,
-                        input.change,
-                    ),
-                )
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
+                        Chapter.modifyChapters(
+                            Chapter.MangaChapterBatchEditInput(
+                                input.chapterIds,
+                                null,
+                                input.change,
+                            ),
+                        )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -414,10 +422,14 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                Chapter.deleteChapter(mangaId, chapterIndex)
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        Chapter.deleteChapter(mangaId, chapterIndex)
 
-                ctx.status(200)
+                        ctx.status(200)
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)

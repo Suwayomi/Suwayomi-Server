@@ -29,19 +29,19 @@ class ArchiveProvider(
     mangaId: Int,
     chapterId: Int,
 ) : ChaptersFilesProvider<FileType.ZipFile>(mangaId, chapterId) {
-    override fun getImageFiles(): List<FileType.ZipFile> {
+    override suspend fun getImageFiles(): List<FileType.ZipFile> {
         val zipFile = ZipFile.builder().setFile(getChapterCbzPath(mangaId, chapterId)).get()
         return zipFile.entries.toList().map { FileType.ZipFile(it) }
     }
 
-    override fun getImageInputStream(image: FileType.ZipFile): InputStream =
+    override suspend fun getImageInputStream(image: FileType.ZipFile): InputStream =
         ZipFile
             .builder()
             .setFile(getChapterCbzPath(mangaId, chapterId))
             .get()
             .getInputStream(image.entry)
 
-    override fun extractExistingDownload() {
+    override suspend fun extractExistingDownload() {
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
         val chapterDownloadFolder = File(getChapterDownloadPath(mangaId, chapterId))
 
@@ -86,7 +86,7 @@ class ArchiveProvider(
         }
     }
 
-    override fun delete(): Boolean {
+    override suspend fun delete(): Boolean {
         val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
         if (!cbzFile.exists()) {
             return true
@@ -104,7 +104,7 @@ class ArchiveProvider(
         return cbzDeleted
     }
 
-    override fun getAsArchiveStream(): Pair<InputStream, Long> {
+    override suspend fun getAsArchiveStream(): Pair<InputStream, Long> {
         val cbzFile =
             File(getChapterCbzPath(mangaId, chapterId))
                 .takeIf { it.exists() }
@@ -113,7 +113,7 @@ class ArchiveProvider(
         return cbzFile.inputStream() to cbzFile.length()
     }
 
-    override fun getArchiveSize(): Long {
+    override suspend fun getArchiveSize(): Long {
         val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
         return if (cbzFile.exists()) cbzFile.length() else 0L
     }

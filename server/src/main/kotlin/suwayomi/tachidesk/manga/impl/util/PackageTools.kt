@@ -15,6 +15,8 @@ import com.googlecode.d2j.reader.MultiDexFileReader
 import com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler
 import eu.kanade.tachiyomi.util.lang.Hash
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.ApkParsers
 import org.w3c.dom.Element
@@ -26,6 +28,7 @@ import xyz.nulldev.androidcompat.pm.toPackageInfo
 import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -147,27 +150,50 @@ object PackageTools {
         }
     }
 
+    private val lockByJar = ConcurrentHashMap<String, Mutex>()
+
     val jarLoaderMap = mutableMapOf<String, URLClassLoader>()
+
+    suspend fun <T> blockJarUsageWhile(
+        jars: List<Path>,
+        block: suspend () -> T,
+    ): T {
+        val mutexes = jars.map { lockByJar.getOrPut(it.absolutePathString()) { Mutex() } }
+
+        mutexes.forEach { it.lock() }
+
+        try {
+            return block()
+        } finally {
+            mutexes.forEach { it.unlock() }
+        }
+    }
 
     /**
      * loads the extension main class called [className] from the jar located at [jarPath]
      * It may return an instance of HttpSource or SourceFactory depending on the extension.
      */
-    fun loadExtensionSources(
+    suspend fun loadExtensionSources(
         jar: Path,
         className: String,
     ): Any {
-        try {
-            logger.debug { "loading jar with path: ${jar.absolutePathString()}" }
-            val classLoader = jarLoaderMap[jar.absolutePathString()] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
-            val classToLoad = Class.forName(className, false, classLoader)
+        val jarPath = jar.absolutePathString()
 
-            jarLoaderMap[jar.absolutePathString()] = classLoader
+        val mutex = lockByJar.getOrPut(jarPath) { Mutex() }
 
-            return classToLoad.getDeclaredConstructor().newInstance()
-        } catch (e: Exception) {
-            logger.error(e) { "Failed to load jar with path: ${jar.absolutePathString()}" }
-            throw e
+        mutex.withLock {
+            try {
+                logger.debug { "loading jar with path: $jarPath" }
+                val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
+                val classToLoad = Class.forName(className, false, classLoader)
+
+                jarLoaderMap[jarPath] = classLoader
+
+                return classToLoad.getDeclaredConstructor().newInstance()
+            } catch (e: Exception) {
+                logger.error(e) { "Failed to load jar with path: $jarPath" }
+                throw e
+            }
         }
     }
 }

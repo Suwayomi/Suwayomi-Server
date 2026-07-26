@@ -18,7 +18,7 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ContentWarningFilter
@@ -41,11 +41,11 @@ import suwayomi.tachidesk.graphql.server.primitives.applySort
 import suwayomi.tachidesk.graphql.server.primitives.getPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
-import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
 class SourceQuery {
@@ -159,69 +159,70 @@ class SourceQuery {
         first: Int? = null,
         last: Int? = null,
         offset: Int? = null,
-    ): SourceNodeList {
-        val (queryResults, resultsAsType) =
-            transaction {
-                val res = SourceTable.selectAll()
+    ): CompletableFuture<SourceNodeList> =
+        future {
+            val (queryResults, resultsAsType) =
+                suspendTransaction {
+                    val res = SourceTable.selectAll()
 
-                res.applyOps(condition, filter)
+                    res.applyOps(condition, filter)
 
-                val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                res.applySort(actualSort, before, last)
+                    res.applySort(actualSort, before, last)
 
-                val (total, firstResult, lastResult) = res.getPaginationInfo(actualSort, before, last, SourceTable, SourceTable.id)
+                    val (total, firstResult, lastResult) = res.getPaginationInfo(actualSort, before, last, SourceTable, SourceTable.id)
 
-                res.applyBeforeAfter(
-                    before = before,
-                    after = after,
-                    orderBy = order?.firstOrNull()?.by ?: SourceOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType,
-                )
+                    res.applyBeforeAfter(
+                        before = before,
+                        after = after,
+                        orderBy = order?.firstOrNull()?.by ?: SourceOrderBy.ID,
+                        orderByType = order?.firstOrNull()?.byType,
+                    )
 
-                if (first != null) {
-                    res.limit(first).offset(offset?.toLong() ?: 0)
-                } else if (last != null) {
-                    res.limit(last)
+                    if (first != null) {
+                        res.limit(first).offset(offset?.toLong() ?: 0)
+                    } else if (last != null) {
+                        res.limit(last)
+                    }
+
+                    QueryResults(total, firstResult, lastResult, res.toList()).let {
+                        it to it.results.mapNotNull { SourceType(it) }
+                    }
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList()).let {
-                    it to it.results.mapNotNull { SourceType(it) }
-                }
-            }
+            val getAsCursor: (SourceType) -> Cursor = (order?.firstOrNull()?.by ?: SourceOrderBy.ID)::asCursor
 
-        val getAsCursor: (SourceType) -> Cursor = (order?.firstOrNull()?.by ?: SourceOrderBy.ID)::asCursor
-
-        return SourceNodeList(
-            resultsAsType,
-            if (resultsAsType.isEmpty()) {
-                emptyList()
-            } else {
-                listOfNotNull(
-                    resultsAsType.firstOrNull()?.let {
-                        SourceNodeList.SourceEdge(
-                            getAsCursor(it),
-                            it,
-                        )
-                    },
-                    resultsAsType.lastOrNull()?.let {
-                        SourceNodeList.SourceEdge(
-                            getAsCursor(it),
-                            it,
-                        )
-                    },
-                )
-            },
-            pageInfo =
-                PageInfo(
-                    hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
-                    hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
-                    startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
-                    endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
-                ),
-            totalCount = queryResults.total.toInt(),
-        )
-    }
+            SourceNodeList(
+                resultsAsType,
+                if (resultsAsType.isEmpty()) {
+                    emptyList()
+                } else {
+                    listOfNotNull(
+                        resultsAsType.firstOrNull()?.let {
+                            SourceNodeList.SourceEdge(
+                                getAsCursor(it),
+                                it,
+                            )
+                        },
+                        resultsAsType.lastOrNull()?.let {
+                            SourceNodeList.SourceEdge(
+                                getAsCursor(it),
+                                it,
+                            )
+                        },
+                    )
+                },
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
+                        hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
+                        startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                        endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                    ),
+                totalCount = queryResults.total.toInt(),
+            )
+        }
 }
