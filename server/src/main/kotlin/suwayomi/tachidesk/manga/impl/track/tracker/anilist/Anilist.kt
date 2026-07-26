@@ -228,23 +228,17 @@ class Anilist(
         login(token)
     }
 
-    override suspend fun login(
+    override suspend fun loginImpl(
         username: String,
         password: String,
     ) = login(password)
 
     private suspend fun login(token: String) {
-        try {
-            val oauth = api.createOAuth(token)
-            interceptor.setAuth(oauth)
-            val (username, scoreType) = api.getCurrentUser()
-            trackPreferences.setScoreType(this, scoreType)
-            saveCredentials(username.toString(), oauth.accessToken)
-        } catch (e: Throwable) {
-            logger.error(e) { "oauth err" }
-            logout()
-            throw e
-        }
+        val oauth = api.createOAuth(token)
+        interceptor.setAuth(oauth)
+        val (username, scoreType) = api.getCurrentUser()
+        trackPreferences.setScoreType(this, scoreType)
+        saveCredentials(username.toString(), oauth.accessToken)
     }
 
     override fun logout() {

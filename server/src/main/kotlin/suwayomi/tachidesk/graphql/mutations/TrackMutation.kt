@@ -67,7 +67,7 @@ class TrackMutation {
                 "Could not find tracker"
             }
         return future {
-            tracker.login(input.username, input.password)
+            tracker.loginImpl(input.username, input.password)
             val trackerType = TrackerType(tracker)
             LoginTrackerCredentialsPayload(
                 input.clientMutationId,

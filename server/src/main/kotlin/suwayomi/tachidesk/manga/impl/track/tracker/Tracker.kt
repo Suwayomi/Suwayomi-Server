@@ -60,7 +60,19 @@ abstract class Tracker(
 
     open suspend fun authCallback(url: String) {}
 
-    abstract suspend fun login(
+    suspend fun login(
+        username: String,
+        password: String,
+    ) {
+        try {
+            loginImpl(username, password)
+        } catch (e: Throwable) {
+            logout()
+            throw e
+        }
+    }
+
+    abstract suspend fun loginImpl(
         username: String,
         password: String,
     )
