@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - (**Tracker**) Fix Shikimori
+- (**Extension**) Fix losing installed extension in case the update fails
 
 ## [v2.3.2243] - 2026-07-13
 
@@ -23,7 +24,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - (**Extension**) Fix missing memo field in getPageList
-- (**Extension**) Fix losing installed extension in case the update fails
 
 ## [v2.3.2238] - 2026-07-05
 
