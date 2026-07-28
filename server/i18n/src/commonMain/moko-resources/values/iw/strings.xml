@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="opds_feeds_root">⁧קטלוג ‏OPDS‏ של ‏Suwayomi‏⁩</string>
     <string name="opds_feeds_manga_chapters">⁧פרקים של ‏%1$s‏⁩</string>
     <string name="opds_feeds_chapter_details">⁧‏%1$s‏ | ‏%2$s‏ | ‏פרטי הפרק⁩</string>
@@ -75,4 +75,54 @@
     <string name="opds_linktitle_stream_pages_continue_local">המשך קריאה מקוונת (התקדמות מקומית)</string>
     <string name="opds_linktitle_download_cbz">הורדת CBZ</string>
     <string name="opds_linktitle_chapter_cover">כריכת הפרק</string>
+    <string name="opds_linktitle_stream_pages_start_remote">⁧קריאה מקוונת (סונכרן מ- ‏%1$s‏)⁩</string>
+    <string name="opds_linktitle_stream_pages_continue_remote">⁧המשך קריאה מקוונת (סונכרן מ- ‏%1$s‏)⁩</string>
+    <string name="opds_linktitle_view_chapter_details">הצגת פרטי הפרק וקבלת עמודים</string>
+    <string name="opds_chapter_details_base">⁧סדרה: ‏%1$s‏ | ‏%2$s‏⁩</string>
+    <string name="opds_chapter_details_scanlator">⁧ | תרגום: ‏%1$s‏⁩</string>
+    <string name="opds_chapter_details_progress">⁧ | התקדמות: ‏%1$d‏ מתוך ‏%2$d‏⁩</string>
+    <string name="opds_manga_summary_status">⁧סטטוס: ‏%1$s‏⁩</string>
+    <string name="opds_manga_summary_source">⁧מקור: ‏%1$s‏⁩</string>
+    <string name="opds_manga_summary_language">⁧שפה: ‏%1$s‏⁩</string>
+    <string name="label_error">שגיאה</string>
+    <string name="label_close">סגירה</string>
+    <string name="webview_label_title">⁧‏Suwayomi‏: תצוגת ‏WebView‏⁩</string>
+    <string name="webview_label_disconnected">החיבור נותק, יש לרענן את העמוד</string>
+    <string name="webview_label_reversescroll">היפוך כיוון הגלילה</string>
+    <string name="webview_label_bindingshint">⁧⁧הערה: כאשר המיקוד נמצא באזור ה- ‏WebView‏, מקשי הקיצור של הדפדפן, כולל רענון, לא יפעלו⁩.</string>
+    <string name="webview_label_init">מאתחל... נא להמתין</string>
+    <string name="webview_label_getstarted">⁧כדי להתחיל, יש להזין כתובת ‏URL‏⁩</string>
+    <string name="webview_label_loading">טוען עמוד…</string>
+    <string name="webview_label_copy">העתקה ללוח</string>
+    <string name="webview_label_copy_description">ההעתקה האוטומטית ללוח נכשלה. יש להשתמש בשדה שלמטה כדי להעתיק את הערך ידנית.</string>
+    <string name="webview_label_login_required">לפי ההגדרות, נדרשת התחברות. יש להזין שם משתמש וסיסמה.</string>
+    <string name="webview_placeholder_url">⁧כתובת ‏URL‏⁩...</string>
+    <string name="login_label_title">⁧התחברות ל- ‏Suwayomi‏⁩</string>
+    <string name="login_label_username">שם משתמש</string>
+    <string name="login_label_password">סיסמא</string>
+    <string name="login_label_login">התחברות</string>
+    <string name="login_placeholder_username">שם משתמש...</string>
+    <string name="login_placeholder_password">סיסמא...</string>
+    <string name="opds_facet_filter_ongoing">פעילה</string>
+    <string name="opds_facet_filter_completed">הושלמה</string>
+    <string name="manga_status_ongoing">פעילה‏</string>
+    <string name="manga_status_completed">הושלמה‏</string>
+    <string name="manga_status_licensed">תחת רישיון</string>
+    <string name="manga_status_publishing_finished">הפרסום הסתיים</string>
+    <string name="manga_status_cancelled">בוטלה</string>
+    <string name="manga_status_on_hiatus">בהפסקה</string>
+    <string name="manga_status_unknown">לא ידוע</string>
+    <string name="opds_chapter_title_oneshot">סיפור קצר (Oneshot)</string>
+    <string name="opds_chapter_title_fallback">⁧פרק ‏%1$s‏⁩</string>
+    <string name="label_version">גרסה <xliff:g id="version" example="v2.0.1833">%1$s</xliff:g></string>
+    <string name="opds_chapter_status_read">✅</string>
+    <string name="opds_chapter_status_in_progress">⌛</string>
+    <string name="opds_chapter_status_unread">⭕</string>
+    <string name="opds_chapter_status_downloaded">⬇️</string>
+    <string name="opds_chapter_status_synced">🌐</string>
+    <string name="opds_linktitle_catalog_root">עמוד ראשי</string>
+    <string name="opds_linktitle_self_feed">רשימה נוכחית</string>
+    <string name="opds_linktitle_view_on_web">הצגה בדפדפן</string>
+    <string name="opds_feeds_explore_title">סיור</string>
+    <string name="opds_feeds_explore_entry_content">מציאת סדרות חדשות מהמקורות שלך</string>
 </resources>
