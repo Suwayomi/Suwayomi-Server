@@ -165,7 +165,9 @@ suspend fun updateChapterDownloadDir(
     oldChapter: ChapterDataClass,
     newChapter: ChapterDataClass,
 ): Boolean {
-    require(oldChapter.mangaId == newChapter.mangaId) { "Chapters must be from the same manga" }
+    if (oldChapter.mangaId != newChapter.mangaId) {
+        return false
+    }
 
     return mutexByManga.getOrPut(oldChapter.mangaId) { Mutex() }.withLock {
         val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
