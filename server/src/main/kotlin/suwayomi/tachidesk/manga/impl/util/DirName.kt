@@ -21,10 +21,9 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.util.SafePath
-import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.io.path.Path
-import kotlin.io.path.exists
+import kotlin.io.path.moveTo
 import kotlin.io.path.notExists
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -130,7 +129,7 @@ private fun updateDir(
     }
 
     return try {
-        Files.move(currentDirPath, newDirPath)
+        currentDirPath.moveTo(newDirPath)
 
         if (newDirPath.notExists()) {
             return false
