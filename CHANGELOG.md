@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - (**Tracker**) Fix Shikimori
+- (**Source/API**) Fix graphql browse mutation (`fetchSourceManga`) with filters including nested group changes
 
 ## [v2.3.2243] - 2026-07-13
 
