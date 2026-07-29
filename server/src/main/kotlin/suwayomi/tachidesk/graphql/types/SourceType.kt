@@ -301,7 +301,14 @@ fun updateFilterList(
     changes: List<FilterChange>?,
 ): FilterList {
     val filterList = source.getFilterList()
+    applyFilterChanges(filterList, changes)
+    return filterList
+}
 
+private fun applyFilterChanges(
+    filterList: List<SourceFilter<*>>,
+    changes: List<FilterChange>?,
+) {
     changes?.forEach { change ->
         when (val filter = filterList[change.position]) {
             is SourceFilter.Header -> {
@@ -333,31 +340,11 @@ fun updateFilterList(
             }
 
             is SourceFilter.Group<*> -> {
-                val groupChange =
-                    change.groupChange
-                        ?: throw Exception("Expected group change at position ${change.position}")
-
-                when (val groupFilter = filter.state[groupChange.position]) {
-                    is SourceFilter.CheckBox -> {
-                        groupFilter.state = groupChange.checkBoxState
-                            ?: throw Exception("Expected checkbox state change at position ${change.position}")
-                    }
-
-                    is SourceFilter.TriState -> {
-                        groupFilter.state = groupChange.triState?.ordinal
-                            ?: throw Exception("Expected tri state change at position ${change.position}")
-                    }
-
-                    is SourceFilter.Text -> {
-                        groupFilter.state = groupChange.textState
-                            ?: throw Exception("Expected text state change at position ${change.position}")
-                    }
-
-                    is SourceFilter.Select<*> -> {
-                        groupFilter.state = groupChange.selectState
-                            ?: throw Exception("Expected select state change at position ${change.position}")
-                    }
-                }
+                @Suppress("UNCHECKED_CAST")
+                applyFilterChanges(
+                    filter.state as List<SourceFilter<*>>,
+                    listOf(change.groupChange ?: throw Exception("Expected group change at position ${change.position}")),
+                )
             }
 
             is SourceFilter.Sort -> {
@@ -367,7 +354,6 @@ fun updateFilterList(
             }
         }
     }
-    return filterList
 }
 
 sealed interface Preference

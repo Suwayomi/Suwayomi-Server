@@ -42,7 +42,7 @@ main() {
     gcc -fPIC -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so || error $LINENO "Failed to compile catch_abort" 1
   fi
 
-  JRE_ZULU="25.34.17_25.0.3"
+  JRE_ZULU="25.36.15_25.0.4"
   JRE_RELEASE="jre${JRE_ZULU#*_}" # e.g. jre25.0.1
   ZULU_RELEASE="zulu${JRE_ZULU%_*}" # e.g. zulu25.30.17
 
