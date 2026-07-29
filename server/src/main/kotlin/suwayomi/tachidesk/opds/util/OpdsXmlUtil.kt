@@ -20,7 +20,6 @@ object OpdsXmlUtil {
             }
             xmlDeclMode = XmlDeclMode.Charset
             xmlVersion = XmlVersion.XML10
-            this.
             setIndent(2)
         }
 
