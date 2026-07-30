@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Tracker**) Fix Shikimori
 - (**Extension**) Fix losing installed extension in case the update fails
 - (**Source/API**) Fix graphql browse mutation (`fetchSourceManga`) with filters including nested group changes
+- (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
 - (**OPDS**) Fix OPDS search charset
 
 ## [v2.3.2243] - 2026-07-13
