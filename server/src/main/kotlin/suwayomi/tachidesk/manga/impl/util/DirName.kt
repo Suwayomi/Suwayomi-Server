@@ -21,11 +21,10 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.util.SafePath
-import java.io.File
-import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.io.path.Path
+import kotlin.io.path.moveTo
+import kotlin.io.path.notExists
 
 private val applicationDirs: ApplicationDirs by injectLazy()
 
@@ -122,21 +121,17 @@ private fun updateDir(
     currentDir: String,
     newDir: String,
 ): Boolean {
-    val currentDirFile = File(currentDir)
-    val newDirFile = File(newDir)
+    val currentDirPath = Path(currentDir)
+    val newDirPath = Path(newDir)
 
-    if (!currentDirFile.exists()) {
+    if (currentDirPath.notExists()) {
         return true
     }
 
     return try {
-        Files.move(currentDirFile.toPath(), newDirFile.toPath())
+        currentDirPath.moveTo(newDirPath)
 
-        if (currentDirFile.exists()) {
-            return false
-        }
-
-        if (!newDirFile.exists()) {
+        if (newDirPath.notExists()) {
             return false
         }
 
@@ -169,8 +164,9 @@ suspend fun updateChapterDownloadDir(
     oldChapter: ChapterDataClass,
     newChapter: ChapterDataClass,
 ): Boolean {
-    require(oldChapter.id == newChapter.id) { "Chapters must have the same id" }
-    require(oldChapter.mangaId == newChapter.mangaId) { "Chapters must be from the same manga" }
+    if (oldChapter.mangaId != newChapter.mangaId) {
+        return false
+    }
 
     return mutexByManga.getOrPut(oldChapter.mangaId) { Mutex() }.withLock {
         val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)

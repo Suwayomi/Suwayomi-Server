@@ -118,7 +118,7 @@ object OpdsV1Controller {
             behaviorOf = { ctx, lang ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
-                ctx.contentType("application/opensearchdescription+xml").result(
+                ctx.contentType("application/opensearchdescription+xml;charset=UTF-8").result(
                     """
                     <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
                         xmlns:atom="http://www.w3.org/2005/Atom">
