@@ -12,8 +12,13 @@ import com.expediagroup.graphql.generator.TopLevelObject
 import com.expediagroup.graphql.generator.directives.KotlinDirectiveWiringFactory
 import com.expediagroup.graphql.generator.hooks.FlowSubscriptionSchemaGeneratorHooks
 import com.expediagroup.graphql.generator.toSchema
+import graphql.schema.GraphQLSchema
 import graphql.schema.GraphQLType
 import io.javalin.http.UploadedFile
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import suwayomi.tachidesk.graphql.directives.RequireAuthDirectiveWiring
 import suwayomi.tachidesk.graphql.mutations.BackupMutation
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
@@ -82,57 +87,71 @@ class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
         }
 }
 
-val schema =
-    toSchema(
-        config =
-            SchemaGeneratorConfig(
-                supportedPackages = listOf("suwayomi.tachidesk.graphql"),
-                introspectionEnabled = true,
-                hooks = CustomSchemaGeneratorHooks(),
-            ),
-        queries =
-            listOf(
-                TopLevelObject(BackupQuery()),
-                TopLevelObject(CategoryQuery()),
-                TopLevelObject(ChapterQuery()),
-                TopLevelObject(DownloadQuery()),
-                TopLevelObject(ExtensionQuery()),
-                TopLevelObject(ExtensionStoreQuery()),
-                TopLevelObject(InfoQuery()),
-                TopLevelObject(KoreaderSyncQuery()),
-                TopLevelObject(MangaQuery()),
-                TopLevelObject(MetaQuery()),
-                TopLevelObject(SettingsQuery()),
-                TopLevelObject(SourceQuery()),
-                TopLevelObject(SyncQuery()),
-                TopLevelObject(TrackQuery()),
-                TopLevelObject(UpdateQuery()),
-            ),
-        mutations =
-            listOf(
-                TopLevelObject(BackupMutation()),
-                TopLevelObject(CategoryMutation()),
-                TopLevelObject(ChapterMutation()),
-                TopLevelObject(DownloadMutation()),
-                TopLevelObject(ExtensionMutation()),
-                TopLevelObject(ExtensionStoreMutation()),
-                TopLevelObject(ImageMutation()),
-                TopLevelObject(InfoMutation()),
-                TopLevelObject(KoreaderSyncMutation()),
-                TopLevelObject(MangaMutation()),
-                TopLevelObject(MetaMutation()),
-                TopLevelObject(SettingsMutation()),
-                TopLevelObject(SyncMutation()),
-                TopLevelObject(SourceMutation()),
-                TopLevelObject(TrackMutation()),
-                TopLevelObject(UpdateMutation()),
-                TopLevelObject(UserMutation()),
-            ),
-        subscriptions =
-            listOf(
-                TopLevelObject(DownloadSubscription()),
-                TopLevelObject(InfoSubscription()),
-                TopLevelObject(SyncSubscription()),
-                TopLevelObject(UpdateSubscription()),
-            ),
-    )
+object GraphQLSchemaProvider {
+    @OptIn(DelicateCoroutinesApi::class)
+    var schemaFuture =
+        GlobalScope.async {
+            toSchema(
+                config =
+                    SchemaGeneratorConfig(
+                        supportedPackages = listOf("suwayomi.tachidesk.graphql"),
+                        introspectionEnabled = true,
+                        hooks = CustomSchemaGeneratorHooks(),
+                    ),
+                queries =
+                    listOf(
+                        TopLevelObject(BackupQuery()),
+                        TopLevelObject(CategoryQuery()),
+                        TopLevelObject(ChapterQuery()),
+                        TopLevelObject(DownloadQuery()),
+                        TopLevelObject(ExtensionQuery()),
+                        TopLevelObject(ExtensionStoreQuery()),
+                        TopLevelObject(InfoQuery()),
+                        TopLevelObject(KoreaderSyncQuery()),
+                        TopLevelObject(MangaQuery()),
+                        TopLevelObject(MetaQuery()),
+                        TopLevelObject(SettingsQuery()),
+                        TopLevelObject(SourceQuery()),
+                        TopLevelObject(SyncQuery()),
+                        TopLevelObject(TrackQuery()),
+                        TopLevelObject(UpdateQuery()),
+                    ),
+                mutations =
+                    listOf(
+                        TopLevelObject(BackupMutation()),
+                        TopLevelObject(CategoryMutation()),
+                        TopLevelObject(ChapterMutation()),
+                        TopLevelObject(DownloadMutation()),
+                        TopLevelObject(ExtensionMutation()),
+                        TopLevelObject(ExtensionStoreMutation()),
+                        TopLevelObject(ImageMutation()),
+                        TopLevelObject(InfoMutation()),
+                        TopLevelObject(KoreaderSyncMutation()),
+                        TopLevelObject(MangaMutation()),
+                        TopLevelObject(MetaMutation()),
+                        TopLevelObject(SettingsMutation()),
+                        TopLevelObject(SyncMutation()),
+                        TopLevelObject(SourceMutation()),
+                        TopLevelObject(TrackMutation()),
+                        TopLevelObject(UpdateMutation()),
+                        TopLevelObject(UserMutation()),
+                    ),
+                subscriptions =
+                    listOf(
+                        TopLevelObject(DownloadSubscription()),
+                        TopLevelObject(InfoSubscription()),
+                        TopLevelObject(SyncSubscription()),
+                        TopLevelObject(UpdateSubscription()),
+                    ),
+            )
+        }
+
+    suspend fun getSchema(): GraphQLSchema = schemaFuture.await()
+
+    fun init() {
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch {
+            getSchema()
+        }
+    }
+}
