@@ -122,7 +122,7 @@ private fun updateDir(
     currentDir: String,
     newDir: String,
 ): Boolean {
-    if(currentDir == newDir) return true
+    if (currentDir == newDir) return true
     val currentDirFile = File(currentDir)
     val newDirFile = File(newDir)
 
