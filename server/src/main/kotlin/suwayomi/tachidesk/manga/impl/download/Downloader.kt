@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl.download
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
@@ -122,6 +123,12 @@ class Downloader(
 
             val logContext = "${logger.name} - downloadChapter($download))"
             val downloadLogger = KotlinLogging.logger(logContext)
+
+            // Skip local source downloads
+            if (sourceId == LocalSource.ID) {
+                finishDownload(downloadLogger, download)
+                continue
+            }
 
             downloadLogger.debug { "start" }
 
