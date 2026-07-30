@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.4.10"
+kotlin = "2.4.20-ij262-41"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 jvmTarget = "21"
