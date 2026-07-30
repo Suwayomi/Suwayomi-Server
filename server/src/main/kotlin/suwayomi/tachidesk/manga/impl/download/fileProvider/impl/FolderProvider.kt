@@ -34,7 +34,7 @@ class FolderProvider(
         val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
 
         if (!chapterFolder.exists()) {
-            throw Exception("download folder does not exist")
+            throw NoSuchElementException("download folder does not exist")
         }
 
         return chapterFolder

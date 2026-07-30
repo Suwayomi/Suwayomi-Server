@@ -23,6 +23,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.runBlocking
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionProtocolHandler
 import suwayomi.tachidesk.server.JavalinSetup.future
 import tools.jackson.module.kotlin.jacksonObjectMapper
@@ -73,7 +74,7 @@ class TachideskGraphQLServer(
 
         private fun getGraphQLObject(): GraphQL =
             GraphQL
-                .newGraphQL(schema)
+                .newGraphQL(runBlocking { GraphQLSchemaProvider.getSchema() })
                 .queryExecutionStrategy(AsyncExecutionStrategy(exceptionHandler))
                 .mutationExecutionStrategy(AsyncExecutionStrategy(exceptionHandler))
                 .subscriptionExecutionStrategy(FlowSubscriptionExecutionStrategy(exceptionHandler))
