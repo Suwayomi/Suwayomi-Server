@@ -13,14 +13,13 @@ object OpdsXmlUtil {
      * Configuration for the XML serializer for OPDS.
      */
     val opdsXmlMapper: XML =
-        XML.v1 {
-            policy {
-                ignoreUnknownChildren()
+        XML {
+            indent = 2
+            xmlVersion = XmlVersion.XML10
+            xmlDeclMode = XmlDeclMode.Charset
+            defaultPolicy {
                 autoPolymorphic = true
             }
-            xmlDeclMode = XmlDeclMode.Charset
-            xmlVersion = XmlVersion.XML10
-            setIndent(2)
         }
 
     /**
