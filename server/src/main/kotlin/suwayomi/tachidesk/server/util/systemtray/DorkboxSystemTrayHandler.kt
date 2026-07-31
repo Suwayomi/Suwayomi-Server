@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.server.util
+package suwayomi.tachidesk.server.util.systemtray
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -16,15 +16,17 @@ import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.Browser.openInBrowser
 import suwayomi.tachidesk.server.util.ExitCode.Success
+import suwayomi.tachidesk.server.util.shutdownApp
 
-object SystemTray {
+class DorkboxSystemTrayHandler : SystemTrayHandler {
     private val logger = KotlinLogging.logger { }
     private var instance: SystemTray? = null
 
-    fun create() {
+    override fun create() {
+        if (instance != null) return
+
         instance =
             try {
-                // ref: https://github.com/dorkbox/SystemTray/blob/master/test/dorkbox/TestTray.java
                 serverConfig.subscribeTo(
                     serverConfig.debugLogsEnabled,
                     { debugLogsEnabled -> SystemTray.DEBUG = debugLogsEnabled },
@@ -41,18 +43,13 @@ object SystemTray {
                 val mainMenu = systemTray.menu
 
                 mainMenu.add(
-                    MenuItem(
-                        "Open Suwayomi",
-                    ) {
+                    MenuItem("Open Suwayomi") {
                         openInBrowser()
                     },
                 )
 
                 val icon = ServerConfig::class.java.getResource("/icon/faviconlogo.png")
-
-                // systemTray.setTooltip("Tachidesk")
                 systemTray.setImage(icon)
-                // systemTray.status = "No Mail"
 
                 mainMenu.add(
                     MenuItem("Quit") {
@@ -67,7 +64,7 @@ object SystemTray {
             }
     }
 
-    fun remove() {
+    override fun remove() {
         instance?.remove()
         instance = null
     }
