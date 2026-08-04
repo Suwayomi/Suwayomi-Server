@@ -1,132 +1,92 @@
 package suwayomi.tachidesk.server.util
 
-import java.util.Locale
-
 data class OSInfo(
     val os: OS,
     val arch: ARCH,
 )
 
 object Platform {
-    private val oses: List<OS.OSCreator> = listOf(OS.OSCreator.MACOSX(), OS.OSCreator.LINUX(), OS.OSCreator.WINDOWS())
-    private val archs: List<ARCH.ARCHCreator> =
-        listOf(ARCH.ARCHCreator.AMD64(), ARCH.ARCHCreator.I386(), ARCH.ARCHCreator.ARM64(), ARCH.ARCHCreator.ARM())
-
-    val current: OSInfo by lazy { getCurrentPlatform() }
-
-    private fun getCurrentPlatform(): OSInfo {
-        val osName = System.getProperty("os.name")
-        val archName = System.getProperty("os.arch")
-        val os = oses.firstNotNullOfOrNull { if (it.matches(osName)) it.create(osName) else null }
-        val arch = archs.firstNotNullOfOrNull { if (it.matches(archName)) it.create(archName) else null }
-        if (os == null || arch == null) {
-            throw UnsupportedOperationException("Unsupported platform tuple $osName,$archName")
-        }
-        return OSInfo(os, arch)
+    val current: OSInfo by lazy {
+        OSInfo(
+            OS.from(System.getProperty("os.name")),
+            ARCH.from(System.getProperty("os.arch")),
+        )
     }
 }
 
 sealed class OS(
     val name: String,
-    vararg val values: String,
+    vararg val aliases: String,
 ) {
-    internal abstract class OSCreator(
-        vararg val values: String,
-    ) {
-        abstract fun create(name: String): OS
-
-        fun matches(name: String): Boolean =
-            values.any { name.startsWith(it, true) } ||
-                values.contains(
-                    name.lowercase(
-                        Locale.ENGLISH,
-                    ),
-                )
-
-        class MACOSX : OSCreator("mac", "darwin", "osx") {
-            override fun create(name: String) = OS.MACOSX(name, *values)
-        }
-
-        class LINUX : OSCreator("linux") {
-            override fun create(name: String) = OS.LINUX(name, *values)
-        }
-
-        class WINDOWS : OSCreator("win", "windows") {
-            override fun create(name: String) = OS.WINDOWS(name, *values)
-        }
-    }
-
-    class MACOSX(
+    class MACOS(
         name: String,
-        vararg values: String,
-    ) : OS(name, *values)
+    ) : OS(name, "mac", "darwin", "osx")
 
     class LINUX(
         name: String,
-        vararg values: String,
-    ) : OS(name, *values)
+    ) : OS(name, "linux")
 
     class WINDOWS(
         name: String,
-        vararg values: String,
-    ) : OS(name, *values)
+    ) : OS(name, "win", "windows")
 
     val isLinux: Boolean get() = this is LINUX
-    val isMacOSX: Boolean get() = this is MACOSX
+    val isMacOS: Boolean get() = this is MACOS
     val isWindows: Boolean get() = this is WINDOWS
+
+    private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
+
+    companion object {
+        private val types =
+            listOf(
+                ::MACOS,
+                ::LINUX,
+                ::WINDOWS,
+            )
+
+        fun from(name: String): OS =
+            types
+                .map { it(name) }
+                .firstOrNull { it.matches(name) }
+                ?: throw UnsupportedOperationException("Unsupported OS: $name")
+    }
 }
 
 sealed class ARCH(
     val name: String,
-    vararg val values: String,
+    vararg val aliases: String,
 ) {
-    internal abstract class ARCHCreator(
-        vararg val values: String,
-    ) {
-        abstract fun create(name: String): ARCH
-
-        fun matches(name: String): Boolean =
-            values.any { name.startsWith(it, true) } ||
-                values.contains(
-                    name.lowercase(
-                        Locale.ENGLISH,
-                    ),
-                )
-
-        class AMD64 : ARCHCreator("amd64", "x86_64", "x64") {
-            override fun create(name: String) = ARCH.AMD64(name, *values)
-        }
-
-        class I386 : ARCHCreator("x86", "i386", "i486", "i586", "i686", "i786") {
-            override fun create(name: String) = ARCH.I386(name, *values)
-        }
-
-        class ARM64 : ARCHCreator("arm64", "aarch64") {
-            override fun create(name: String) = ARCH.ARM64(name, *values)
-        }
-
-        class ARM : ARCHCreator("arm") {
-            override fun create(name: String) = ARCH.ARM(name, *values)
-        }
-    }
-
     class AMD64(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "amd64", "x86_64", "x64")
 
     class I386(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "x86", "i386", "i486", "i586", "i686", "i786")
 
     class ARM64(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "arm64", "aarch64")
 
     class ARM(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "arm")
+
+    private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
+
+    companion object {
+        private val types =
+            listOf(
+                ::AMD64,
+                ::I386,
+                ::ARM64,
+                ::ARM,
+            )
+
+        fun from(name: String): ARCH =
+            types
+                .map { it(name) }
+                .firstOrNull { it.matches(name) }
+                ?: throw UnsupportedOperationException("Unsupported architecture: $name")
+    }
 }
