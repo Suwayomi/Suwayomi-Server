@@ -9,6 +9,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.types.ChapterDownloadReorder
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.manga.impl.Chapter
@@ -316,6 +317,34 @@ class DownloadMutation {
                             DownloadManager.updates
                                 .first { it.updates.indexOfFirst { it.downloadQueueItem.chapterId == chapter } <= to }
                                 .let { DownloadManager.getStatus() },
+                        )
+                    },
+            )
+        }
+    }
+
+    data class ReorderChapterDownloadsInput(
+        val clientMutationId: String? = null,
+        val reorders: List<ChapterDownloadReorder>,
+    )
+
+    @RequireAuth
+    fun reorderChapterDownloads(input: ReorderChapterDownloadsInput): CompletableFuture<ReorderChapterDownloadPayload?> {
+        val (clientMutationId, reorders) = input
+
+        return future {
+            DownloadManager.reorder(reorders)
+
+            ReorderChapterDownloadPayload(
+                clientMutationId,
+                downloadStatus =
+                    withTimeout(30.seconds) {
+                        DownloadStatus(
+                            DownloadManager.updates
+                                .first {
+                                    it.updates.indexOfFirst { it.downloadQueueItem.chapterId == reorders.first().chapterId } <=
+                                        reorders.first().to
+                                }.let { DownloadManager.getStatus() },
                         )
                     },
             )
