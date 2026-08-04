@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Downloads**) Try to preserve downloaded files during a chapter list update for chapters with title and/or scanlator change
 - (**Logs**) Add IP location logging
 - (**Cache/API**) Add a way to clear cache & cookies
+- (**API**) Add platform information to `aboutServer` query
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
