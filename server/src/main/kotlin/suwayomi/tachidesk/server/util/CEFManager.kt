@@ -2,6 +2,7 @@ package suwayomi.tachidesk.server.util
 
 import android.text.format.Formatter
 import com.jetbrains.cef.JCefAppConfig
+import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.ProgressListener
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.newCachelessCallWithProgress
@@ -129,6 +130,8 @@ object CEFManager {
                             cefSettings.apply {
                                 windowless_rendering_enabled = true
                                 cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").absolutePathString()
+                                // Cloudflare clearance cookies are tied to the User-Agent that obtained them.
+                                user_agent = Injekt.get<NetworkHelper>().defaultUserAgentProvider()
                                 log_severity =
                                     if (serverConfig.debugLogsEnabled.value) {
                                         LogSeverity.LOGSEVERITY_VERBOSE
