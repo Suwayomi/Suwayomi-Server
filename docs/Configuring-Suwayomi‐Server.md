@@ -11,6 +11,9 @@ Suwayomi will create a default configuration file when one doesn't exist, you ca
 ### I am running Suwayomi in a headless environment (docker, NAS, VPS, etc.)
 - Set `server.systemTrayEnabled` to false, it will prevent Suwayomi to attempt to create a System Tray icon.
 - Set `server.initialOpenInBrowserEnabled`to false, it will prevent Suwayomi to attempt to open a browser on startup.
+- Set `server.kcefEnabled` to false, it will prevent native JCEF/Chromium (WebView) initialization. **Required on macOS Tahoe (26.x) ARM64** where `cef_initialize` has been observed to terminate the JVM with `SIGTRAP`/`EXC_BREAKPOINT`.
+
+These three settings default to `false` (opt-in desktop features). Existing `server.conf` files keep whatever values were already written.
 
 ### My Suwayomi data directory/downloads size is getting to big
 - Set `server.downloadsPath` to the desired path, if you only need to change where downloads are stored. You have to move/remove the existing downloads manually.
@@ -45,7 +48,7 @@ server.socksProxyPort = "8080"
 ### webUI
 ```
 server.webUIEnabled = true
-server.initialOpenInBrowserEnabled = true
+server.initialOpenInBrowserEnabled = false
 server.webUIInterface = "browser" # "browser" or "electron"
 server.electronPath = ""
 server.webUIFlavor = "WebUI" # "WebUI" or "Custom"
@@ -66,9 +69,9 @@ server.webUISubpath = ""
 
 ### webView
 ```
-server.kcefEnabled = true
+server.kcefEnabled = false
 ```
-- `server.kcefEnabled` controls if KCEF WebView provider is enabled.
+- `server.kcefEnabled` controls if KCEF WebView provider is enabled (loads native JCEF/Chromium). Default `false`. Keep disabled unless an extension requires WebView. On macOS Tahoe ARM64, enabling this can crash the process during `cef_initialize`.
 
 
 ### Downloader
@@ -155,14 +158,14 @@ server.jwtRefreshExpiry = "60d"
 ### misc
 ```
 server.debugLogsEnabled = false
-server.systemTrayEnabled = true
+server.systemTrayEnabled = false
 server.maxLogFiles = 31
 server.maxLogFileSize = "10mb"
 server.maxLogFolderSize = "100mb"
 
 ```
 - `server.debugLogsEnabled` controls whether if Suwayomi-Server should print more information while being run inside a Terminal/CMD/Powershell window. 
-- `server.systemTrayEnabled = true` whether if Suwayomi-Server should show a System Tray Icon, disabling this on headless servers is recommended.
+- `server.systemTrayEnabled = false` whether if Suwayomi-Server should show a System Tray Icon (opt-in; recommended false on headless servers).
 - `server.maxLogFiles = 31` sets the maximum number of days to keep files before they get deleted.
 - `server.maxLogFileSize = "10mb"` sets the maximum size of a log file - values are formatted like: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)
 - `server.maxLogFolderSize = "100mb"` sets the maximum size of all saved log files - values are formatted like: 1 (bytes), 1KB (kilobytes), 1MB (megabytes), 1GB (gigabytes)
