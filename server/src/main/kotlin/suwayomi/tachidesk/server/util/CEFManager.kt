@@ -128,7 +128,7 @@ object CEFManager {
                             )
                             cefSettings.apply {
                                 windowless_rendering_enabled = true
-                                cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").absolutePathString()
+                                cache_path = (Path(applicationDirs.cacheDir) / "kcef").absolutePathString()
                                 log_severity =
                                     if (serverConfig.debugLogsEnabled.value) {
                                         LogSeverity.LOGSEVERITY_VERBOSE
