@@ -7,10 +7,10 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.net.CookieHandler
+import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.div
-import kotlin.io.path.ExperimentalPathApi
 
 @OptIn(ExperimentalPathApi::class)
 class WebviewMutation {
