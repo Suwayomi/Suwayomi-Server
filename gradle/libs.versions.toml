@@ -77,7 +77,7 @@ h2 = "com.h2database:h2:2.4.240"
 hikaricp = "com.zaxxer:HikariCP:7.1.0"
 
 # Exposed Migrations
-exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.10.1"
+exposed-migrations = "com.github.Suwayomi:exposed-migrations:3.11.0"
 
 # Dependency Injection
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
