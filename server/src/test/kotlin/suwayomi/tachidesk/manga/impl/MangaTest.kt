@@ -7,6 +7,16 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.online.HttpSource
+import io.mockk.every
+import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -19,6 +29,37 @@ import suwayomi.tachidesk.test.createLibraryManga
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MangaTest : ApplicationTest() {
+    @Test
+    fun `updateMangaDatabase passes memo to source when resolving real URL`() =
+        runTest {
+            val mangaId = createLibraryManga("MEMO_TEST")
+            val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.single() }
+            val memo = buildJsonObject { put("slug", JsonPrimitive("memo-slug")) }
+            val expectedUrl = "https://example.com/manga/memo-slug"
+            val remoteManga =
+                SManga.create().apply {
+                    url = "MEMO_TEST"
+                    title = "MEMO_TEST"
+                    this.memo = memo
+                }
+            val source = mockk<HttpSource>()
+            every { source.getMangaUrl(any()) } answers {
+                check(firstArg<SManga>().memo == memo) { "Manga memo was not passed to the source" }
+                expectedUrl
+            }
+
+            Manga.updateMangaDatabase(mangaEntry, source, remoteManga)
+
+            val realUrl =
+                transaction {
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.id eq mangaId }
+                        .single()[MangaTable.realUrl]
+                }
+            assertEquals(expectedUrl, realUrl)
+        }
+
     @Test
     fun getMangaMeta() {
         val metaManga = createLibraryManga("META_TEST")
