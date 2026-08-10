@@ -29,6 +29,7 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Finished
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.ERROR
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.FINISHED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PAUSED
@@ -61,12 +62,27 @@ class Downloader(
 
     class EmptyChapterException : Exception("Chapter does not have any pages to download")
 
+    private fun notify(
+        immediate: Boolean,
+        update: DownloadUpdate? = null,
+    ) {
+        notifier(immediate, update)
+    }
+
+    private fun notify(
+        immediate: Boolean,
+        type: DownloadUpdateType,
+        download: DownloadQueueItem?,
+    ) {
+        notify(immediate, download?.let { DownloadUpdate(type, download, downloadQueue.indexOf(download)) })
+    }
+
     private suspend fun step(
-        downloadUpdate: DownloadUpdate?,
+        type: DownloadUpdateType,
+        download: DownloadQueueItem?,
         immediate: Boolean,
     ) {
-        val download = downloadUpdate?.downloadQueueItem
-        notifier(immediate, downloadUpdate)
+        notify(immediate, type, download)
         currentCoroutineContext().ensureActive()
         if (download != null && download != availableSourceDownloads.firstOrNull { it.state != Error }) {
             if (download in downloadQueue) {
@@ -95,7 +111,7 @@ class Downloader(
                         }
                     }
             logger.debug { "started" }
-            notifier(false, null)
+            notify(false)
         }
     }
 
@@ -108,7 +124,7 @@ class Downloader(
         logger: KLogger,
         download: DownloadQueueItem,
     ) {
-        notifier(true, DownloadUpdate(FINISHED, download))
+        notify(true, FINISHED, download)
         downloadQueue -= download
         onDownloadFinished()
         logger.debug { "finished" }
@@ -142,7 +158,7 @@ class Downloader(
 
             try {
                 download.state = Downloading
-                step(DownloadUpdate(PROGRESS, download), true)
+                step(PROGRESS, download, true)
 
                 val chapter = getChapterDownloadReadyById(download.chapterId)
 
@@ -153,7 +169,7 @@ class Downloader(
                 download.pageCount = chapter.pageCount
 
                 ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, immediate ->
-                    step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, immediate)
+                    step(PROGRESS, downloadChapter, immediate)
                 }
                 download.state = Finished
                 transaction {
@@ -167,23 +183,23 @@ class Downloader(
             } catch (e: CancellationException) {
                 logger.debug { "Downloader was stopped" }
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
-                notifier(false, DownloadUpdate(STOPPED, download))
+                notify(false, STOPPED, download)
             } catch (e: PauseDownloadException) {
                 downloadLogger.debug { "paused" }
                 download.state = Queued
-                notifier(false, DownloadUpdate(PAUSED, download))
+                notify(false, PAUSED, download)
             } catch (e: EmptyChapterException) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries = MAX_RETRIES
                 download.state = Error
-                notifier(false, DownloadUpdate(ERROR, download))
+                notify(false, ERROR, download)
             } catch (e: Exception) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries++
                 download.state = Queued
                 if (download.tries >= MAX_RETRIES) {
                     download.state = Error
-                    notifier(false, DownloadUpdate(ERROR, download))
+                    notify(false, ERROR, download)
                 }
             }
         }

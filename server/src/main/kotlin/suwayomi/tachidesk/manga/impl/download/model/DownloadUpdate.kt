@@ -14,4 +14,5 @@ enum class DownloadUpdateType {
 data class DownloadUpdate(
     val type: DownloadUpdateType,
     val downloadQueueItem: DownloadQueueItem,
+    val position: Int,
 )

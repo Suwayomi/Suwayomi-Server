@@ -251,7 +251,6 @@ object DownloadManager {
                             it.mangaId,
                             chapters[it.chapterId] ?: return@mapNotNull null,
                             mangas[it.mangaId] ?: return@mapNotNull null,
-                            it.position,
                             it.state,
                             it.progress,
                             it.tries,
@@ -399,10 +398,20 @@ object DownloadManager {
      * If any of inputs was actually added to queue, starts the queue
      */
     private fun addMultipleToQueue(inputs: List<Pair<MangaDataClass, ChapterDataClass>>) {
+        val size = downloadQueue.size
         val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
         if (addedChapters.isNotEmpty()) {
             start()
-            notifyAllClients(false, addedChapters.map { DownloadUpdate(DownloadUpdateType.QUEUED, it) })
+            notifyAllClients(
+                false,
+                addedChapters.mapIndexed { index, item ->
+                    DownloadUpdate(
+                        DownloadUpdateType.QUEUED,
+                        item,
+                        size + index,
+                    )
+                },
+            )
         }
         scope.launch {
             downloaderWatch.emit(Unit)
@@ -428,7 +437,6 @@ object DownloadManager {
                     manga.id,
                     manga.sourceId.toLong(),
                     downloadQueue.size,
-                    0,
                 )
             downloadQueue.add(newDownloadChapter)
             triggerSaveDownloadQueue()
@@ -475,7 +483,10 @@ object DownloadManager {
         downloadQueue.removeAll(chapterDownloads)
         triggerSaveDownloadQueue()
 
-        notifyAllClients(false, chapterDownloads.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it) })
+        notifyAllClients(
+            false,
+            chapterDownloads.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it, -1) },
+        )
     }
 
     fun reorder(
@@ -511,8 +522,7 @@ object DownloadManager {
 
         downloadQueue -= download
         downloadQueue.add(to, download)
-        download.position = to
-        notifyAllClients(false, listOf(DownloadUpdate(DownloadUpdateType.POSITION, download)))
+        notifyAllClients(false, listOf(DownloadUpdate(DownloadUpdateType.POSITION, download, to)))
         triggerSaveDownloadQueue()
     }
 
@@ -542,7 +552,7 @@ object DownloadManager {
         logger.debug { "clear" }
 
         stop()
-        val removedDownloads = downloadQueue.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it) }
+        val removedDownloads = downloadQueue.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it, -1) }
         downloadQueue.clear()
         triggerSaveDownloadQueue()
         notifyAllClients(false, removedDownloads)

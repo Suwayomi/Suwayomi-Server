@@ -14,7 +14,6 @@ class DownloadQueueItem(
     val chapterIndex: Int,
     val mangaId: Int,
     val sourceId: Long,
-    var position: Int,
     var pageCount: Int,
     var state: DownloadState = Queued,
     var progress: Float = 0f,
