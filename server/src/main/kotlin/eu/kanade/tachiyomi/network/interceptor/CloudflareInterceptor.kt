@@ -342,8 +342,7 @@ object CFClearance {
                                                             Buffer()
                                                                 .also { body.writeTo(it) }
                                                                 .readUtf8()
-                                                        }
-                                                        .orEmpty()
+                                                        }.orEmpty()
                                                 } else {
                                                     null
                                                 },
