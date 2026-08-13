@@ -413,6 +413,7 @@ object DownloadManager {
                     )
                 },
             )
+            triggerSaveDownloadQueue()
         }
         scope.launch {
             downloaderWatch.emit(Unit)
@@ -440,7 +441,6 @@ object DownloadManager {
                     downloadQueue.size,
                 )
             downloadQueue.add(newDownloadChapter)
-            triggerSaveDownloadQueue()
             logger.debug { "Added chapter ${chapter.id} to download queue ($newDownloadChapter)" }
             return newDownloadChapter
         }
