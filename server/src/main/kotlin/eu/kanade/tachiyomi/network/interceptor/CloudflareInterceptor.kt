@@ -16,7 +16,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
-import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -338,17 +337,12 @@ object CFClearance {
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
                                             postData =
                                                 if (originalRequest.method == "POST") {
-                                                    when (val body = originalRequest.body) {
-                                                        is FormBody -> {
+                                                    originalRequest.body
+                                                        ?.let { body ->
                                                             Buffer()
                                                                 .also { body.writeTo(it) }
                                                                 .readUtf8()
-                                                        }
-
-                                                        else -> {
-                                                            ""
-                                                        }
-                                                    }
+                                                        }.orEmpty()
                                                 } else {
                                                     null
                                                 },
