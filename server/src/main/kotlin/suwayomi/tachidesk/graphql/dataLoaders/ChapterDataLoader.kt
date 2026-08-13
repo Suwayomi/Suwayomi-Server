@@ -11,6 +11,7 @@ import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
+import org.jetbrains.exposed.v1.core.Case
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -19,6 +20,8 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -68,67 +71,67 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
         }
 }
 
-class DownloadedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
-    override val dataLoaderName = "DownloadedChapterCountForMangaDataLoader"
+data class MangaChapterStats(
+    val unreadCount: Int,
+    val downloadCount: Int,
+    val bookmarkCount: Int,
+)
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
+class ChapterFlagCountForMangaDataLoader : KotlinDataLoader<Int, MangaChapterStats> {
+    override val dataLoaderName = "ChapterFlagCountForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaChapterStats> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val downloadedChapterCountByMangaId =
+
+                    val unreadCount =
+                        Case()
+                            .When(ChapterTable.isRead eq false, intLiteral(1))
+                            .Else(intLiteral(0))
+                            .sum()
+
+                    val downloadCount =
+                        Case()
+                            .When(ChapterTable.isDownloaded eq true, intLiteral(1))
+                            .Else(intLiteral(0))
+                            .sum()
+
+                    val bookmarkCount =
+                        Case()
+                            .When(ChapterTable.isBookmarked eq true, intLiteral(1))
+                            .Else(intLiteral(0))
+                            .sum()
+
+                    val statsByMangaId =
                         ChapterTable
-                            .select(ChapterTable.manga, ChapterTable.isDownloaded.count())
-                            .where {
-                                (ChapterTable.manga inList ids) and
-                                    (ChapterTable.isDownloaded eq true)
+                            .select(
+                                ChapterTable.manga,
+                                unreadCount,
+                                downloadCount,
+                                bookmarkCount,
+                            ).where {
+                                ChapterTable.manga inList ids
                             }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isDownloaded.count()] }
-                    ids.map { downloadedChapterCountByMangaId[it]?.toInt() ?: 0 }
-                }
-            }
-        }
-}
+                            .associate {
+                                val mangaId = it[ChapterTable.manga].value
 
-class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
-    override val dataLoaderName = "UnreadChapterCountForMangaDataLoader"
+                                mangaId to
+                                    MangaChapterStats(
+                                        unreadCount = it[unreadCount] ?: 0,
+                                        downloadCount = it[downloadCount] ?: 0,
+                                        bookmarkCount = it[bookmarkCount] ?: 0,
+                                    )
+                            }
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader { ids ->
-            future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
-                    val unreadChapterCountByMangaId =
-                        ChapterTable
-                            .select(ChapterTable.manga, ChapterTable.isRead.count())
-                            .where {
-                                (ChapterTable.manga inList ids) and
-                                    (ChapterTable.isRead eq false)
-                            }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isRead.count()] }
-                    ids.map { unreadChapterCountByMangaId[it]?.toInt() ?: 0 }
-                }
-            }
-        }
-}
-
-class BookmarkedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
-    override val dataLoaderName = "BookmarkedChapterCountForMangaDataLoader"
-
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader { ids ->
-            future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
-                    val bookmarkedChapterCountByMangaId =
-                        ChapterTable
-                            .select(ChapterTable.manga, ChapterTable.isBookmarked.count())
-                            .where {
-                                (ChapterTable.manga inList ids) and
-                                    (ChapterTable.isBookmarked eq true)
-                            }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isBookmarked.count()] }
-                    ids.map { bookmarkedChapterCountByMangaId[it]?.toInt() ?: 0 }
+                    ids.map {
+                        statsByMangaId[it] ?: MangaChapterStats(
+                            unreadCount = 0,
+                            downloadCount = 0,
+                            bookmarkCount = 0,
+                        )
+                    }
                 }
             }
         }
