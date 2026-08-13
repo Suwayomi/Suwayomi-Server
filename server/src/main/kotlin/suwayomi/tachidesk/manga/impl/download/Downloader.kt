@@ -66,6 +66,11 @@ class Downloader(
         immediate: Boolean,
         update: DownloadUpdate? = null,
     ) {
+        val isDownloadCanceled = !downloadQueue.contains(update?.downloadQueueItem)
+        if (isDownloadCanceled) {
+            return
+        }
+
         notifier(immediate, update)
     }
 
