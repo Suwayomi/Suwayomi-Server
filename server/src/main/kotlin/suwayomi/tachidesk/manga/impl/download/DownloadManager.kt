@@ -287,7 +287,7 @@ object DownloadManager {
                     --downloadersToStop > 0
                 }
             } else {
-                downloaderWatch.emit(Unit)
+                refreshDownloaders()
             }
         })
 
@@ -415,9 +415,6 @@ object DownloadManager {
             )
             triggerSaveDownloadQueue()
         }
-        scope.launch {
-            downloaderWatch.emit(Unit)
-        }
     }
 
     /**
@@ -539,9 +536,7 @@ object DownloadManager {
     fun start() {
         logger.debug { "start" }
 
-        scope.launch {
-            downloaderWatch.emit(Unit)
-        }
+        refreshDownloaders()
     }
 
     suspend fun stop() {
