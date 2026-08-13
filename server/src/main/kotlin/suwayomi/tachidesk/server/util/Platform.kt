@@ -205,6 +205,10 @@ sealed class ARCH(
         name: String,
     ) : ARCH(name, "arm")
 
+    class RISCV(
+        name: String,
+    ) : ARCH(name, "riscv", "riscv32", "riscv64")
+
     private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
 
     companion object {
@@ -214,6 +218,7 @@ sealed class ARCH(
                 ::I386,
                 ::ARM64,
                 ::ARM,
+                ::RISCV,
             )
 
         fun from(name: String): ARCH =
