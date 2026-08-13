@@ -436,6 +436,7 @@ class KcefWebViewProvider(
             initialRequestData?.apply(request)
             initialRequestData = null
             request.setHeaderByName("user-agent", settings.userAgentString, true)
+            Log.v(TAG, "Using user-agent ${settings.userAgentString}")
 
             // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
             // thus if a client tried to use WebView#loadUrl as the docs suggest, this fails

@@ -19,6 +19,7 @@ import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
 import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.handler.CefResourceRequestHandler
+import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.input.CefTouchEvent
 import org.cef.misc.BoolRef
 import org.cef.network.CefCookie
@@ -192,6 +193,19 @@ class KcefWebView {
         }
     }
 
+    private inner class ResourceRequestHandler : CefResourceRequestHandlerAdapter() {
+        override fun onBeforeResourceLoad(
+            browser: CefBrowser?,
+            frame: CefFrame?,
+            request: CefRequest,
+        ): Boolean {
+            val ua = System.getProperty("http.agent")
+            request.setHeaderByName("user-agent", ua, true)
+            logger.trace { "Using user-agent $ua" }
+            return false
+        }
+    }
+
     private inner class RequestHandler : CefRequestHandlerAdapter() {
         override fun getResourceRequestHandler(
             browser: CefBrowser,
@@ -203,7 +217,7 @@ class KcefWebView {
             disableDefaultHandling: BoolRef,
         ): CefResourceRequestHandler? {
             logger.trace { "Load resource: ${frame.name} - ${request.url}" }
-            return null
+            return ResourceRequestHandler()
         }
     }
 
