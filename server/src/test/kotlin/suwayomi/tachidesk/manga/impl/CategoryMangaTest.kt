@@ -7,8 +7,15 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.exceptions.ExposedSQLException
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
@@ -63,6 +70,62 @@ class CategoryMangaTest : ApplicationTest() {
             0,
             CategoryManga.getCategoryMangaList(DEFAULT_CATEGORY_ID).size,
             "Manga shouldn't be member of default category after moving",
+        )
+    }
+
+    @Test
+    fun `duplicate manga-category pairing is rejected by the unique constraint`() {
+        val mangaId = createLibraryManga("Naruto")
+        val categoryId = Category.createCategory("Shonen")
+        CategoryManga.addMangaToCategory(mangaId, categoryId)
+
+        // Bypass the application layer's own duplicate checks and attempt to insert the same
+        // (manga, category) pairing directly. This must be rejected by the DB-level unique
+        // constraint added in M0061_PreventDuplicatedCategoryManga. If that constraint is ever
+        // dropped or weakened, this insert would succeed and silently inflate category/library
+        // counts.
+        assertThrows(ExposedSQLException::class.java) {
+            transaction {
+                CategoryMangaTable.insert {
+                    it[CategoryMangaTable.manga] = mangaId
+                    it[CategoryMangaTable.category] = categoryId
+                }
+            }
+        }
+
+        val rowCount =
+            transaction {
+                CategoryMangaTable
+                    .selectAll()
+                    .where { (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId) }
+                    .count()
+            }
+        assertEquals(1, rowCount, "Only one CategoryMangaTable row should exist for a given manga/category pairing")
+    }
+
+    @Test
+    fun `adding manga to the same category twice does not create duplicate rows`() {
+        val mangaId = createLibraryManga("One Piece")
+        val categoryId = Category.createCategory("Adventure")
+
+        // addMangasToCategories catches and swallows the unique constraint violation from a
+        // duplicate (manga, category) pairing, so repeated calls should be no-ops rather than
+        // throwing or creating duplicate CategoryMangaTable rows.
+        CategoryManga.addMangasToCategories(listOf(mangaId), listOf(categoryId))
+        CategoryManga.addMangasToCategories(listOf(mangaId), listOf(categoryId))
+
+        val rowCount =
+            transaction {
+                CategoryMangaTable
+                    .selectAll()
+                    .where { (CategoryMangaTable.manga eq mangaId) and (CategoryMangaTable.category eq categoryId) }
+                    .count()
+            }
+        assertEquals(1, rowCount, "Only one CategoryMangaTable row should exist for a given manga/category pairing")
+        assertEquals(
+            1,
+            CategoryManga.getCategoryMangaList(categoryId).size,
+            "Category size should reflect a single manga even if it was added twice",
         )
     }
 

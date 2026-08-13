@@ -409,7 +409,7 @@
                                 },
                                 "operationName": "LOGIN",
                             };
-                            const resp = await fetch("/api/graphql", {
+                            const resp = await fetch("../graphql", {
                                 "headers": {
                                     "Accept": "application/json, multipart/mixed",
                                     "Content-Type": "application/json",

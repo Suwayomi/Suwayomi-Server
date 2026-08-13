@@ -9,11 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - (**Downloads**) Try to preserve downloaded files during a chapter list update for chapters with title and/or scanlator change
 - (**Logs**) Add IP location logging
+- (**Cache/API**) Add a way to clear cache & cookies
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloader**) Skip LocalSource downloading
+- (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
 
 ### Fixed
 - (**Tracker**) Fix Shikimori
@@ -22,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
 - (**OPDS**) Fix OPDS search charset
 - (**Download/API**) Fix graphql download queue items position field of unmodified items after a reorder 
+- (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
+- (**WebView**) Fix authentication with subpath option
+- (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
 
 ## [v2.3.2243] - 2026-07-13
 

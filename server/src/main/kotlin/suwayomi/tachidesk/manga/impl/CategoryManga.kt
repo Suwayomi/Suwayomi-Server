@@ -18,7 +18,7 @@ import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.core.wrapAsExpression
-import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -68,7 +68,11 @@ object CategoryManga {
             }
 
         dbTransaction {
-            CategoryMangaTable.batchInsert(newMangaCategoryMappings) { (mangaId, categoryId) ->
+            CategoryMangaTable.batchUpsert(
+                newMangaCategoryMappings,
+                CategoryMangaTable.manga,
+                CategoryMangaTable.category,
+            ) { (mangaId, categoryId) ->
                 this[CategoryMangaTable.manga] = mangaId
                 this[CategoryMangaTable.category] = categoryId
             }
