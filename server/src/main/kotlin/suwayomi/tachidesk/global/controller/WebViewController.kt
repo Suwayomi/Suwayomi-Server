@@ -19,6 +19,7 @@ import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.UnauthorizedException
 import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.server.util.ServerSubpath
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
@@ -43,7 +44,10 @@ object WebViewController {
                     try {
                         ctx.getAttribute(Attribute.TachideskUser).requireUser()
                     } catch (_: UnauthorizedException) {
-                        val url = "/login.html?redirect=" + URLEncoder.encode(ctx.fullUrl(), Charsets.UTF_8)
+                        val loginPath = ServerSubpath.maybeAddAsPrefix("/login.html")
+                        val url =
+                            "$loginPath?redirect=" +
+                                URLEncoder.encode(ctx.path() + (ctx.queryString()?.let { "?" + it } ?: ""), Charsets.UTF_8)
                         ctx.header("Location", url)
                         throw RedirectResponse(HttpStatus.SEE_OTHER)
                     }
