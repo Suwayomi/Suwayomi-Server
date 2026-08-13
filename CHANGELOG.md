@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Source/API**) Fix graphql browse mutation (`fetchSourceManga`) with filters including nested group changes
 - (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
 - (**OPDS**) Fix OPDS search charset
+- (**Download/API**) Fix graphql download queue items position field of unmodified items after a reorder 
 - (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
 - (**WebView**) Fix authentication with subpath option
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
