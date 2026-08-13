@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**SystemTray**) Disable DorkBox update requests
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloader**) Skip LocalSource downloading
+- (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
 
 ### Fixed
 - (**Tracker**) Fix Shikimori
