@@ -103,6 +103,12 @@ suspend fun getChapterDownloadPath(
 
 suspend fun getChapterCbzPath(
     mangaId: Int,
+    title: String,
+    scanlator: String?,
+): String = getChapterDownloadPath(mangaId, title, scanlator) + ".cbz"
+
+suspend fun getChapterCbzPath(
+    mangaId: Int,
     chapterId: Int,
 ): String = getChapterDownloadPath(mangaId, chapterId) + ".cbz"
 
@@ -171,11 +177,18 @@ suspend fun updateChapterDownloadDir(
     return mutexByManga.getOrPut(oldChapter.mangaId) { Mutex() }.withLock {
         val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
         val newDownloadDir = getChapterDownloadPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
+        val currentDownloadCbz = getChapterCbzPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
+        val newDownloadCbz = getChapterCbzPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
 
         val currentCacheDir = getChapterCachePath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
         val newCacheDir = getChapterCachePath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
 
-        withIOContext { updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir) }
+        withIOContext {
+            val dirRename = updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
+            val cbzRename = updateDownloadDir(currentDownloadCbz, newDownloadCbz, currentCacheDir, newCacheDir)
+
+            dirRename && cbzRename
+        }
     }
 }
 

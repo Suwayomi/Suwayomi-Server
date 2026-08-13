@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
 - (**OPDS**) Fix OPDS search charset
 - (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
+- (**WebView**) Fix authentication with subpath option
+- (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
 
 ## [v2.3.2243] - 2026-07-13
 
