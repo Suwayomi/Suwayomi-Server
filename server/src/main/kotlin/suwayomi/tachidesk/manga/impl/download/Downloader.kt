@@ -184,6 +184,8 @@ class Downloader(
                 logger.debug { "Downloader was stopped" }
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
                 notify(false, STOPPED, download)
+            } catch (e: StopDownloadException) {
+                downloadLogger.debug { "Download was dequeued" }
             } catch (e: PauseDownloadException) {
                 downloadLogger.debug { "paused" }
                 download.state = Queued
