@@ -11,7 +11,7 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
 
 @Suppress("ClassName", "unused")
-class M0061_PreventDuplicatedCategoryManga : SQLMigration() {
+class M0062_PreventDuplicatedCategoryManga : SQLMigration() {
     override val sql: String by lazy {
         val table = "CATEGORYMANGA".toSqlName()
         val manga = "MANGA".toSqlName()
