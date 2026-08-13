@@ -490,10 +490,6 @@ object DownloadManager {
         )
     }
 
-    fun reorder(reorders: List<ChapterDownloadReorder>) {
-        reorders.forEach { reorder(it.chapterId, it.to) }
-    }
-
     fun reorder(
         chapterIndex: Int,
         mangaId: Int,
@@ -503,32 +499,41 @@ object DownloadManager {
             downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
                 ?: return
 
-        reorder(download, to)
+        reorder(listOf(ChapterDownloadReorder(download.chapterId, to)))
     }
 
     fun reorder(
         chapterId: Int,
         to: Int,
     ) {
-        val download =
-            downloadQueue.find { it.chapterId == chapterId }
-                ?: return
-
-        reorder(download, to)
+        reorder(listOf(ChapterDownloadReorder(chapterId, to)))
     }
 
-    private fun reorder(
-        download: DownloadQueueItem,
-        to: Int,
-    ) {
+    fun reorder(reorders: List<ChapterDownloadReorder>) {
+        val updates =
+            reorders.mapNotNull {
+                val download = reorder(it) ?: return@mapNotNull null
+
+                DownloadUpdate(DownloadUpdateType.POSITION, download, it.to)
+            }
+
+        notifyAllClients(false, updates)
+        triggerSaveDownloadQueue()
+    }
+
+    private fun reorder(reorder: ChapterDownloadReorder): DownloadQueueItem? {
+        val (chapterId, to) = reorder
+
         require(to >= 0) { "'to' must be over or equal to 0" }
+
+        val download = downloadQueue.find { it.chapterId == chapterId } ?: return null
 
         logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
 
         downloadQueue -= download
         downloadQueue.add(to, download)
-        notifyAllClients(false, listOf(DownloadUpdate(DownloadUpdateType.POSITION, download, to)))
-        triggerSaveDownloadQueue()
+
+        return download
     }
 
     fun start() {
