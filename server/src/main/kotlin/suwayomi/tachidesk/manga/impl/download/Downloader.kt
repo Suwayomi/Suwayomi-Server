@@ -186,7 +186,7 @@ class Downloader(
                 }
                 finishDownload(downloadLogger, download)
             } catch (e: CancellationException) {
-                logger.debug { "Downloader was stopped" }
+                downloadLogger.debug { "Downloader was stopped" }
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
                 notify(false, STOPPED, download)
             } catch (e: StopDownloadException) {
