@@ -26,6 +26,11 @@ import suwayomi.tachidesk.manga.impl.download.model.Status
 import java.util.concurrent.CompletableFuture
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownloadState
 
+data class ChapterDownloadReorder(
+    val chapterId: Int,
+    val to: Int,
+)
+
 data class DownloadStatus(
     val state: DownloaderState,
     val queue: List<DownloadType>,
