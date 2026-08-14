@@ -1,132 +1,230 @@
 package suwayomi.tachidesk.server.util
 
-import java.util.Locale
+import suwayomi.tachidesk.graphql.types.JvmInfo
+import suwayomi.tachidesk.graphql.types.OSInfo
+import java.awt.GraphicsEnvironment
+import java.lang.System
+import kotlin.io.path.Path
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.readLines
 
-data class OSInfo(
+data class PlatformInfo(
     val os: OS,
     val arch: ARCH,
+    val headless: Boolean,
+    val jvm: JvmInfo,
 )
 
 object Platform {
-    private val oses: List<OS.OSCreator> = listOf(OS.OSCreator.MACOSX(), OS.OSCreator.LINUX(), OS.OSCreator.WINDOWS())
-    private val archs: List<ARCH.ARCHCreator> =
-        listOf(ARCH.ARCHCreator.AMD64(), ARCH.ARCHCreator.I386(), ARCH.ARCHCreator.ARM64(), ARCH.ARCHCreator.ARM())
-
-    val current: OSInfo by lazy { getCurrentPlatform() }
-
-    private fun getCurrentPlatform(): OSInfo {
-        val osName = System.getProperty("os.name")
-        val archName = System.getProperty("os.arch")
-        val os = oses.firstNotNullOfOrNull { if (it.matches(osName)) it.create(osName) else null }
-        val arch = archs.firstNotNullOfOrNull { if (it.matches(archName)) it.create(archName) else null }
-        if (os == null || arch == null) {
-            throw UnsupportedOperationException("Unsupported platform tuple $osName,$archName")
-        }
-        return OSInfo(os, arch)
+    val current: PlatformInfo by lazy {
+        PlatformInfo(
+            os = OS.from(System.getProperty("os.name")),
+            arch = ARCH.from(System.getProperty("os.arch")),
+            headless = GraphicsEnvironment.isHeadless(),
+            jvm = getJvmInfo(),
+        )
     }
 }
 
+private fun getJvmInfo(): JvmInfo =
+    JvmInfo(
+        javaVersion = System.getProperty("java.version"),
+        vmName = System.getProperty("java.vm.name"),
+        vmVersion = System.getProperty("java.vm.version"),
+        vmVendor = System.getProperty("java.vm.vendor"),
+    )
+
 sealed class OS(
     val name: String,
-    vararg val values: String,
+    vararg val aliases: String,
 ) {
-    internal abstract class OSCreator(
-        vararg val values: String,
-    ) {
-        abstract fun create(name: String): OS
+    val version: String by lazy { System.getProperty("os.version") }
 
-        fun matches(name: String): Boolean =
-            values.any { name.startsWith(it, true) } ||
-                values.contains(
-                    name.lowercase(
-                        Locale.ENGLISH,
-                    ),
-                )
+    class MACOS(
+        name: String,
+    ) : OS(name, "mac", "darwin", "osx") {
+        override val details: OSInfo by lazy(::loadDetails)
 
-        class MACOSX : OSCreator("mac", "darwin", "osx") {
-            override fun create(name: String) = OS.MACOSX(name, *values)
-        }
+        override fun loadDetails(): OSInfo {
+            val productName = runCommand("sw_vers", "-productName").firstOrNull()
+            val productVersion = runCommand("sw_vers", "-productVersion").firstOrNull()
+            val buildVersion = runCommand("sw_vers", "-buildVersion").firstOrNull()
 
-        class LINUX : OSCreator("linux") {
-            override fun create(name: String) = OS.LINUX(name, *values)
-        }
-
-        class WINDOWS : OSCreator("win", "windows") {
-            override fun create(name: String) = OS.WINDOWS(name, *values)
+            return OSInfo(
+                name = productName ?: name,
+                version = productVersion ?: version,
+                build = buildVersion,
+            )
         }
     }
 
-    class MACOSX(
-        name: String,
-        vararg values: String,
-    ) : OS(name, *values)
-
     class LINUX(
         name: String,
-        vararg values: String,
-    ) : OS(name, *values)
+    ) : OS(name, "linux") {
+        override val details: OSInfo by lazy(::loadDetails)
+
+        override fun loadDetails(): OSInfo {
+            val osRelease = readOsRelease()
+
+            return OSInfo(
+                name = osRelease["PRETTY_NAME"] ?: osRelease["NAME"] ?: name,
+                version = osRelease["VERSION_ID"] ?: version,
+                build = version,
+            )
+        }
+
+        private fun readOsRelease(): Map<String, String> {
+            val path = Path("/etc/os-release")
+
+            if (!path.isRegularFile()) {
+                return emptyMap()
+            }
+
+            return path
+                .readLines()
+                .mapNotNull { line ->
+                    val trimmed = line.trim()
+
+                    if (trimmed.isEmpty() || trimmed.startsWith('#')) {
+                        return@mapNotNull null
+                    }
+
+                    val (key, value) = trimmed.split('=', limit = 2).takeIf { it.size == 2 } ?: return@mapNotNull null
+
+                    key to value.trim('"')
+                }.toMap()
+        }
+    }
 
     class WINDOWS(
         name: String,
-        vararg values: String,
-    ) : OS(name, *values)
+    ) : OS(name, "win", "windows") {
+        override val details: OSInfo by lazy(::loadDetails)
+
+        override fun loadDetails(): OSInfo {
+            val productName = registryValue("ProductName") ?: name
+
+            val currentBuildNumber = registryValue("CurrentBuildNumber")
+            val currentBuild = registryValue("CurrentBuild")
+            val build = currentBuildNumber ?: currentBuild
+
+            val tmpVersion = registryValue("DisplayVersion") ?: registryValue("ReleaseId") ?: version
+            val displayVersion =
+                if (tmpVersion != version) {
+                    "$version.$build ($tmpVersion)"
+                } else {
+                    tmpVersion
+                }
+
+            val displayName =
+                if ((build?.toIntOrNull() ?: 0) >= 22000) {
+                    productName.replace("Windows 10", "Windows 11")
+                } else {
+                    productName
+                }
+
+            return OSInfo(
+                name = displayName,
+                version = displayVersion,
+                build = build,
+            )
+        }
+
+        private fun registryValue(name: String): String? {
+            val output =
+                runCommand(
+                    "reg",
+                    "query",
+                    """HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion""",
+                    "/v",
+                    name,
+                )
+
+            return output
+                .firstOrNull { it.contains(name) }
+                ?.substringAfter("REG_SZ")
+                ?.trim()
+        }
+    }
 
     val isLinux: Boolean get() = this is LINUX
-    val isMacOSX: Boolean get() = this is MACOSX
+    val isMacOS: Boolean get() = this is MACOS
     val isWindows: Boolean get() = this is WINDOWS
+
+    abstract val details: OSInfo
+
+    protected abstract fun loadDetails(): OSInfo
+
+    private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
+
+    protected fun runCommand(vararg command: String): List<String> {
+        val process = ProcessBuilder(*command).start()
+
+        if (process.waitFor() != 0) {
+            return emptyList()
+        }
+
+        return process.inputStream
+            .bufferedReader()
+            .readLines()
+    }
+
+    companion object {
+        private val types =
+            listOf(
+                ::MACOS,
+                ::LINUX,
+                ::WINDOWS,
+            )
+
+        fun from(name: String): OS =
+            types
+                .map { it(name) }
+                .firstOrNull { it.matches(name) }
+                ?: throw UnsupportedOperationException("Unsupported OS: $name")
+    }
 }
 
 sealed class ARCH(
     val name: String,
-    vararg val values: String,
+    vararg val aliases: String,
 ) {
-    internal abstract class ARCHCreator(
-        vararg val values: String,
-    ) {
-        abstract fun create(name: String): ARCH
-
-        fun matches(name: String): Boolean =
-            values.any { name.startsWith(it, true) } ||
-                values.contains(
-                    name.lowercase(
-                        Locale.ENGLISH,
-                    ),
-                )
-
-        class AMD64 : ARCHCreator("amd64", "x86_64", "x64") {
-            override fun create(name: String) = ARCH.AMD64(name, *values)
-        }
-
-        class I386 : ARCHCreator("x86", "i386", "i486", "i586", "i686", "i786") {
-            override fun create(name: String) = ARCH.I386(name, *values)
-        }
-
-        class ARM64 : ARCHCreator("arm64", "aarch64") {
-            override fun create(name: String) = ARCH.ARM64(name, *values)
-        }
-
-        class ARM : ARCHCreator("arm") {
-            override fun create(name: String) = ARCH.ARM(name, *values)
-        }
-    }
-
     class AMD64(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "amd64", "x86_64", "x64")
 
     class I386(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "x86", "i386", "i486", "i586", "i686", "i786")
 
     class ARM64(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "arm64", "aarch64")
 
     class ARM(
-        arch: String,
-        vararg values: String,
-    ) : ARCH(arch, *values)
+        name: String,
+    ) : ARCH(name, "arm")
+
+    class RISCV(
+        name: String,
+    ) : ARCH(name, "riscv", "riscv32", "riscv64")
+
+    private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
+
+    companion object {
+        private val types =
+            listOf(
+                ::AMD64,
+                ::I386,
+                ::ARM64,
+                ::ARM,
+                ::RISCV,
+            )
+
+        fun from(name: String): ARCH =
+            types
+                .map { it(name) }
+                .firstOrNull { it.matches(name) }
+                ?: throw UnsupportedOperationException("Unsupported architecture: $name")
+    }
 }

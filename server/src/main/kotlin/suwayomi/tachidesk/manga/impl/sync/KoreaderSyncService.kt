@@ -27,6 +27,7 @@ import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.util.Platform
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
@@ -384,7 +385,7 @@ object KoreaderSyncService {
                     document = chapterHash,
                     progress = (chapterInfo.lastPageRead + 1).toString(),
                     percentage = (chapterInfo.lastPageRead + 1).toFloat() / chapterInfo.pageCount.toFloat(),
-                    device = "Suwayomi-Server (${System.getProperty("os.name")})",
+                    device = "Suwayomi-Server (${Platform.current.os.name})",
                     device_id = deviceId,
                 )
 
