@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**OPDS**) Fix OPDS search charset
 - (**Downloads/API**) Fix graphql download queue items position field of unmodified items after a reorder
 - (**Downloads/API**) Fix sending updates for dequeued downloads
+- (**Download/API**) Fix subscription returning stale chapter data in some cases
 - (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
 - (**WebView**) Fix authentication with subpath option
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows

@@ -11,18 +11,23 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
-import suwayomi.tachidesk.graphql.types.DownloadState.FINISHED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.model.Status
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.util.concurrent.CompletableFuture
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownloadState
 
@@ -91,7 +96,7 @@ class DownloadType(
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
-        val clearCache = state == FINISHED
+        val clearCache = state == DownloadState.FINISHED
         if (clearCache) {
             MangaType.clearCacheFor(mangaId, dataFetchingEnvironment)
         }
@@ -100,12 +105,29 @@ class DownloadType(
     }
 
     fun chapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType> {
-        val clearCache = state == FINISHED
+        val clearCache = state == DownloadState.FINISHED
         if (clearCache) {
             ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
         }
 
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId)
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId).thenApply {
+            // We only want to clear the cache for the first DOWNLOADING update once. Doing that above would be more complex
+            // and most likely ineffective due to not having a guarantee to ever get an update for a chapter that can be considered as "download completed".
+            // Doing it here, while creating a potetial duplicated db read, is easier and ensures that we only clear the cache when needed.
+            val isStale = state == DownloadState.DOWNLOADING && it.pageCount == -1
+
+            if (!isStale) {
+                return@thenApply it
+            }
+
+            ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
+
+            return@thenApply transaction {
+                val resultRow = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.firstOrNull() ?: return@transaction it
+
+                ChapterType(resultRow)
+            }
+        }
     }
 }
 
