@@ -171,8 +171,9 @@ class ServerConfig(
         protoNumber = 10,
         group = SettingGroup.WEB_UI,
         privacySafe = true,
-        defaultValue = true,
-        description = "Open client on startup",
+        // Opt-in: Desktop.browseURL / Electron launch is optional and not required for the HTTP API/WebUI.
+        defaultValue = false,
+        description = "Open client on startup (desktop convenience; disable for headless/server use)",
     )
 
     val webUIInterface: MutableStateFlow<WebUIInterface> by EnumSetting(
@@ -427,7 +428,9 @@ class ServerConfig(
         protoNumber = 34,
         group = SettingGroup.MISC,
         privacySafe = true,
-        defaultValue = true,
+        // Opt-in: SystemTray uses AWT/native tray APIs and is not required for the HTTP API/WebUI.
+        defaultValue = false,
+        description = "Show a system tray icon (desktop convenience; disable for headless/server use)",
     )
 
     val maxLogFiles: MutableStateFlow<Int> by IntSetting(
@@ -1039,8 +1042,11 @@ class ServerConfig(
         protoNumber = 86,
         group = SettingGroup.WEB_VIEW,
         privacySafe = true,
-        defaultValue = true,
-        description = "Enable the WebView via CEF (Chromium)"
+        // Opt-in: JCEF/CEF loads native Chromium (libjcef / Chromium Embedded Framework).
+        // On some platforms (notably macOS Tahoe ARM64) CefInitialize can raise SIGTRAP/EXC_BREAKPOINT
+        // and terminate the whole JVM — so never initialize unless the operator explicitly enables it.
+        defaultValue = false,
+        description = "Enable the WebView via CEF (Chromium). Optional; some extensions need it. Enabling loads native JCEF and can crash the process on unsupported OS/CEF combinations.",
     )
 
     val syncYomiEnabled: MutableStateFlow<Boolean> by BooleanSetting(

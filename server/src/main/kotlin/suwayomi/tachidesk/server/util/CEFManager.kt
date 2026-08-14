@@ -93,9 +93,26 @@ object CEFManager {
             CefHelper.cefApp.value = Result.success(null)
 
             if (!serverConfig.kcefEnabled.value) {
-                throw CefException("CEF is disabled")
+                // Do not load jawt/jcef/Chromium at all. SIGTRAP from CefInitialize cannot be
+                // recovered from in-process on macOS (unlike Linux LD_PRELOAD catch_abort.so).
+                logger.info { "CEF/WebView is disabled (server.kcefEnabled=false); skipping native JCEF initialization" }
+                CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
+                return
             }
 
+            val os = Platform.current.os
+            if (os.isMacOSX) {
+                // Evidence: macOS 26.5.2 ARM64 crash reports show EXC_BREAKPOINT/SIGTRAP inside
+                // Chromium Embedded Framework cef_initialize via libjcef.dylib CefInitialize,
+                // which terminates the JVM. Native crashes are not catchable as Java exceptions.
+                logger.warn {
+                    "Enabling KCEF on macOS loads native Chromium (JCEF). " +
+                        "On macOS Tahoe (26.x) this has been observed to kill the process with SIGTRAP/EXC_BREAKPOINT " +
+                        "during cef_initialize. Prefer server.kcefEnabled=false unless you need extension WebView."
+                }
+            }
+
+            // First native touchpoint — must never run when kcef is disabled.
             System.loadLibrary("jawt")
 
             if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
@@ -145,7 +162,6 @@ object CEFManager {
 
                     // this is essentially https://github.com/JetBrains/jcef/blob/5b93e5b916068316f1c8e7f8a59bf958d5ffd6e1/java/org/cef/CefApp.java#L777
                     // we do this here because JCEF has no mechanism to tell us that initalization failed, they just record in an inaccessible future
-                    val os = Platform.current.os
                     when {
                         os.isLinux -> {
                             config.getLoader().loadLibrary("cef")
@@ -162,6 +178,7 @@ object CEFManager {
 
                     CefApp.setIsRemoteEnabled(config.isRemoteEnabled)
                     SystemBootstrap.setLoader(config.getLoader())
+                    // Native point of no return on macOS Tahoe: CefApp.startup → CefInitialize → cef_initialize
                     CefApp.startup(config.getAppArgs())
 
                     CefApp.getInstance(config.getAppArgs(), config.cefSettings, config.getServerExe())

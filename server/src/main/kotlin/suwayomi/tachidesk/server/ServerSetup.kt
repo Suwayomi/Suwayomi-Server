@@ -430,7 +430,7 @@ fun applicationSetup() {
         ignoreInitialValue = true,
     )
 
-    // create system tray
+    // System tray is optional desktop chrome (AWT / dorkbox). Off by default; HTTP server does not need it.
     Updates.ENABLE = false
     serverConfig.subscribeTo(
         serverConfig.systemTrayEnabled,
@@ -520,7 +520,9 @@ fun applicationSetup() {
 
     SyncManager.scheduleSyncTask()
 
-    // asynchronously initialize CEF
+    // Optionally initialize CEF/JCEF (embedded Chromium) for extension WebView.
+    // Gated by server.kcefEnabled (default false). Must stay async and behind that flag:
+    // CefInitialize can SIGTRAP and kill the JVM on macOS Tahoe ARM64.
     GlobalScope.launch {
         CEFManager.init()
     }
