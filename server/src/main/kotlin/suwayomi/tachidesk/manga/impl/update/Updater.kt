@@ -455,6 +455,7 @@ class Updater : IUpdater {
         scope.coroutineContext.cancelChildren()
 
         tracker.clear()
+        this.lastUpdateErrors.clear()
         this.mangaUpdates.clear()
         this.categoryUpdates.clear()
         this.updateStatusCategories = emptyMap()
