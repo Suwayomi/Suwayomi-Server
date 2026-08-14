@@ -360,7 +360,10 @@ object CFClearance {
         setUserAgent: (String) -> Unit,
         originalRequest: Request,
     ): Request {
-        if (flareSolverResponse.solution.status in 200..299) {
+        if (flareSolverResponse.solution.cookies.none { it.name in CloudflareInterceptor.COOKIE_NAMES }) {
+            logger.debug { "Cloudflare challenge failed to resolve" }
+            throw CloudflareBypassException()
+        } else {
             setUserAgent(flareSolverResponse.solution.userAgent)
             val cookies =
                 flareSolverResponse.solution.cookies
@@ -400,9 +403,6 @@ object CFClearance {
                 request = originalRequest,
                 userAgent = flareSolverResponse.solution.userAgent,
             )
-        } else {
-            logger.debug { "Cloudflare challenge failed to resolve" }
-            throw CloudflareBypassException()
         }
     }
 

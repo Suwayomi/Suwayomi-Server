@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
 
 ### Fixed
+- (**Cloudflare/flaresolverr**) Treat a bypass as successful when a `cf_clearance` cookie is returned, so non-CloudFlare source errors are correctly passed through to the extensions.
 - (**Tracker**) Fix Shikimori
 - (**Extension**) Fix losing installed extension in case the update fails
 - (**Source/API**) Fix graphql browse mutation (`fetchSourceManga`) with filters including nested group changes
