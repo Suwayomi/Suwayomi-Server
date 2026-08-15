@@ -10,7 +10,7 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.SQLMigration
 
 @Suppress("ClassName", "unused")
-class M0061_AddChapterIndexes : SQLMigration() {
+class M0063_AddChapterIndexes : SQLMigration() {
     override val sql =
         """
         CREATE INDEX IF NOT EXISTS chapter_manga_source_order ON CHAPTER (manga, source_order);
