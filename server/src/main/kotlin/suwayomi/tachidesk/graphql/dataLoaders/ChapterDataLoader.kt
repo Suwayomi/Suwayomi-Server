@@ -291,7 +291,7 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
  * With appropriate indexes, this executes as an index scan returning only N rows
  * (one per manga) instead of all chapters for the requested manga.
  */
-private fun firstChapterPerManga(
+internal fun firstChapterPerManga(
     mangaIds: List<Int>,
     orderBy: List<Pair<org.jetbrains.exposed.v1.core.Column<*>, SortOrder>>,
     filter: Op<Boolean>? = null,
