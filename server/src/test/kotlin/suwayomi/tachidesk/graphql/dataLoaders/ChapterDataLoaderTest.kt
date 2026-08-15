@@ -44,20 +44,23 @@ class ChapterDataLoaderTest : ApplicationTest() {
         dateUpload: Long = 0L,
     ): Int =
         transaction {
-            ChapterTable.batchInsert(listOf(1)) {
-                this[ChapterTable.url] = "ch-$mangaId-$sourceOrder"
-                this[ChapterTable.name] = name
-                this[ChapterTable.sourceOrder] = sourceOrder
-                this[ChapterTable.isRead] = read
-                this[ChapterTable.isDownloaded] = downloaded
-                this[ChapterTable.isBookmarked] = bookmarked
-                this[ChapterTable.manga] = mangaId
-                this[ChapterTable.chapter_number] = chapterNumber
-                this[ChapterTable.lastReadAt] = lastReadAt
-                this[ChapterTable.fetchedAt] = fetchedAt
-                this[ChapterTable.date_upload] = dateUpload
-                this[ChapterTable.memo] = JsonObject.EMPTY
-            }.first()[ChapterTable.id].value
+            val insertedRows =
+                ChapterTable.batchInsert(listOf(1)) {
+                    this[ChapterTable.url] = "ch-$mangaId-$sourceOrder"
+                    this[ChapterTable.name] = name
+                    this[ChapterTable.sourceOrder] = sourceOrder
+                    this[ChapterTable.isRead] = read
+                    this[ChapterTable.isDownloaded] = downloaded
+                    this[ChapterTable.isBookmarked] = bookmarked
+                    this[ChapterTable.manga] = mangaId
+                    this[ChapterTable.chapter_number] = chapterNumber
+                    this[ChapterTable.lastReadAt] = lastReadAt
+                    this[ChapterTable.fetchedAt] = fetchedAt
+                    this[ChapterTable.date_upload] = dateUpload
+                    this[ChapterTable.memo] = JsonObject.EMPTY
+                }
+
+            insertedRows.first()[ChapterTable.id].value
         }
 
     // -- firstChapterPerManga tests --

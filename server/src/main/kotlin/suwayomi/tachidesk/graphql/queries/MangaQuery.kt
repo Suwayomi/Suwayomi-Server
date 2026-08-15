@@ -347,7 +347,8 @@ private fun hasChapterFilter(
 ): Op<Boolean>? {
     val equalTo = filter?.equalTo ?: return null
     val subquery =
-        ChapterTable.select(ChapterTable.id)
+        ChapterTable
+            .select(ChapterTable.id)
             .where { (ChapterTable.manga eq MangaTable.id) and condition }
             .limit(1)
     return if (equalTo) Exists(subquery) else NotExists(subquery)
@@ -357,7 +358,8 @@ private fun hasChapterFilter(
 private fun hasDuplicateChaptersFilter(filter: BooleanFilter?): Op<Boolean>? {
     val equalTo = filter?.equalTo ?: return null
     val subquery =
-        ChapterTable.select(ChapterTable.chapter_number)
+        ChapterTable
+            .select(ChapterTable.chapter_number)
             .where { (ChapterTable.manga eq MangaTable.id) and (ChapterTable.chapter_number greaterEq -1f) }
             .groupBy(ChapterTable.chapter_number)
             .having { ChapterTable.chapter_number.count() greater 1L }
