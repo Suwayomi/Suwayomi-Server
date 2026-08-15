@@ -20,9 +20,11 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import okhttp3.Cache
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.server.network.SocksProxyManager
 import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
@@ -54,6 +56,7 @@ class NetworkHelper(
                 "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         )
     val userAgentFlow = userAgent.asStateFlow()
+    private val connectionPool = ConnectionPool()
 
     fun defaultUserAgentProvider(): String = userAgent.value
 
@@ -71,6 +74,8 @@ class NetworkHelper(
             val builder =
                 OkHttpClient
                     .Builder()
+                    .proxySelector(SocksProxyManager.proxySelector)
+                    .connectionPool(connectionPool)
                     .cookieJar(PersistentCookieJar(cookieStore))
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
@@ -123,6 +128,15 @@ class NetworkHelper(
 
 //    val client by lazy { baseClientBuilder.cache(Cache(cacheDir, cacheSize)).build() }
     val client by lazy { baseClientBuilder.build() }
+
+    init {
+        @OptIn(DelicateCoroutinesApi::class)
+        SocksProxyManager.settings
+            .drop(1)
+            .onEach {
+                connectionPool.evictAll()
+            }.launchIn(GlobalScope)
+    }
 
     @Deprecated("The regular client handles Cloudflare by default")
     @Suppress("UNUSED")

@@ -53,6 +53,7 @@ import suwayomi.tachidesk.graphql.types.WebUIUpdateInfo
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
+import suwayomi.tachidesk.server.network.SocksProxyManager
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.ExitCode.WebUISetupFailure
 import suwayomi.tachidesk.util.HAScheduler
@@ -779,7 +780,11 @@ object WebInterfaceManager {
 
         zipFile.outputStream().use { webUIZipFileOut ->
 
-            val connection = URI.create(url).toURL().openConnection() as HttpURLConnection
+            val connection =
+                URI
+                    .create(url)
+                    .toURL()
+                    .openConnection(SocksProxyManager.currentProxy()) as HttpURLConnection
             connection.connect()
             val contentLength = connection.contentLength
 

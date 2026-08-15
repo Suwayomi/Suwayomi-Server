@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.network.interceptor
 
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.network.awaitSuccess
@@ -24,15 +25,21 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
+import suwayomi.tachidesk.server.network.SocksProxyManager
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.net.Proxy
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeoutException
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
+
+private typealias FlareSolverCommandSender =
+    suspend (String, CFClearance.FlareSolverRequest) -> CFClearance.FlareSolverCommandResponse
 
 class CloudflareInterceptor(
     private val setUserAgent: (String) -> Unit,
@@ -202,6 +209,165 @@ class CloudflareInterceptor(
     }
 }
 
+internal data class FlareSolverSessionSettings(
+    val url: String,
+    val name: String,
+    val ttlMinutes: Int,
+    val proxy: CFClearance.FlareSolverProxy?,
+)
+
+internal class FlareSolverSessionManager(
+    private val nanoTime: () -> Long = System::nanoTime,
+) {
+    private val logger = KotlinLogging.logger {}
+
+    private data class State(
+        val settings: FlareSolverSessionSettings,
+        val createdAtNanos: Long,
+    )
+
+    private var state: State? = null
+
+    suspend fun ensure(
+        settings: FlareSolverSessionSettings,
+        send: FlareSolverCommandSender,
+    ) {
+        require(settings.name.isNotBlank()) { "FlareSolverr session name must not be blank" }
+
+        val previous = state
+        val expired =
+            previous != null &&
+                settings.ttlMinutes > 0 &&
+                nanoTime() - previous.createdAtNanos >= settings.ttlMinutes.minutes.inWholeNanoseconds
+        val mustRecreate = previous == null || previous.settings != settings || expired
+
+        if (mustRecreate) {
+            recreate(settings, send)
+            return
+        }
+
+        // sessions.create is idempotent and restores the proxied session after a FlareSolverr restart.
+        send(
+            settings.url,
+            CFClearance.FlareSolverRequest(
+                cmd = "sessions.create",
+                session = settings.name,
+                proxy = settings.proxy,
+            ),
+        ).also(::checkCommandResponse)
+    }
+
+    suspend fun recreate(
+        settings: FlareSolverSessionSettings,
+        send: FlareSolverCommandSender,
+    ) {
+        require(settings.name.isNotBlank()) { "FlareSolverr session name must not be blank" }
+
+        destroy(settings, send)
+
+        send(
+            settings.url,
+            CFClearance.FlareSolverRequest(
+                cmd = "sessions.create",
+                session = settings.name,
+                proxy = settings.proxy,
+            ),
+        ).also(::checkCommandResponse)
+
+        state = State(settings, nanoTime())
+    }
+
+    suspend fun destroy(
+        settings: FlareSolverSessionSettings,
+        send: FlareSolverCommandSender,
+    ) {
+        require(settings.name.isNotBlank()) { "FlareSolverr session name must not be blank" }
+
+        val previous = state
+        state = null
+
+        val sessions =
+            send(settings.url, CFClearance.FlareSolverRequest(cmd = "sessions.list"))
+                .also(::checkCommandResponse)
+                .sessions
+                .orEmpty()
+        val namesToDestroy =
+            buildSet {
+                add(settings.name)
+                previous?.settings?.takeIf { it.url == settings.url }?.let { add(it.name) }
+            }
+
+        namesToDestroy.intersect(sessions.toSet()).forEach { sessionName ->
+            send(
+                settings.url,
+                CFClearance.FlareSolverRequest(cmd = "sessions.destroy", session = sessionName),
+            ).also(::checkCommandResponse)
+        }
+    }
+
+    suspend fun <T> execute(
+        settings: FlareSolverSessionSettings,
+        send: FlareSolverCommandSender,
+        retryOnFailure: Boolean,
+        request: suspend () -> T,
+    ): T {
+        ensure(settings, send)
+
+        return try {
+            request()
+        } catch (e: HttpException) {
+            if (e.code != 500) {
+                throw e
+            }
+
+            if (!retryOnFailure) {
+                logger.warn { "FlareSolverr request failed with HTTP 500; invalidating the session without retrying" }
+                destroyAfterFailure(settings, send, e)
+            }
+
+            // FlareSolverr's timed-out worker can keep controlling a persistent WebDriver.
+            // Replacing the session prevents that worker from racing the single retry.
+            logger.warn { "FlareSolverr request failed with HTTP 500; recreating the session and retrying once" }
+            try {
+                recreate(settings, send)
+            } catch (recreateError: Exception) {
+                recreateError.addSuppressed(e)
+                throw recreateError
+            }
+
+            try {
+                request()
+            } catch (retryError: HttpException) {
+                retryError.addSuppressed(e)
+                if (retryError.code != 500) {
+                    throw retryError
+                }
+
+                logger.warn { "FlareSolverr retry failed with HTTP 500; invalidating the session" }
+                destroyAfterFailure(settings, send, retryError)
+            }
+        }
+    }
+
+    private suspend fun destroyAfterFailure(
+        settings: FlareSolverSessionSettings,
+        send: FlareSolverCommandSender,
+        failure: HttpException,
+    ): Nothing {
+        try {
+            destroy(settings, send)
+        } catch (cleanupError: Exception) {
+            failure.addSuppressed(cleanupError)
+        }
+
+        throw failure
+    }
+
+    private fun checkCommandResponse(response: CFClearance.FlareSolverCommandResponse) {
+        check(response.status == "ok") { "FlareSolverr session command failed: ${response.message}" }
+    }
+}
+
 /*
  * This class is ported from https://github.com/vvanglro/cf-clearance
  * The original code is licensed under Apache 2.0
@@ -209,21 +375,28 @@ class CloudflareInterceptor(
 object CFClearance {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
+    private val directClient by lazy {
+        network.client
+            .newBuilder()
+            .proxy(Proxy.NO_PROXY)
+            .build()
+    }
     private val client by lazy {
         @Suppress("OPT_IN_USAGE")
         serverConfig.flareSolverrTimeout
             .map { timeoutInt ->
                 val timeout = timeoutInt.seconds
-                network.client
+                directClient
                     .newBuilder()
                     .callTimeout(timeout.plus(10.seconds).toJavaDuration())
                     .readTimeout(timeout.plus(5.seconds).toJavaDuration())
                     .build()
-            }.stateIn(GlobalScope, SharingStarted.Eagerly, network.client)
+            }.stateIn(GlobalScope, SharingStarted.Eagerly, directClient)
     }
     private val json: Json by injectLazy()
     private val jsonMediaType = "application/json".toMediaType()
     private val mutex = Mutex()
+    private val sessionManager = FlareSolverSessionManager()
 
     sealed class Result {
         data class CloudflareBypassed(
@@ -262,15 +435,29 @@ object CFClearance {
     @Serializable
     data class FlareSolverRequest(
         val cmd: String,
-        val url: String,
+        val url: String? = null,
         val maxTimeout: Int? = null,
         val session: String? = null,
         @SerialName("session_ttl_minutes")
         val sessionTtlMinutes: Int? = null,
         val cookies: List<FlareSolverCookie>? = null,
         val returnOnlyCookies: Boolean? = null,
-        val proxy: String? = null,
+        val proxy: FlareSolverProxy? = null,
         val postData: String? = null, // only used with cmd 'request.post'
+    )
+
+    @Serializable
+    data class FlareSolverProxy(
+        val url: String,
+        val username: String? = null,
+        val password: String? = null,
+    )
+
+    @Serializable
+    data class FlareSolverCommandResponse(
+        val status: String,
+        val message: String,
+        val sessions: List<String>? = null,
     )
 
     @Serializable
@@ -314,46 +501,104 @@ object CFClearance {
         val timeout = serverConfig.flareSolverrTimeout.value.seconds
         return with(json) {
             mutex.withLock {
-                client.value
-                    .newCall(
-                        POST(
-                            url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
-                            body =
-                                Json
-                                    .encodeToString(
-                                        FlareSolverRequest(
-                                            "request.${originalRequest.method.lowercase()}",
-                                            originalRequest.url.toString(),
-                                            session = serverConfig.flareSolverrSessionName.value,
-                                            sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
-                                            cookies =
-                                                network.cookieStore
-                                                    .get(originalRequest.url)
-                                                    .filter { it.name !in CloudflareInterceptor.COOKIE_NAMES }
-                                                    .map { cookie ->
-                                                        FlareSolverCookie(cookie.name, cookie.value)
-                                                    },
-                                            returnOnlyCookies = onlyCookies,
-                                            maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                            postData =
-                                                if (originalRequest.method == "POST") {
-                                                    originalRequest.body
-                                                        ?.let { body ->
-                                                            Buffer()
-                                                                .also { body.writeTo(it) }
-                                                                .readUtf8()
-                                                        }.orEmpty()
-                                                } else {
-                                                    null
-                                                },
-                                        ),
-                                    ).toRequestBody(jsonMediaType),
-                        ),
-                    ).awaitSuccess()
-                    .parseAs<FlareSolverResponse>()
+                val sessionSettings = currentSessionSettings()
+                val manageSession = sessionSettings.proxy != null && sessionSettings.name.isNotBlank()
+                val request =
+                    FlareSolverRequest(
+                        "request.${originalRequest.method.lowercase()}",
+                        originalRequest.url.toString(),
+                        session = sessionSettings.name.ifBlank { null },
+                        sessionTtlMinutes = sessionSettings.ttlMinutes.takeUnless { manageSession },
+                        cookies =
+                            network.cookieStore
+                                .get(originalRequest.url)
+                                .filter { it.name !in CloudflareInterceptor.COOKIE_NAMES }
+                                .map { cookie ->
+                                    FlareSolverCookie(cookie.name, cookie.value)
+                                },
+                        returnOnlyCookies = onlyCookies,
+                        proxy = sessionSettings.proxy.takeIf { sessionSettings.name.isBlank() },
+                        maxTimeout = timeout.inWholeMilliseconds.toInt(),
+                        postData =
+                            if (originalRequest.method == "POST") {
+                                originalRequest.body
+                                    ?.let { body ->
+                                        Buffer()
+                                            .also { body.writeTo(it) }
+                                            .readUtf8()
+                                    }.orEmpty()
+                            } else {
+                                null
+                            },
+                    )
+
+                val sendRequest =
+                    suspend {
+                        sendFlareSolverRequest(sessionSettings.url, request)
+                    }
+
+                if (manageSession) {
+                    sessionManager.execute(
+                        sessionSettings,
+                        ::sendSessionCommand,
+                        retryOnFailure = originalRequest.method == "GET",
+                        request = sendRequest,
+                    )
+                } else {
+                    sendRequest()
+                }
             }
         }
     }
+
+    private suspend fun sendFlareSolverRequest(
+        url: String,
+        request: FlareSolverRequest,
+    ): FlareSolverResponse =
+        with(json) {
+            client.value
+                .newCall(
+                    POST(
+                        url = url,
+                        body = Json.encodeToString(request).toRequestBody(jsonMediaType),
+                    ),
+                ).awaitSuccess()
+                .parseAs<FlareSolverResponse>()
+        }
+
+    private fun currentSessionSettings(): FlareSolverSessionSettings {
+        val proxySettings = SocksProxyManager.settings.value
+        val proxy =
+            proxySettings.proxyUrl()?.let { url ->
+                FlareSolverProxy(
+                    url = url,
+                    username = proxySettings.username.ifEmpty { null },
+                    password = proxySettings.password.ifEmpty { null },
+                )
+            }
+
+        return FlareSolverSessionSettings(
+            url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
+            name = serverConfig.flareSolverrSessionName.value,
+            ttlMinutes = serverConfig.flareSolverrSessionTtl.value,
+            proxy = proxy,
+        )
+    }
+
+    private suspend fun sendSessionCommand(
+        url: String,
+        request: FlareSolverRequest,
+    ): FlareSolverCommandResponse =
+        with(json) {
+            client.value
+                .newCall(
+                    POST(
+                        url = url,
+                        body = Json.encodeToString(request).toRequestBody(jsonMediaType),
+                    ),
+                ).awaitSuccess()
+                .parseAs<FlareSolverCommandResponse>()
+        }
 
     fun requestWithFlareSolverr(
         flareSolverResponse: FlareSolverResponse,

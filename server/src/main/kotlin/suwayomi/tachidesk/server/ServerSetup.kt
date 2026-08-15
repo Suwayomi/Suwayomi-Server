@@ -48,6 +48,8 @@ import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
+import suwayomi.tachidesk.server.network.SocksProxyManager
+import suwayomi.tachidesk.server.network.SocksProxySettings
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.CEFManager
@@ -69,8 +71,6 @@ import xyz.nulldev.ts.config.initLoggerConfig
 import xyz.nulldev.ts.config.setLogLevelFor
 import xyz.nulldev.ts.config.updateFileAppender
 import java.io.File
-import java.net.Authenticator
-import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
 
@@ -109,15 +109,6 @@ class LooperThread : Thread() {
         Looper.loop()
     }
 }
-
-data class ProxySettings(
-    val proxyEnabled: Boolean,
-    val socksProxyVersion: Int,
-    val proxyHost: String,
-    val proxyPort: String,
-    val proxyUsername: String,
-    val proxyPassword: String,
-)
 
 data class DatabaseSettings(
     val databaseType: DatabaseType,
@@ -340,6 +331,48 @@ fun applicationSetup() {
     // Make sure only one instance of the app is running
     handleAppMutex()
 
+    // socks proxy settings
+    SocksProxyManager.update(
+        SocksProxySettings(
+            serverConfig.socksProxyEnabled.value,
+            serverConfig.socksProxyVersion.value,
+            serverConfig.socksProxyHost.value,
+            serverConfig.socksProxyPort.value,
+            serverConfig.socksProxyUsername.value,
+            serverConfig.socksProxyPassword.value,
+        ),
+    )
+    serverConfig.subscribeTo(
+        combine<Any, SocksProxySettings>(
+            serverConfig.socksProxyEnabled,
+            serverConfig.socksProxyVersion,
+            serverConfig.socksProxyHost,
+            serverConfig.socksProxyPort,
+            serverConfig.socksProxyUsername,
+            serverConfig.socksProxyPassword,
+        ) { vargs ->
+            SocksProxySettings(
+                vargs[0] as Boolean,
+                vargs[1] as Int,
+                vargs[2] as String,
+                vargs[3] as String,
+                vargs[4] as String,
+                vargs[5] as String,
+            )
+        }.distinctUntilChanged(),
+        { settings ->
+            logger.info {
+                "Socks Proxy changed - enabled=${settings.enabled} address=${settings.host}:${settings.port}, " +
+                    "username=[REDACTED], password=[REDACTED]"
+            }
+            if (!settings.isValid) {
+                logger.error { "SOCKS proxy is enabled but its host or port is invalid" }
+            }
+            SocksProxyManager.update(settings)
+        },
+        ignoreInitialValue = true,
+    )
+
     // Load Android compatibility dependencies
     AndroidCompatInitializer().init()
     // start app
@@ -451,59 +484,6 @@ fun applicationSetup() {
 
     setLogLevelFor("org.eclipse.jetty", Level.OFF)
     setLogLevelFor("com.zaxxer.hikari", Level.WARN)
-
-    // socks proxy settings
-    serverConfig.subscribeTo(
-        combine<Any, ProxySettings>(
-            serverConfig.socksProxyEnabled,
-            serverConfig.socksProxyVersion,
-            serverConfig.socksProxyHost,
-            serverConfig.socksProxyPort,
-            serverConfig.socksProxyUsername,
-            serverConfig.socksProxyPassword,
-        ) { vargs ->
-            ProxySettings(
-                vargs[0] as Boolean,
-                vargs[1] as Int,
-                vargs[2] as String,
-                vargs[3] as String,
-                vargs[4] as String,
-                vargs[5] as String,
-            )
-        }.distinctUntilChanged(),
-        { (proxyEnabled, proxyVersion, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
-            logger.info {
-                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=[REDACTED], password=[REDACTED]"
-            }
-            if (proxyEnabled) {
-                System.setProperty("socksProxyHost", proxyHost)
-                System.setProperty("socksProxyPort", proxyPort)
-                System.setProperty("socksProxyVersion", proxyVersion.toString())
-
-                Authenticator.setDefault(
-                    object : Authenticator() {
-                        override fun getPasswordAuthentication(): PasswordAuthentication? {
-                            if (requestingProtocol.startsWith("SOCKS", ignoreCase = true)) {
-                                return PasswordAuthentication(
-                                    proxyUsername,
-                                    proxyPassword.toCharArray(),
-                                )
-                            }
-
-                            return null
-                        }
-                    },
-                )
-            } else {
-                System.clearProperty("socksProxyHost")
-                System.clearProperty("socksProxyPort")
-                System.clearProperty("socksProxyVersion")
-
-                Authenticator.setDefault(null)
-            }
-        },
-        ignoreInitialValue = false,
-    )
 
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     Security.addProvider(BouncyCastleProvider())

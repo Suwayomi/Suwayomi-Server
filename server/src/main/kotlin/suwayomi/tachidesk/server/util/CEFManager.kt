@@ -25,6 +25,7 @@ import org.cef.CefSettings.LogSeverity
 import org.cef.SystemBootstrap
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
+import suwayomi.tachidesk.server.network.SocksProxyManager
 import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -126,6 +127,9 @@ object CEFManager {
                                     "--change-stack-guard-on-fork=disable",
                                 ),
                             )
+                            SocksProxyManager.settings.value.proxyUrl()?.let { proxyUrl ->
+                                appArgsAsList.add("--proxy-server=$proxyUrl")
+                            }
                             cefSettings.apply {
                                 windowless_rendering_enabled = true
                                 cache_path = (Path(applicationDirs.cacheDir) / "kcef").absolutePathString()
@@ -203,7 +207,12 @@ object CEFManager {
             throw CefException("Failed to create installation directory")
         }
 
-        val client = OkHttpClient.Builder().followRedirects(true).build()
+        val client =
+            OkHttpClient
+                .Builder()
+                .proxySelector(SocksProxyManager.proxySelector)
+                .followRedirects(true)
+                .build()
         val request =
             Request
                 .Builder()
