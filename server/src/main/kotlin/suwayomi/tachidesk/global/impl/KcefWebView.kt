@@ -28,6 +28,7 @@ import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import xyz.nulldev.androidcompat.webkit.dispose
+import xyz.nulldev.androidcompat.webkit.disposeWithJsHandler
 import xyz.nulldev.androidcompat.webkit.evaluateJavaScript
 import java.awt.Component
 import java.awt.HeadlessException
@@ -296,7 +297,7 @@ class KcefWebView {
         browser?.close(true)
         browser?.dispose()
         browser = null
-        kcefClient?.dispose()
+        kcefClient?.disposeWithJsHandler()
         kcefClient = null
     }
 

@@ -9,10 +9,13 @@ import org.cef.browser.CefFrame
 import org.cef.browser.CefMessageRouter
 import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefMessageRouterHandlerAdapter
+import java.util.Collections
+import java.util.WeakHashMap
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
 private val logger = KotlinLogging.logger {}
-private val jsHandler: MutableMap<CefClient, JsHandler> = mutableMapOf()
+private val jsHandler: MutableMap<CefClient, JsHandler> = Collections.synchronizedMap(WeakHashMap())
 
 fun CefBrowser.evaluateJavaScript(
     expression: String,
@@ -25,8 +28,13 @@ fun CefBrowser.dispose() {
     close(true)
 }
 
+fun CefClient.disposeWithJsHandler() {
+    jsHandler.remove(this)
+    dispose()
+}
+
 class JsHandler : CefMessageRouterHandlerAdapter {
-    private val handler: MutableMap<String, (String?) -> Unit> = mutableMapOf()
+    private val handler = ConcurrentHashMap<String, (String?) -> Unit>()
 
     constructor(client: CefClient) {
         val config = CefMessageRouter.CefMessageRouterConfig()
