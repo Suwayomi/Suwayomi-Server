@@ -39,6 +39,7 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermission
 import kotlin.concurrent.thread
 import kotlin.io.path.ExperimentalPathApi
+import kotlin.time.Duration.Companion.seconds
 import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.absolutePathString
@@ -77,16 +78,44 @@ object CEFManager {
         scope.launch {
             serverConfig.subscribeTo(serverConfig.kcefEnabled, CEFManager::initAsync, ignoreInitialValue = false)
 
+            // Register CEF shutdown with the centralized shutdown manager
+            ShutdownManager.registerShutdownAction(
+                name = "CEF Disposal",
+                timeout = 5.seconds,
+            ) {
+                disposeCef()
+            }
+
+            // Also add a runtime shutdown hook for emergencies
             Runtime.getRuntime().addShutdownHook(
                 thread(start = false) {
-                    CefHelper.cefApp.value.getOrNull()?.let {
-                        logger.debug { "Shutting down CEF" }
-                        it.dispose()
-                        logger.debug { "CEF shutdown complete" }
+                    try {
+                        CefHelper.cefApp.value.getOrNull()?.let {
+                            logger.debug { "Emergency CEF disposal during shutdown hook" }
+                            it.dispose()
+                            logger.debug { "CEF emergency disposal complete" }
+                        }
+                    } catch (e: Exception) {
+                        logger.error(e) { "Error during emergency CEF disposal" }
                     }
                 },
             )
         }
+
+    /**
+     * Safely dispose of CEF resources
+     */
+    private suspend fun disposeCef() {
+        try {
+            CefHelper.cefApp.value.getOrNull()?.let { cefApp ->
+                logger.info { "Disposing CEF..." }
+                cefApp.dispose()
+                logger.info { "CEF disposed successfully" }
+            }
+        } catch (e: Exception) {
+            logger.warn(e) { "Error disposing CEF" }
+        }
+    }
 
     private suspend fun initAsync(): Unit =
         try {

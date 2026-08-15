@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.cef.network.CefCookieManager
 import org.koin.core.context.startKoin
@@ -53,6 +54,7 @@ import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.CEFManager
 import suwayomi.tachidesk.server.util.ConfigTypeRegistration
 import suwayomi.tachidesk.server.util.ExitCode
+import suwayomi.tachidesk.server.util.ShutdownManager
 import suwayomi.tachidesk.server.util.SystemTray
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
@@ -73,6 +75,7 @@ import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
+import kotlin.concurrent.thread
 
 private val logger = KotlinLogging.logger {}
 
@@ -532,4 +535,32 @@ fun applicationSetup() {
         },
         ignoreInitialValue = false,
     )
+
+    // Setup proper shutdown handling for graceful termination
+    setupShutdownHandling()
+}
+
+/**
+ * Setup shutdown handling to ensure graceful termination when receiving SIGTERM/SIGINT.
+ * This ensures CEF and other resources are properly cleaned up on first signal.
+ */
+private fun setupShutdownHandling() {
+    // Register the main shutdown hook that will trigger coordinated shutdown
+    Runtime.getRuntime().addShutdownHook(
+        thread(start = false, name = "ShutdownHook") {
+            if (!ShutdownManager.isShuttingDown()) {
+                logger.info { "Shutdown signal received, initiating graceful shutdown..." }
+                // Use runBlocking to convert suspend to blocking in the shutdown hook
+                try {
+                    kotlinx.coroutines.runBlocking {
+                        ShutdownManager.gracefulShutdown()
+                    }
+                } catch (e: Exception) {
+                    logger.error(e) { "Error during graceful shutdown" }
+                }
+            }
+        },
+    )
+
+    logger.debug { "Shutdown handling initialized" }
 }

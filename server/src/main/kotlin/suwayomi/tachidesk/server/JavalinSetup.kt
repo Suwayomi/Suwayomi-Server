@@ -45,6 +45,7 @@ import suwayomi.tachidesk.server.user.getUserFromContext
 import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.ServerSubpath
+import suwayomi.tachidesk.server.util.ShutdownManager
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.io.IOException
 import java.net.Inet4Address
@@ -61,6 +62,7 @@ object JavalinSetup {
     private val logger = KotlinLogging.logger {}
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var javalinApp: Javalin? = null
 
     fun <T> future(block: suspend CoroutineScope.() -> T): CompletableFuture<T> = scope.future(block = block)
 
@@ -170,10 +172,32 @@ object JavalinSetup {
                 }
             }
 
-        // when JVM is prompted to shutdown, stop javalin gracefully
+        javalinApp = app
+
+        // Register Javalin shutdown with ShutdownManager for coordinated shutdown
+        ShutdownManager.registerShutdownAction(
+            name = "Javalin Server",
+            timeout = 10.seconds,
+        ) {
+            logger.info { "Stopping Javalin..." }
+            try {
+                app.stop()
+                logger.info { "Javalin stopped successfully" }
+            } catch (e: Exception) {
+                logger.error(e) { "Error stopping Javalin" }
+            }
+        }
+
+        // Also keep a runtime shutdown hook as a fallback
         Runtime.getRuntime().addShutdownHook(
             thread(start = false) {
-                app.stop()
+                if (!ShutdownManager.isShuttingDown()) {
+                    try {
+                        app.stop()
+                    } catch (e: Exception) {
+                        logger.error(e) { "Error stopping Javalin in shutdown hook" }
+                    }
+                }
             },
         )
     }
