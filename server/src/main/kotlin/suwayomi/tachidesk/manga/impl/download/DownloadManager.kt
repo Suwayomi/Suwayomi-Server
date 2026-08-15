@@ -558,13 +558,12 @@ object DownloadManager {
         refreshDownloaders()
     }
 
-    suspend fun <T> withDownloadsPaused(block: suspend () -> T): T {
-        return DownloadPauseController(
+    suspend fun <T> withDownloadsPaused(block: suspend () -> T): T =
+        DownloadPauseController(
             isStarted = { getStatus().status == Status.Started },
             stop = ::stop,
             start = ::start,
         ).run(block)
-    }
 
     suspend fun stop() {
         logger.debug { "stop" }
