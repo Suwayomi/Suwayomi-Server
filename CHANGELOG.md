@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Cache/API**) Add a way to clear cache & cookies
 - (**API**) Add platform information to `aboutServer` query
 - (**Database**) Add indexes on ChapterTable and PageTable for faster queries
+- (**GraphQL**) Add server-side chapter filters to MangaFilter (hasUnreadChapters, hasReadChapters, hasDownloadedChapters, hasBookmarkedChapters, hasDuplicateChapters)
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
