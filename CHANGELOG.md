@@ -8,9 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**API**) Add User Accounts
+- (**Database**) Add indexes on ChapterTable and PageTable for faster queries
 
 ### Changed
-- 
+- (**GraphQL**) Optimize chapter data loaders using SQL window functions instead of in-memory grouping
 
 ### Fixed
 - 
