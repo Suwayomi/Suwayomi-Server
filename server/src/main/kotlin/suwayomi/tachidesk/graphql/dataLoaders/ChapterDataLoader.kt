@@ -12,8 +12,10 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
@@ -21,6 +23,8 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.longLiteral
+import org.jetbrains.exposed.v1.core.rowNumber
 import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -194,7 +198,7 @@ class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
-                            filter = ChapterFilter.IsRead,
+                            filter = ChapterTable.isRead eq true,
                             orderBy = listOf(ChapterTable.sourceOrder to SortOrder.DESC),
                         )
                     ids.map { chaptersByMangaId[it] }
@@ -252,7 +256,7 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> 
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
-                            filter = ChapterFilter.IsUnread,
+                            filter = ChapterTable.isRead eq false,
                             orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                         )
                     ids.map { chaptersByMangaId[it] }
@@ -272,7 +276,7 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
-                            filter = ChapterFilter.HasPositiveChapterNumber,
+                            filter = ChapterTable.chapter_number greater 0f,
                             orderBy = listOf(ChapterTable.chapter_number to SortOrder.DESC_NULLS_LAST),
                         )
                     ids.map { chaptersByMangaId[it] }
@@ -282,42 +286,7 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
 }
 
 /**
- * SQL sort direction strings for each [SortOrder] value.
- * Use in raw SQL ORDER BY clauses to avoid repeated `when` mapping.
- */
-private val SortOrder.sql: String
-    get() =
-        when (this) {
-            SortOrder.ASC -> "ASC"
-            SortOrder.DESC -> "DESC"
-            SortOrder.ASC_NULLS_FIRST -> "ASC NULLS FIRST"
-            SortOrder.ASC_NULLS_LAST -> "ASC NULLS LAST"
-            SortOrder.DESC_NULLS_FIRST -> "DESC NULLS FIRST"
-            SortOrder.DESC_NULLS_LAST -> "DESC NULLS LAST"
-        }
-
-/**
- * Type-safe SQL filter conditions for [firstChapterPerManga].
- * Prevents SQL injection by restricting filters to known-safe literals.
- */
-private sealed interface ChapterFilter {
-    val sql: String
-
-    data object IsRead : ChapterFilter {
-        override val sql = "READ = TRUE"
-    }
-
-    data object IsUnread : ChapterFilter {
-        override val sql = "READ = FALSE"
-    }
-
-    data object HasPositiveChapterNumber : ChapterFilter {
-        override val sql = "chapter_number > 0"
-    }
-}
-
-/**
- * Fetches at most one chapter per manga using a window function (ROW_NUMBER),
+ * Fetches at most one chapter per manga using Exposed's ROW_NUMBER() window function,
  * avoiding the previous pattern of loading all chapters and grouping in memory.
  * With appropriate indexes, this executes as an index scan returning only N rows
  * (one per manga) instead of all chapters for the requested manga.
@@ -325,33 +294,31 @@ private sealed interface ChapterFilter {
 private fun firstChapterPerManga(
     mangaIds: List<Int>,
     orderBy: List<Pair<org.jetbrains.exposed.v1.core.Column<*>, SortOrder>>,
-    filter: ChapterFilter? = null,
+    filter: Op<Boolean>? = null,
 ): Map<Int, ChapterType> {
     if (mangaIds.isEmpty()) return emptyMap()
 
-    val orderClause = orderBy.joinToString(", ") { (col, order) -> "${col.name} ${order.sql}" }
-    val placeholders = mangaIds.joinToString(",") { "?" }
-    val filterClause = if (filter != null) " AND ${filter.sql}" else ""
+    val rn =
+        rowNumber()
+            .over()
+            .partitionBy(ChapterTable.manga)
+            .orderBy(*orderBy.toTypedArray())
+            .alias("rn")
 
-    val sql =
-        """
-        SELECT id FROM (
-            SELECT id, manga, ROW_NUMBER() OVER (PARTITION BY manga ORDER BY $orderClause) AS rn
-            FROM CHAPTER
-            WHERE manga IN ($placeholders)$filterClause
-        ) ranked WHERE rn = 1
-        """.trimIndent()
+    val baseCondition = ChapterTable.manga inList mangaIds
+    val fullCondition = if (filter != null) baseCondition and filter else baseCondition
 
-    val jdbcConn = (org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager.current() as org.jetbrains.exposed.v1.jdbc.JdbcTransaction).connection.connection as java.sql.Connection
-    val targetIds = mutableListOf<Int>()
-    jdbcConn.prepareStatement(sql).use { stmt ->
-        mangaIds.forEachIndexed { index, id -> stmt.setInt(index + 1, id) }
-        stmt.executeQuery().use { rs ->
-            while (rs.next()) {
-                targetIds.add(rs.getInt(1))
-            }
-        }
-    }
+    val ranked =
+        ChapterTable
+            .select(ChapterTable.columns + rn)
+            .where { fullCondition }
+            .alias("ranked")
+
+    val targetIds =
+        ranked
+            .select(ranked[ChapterTable.id])
+            .where { ranked[rn] eq longLiteral(1) }
+            .map { it[ranked[ChapterTable.id]].value }
 
     if (targetIds.isEmpty()) return emptyMap()
 
