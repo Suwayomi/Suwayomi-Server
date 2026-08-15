@@ -60,6 +60,25 @@ import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger {}
 
+internal class DownloadPauseController(
+    private val isStarted: () -> Boolean,
+    private val stop: suspend () -> Unit,
+    private val start: () -> Unit,
+) {
+    suspend fun <T> run(block: suspend () -> T): T {
+        val wasStarted = isStarted()
+
+        try {
+            stop()
+            return block()
+        } finally {
+            if (wasStarted) {
+                start()
+            }
+        }
+    }
+}
+
 @OptIn(FlowPreview::class)
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -537,6 +556,14 @@ object DownloadManager {
         logger.debug { "start" }
 
         refreshDownloaders()
+    }
+
+    suspend fun <T> withDownloadsPaused(block: suspend () -> T): T {
+        return DownloadPauseController(
+            isStarted = { getStatus().status == Status.Started },
+            stop = ::stop,
+            start = ::start,
+        ).run(block)
     }
 
     suspend fun stop() {

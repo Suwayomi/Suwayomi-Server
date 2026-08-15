@@ -32,6 +32,7 @@ import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.util.AndroidManifestParser
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
@@ -719,7 +720,9 @@ object Extension {
 
         logger.debug { "Updating $pkgName to ${targetExtension.versionName}" }
 
-        return installExtension(pkgName, true)
+        return DownloadManager.withDownloadsPaused {
+            installExtension(pkgName, true)
+        }
     }
 
     suspend fun getExtensionIcon(pkgName: String): Pair<InputStream, String> {
