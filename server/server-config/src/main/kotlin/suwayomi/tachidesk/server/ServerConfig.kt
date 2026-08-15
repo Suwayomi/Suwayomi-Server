@@ -420,6 +420,7 @@ class ServerConfig(
         defaultValue = false,
         deprecated =
             SettingsRegistry.SettingDeprecated(
+                replaceWith = null,
                 message = "Removed - does not do anything",
             ),
     )
