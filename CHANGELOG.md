@@ -12,12 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Logs**) Add IP location logging
 - (**Cache/API**) Add a way to clear cache & cookies
 - (**API**) Add platform information to `aboutServer` query
+- (**Database**) Add indexes on ChapterTable and PageTable for faster queries
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloads**) Skip LocalSource downloading
 - (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
+- (**GraphQL**) Optimize chapter data loaders using SQL window functions instead of in-memory grouping
 
 ### Fixed
 - (**Tracker**) Fix Shikimori
