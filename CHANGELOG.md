@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloads**) Skip LocalSource downloading
 - (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
+- (**Webview**) Don't throw an exception when disabling CEF
 
 ### Fixed
 - (**Tracker**) Fix Shikimori
