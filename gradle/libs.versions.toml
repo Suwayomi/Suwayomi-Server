@@ -5,8 +5,10 @@ serialization = "1.11.0"
 jvmTarget = "21"
 okhttp = "5.5.0" # Major version is locked by Tachiyomi extensions
 javalin = "7.2.2"
+okhttp = "5.4.0" # Major version is locked by Tachiyomi extensions
+javalin = "7.2.3"
 jte = "3.2.4"
-jackson = "3.2.1" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
+jackson = "3.2.2" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "1.4.0"
 dex2jar = "2.4.38"
 polyglot = "25.2.4"
@@ -39,7 +41,7 @@ serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", v
 
 # Logging
 slf4japi = "org.slf4j:slf4j-api:2.0.18"
-logback = "ch.qos.logback:logback-classic:1.6.2"
+logback = "ch.qos.logback:logback-classic:1.6.3"
 kotlinlogging = "io.github.oshai:kotlin-logging-jvm:8.0.4"
 
 # OkHttp
