@@ -11,9 +11,15 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Exists
+import org.jetbrains.exposed.v1.core.NotExists
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.less
@@ -46,6 +52,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
@@ -196,6 +203,11 @@ class MangaQuery {
         val lastFetchedAt: LongFilter? = null,
         val chaptersLastFetchedAt: LongFilter? = null,
         val categoryId: IntFilter? = null,
+        val hasUnreadChapters: BooleanFilter? = null,
+        val hasReadChapters: BooleanFilter? = null,
+        val hasDownloadedChapters: BooleanFilter? = null,
+        val hasBookmarkedChapters: BooleanFilter? = null,
+        val hasDuplicateChapters: BooleanFilter? = null,
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
         override val not: MangaFilter? = null,
@@ -219,6 +231,11 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
                 andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
+                hasChapterFilter(hasUnreadChapters, ChapterTable.isRead eq false),
+                hasChapterFilter(hasReadChapters, ChapterTable.isRead eq true),
+                hasChapterFilter(hasDownloadedChapters, ChapterTable.isDownloaded eq true),
+                hasChapterFilter(hasBookmarkedChapters, ChapterTable.isBookmarked eq true),
+                hasDuplicateChaptersFilter(hasDuplicateChapters),
             )
 
         fun isFilteringForCategories(): Boolean =
@@ -321,4 +338,31 @@ class MangaQuery {
             totalCount = queryResults.total.toInt(),
         )
     }
+}
+
+/** Returns EXISTS/NOT EXISTS op for manga having chapters matching [condition]. */
+private fun hasChapterFilter(
+    filter: BooleanFilter?,
+    condition: Op<Boolean>,
+): Op<Boolean>? {
+    val equalTo = filter?.equalTo ?: return null
+    val subquery =
+        ChapterTable
+            .select(ChapterTable.id)
+            .where { (ChapterTable.manga eq MangaTable.id) and condition }
+            .limit(1)
+    return if (equalTo) Exists(subquery) else NotExists(subquery)
+}
+
+/** Returns EXISTS/NOT EXISTS for manga with duplicate chapter numbers. */
+private fun hasDuplicateChaptersFilter(filter: BooleanFilter?): Op<Boolean>? {
+    val equalTo = filter?.equalTo ?: return null
+    val subquery =
+        ChapterTable
+            .select(ChapterTable.chapter_number)
+            .where { (ChapterTable.manga eq MangaTable.id) and (ChapterTable.chapter_number greaterEq -1f) }
+            .groupBy(ChapterTable.chapter_number)
+            .having { ChapterTable.chapter_number.count() greater 1L }
+            .limit(1)
+    return if (equalTo) Exists(subquery) else NotExists(subquery)
 }
