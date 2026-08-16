@@ -162,61 +162,61 @@ class M0056_SyncYomi : SQLMigration() {
     // language=h2
     fun h2Query() =
         """
-        ALTER TABLE manga ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
-        ALTER TABLE manga ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
-        ALTER TABLE manga ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE manga ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE manga ADD COLUMN IF NOT EXISTS is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE manga ADD COLUMN IF NOT EXISTS last_modified_at BIGINT NOT NULL DEFAULT 0;
 
-        ALTER TABLE chapter ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
-        ALTER TABLE chapter ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
-        ALTER TABLE chapter ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE chapter ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE chapter ADD COLUMN IF NOT EXISTS is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE chapter ADD COLUMN IF NOT EXISTS last_modified_at BIGINT NOT NULL DEFAULT 0;
 
-        ALTER TABLE category ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
-        ALTER TABLE category ADD COLUMN uid BIGINT NOT NULL DEFAULT 0;
-        ALTER TABLE category ADD COLUMN is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
-        ALTER TABLE category ADD COLUMN last_modified_at BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE category ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE category ADD COLUMN IF NOT EXISTS uid BIGINT NOT NULL DEFAULT 0;
+        ALTER TABLE category ADD COLUMN IF NOT EXISTS is_syncing BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE category ADD COLUMN IF NOT EXISTS last_modified_at BIGINT NOT NULL DEFAULT 0;
         
 
-        CREATE TRIGGER update_manga_version 
+        CREATE TRIGGER IF NOT EXISTS update_manga_version
         BEFORE UPDATE ON manga
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaVersionTrigger";
         
-        CREATE TRIGGER update_chapter_and_manga_version
+        CREATE TRIGGER IF NOT EXISTS update_chapter_and_manga_version
         BEFORE UPDATE ON chapter
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterAndMangaVersionTrigger";
         
-        CREATE TRIGGER update_manga_last_modified_at
+        CREATE TRIGGER IF NOT EXISTS update_manga_last_modified_at
         BEFORE UPDATE ON manga
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaLastModifiedAtTrigger";
         
-        CREATE TRIGGER insert_manga_last_modified_at
+        CREATE TRIGGER IF NOT EXISTS insert_manga_last_modified_at
         BEFORE INSERT ON manga
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaLastModifiedAtTrigger";
         
-        CREATE TRIGGER update_chapter_last_modified_at
+        CREATE TRIGGER IF NOT EXISTS update_chapter_last_modified_at
         BEFORE UPDATE ON chapter
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterLastModifiedAtTrigger";
         
-        CREATE TRIGGER insert_chapter_last_modified_at
+        CREATE TRIGGER IF NOT EXISTS insert_chapter_last_modified_at
         BEFORE INSERT ON chapter
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterLastModifiedAtTrigger";
         
-        CREATE TRIGGER insert_manga_category_update_version
+        CREATE TRIGGER IF NOT EXISTS insert_manga_category_update_version
         AFTER INSERT ON categorymanga
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.InsertMangaCategoryUpdateVersionTrigger";
         
-        CREATE TRIGGER insert_category_uid
+        CREATE TRIGGER IF NOT EXISTS insert_category_uid
         BEFORE INSERT ON category
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.InsertCategoryUidTrigger";
         
-        CREATE TRIGGER update_category_version
+        CREATE TRIGGER IF NOT EXISTS update_category_version
         BEFORE UPDATE ON category
         FOR EACH ROW
         CALL "suwayomi.tachidesk.server.database.trigger.UpdateCategoryVersionTrigger";
