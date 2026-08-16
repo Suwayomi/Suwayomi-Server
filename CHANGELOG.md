@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
 
 ### Fixed
+- (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data
 - (**Tracker**) Fix Shikimori
 - (**Extension**) Fix losing installed extension in case the update fails
 - (**Source/API**) Fix graphql browse mutation (`fetchSourceManga`) with filters including nested group changes
