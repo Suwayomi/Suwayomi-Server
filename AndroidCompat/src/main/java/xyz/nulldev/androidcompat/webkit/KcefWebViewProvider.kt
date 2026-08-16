@@ -606,7 +606,7 @@ class KcefWebViewProvider(
         browser?.close(true)
         browser?.dispose()
         browser = null
-        kcefClient?.dispose()
+        kcefClient?.disposeWithJsHandler()
         kcefClient = null
     }
 
