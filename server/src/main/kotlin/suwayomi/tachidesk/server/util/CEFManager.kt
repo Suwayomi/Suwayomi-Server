@@ -93,7 +93,9 @@ object CEFManager {
             CefHelper.cefApp.value = Result.success(null)
 
             if (!serverConfig.kcefEnabled.value) {
-                throw CefException("CEF is disabled")
+                logger.info { "CEF is disabled" }
+                CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
+                return
             }
 
             System.loadLibrary("jawt")
