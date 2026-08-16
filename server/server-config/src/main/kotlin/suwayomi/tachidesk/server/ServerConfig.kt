@@ -284,6 +284,7 @@ class ServerConfig(
         defaultValue = emptyList(),
         deprecated =
             SettingsRegistry.SettingDeprecated(
+                replaceWith = "extensionStores",
                 message = "Replaced with addExtensionStore and removeExtensionStore mutations",
                 migrateConfigValue = {
                     @Suppress("UNCHECKED_CAST")
@@ -419,6 +420,7 @@ class ServerConfig(
         defaultValue = false,
         deprecated =
             SettingsRegistry.SettingDeprecated(
+                replaceWith = null,
                 message = "Removed - does not do anything",
             ),
     )
