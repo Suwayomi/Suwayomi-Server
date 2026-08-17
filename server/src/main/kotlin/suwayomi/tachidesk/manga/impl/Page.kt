@@ -25,6 +25,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
+import suwayomi.tachidesk.manga.impl.util.storage.TallImageSplitter
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -251,9 +252,19 @@ object Page {
                 }
             }
 
+            splitTallImageIfNeeded(downloadCacheFolder, fileName)
+
             // Even if the conversion failed, so the page isn't processed again
             PageCacheCoordinator.markProcessed(cacheSaveDir, fileName)
         }
+    }
+
+    private fun splitTallImageIfNeeded(
+        downloadCacheFolder: File,
+        fileName: String,
+    ) {
+        if (!serverConfig.splitTallImages.value) return
+        TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
     }
 
     private suspend fun convertImageResponse(
