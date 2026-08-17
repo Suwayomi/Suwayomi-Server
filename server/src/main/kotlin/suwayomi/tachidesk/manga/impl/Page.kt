@@ -25,6 +25,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
+import suwayomi.tachidesk.manga.impl.util.storage.TallImageSplitter
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -253,11 +254,21 @@ object Page {
                 }
             }
 
+            splitTallImageIfNeeded(downloadCacheFolder, fileName)
+
             // marks that download-time post-processing has been attempted for this page, so a concurrent or
             // later download run doesn't skip it just because the raw bytes happen to already be cached
             // (see https://github.com/Suwayomi/Suwayomi-Server/issues/2193 and #2289)
             PageCacheCoordinator.markProcessed(cacheSaveDir, fileName)
         }
+    }
+
+    private fun splitTallImageIfNeeded(
+        downloadCacheFolder: File,
+        fileName: String,
+    ) {
+        if (!serverConfig.splitTallImages.value) return
+        TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
     }
 
     private suspend fun convertImageResponse(
