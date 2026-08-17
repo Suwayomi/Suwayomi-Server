@@ -225,14 +225,6 @@ class ServerConfig(
         defaultValue = false,
     )
 
-    val splitTallImages: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 99,
-        group = SettingGroup.DOWNLOADER,
-        privacySafe = true,
-        defaultValue = false,
-        description = "Split long images into smaller pages after downloading a chapter",
-    )
-
     val downloadsPath: MutableStateFlow<String> by PathSetting(
         protoNumber = 16,
         group = SettingGroup.DOWNLOADER,
@@ -1164,6 +1156,14 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = "suwayomi",
         minLength = 1
+    )
+
+    val splitTallImages: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 101,
+        group = SettingGroup.DOWNLOADER,
+        privacySafe = true,
+        defaultValue = false,
+        description = "Split long images into smaller pages after downloading a chapter",
     )
 
     /** ****************************************************************** **/
