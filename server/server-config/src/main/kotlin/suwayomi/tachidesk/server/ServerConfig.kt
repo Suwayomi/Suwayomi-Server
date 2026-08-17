@@ -1139,6 +1139,14 @@ class ServerConfig(
         description = "List of extension store index URLs",
     )
 
+    val splitTallImages: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 98,
+        group = SettingGroup.DOWNLOADER,
+        privacySafe = true,
+        defaultValue = false,
+        description = "Split long images into smaller pages after downloading a chapter",
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/
