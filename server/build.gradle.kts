@@ -181,7 +181,19 @@ tasks {
         archiveVersion.set(getTachideskVersion())
         archiveClassifier.set("")
         destinationDirectory.set(File("$rootDir/server/build"))
-        mergeServiceFiles()
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+        mergeServiceFiles("META-INF/services")
+        dependencies {
+            // The deprecated GraalVM js-community POM chain declares `<type>pom</type>`
+            // dependencies, which puts literal .pom artifacts on the resolved classpath.
+            // Shadow 9 expands every classpath file with zipTree() and fails with
+            // "Cannot expand ZIP" on them (GradleUp/shadow#1716). Excluding the
+            // POM-only metapackages drops just those .pom files; the actual jars
+            // (js-language, truffle-runtime) are still shadowed and their
+            // META-INF/services files are still merged by mergeServiceFiles.
+            exclude(dependency("org.graalvm.js:js-community:.*"))
+            exclude(dependency("org.graalvm.js:js:.*"))
+        }
     }
 
     test {
