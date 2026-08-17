@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
+import suwayomi.tachidesk.manga.impl.util.storage.TallImageSplitter
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -195,6 +196,7 @@ object Page {
         val conversions = serverConfig.downloadConversions.value
         if (conversions.isEmpty() || !downloadCacheFolder.exists()) {
             inputStream.close()
+            splitTallImageIfNeeded(downloadCacheFolder, fileName)
             return
         }
         val defaultConversion = conversions["default"]
@@ -203,6 +205,7 @@ object Page {
                 ?: defaultConversion
         if (conversion == null) {
             inputStream.close()
+            splitTallImageIfNeeded(downloadCacheFolder, fileName)
             return
         }
 
@@ -248,6 +251,15 @@ object Page {
         } catch (e: Exception) {
             logger.warn(e) { "Error while post-processing image" }
         }
+        splitTallImageIfNeeded(downloadCacheFolder, fileName)
+    }
+
+    private fun splitTallImageIfNeeded(
+        downloadCacheFolder: File,
+        fileName: String,
+    ) {
+        if (!serverConfig.splitTallImages.value) return
+        TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
     }
 
     private suspend fun convertImageResponse(
