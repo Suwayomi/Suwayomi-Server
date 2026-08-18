@@ -55,39 +55,40 @@ object ImageResponse {
         saveDir: String,
         fileName: String,
         fetcher: suspend () -> Response,
-    ): Pair<InputStream, String> {
-        File(saveDir).mkdirs()
+    ): Pair<InputStream, String> =
+        PageCacheCoordinator.withPageLock(saveDir, fileName) {
+            File(saveDir).mkdirs()
 
-        val cachedFile = findFileNameStartingWith(saveDir, fileName)
-        val filePath = "$saveDir/$fileName"
+            val cachedFile = findFileNameStartingWith(saveDir, fileName)
+            val filePath = "$saveDir/$fileName"
 
-        // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
-        if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
-            return getCachedImageResponse(cachedFile, filePath)
-        }
-
-        val response = fetcher()
-
-        try {
-            if (response.code == 200) {
-                val (actualSavePath, imageType) =
-                    saveImage(
-                        filePath,
-                        response.body.byteStream(),
-                        response.header("Content-Type"),
-                    )
-                return pathToInputStream(actualSavePath) to imageType
-            } else {
-                throw Exception("request error! ${response.code}")
+            // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
+            if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
+                return@withPageLock getCachedImageResponse(cachedFile, filePath)
             }
-        } catch (e: IOException) {
-            // make sure no partial download remains
-            clearCachedImage(saveDir, fileName)
-            throw e
-        } finally {
-            response.closeQuietly()
+
+            val response = fetcher()
+
+            try {
+                if (response.code == 200) {
+                    val (actualSavePath, imageType) =
+                        saveImage(
+                            filePath,
+                            response.body.byteStream(),
+                            response.header("Content-Type"),
+                        )
+                    pathToInputStream(actualSavePath) to imageType
+                } else {
+                    throw Exception("request error! ${response.code}")
+                }
+            } catch (e: IOException) {
+                // make sure no partial download remains
+                clearCachedImage(saveDir, fileName)
+                throw e
+            } finally {
+                response.closeQuietly()
+            }
         }
-    }
 
     /** Save image safely */
     fun saveImage(
