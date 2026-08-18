@@ -49,7 +49,7 @@ object ImageResponse {
         val fileType = cachedFile.substringAfter("$filePath.")
         return Pair(
             pathToInputStream(cachedFile),
-            "image/$fileType",
+            MimeUtils.guessMimeTypeFromExtension(fileType) ?: "image/$fileType",
         )
     }
 
