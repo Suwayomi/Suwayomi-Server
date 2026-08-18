@@ -66,31 +66,32 @@ object ImageResponse {
         fileName: String,
         staleBefore: Long = 0,
         fetcher: suspend () -> Response,
-    ): Pair<InputStream, String> {
-        File(saveDir).mkdirs()
+    ): Pair<InputStream, String> =
+        PageCacheCoordinator.withPageLock(saveDir, fileName) {
+            File(saveDir).mkdirs()
 
-        val cachedFile = findFileNameStartingWith(saveDir, fileName)
-        val filePath = "$saveDir/$fileName"
+            val cachedFile = findFileNameStartingWith(saveDir, fileName)
+            val filePath = "$saveDir/$fileName"
 
-        // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
-        val reusableCachedFile = cachedFile?.takeUnless { it.endsWith(".tmp") }
+            // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
+            val reusableCachedFile = cachedFile?.takeUnless { it.endsWith(".tmp") }
 
-        if (reusableCachedFile == null) {
-            return fetchAndSaveImage(saveDir, fileName, fetcher)
+            if (reusableCachedFile == null) {
+                return@withPageLock fetchAndSaveImage(saveDir, fileName, fetcher)
+            }
+
+            if (File(reusableCachedFile).lastModified() >= staleBefore) {
+                return@withPageLock getCachedImageResponse(reusableCachedFile, filePath)
+            }
+
+            try {
+                refreshCachedImage(reusableCachedFile, filePath, fetcher)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                getCachedImageResponse(reusableCachedFile, filePath)
+            }
         }
-
-        if (File(reusableCachedFile).lastModified() >= staleBefore) {
-            return getCachedImageResponse(reusableCachedFile, filePath)
-        }
-
-        return try {
-            refreshCachedImage(reusableCachedFile, filePath, fetcher)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            getCachedImageResponse(reusableCachedFile, filePath)
-        }
-    }
 
     private suspend fun fetchAndSaveImage(
         saveDir: String,
