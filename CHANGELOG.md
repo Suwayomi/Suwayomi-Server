@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
+- (**Database/H2**) Use Github hosted version of H2MigrationTool for reliable downloads
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloads**) Skip LocalSource downloading
 - (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
