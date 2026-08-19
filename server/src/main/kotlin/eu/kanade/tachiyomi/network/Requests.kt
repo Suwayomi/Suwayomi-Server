@@ -6,6 +6,7 @@ import okhttp3.CacheControl
 import okhttp3.FormBody
 import okhttp3.Headers
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.RequestBody
 import java.util.concurrent.TimeUnit.MINUTES
@@ -18,13 +19,7 @@ fun GET(
     url: String,
     headers: Headers = DEFAULT_HEADERS,
     cache: CacheControl = DEFAULT_CACHE_CONTROL,
-): Request =
-    Request
-        .Builder()
-        .url(url)
-        .headers(headers)
-        .cacheControl(cache)
-        .build()
+): Request = GET(url.toHttpUrl(), headers, cache)
 
 /**
  * @since extensions-lib 1.4

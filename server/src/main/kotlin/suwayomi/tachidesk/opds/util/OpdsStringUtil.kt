@@ -34,6 +34,19 @@ object OpdsStringUtil {
     }
 
     /**
+     * Formats the source name appending the language code if applicable.
+     */
+    fun formatSourceName(
+        name: String,
+        lang: String?,
+    ): String =
+        if (lang.isNullOrBlank() || lang == "all") {
+            name
+        } else {
+            "$name (${lang.uppercase()})"
+        }
+
+    /**
      * Formats a size in bytes to a human-readable representation.
      * Uses binary (KiB, MiB, GiB, TiB) or decimal (KB, MB, GB, TB) units based on server configuration.
      *
@@ -44,10 +57,18 @@ object OpdsStringUtil {
         if (serverConfig.opdsUseBinaryFileSizes.value) {
             // Binary notation (base 1024)
             when {
-                size >= 1_125_899_906_842_624 -> "%.2f TiB".format(size / 1_125_899_906_842_624.0) // 1024^4
-                size >= 1_073_741_824 -> "%.2f GiB".format(size / 1_073_741_824.0) // 1024^3
-                size >= 1_048_576 -> "%.2f MiB".format(size / 1_048_576.0) // 1024^2
-                size >= 1024 -> "%.2f KiB".format(size / 1024.0) // 1024
+                // 1024^4
+                size >= 1_125_899_906_842_624 -> "%.2f TiB".format(size / 1_125_899_906_842_624.0)
+
+                // 1024^3
+                size >= 1_073_741_824 -> "%.2f GiB".format(size / 1_073_741_824.0)
+
+                // 1024^2
+                size >= 1_048_576 -> "%.2f MiB".format(size / 1_048_576.0)
+
+                // 1024
+                size >= 1024 -> "%.2f KiB".format(size / 1024.0)
+
                 else -> "$size bytes"
             }
         } else {

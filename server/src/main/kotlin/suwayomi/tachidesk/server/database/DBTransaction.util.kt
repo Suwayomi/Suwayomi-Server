@@ -1,19 +1,31 @@
 package suwayomi.tachidesk.server.database
 
-import org.jetbrains.exposed.sql.Transaction
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Transaction
+import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 
 /**
  * Performs the given transaction block inside the parent transaction or creates a new transaction if necessary.
  *
  * Any rollback or exception in the inner transaction will be propagated to the parent transaction.
  */
-fun <T> dbTransaction(block: Transaction.() -> T): T {
+fun <T> dbTransaction(block: JdbcTransaction.() -> T): T {
     val currentTransaction = TransactionManager.currentOrNull()
 
     return if (currentTransaction == null) {
         transaction { block() }
+    } else {
+        block(currentTransaction)
+    }
+}
+
+suspend fun <T> dbSuspendTransaction(block: suspend JdbcTransaction.() -> T): T {
+    val currentTransaction = TransactionManager.currentOrNull()
+
+    return if (currentTransaction == null) {
+        suspendTransaction { block() }
     } else {
         block(currentTransaction)
     }

@@ -1,6 +1,14 @@
 package suwayomi.tachidesk.manga.model.dataclass
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import eu.kanade.tachiyomi.source.model.SChapter
+import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.Chapter.getChapterMetaMap
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -36,10 +44,10 @@ data class ChapterDataClass(
     val downloaded: Boolean,
     /** used to construct pages in the front-end */
     val pageCount: Int = -1,
-    /** total chapter count, used to calculate if there's a next and prev chapter */
-    val chapterCount: Int? = null,
-    /** used to store client specific values */
-    val meta: Map<String, String> = emptyMap(),
+    val lastModifiedAt: Long = 0,
+    val version: Long = 0,
+    @JsonIgnore
+    val memo: JsonObject = JsonObject.EMPTY,
 ) {
     companion object {
         fun fromSChapter(
@@ -57,6 +65,7 @@ data class ChapterDataClass(
                 uploadDate = sChapter.date_upload,
                 chapterNumber = sChapter.chapter_number,
                 scanlator = sChapter.scanlator,
+                memo = sChapter.memo,
                 index = index,
                 fetchedAt = fetchedAt,
                 realUrl = realUrl,
@@ -67,5 +76,21 @@ data class ChapterDataClass(
                 lastReadAt = 0,
                 downloaded = false,
             )
+    }
+
+    @Deprecated("Remove with V1 Api")
+    val chapterCount: Int by lazy {
+        transaction {
+            ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq mangaId }
+                .count()
+                .toInt()
+        }
+    }
+
+    @Deprecated("Remove with V1 Api")
+    val meta: Map<String, String> by lazy {
+        getChapterMetaMap(id)
     }
 }

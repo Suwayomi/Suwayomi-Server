@@ -1,22 +1,30 @@
+@file:Suppress("RedundantNullableReturnType", "unused")
+
 package suwayomi.tachidesk.graphql.mutations
 
-import graphql.execution.DataFetcherResult
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.minus
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.plus
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.graphql.asDataFetcherResult
+import org.jetbrains.exposed.v1.core.LikePattern
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.minus
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
@@ -41,18 +49,18 @@ class CategoryMutation {
         val meta: CategoryMetaType,
     )
 
+    @RequireAuth
     fun setCategoryMeta(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: SetCategoryMetaInput,
-    ): DataFetcherResult<SetCategoryMetaPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, meta) = input
+    ): SetCategoryMetaPayload? {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val (clientMutationId, meta) = input
 
-            Category.modifyMeta(userId, meta.categoryId, meta.key, meta.value)
+        Category.modifyMeta(userId, meta.categoryId, meta.key, meta.value)
 
-            SetCategoryMetaPayload(clientMutationId, meta)
-        }
+        return SetCategoryMetaPayload(clientMutationId, meta)
+    }
 
     data class DeleteCategoryMetaInput(
         val clientMutationId: String? = null,
@@ -66,45 +74,175 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
+    @RequireAuth
     fun deleteCategoryMeta(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: DeleteCategoryMetaInput,
-    ): DataFetcherResult<DeleteCategoryMetaPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, categoryId, key) = input
+    ): DeleteCategoryMetaPayload? {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val (clientMutationId, categoryId, key) = input
 
-            val (meta, category) =
-                transaction {
-                    val meta =
-                        CategoryMetaTable
-                            .selectAll()
-                            .where {
-                                CategoryMetaTable.user eq userId and
-                                    (CategoryMetaTable.ref eq categoryId) and
-                                    (CategoryMetaTable.key eq key)
-                            }.firstOrNull()
+        val (meta, category) =
+            transaction {
+                val meta =
+                    CategoryMetaTable
+                        .selectAll()
+                        .where {
+                            CategoryMetaTable.user eq userId and
+                                (CategoryMetaTable.ref eq categoryId) and
+                                (CategoryMetaTable.key eq key)
+                    }.firstOrNull()
 
-                    CategoryMetaTable.deleteWhere {
-                        CategoryMetaTable.user eq userId and
-                            (CategoryMetaTable.ref eq categoryId) and
-                            (CategoryMetaTable.key eq key)
-                    }
-
-                    val category =
-                        transaction {
-                            CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.first())
-                        }
-
-                    if (meta != null) {
-                        CategoryMetaType(meta)
-                    } else {
-                        null
-                    } to category
+            CategoryMetaTable.deleteWhere {
+                    CategoryMetaTable.user eq userId and
+                        (CategoryMetaTable.ref eq categoryId) and
+                        (CategoryMetaTable.key eq key)
                 }
 
-            DeleteCategoryMetaPayload(clientMutationId, meta, category)
+            val category =
+                transaction {
+                    CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.first())
+                }
+
+            if (meta != null) {
+                CategoryMetaType(meta)
+            } else {
+                null
+            } to category
         }
+
+        return DeleteCategoryMetaPayload(clientMutationId, meta, category)
+    }
+
+    data class SetCategoryMetasItem(
+        val categoryIds: List<Int>,
+        val metas: List<MetaInput>,
+    )
+
+    data class SetCategoryMetasInput(
+        val clientMutationId: String? = null,
+        val items: List<SetCategoryMetasItem>,
+    )
+
+    data class SetCategoryMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<CategoryMetaType>,
+        val categories: List<CategoryType>,
+    )
+
+    @RequireAuth
+    fun setCategoryMetas(input: SetCategoryMetasInput): SetCategoryMetasPayload? {
+        val (clientMutationId, items) = input
+
+        val metaByCategoryId =
+            items
+                .flatMap { item ->
+                    val metaMap = item.metas.associate { it.key to it.value }
+                    item.categoryIds.map { categoryId -> categoryId to metaMap }
+                }.groupBy({ it.first }, { it.second })
+                .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
+
+        Category.modifyCategoriesMetas(metaByCategoryId)
+
+        val allCategoryIds = metaByCategoryId.keys
+        val allMetaKeys = metaByCategoryId.values.flatMap { item -> item.keys }.distinct()
+
+        val (updatedMetas, categories) =
+            transaction {
+                val updatedMetas =
+                    CategoryMetaTable
+                        .selectAll()
+                        .where { (CategoryMetaTable.ref inList allCategoryIds) and (CategoryMetaTable.key inList allMetaKeys) }
+                        .map { CategoryMetaType(it) }
+
+                val categories =
+                    CategoryTable
+                        .selectAll()
+                        .where { CategoryTable.id inList allCategoryIds }
+                        .map { CategoryType(it) }
+                        .distinctBy { it.id }
+
+                updatedMetas to categories
+            }
+
+        return SetCategoryMetasPayload(clientMutationId, updatedMetas, categories)
+    }
+
+    data class DeleteCategoryMetasItem(
+        val categoryIds: List<Int>,
+        val keys: List<String>? = null,
+        val prefixes: List<String>? = null,
+    )
+
+    data class DeleteCategoryMetasInput(
+        val clientMutationId: String? = null,
+        val items: List<DeleteCategoryMetasItem>,
+    )
+
+    data class DeleteCategoryMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<CategoryMetaType>,
+        val categories: List<CategoryType>,
+    )
+
+    @RequireAuth
+    fun deleteCategoryMetas(input: DeleteCategoryMetasInput): DeleteCategoryMetasPayload? {
+        val (clientMutationId, items) = input
+
+        items.forEach { item ->
+            require(!item.keys.isNullOrEmpty() || !item.prefixes.isNullOrEmpty()) {
+                "Either 'keys' or 'prefixes' must be provided for each item"
+            }
+        }
+
+        val (allDeletedMetas, allCategoryIds) =
+            transaction {
+                val deletedMetas = mutableListOf<CategoryMetaType>()
+                val categoryIds = mutableSetOf<Int>()
+
+                items.forEach { item ->
+                    val keyCondition: Op<Boolean>? =
+                        item.keys?.takeIf { it.isNotEmpty() }?.let { CategoryMetaTable.key inList it }
+
+                    val prefixCondition: Op<Boolean>? =
+                        item.prefixes
+                            ?.filter { it.isNotEmpty() }
+                            ?.map { (CategoryMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.reduceOrNull { acc, op -> acc or op }
+
+                    val metaKeyCondition =
+                        if (keyCondition != null && prefixCondition != null) {
+                            keyCondition or prefixCondition
+                        } else {
+                            keyCondition ?: prefixCondition!!
+                        }
+
+                    val condition = (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
+
+                    deletedMetas +=
+                        CategoryMetaTable
+                            .selectAll()
+                            .where { condition }
+                            .map { CategoryMetaType(it) }
+
+                    CategoryMetaTable.deleteWhere { condition }
+                    categoryIds += item.categoryIds
+                }
+
+                deletedMetas to categoryIds
+            }
+
+        val categories =
+            transaction {
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id inList allCategoryIds }
+                    .map { CategoryType(it) }
+                    .distinctBy { it.id }
+            }
+
+        return DeleteCategoryMetasPayload(clientMutationId, allDeletedMetas, categories)
+    }
 
     data class UpdateCategoryPatch(
         val name: String? = null,
@@ -172,47 +310,43 @@ class CategoryMutation {
         }
     }
 
-    fun updateCategory(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateCategoryInput,
-    ): DataFetcherResult<UpdateCategoryPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, id, patch) = input
+    @RequireAuth
+    fun updateCategory(input: UpdateCategoryInput): UpdateCategoryPayload? {
+        val (clientMutationId, id, patch) = input
 
-            updateCategories(userId, listOf(id), patch)
+        updateCategories(userId, listOf(id), patch)
 
-            val category =
-                transaction {
-                    CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
-                }
+        val category =
+            transaction {
+                CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
+            }
 
-            UpdateCategoryPayload(
-                clientMutationId = clientMutationId,
-                category = category,
-            )
-        }
+        return UpdateCategoryPayload(
+            clientMutationId = clientMutationId,
+            category = category,
+        )
+    }
 
+    @RequireAuth
     fun updateCategories(
         dataFetchingEnvironment: DataFetchingEnvironment,
         input: UpdateCategoriesInput,
-    ): DataFetcherResult<UpdateCategoriesPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, ids, patch) = input
+    ): UpdateCategoriesPayload? {
+        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+        val (clientMutationId, ids, patch) = input
 
-            updateCategories(userId, ids, patch)
+        updateCategories(userId, ids, patch)
 
-            val categories =
-                transaction {
-                    CategoryTable.selectAll().where { CategoryTable.id inList ids }.map { CategoryType(it) }
-                }
+        val categories =
+            transaction {
+                CategoryTable.selectAll().where { CategoryTable.id inList ids }.map { CategoryType(it) }
+            }
 
-            UpdateCategoriesPayload(
-                clientMutationId = clientMutationId,
-                categories = categories,
-            )
-        }
+        return UpdateCategoriesPayload(
+            clientMutationId = clientMutationId,
+            categories = categories,
+        )
+    }
 
     data class UpdateCategoryOrderPayload(
         val clientMutationId: String?,
@@ -225,57 +359,53 @@ class CategoryMutation {
         val position: Int,
     )
 
-    fun updateCategoryOrder(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateCategoryOrderInput,
-    ): DataFetcherResult<UpdateCategoryOrderPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, categoryId, position) = input
-            require(position > 0) {
-                "'order' must not be <= 0"
-            }
+    @RequireAuth
+    fun updateCategoryOrder(input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload? {
+        val (clientMutationId, categoryId, position) = input
+        require(position > 0) {
+            "'order' must not be <= 0"
+        }
 
-            transaction {
-                val currentOrder =
-                    CategoryTable
-                        .selectAll()
-                        .where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
-                        .first()[CategoryTable.order]
+        transaction {
+            val currentOrder =
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
+                    .first()[CategoryTable.order]
 
-                if (currentOrder != position) {
-                    if (position < currentOrder) {
-                        CategoryTable.update({ CategoryTable.order greaterEq position and (CategoryTable.user eq userId) }) {
-                            it[CategoryTable.order] = CategoryTable.order + 1
-                        }
-                    } else {
-                        CategoryTable.update({ CategoryTable.order lessEq position and (CategoryTable.user eq userId) }) {
-                            it[CategoryTable.order] = CategoryTable.order - 1
-                        }
+            if (currentOrder != position) {
+                if (position < currentOrder) {
+                    CategoryTable.update({ CategoryTable.order greaterEq position and (CategoryTable.user eq userId) }) {
+                        it[CategoryTable.order] = CategoryTable.order + 1
                     }
-
-                    CategoryTable.update({ CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }) {
-                        it[CategoryTable.order] = position
+                } else {
+                    CategoryTable.update({ CategoryTable.order lessEq position and (CategoryTable.user eq userId) }) {
+                        it[CategoryTable.order] = CategoryTable.order - 1
                     }
                 }
+
+                CategoryTable.update({ CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }) {
+                    it[CategoryTable.order] = position
+                }
             }
+        }
 
-            Category.normalizeCategories(userId)
+        Category.normalizeCategories(userId)
 
-            val categories =
-                transaction {
-                    CategoryTable
+        val categories =
+            transaction {
+                CategoryTable
                         .selectAll()
                         .where { CategoryTable.user eq userId }
                         .orderBy(CategoryTable.order)
                         .map { CategoryType(it) }
-                }
+            }
 
-            UpdateCategoryOrderPayload(
-                clientMutationId = clientMutationId,
-                categories = categories,
-            )
-        }
+        return UpdateCategoryOrderPayload(
+            clientMutationId = clientMutationId,
+            categories = categories,
+        )
+    }
 
     data class CreateCategoryInput(
         val clientMutationId: String? = null,
@@ -291,38 +421,34 @@ class CategoryMutation {
         val category: CategoryType,
     )
 
-    fun createCategory(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: CreateCategoryInput,
-    ): DataFetcherResult<CreateCategoryPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
+    @RequireAuth
+    fun createCategory(input: CreateCategoryInput): CreateCategoryPayload? {
+        val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
+        transaction {
+            require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
+                "'name' must be unique"
+            }
+        }
+        require(!name.equals(Category.DEFAULT_CATEGORY_NAME, ignoreCase = true)) {
+            "'name' must not be ${Category.DEFAULT_CATEGORY_NAME}"
+        }
+        if (order != null) {
+            require(order > 0) {
+                "'order' must not be <= 0"
+            }
+        }
+
+        val category =
             transaction {
-                require(CategoryTable.selectAll().where { CategoryTable.name eq input.name and (CategoryTable.user eq userId) }.isEmpty()) {
-                    "'name' must be unique"
-                }
-            }
-            require(!name.equals(Category.DEFAULT_CATEGORY_NAME, ignoreCase = true)) {
-                "'name' must not be ${Category.DEFAULT_CATEGORY_NAME}"
-            }
-            if (order != null) {
-                require(order > 0) {
-                    "'order' must not be <= 0"
-                }
-            }
-
-            val category =
-                transaction {
-                    if (order != null) {
-                        CategoryTable.update({ CategoryTable.order greaterEq order and (CategoryTable.user eq userId) }) {
-                            it[CategoryTable.order] = CategoryTable.order + 1
-                        }
+                if (order != null) {
+                    CategoryTable.update({ CategoryTable.order greaterEq order and (CategoryTable.user eq userId) }) {
+                        it[CategoryTable.order] = CategoryTable.order + 1
                     }
+                }
 
-                    val id =
-                        CategoryTable.insertAndGetId {
-                            it[CategoryTable.user] = userId
+                val id =
+                    CategoryTable.insertAndGetId {
+                        it[CategoryTable.user] = userId
                             it[CategoryTable.name] = input.name
                             it[CategoryTable.order] = order ?: Int.MAX_VALUE
                             if (default != null) {
@@ -336,13 +462,13 @@ class CategoryMutation {
                             }
                         }
 
-                    Category.normalizeCategories(userId)
+                Category.normalizeCategories(userId)
 
-                    CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id and (CategoryTable.user eq userId) }.first())
-                }
+                CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id and (CategoryTable.user eq userId) }.first())
+            }
 
-            CreateCategoryPayload(clientMutationId, category)
-        }
+        return CreateCategoryPayload(clientMutationId, category)
+    }
 
     data class DeleteCategoryInput(
         val clientMutationId: String? = null,
@@ -355,52 +481,47 @@ class CategoryMutation {
         val mangas: List<MangaType>,
     )
 
-    fun deleteCategory(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteCategoryInput,
-    ): DataFetcherResult<DeleteCategoryPayload?> {
-        return asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, categoryId) = input
-            if (categoryId == 0) { // Don't delete default category
-                return@asDataFetcherResult DeleteCategoryPayload(
-                    clientMutationId,
-                    null,
-                    emptyList(),
-                )
+    @RequireAuth
+    fun deleteCategory(input: DeleteCategoryInput): DeleteCategoryPayload? {
+        val (clientMutationId, categoryId) = input
+        if (categoryId == 0) { // Don't delete default category
+            return DeleteCategoryPayload(
+                clientMutationId,
+                null,
+                emptyList(),
+            )
+        }
+
+        val (category, mangas) =
+            transaction {
+                val category =
+                    CategoryTable
+                        .selectAll()
+                        .where { CategoryTable.id eq categoryId }
+                        .firstOrNull()
+
+                val mangas =
+                    transaction {
+                        MangaTable
+                            .getWithUserData(userId)
+                                .innerJoin(CategoryMangaTable)
+                            .selectAll()
+                            .where { CategoryMangaTable.category eq categoryId and (CategoryMangaTable.user eq userId) }
+                            .map { MangaType(it) }
+                    }
+
+                CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
+
+                Category.normalizeCategories(userId)
+
+                if (category != null) {
+                    CategoryType(category)
+                } else {
+                    null
+                } to mangas
             }
 
-            val (category, mangas) =
-                transaction {
-                    val category =
-                        CategoryTable
-                            .selectAll()
-                            .where { CategoryTable.id eq categoryId }
-                            .firstOrNull()
-
-                    val mangas =
-                        transaction {
-                            MangaTable
-                                .getWithUserData(userId)
-                                .innerJoin(CategoryMangaTable)
-                                .selectAll()
-                                .where { CategoryMangaTable.category eq categoryId and (CategoryMangaTable.user eq userId) }
-                                .map { MangaType(it) }
-                        }
-
-                    CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
-
-                    Category.normalizeCategories(userId)
-
-                    if (category != null) {
-                        CategoryType(category)
-                    } else {
-                        null
-                    } to mangas
-                }
-
-            DeleteCategoryPayload(clientMutationId, category, mangas)
-        }
+        return DeleteCategoryPayload(clientMutationId, category, mangas)
     }
 
     data class UpdateMangaCategoriesPatch(
@@ -452,45 +573,37 @@ class CategoryMutation {
         }
     }
 
-    fun updateMangaCategories(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateMangaCategoriesInput,
-    ): DataFetcherResult<UpdateMangaCategoriesPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, id, patch) = input
+    @RequireAuth
+    fun updateMangaCategories(input: UpdateMangaCategoriesInput): UpdateMangaCategoriesPayload? {
+        val (clientMutationId, id, patch) = input
 
-            updateMangas(userId, listOf(id), patch)
+        updateMangas(userId, listOf(id), patch)
 
-            val manga =
-                transaction {
-                    MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
-                }
+        val manga =
+            transaction {
+                MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
+            }
 
-            UpdateMangaCategoriesPayload(
-                clientMutationId = clientMutationId,
-                manga = manga,
-            )
-        }
+        return UpdateMangaCategoriesPayload(
+            clientMutationId = clientMutationId,
+            manga = manga,
+        )
+    }
 
-    fun updateMangasCategories(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateMangasCategoriesInput,
-    ): DataFetcherResult<UpdateMangasCategoriesPayload?> =
-        asDataFetcherResult {
-            val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-            val (clientMutationId, ids, patch) = input
+    @RequireAuth
+    fun updateMangasCategories(input: UpdateMangasCategoriesInput): UpdateMangasCategoriesPayload? {
+        val (clientMutationId, ids, patch) = input
 
-            updateMangas(userId, ids, patch)
+        updateMangas(userId, ids, patch)
 
-            val mangas =
-                transaction {
-                    MangaTable.selectAll().where { MangaTable.id inList ids }.map { MangaType(it) }
-                }
+        val mangas =
+            transaction {
+                MangaTable.selectAll().where { MangaTable.id inList ids }.map { MangaType(it) }
+            }
 
-            UpdateMangasCategoriesPayload(
-                clientMutationId = clientMutationId,
-                mangas = mangas,
-            )
-        }
+        return UpdateMangasCategoriesPayload(
+            clientMutationId = clientMutationId,
+            mangas = mangas,
+        )
+    }
 }

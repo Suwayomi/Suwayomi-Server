@@ -150,7 +150,7 @@ class Bangumi(
 
     override fun getCompletionStatus(): Int = COMPLETED
 
-    override suspend fun login(
+    override suspend fun loginImpl(
         userId: Int,
         username: String,
         password: String,
@@ -158,19 +158,15 @@ class Bangumi(
 
     suspend fun login(
         userId: Int,
-        code: String,
+        code: String
     ) {
-        try {
-            val oauth = api(userId).accessToken(code)
-            interceptor(userId).newAuth(oauth)
-            // Users can set a 'username' (not nickname) once which effectively
-            // replaces the stringified ID in certain queries.
-            // If no username is set, the API returns the user ID as a strings
-            val username = api(userId).getUsername()
-            saveCredentials(userId, username, oauth.accessToken)
-        } catch (_: Throwable) {
-            logout(userId)
-        }
+        val oauth = api(userId).accessToken(code)
+        interceptor(userId).newAuth(oauth)
+        // Users can set a 'username' (not nickname) once which effectively
+        // replaces the stringified ID in certain queries.
+        // If no username is set, the API returns the user ID as a strings
+        val username = api(userId).getUsername()
+        saveCredentials(userId, username, oauth.accessToken)
     }
 
     fun saveToken(

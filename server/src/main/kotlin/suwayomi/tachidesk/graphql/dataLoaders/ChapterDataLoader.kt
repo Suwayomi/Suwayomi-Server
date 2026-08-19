@@ -11,13 +11,20 @@ import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.count
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.sum
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
@@ -29,11 +36,11 @@ import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.requireUser
 
-class ChapterDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "ChapterDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
@@ -55,7 +62,7 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
     override val dataLoaderName = "ChaptersForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterNodeList> =
-        DataLoaderFactory.newDataLoader<Int, ChapterNodeList> { ids ->
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
@@ -73,71 +80,69 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
         }
 }
 
-class DownloadedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
-    override val dataLoaderName = "DownloadedChapterCountForMangaDataLoader"
+data class MangaChapterStats(
+    val unreadCount: Int,
+    val downloadCount: Int,
+    val bookmarkCount: Int,
+)
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
-            future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
-                    val downloadedChapterCountByMangaId =
-                        ChapterTable
-                            .select(ChapterTable.manga, ChapterTable.isDownloaded.count())
-                            .where {
-                                (ChapterTable.manga inList ids) and
-                                    (ChapterTable.isDownloaded eq true)
-                            }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.isDownloaded.count()] }
-                    ids.map { downloadedChapterCountByMangaId[it]?.toInt() ?: 0 }
-                }
-            }
-        }
-}
+class ChapterFlagCountForMangaDataLoader : KotlinDataLoader<Int, MangaChapterStats> {
+    override val dataLoaderName = "ChapterFlagCountForMangaDataLoader"
 
-class UnreadChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
-    override val dataLoaderName = "UnreadChapterCountForMangaDataLoader"
-
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaChapterStats> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val unreadChapterCountByMangaId =
+
+                    val unreadCount =
+                        Case()
+                            .When(ChapterTable.isRead eq false, intLiteral(1))
+                            .Else(intLiteral(0))
+                            .sum()
+
+                    val downloadCount =
+                        Case()
+                            .When(ChapterTable.isDownloaded eq true, intLiteral(1))
+                            .Else(intLiteral(0))
+                            .sum()
+
+                    val bookmarkCount =
+                        Case()
+                            .When(ChapterTable.isBookmarked eq true, intLiteral(1))
+                            .Else(intLiteral(0))
+                            .sum()
+
+                    val statsByMangaId =
                         ChapterTable
                             .getWithUserData(userId)
-                            .select(ChapterTable.manga, ChapterUserTable.isRead.count())
-                            .where {
-                                (ChapterTable.manga inList ids) and
-                                    (ChapterUserTable.isRead eq false)
+                            .select(
+                                ChapterTable.manga,
+                                unreadCount,
+                                downloadCount,
+                                bookmarkCount,
+                            ).where {
+                                ChapterTable.manga inList ids
                             }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterUserTable.isRead.count()] }
-                    ids.map { unreadChapterCountByMangaId[it]?.toInt() ?: 0 }
-                }
-            }
-        }
-}
+                            .associate {
+                                val mangaId = it[ChapterTable.manga].value
 
-class BookmarkedChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
-    override val dataLoaderName = "BookmarkedChapterCountForMangaDataLoader"
+                                mangaId to
+                                    MangaChapterStats(
+                                        unreadCount = it[unreadCount] ?: 0,
+                                        downloadCount = it[downloadCount] ?: 0,
+                                        bookmarkCount = it[bookmarkCount] ?: 0,
+                                    )
+                            }
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader<Int, Int> { ids ->
-            future {
-                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
-                    val bookmarkedChapterCountByMangaId =
-                        ChapterTable
-                            .getWithUserData(userId)
-                            .select(ChapterTable.manga, ChapterUserTable.isBookmarked.count())
-                            .where {
-                                (ChapterTable.manga inList ids) and
-                                    (ChapterUserTable.isBookmarked eq true)
-                            }.groupBy(ChapterTable.manga)
-                            .associate { it[ChapterTable.manga].value to it[ChapterUserTable.isBookmarked.count()] }
-                    ids.map { bookmarkedChapterCountByMangaId[it]?.toInt() ?: 0 }
+                    ids.map {
+                        statsByMangaId[it] ?: MangaChapterStats(
+                            unreadCount = 0,
+                            downloadCount = 0,
+                            bookmarkCount = 0,
+                        )
+                    }
                 }
             }
         }
@@ -170,11 +175,11 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
         }
 }
 
-class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LastReadChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
@@ -192,11 +197,11 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
         }
 }
 
-class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LatestReadChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
@@ -214,11 +219,11 @@ class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> 
         }
 }
 
-class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LatestFetchedChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -234,11 +239,11 @@ class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType
         }
 }
 
-class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LatestUploadedChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
@@ -254,11 +259,11 @@ class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTyp
         }
 }
 
-class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "FirstUnreadChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
@@ -276,11 +281,11 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?>
         }
 }
 
-class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType?> {
+class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "HighestNumberedChapterForMangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType?> =
-        DataLoaderFactory.newDataLoader<Int, ChapterType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
+        DataLoaderFactory.newDataLoader { ids ->
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)

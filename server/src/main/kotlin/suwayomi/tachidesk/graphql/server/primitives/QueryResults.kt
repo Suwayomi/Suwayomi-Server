@@ -1,6 +1,6 @@
 package suwayomi.tachidesk.graphql.server.primitives
 
-import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.v1.core.ResultRow
 
 data class QueryResults<T>(
     val total: Long,

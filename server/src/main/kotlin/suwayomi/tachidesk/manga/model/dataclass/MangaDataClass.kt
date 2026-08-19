@@ -7,7 +7,11 @@ package suwayomi.tachidesk.manga.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.serialization.json.JsonObject
+import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import java.time.Instant
@@ -28,23 +32,30 @@ data class MangaDataClass(
     val inLibrary: Boolean = false,
     val inLibraryAt: Long = 0,
     val source: SourceDataClass? = null,
-    /** meta data for clients */
-    val meta: Map<String, String> = emptyMap(),
     val realUrl: String? = null,
-    var lastFetchedAt: Long? = 0,
-    var chaptersLastFetchedAt: Long? = 0,
-    var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
+    val lastFetchedAt: Long? = 0,
+    val chaptersLastFetchedAt: Long? = 0,
+    val updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
     val freshData: Boolean = false,
-    var unreadCount: Long? = null,
-    var downloadCount: Long? = null,
-    var chapterCount: Long? = null,
-    var lastReadAt: Long? = null,
-    var lastChapterRead: ChapterDataClass? = null,
+    val unreadCount: Long? = null,
+    val downloadCount: Long? = null,
+    val chapterCount: Long? = null,
+    val lastReadAt: Long? = null,
+    val lastChapterRead: ChapterDataClass? = null,
     val age: Long? = if (lastFetchedAt == null) 0 else Instant.now().epochSecond.minus(lastFetchedAt),
     val chaptersAge: Long? = if (chaptersLastFetchedAt == null) null else Instant.now().epochSecond.minus(chaptersLastFetchedAt),
     val trackers: List<MangaTrackerDataClass>? = null,
+    val lastModifiedAt: Long = 0,
+    val version: Long = 0,
+    @JsonIgnore
+    val memo: JsonObject = JsonObject.EMPTY,
 ) {
     override fun toString(): String = "\"$title\" (id= $id) (sourceId= $sourceId)"
+
+    @Deprecated("Remove with V1 Api")
+    val meta: Map<String, String> by lazy {
+        getMangaMetaMap(id)
+    }
 }
 
 data class PagedMangaListDataClass(

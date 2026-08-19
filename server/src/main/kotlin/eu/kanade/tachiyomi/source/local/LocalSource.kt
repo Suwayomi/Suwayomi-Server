@@ -23,12 +23,15 @@ import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.SMangaUpdate
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.lang.compareToCaseInsensitiveNaturalOrder
 import eu.kanade.tachiyomi.util.storage.EpubFile
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -36,11 +39,12 @@ import nl.adaptivity.xmlutil.ExperimentalXmlUtilApi
 import nl.adaptivity.xmlutil.core.KtXmlReader
 import nl.adaptivity.xmlutil.serialization.XML
 import org.apache.commons.compress.archivers.zip.ZipFile
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.registerSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -110,6 +114,7 @@ class LocalSource(
                             mangaDirs.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.name })
                         }
                 }
+
                 is OrderBy.Latest -> {
                     mangaDirs =
                         if (filter.state!!.ascending) {
@@ -165,8 +170,20 @@ class LocalSource(
         return MangasPage(mangas.toList(), false)
     }
 
+    override suspend fun getMangaUpdate(
+        manga: SManga,
+        chapters: List<SChapter>,
+        fetchDetails: Boolean,
+        fetchChapters: Boolean,
+    ): SMangaUpdate =
+        supervisorScope {
+            val asyncManga = if (fetchDetails) async { getMangaDetails(manga) } else null
+            val asyncChapters = if (fetchChapters) async { getChapterList(manga) } else null
+            SMangaUpdate(asyncManga?.await() ?: manga, asyncChapters?.await() ?: chapters)
+        }
+
     // Manga details related
-    override suspend fun getMangaDetails(manga: SManga): SManga =
+    private suspend fun getMangaDetails(manga: SManga): SManga =
         withContext(Dispatchers.IO) {
             coverManager.find(manga.url)?.let {
                 manga.thumbnail_url = it.absolutePath
@@ -246,6 +263,7 @@ class LocalSource(
                         }
                     }
                 }
+
                 is Format.Rar -> {
                     JunrarArchive(chapter).use { rar ->
                         rar.fileHeaders.firstOrNull { it.fileName == COMIC_INFO_FILE }?.let { comicInfoFile ->
@@ -255,6 +273,7 @@ class LocalSource(
                         }
                     }
                 }
+
                 else -> {}
             }
         }
@@ -285,7 +304,7 @@ class LocalSource(
     }
 
     // Chapters
-    override suspend fun getChapterList(manga: SManga): List<SChapter> =
+    private suspend fun getChapterList(manga: SManga): List<SChapter> =
         fileSystem
             .getFilesInMangaDirectory(manga.url)
             // Only keep supported formats
@@ -337,6 +356,7 @@ class LocalSource(
                         )
                     }
             }
+
             is Format.Zip -> {
                 val loader = ZipPageLoader(format.file)
                 val pages = loader.getPages()
@@ -344,6 +364,7 @@ class LocalSource(
 
                 pages
             }
+
             is Format.Rar -> {
                 val loader = RarPageLoader(format.file)
                 val pages = loader.getPages()
@@ -351,6 +372,7 @@ class LocalSource(
 
                 pages
             }
+
             is Format.Epub -> {
                 val loader = EpubPageLoader(format.file)
                 val pages = loader.getPages()
@@ -390,6 +412,7 @@ class LocalSource(
 
                     entry?.let { coverManager.update(manga, it.inputStream()) }
                 }
+
                 is Format.Zip -> {
                     ZipFile.builder().setFile(format.file).get().use { zip ->
                         val entry =
@@ -401,6 +424,7 @@ class LocalSource(
                         entry?.let { coverManager.update(manga, zip.getInputStream(it)) }
                     }
                 }
+
                 is Format.Rar -> {
                     JunrarArchive(format.file).use { archive ->
                         val entry =
@@ -411,6 +435,7 @@ class LocalSource(
                         entry?.let { coverManager.update(manga, archive.getInputStream(it)) }
                     }
                 }
+
                 is Format.Epub -> {
                     EpubFile(format.file).use { epub ->
                         val entry =
@@ -457,7 +482,8 @@ class LocalSource(
                             it[versionName] = "1.2"
                             it[versionCode] = 0
                             it[lang] = LANG
-                            it[isNsfw] = false
+                            it[extensionLib] = "1.2"
+                            it[contentWarning] = 0
                             it[isInstalled] = true
                         }
 
@@ -466,13 +492,12 @@ class LocalSource(
                         it[name] = NAME
                         it[lang] = LANG
                         it[extension] = extensionId
-                        it[isNsfw] = false
                     }
                 }
             }
 
             val fs = LocalSourceFileSystem(applicationDirs)
-            registerCatalogueSource(ID to LocalSource(fs, LocalCoverManager(fs)))
+            registerSource(ID to LocalSource(fs, LocalCoverManager(fs)))
         }
     }
 }

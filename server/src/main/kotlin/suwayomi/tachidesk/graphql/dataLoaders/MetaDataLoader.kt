@@ -4,11 +4,11 @@ import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
@@ -24,11 +24,11 @@ import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.requireUser
 
-class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType?> {
+class GlobalMetaDataLoader : KotlinDataLoader<String, GlobalMetaType> {
     override val dataLoaderName = "GlobalMetaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, GlobalMetaType?> =
-        DataLoaderFactory.newDataLoader<String, GlobalMetaType?> { ids ->
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, GlobalMetaType> =
+        DataLoaderFactory.newDataLoader<String, GlobalMetaType> { ids ->
             future {
                 val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
                 transaction {

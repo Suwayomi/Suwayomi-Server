@@ -3,12 +3,8 @@ package suwayomi.tachidesk.graphql.cache
 import org.dataloader.CacheMap
 import java.util.concurrent.CompletableFuture
 
-class CustomCacheMap<K, V> : CacheMap<K, V> {
-    private val cache: MutableMap<K, CompletableFuture<V>>
-
-    init {
-        cache = HashMap()
-    }
+class CustomCacheMap<K : Any, V : Any> : CacheMap<K, V> {
+    private val cache: MutableMap<K, CompletableFuture<V>> = HashMap()
 
     override fun containsKey(key: K): Boolean = cache.containsKey(key)
 
@@ -18,12 +14,12 @@ class CustomCacheMap<K, V> : CacheMap<K, V> {
 
     override fun getAll(): Collection<CompletableFuture<V>> = cache.values
 
-    override fun set(
+    override fun putIfAbsentAtomically(
         key: K,
         value: CompletableFuture<V>,
-    ): CacheMap<K, V> {
+    ): CompletableFuture<V> {
         cache[key] = value
-        return this
+        return value
     }
 
     override fun delete(key: K): CacheMap<K, V> {
@@ -35,4 +31,6 @@ class CustomCacheMap<K, V> : CacheMap<K, V> {
         cache.clear()
         return this
     }
+
+    override fun size(): Int = cache.size
 }

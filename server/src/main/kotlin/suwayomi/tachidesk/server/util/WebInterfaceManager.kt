@@ -12,16 +12,22 @@ import android.content.Context
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.util.lang.launchIO
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.reactivecircus.cache4k.Cache
+import io.javalin.config.JavalinConfig
+import io.javalin.http.staticfiles.AliasCheck
+import io.javalin.http.staticfiles.Location
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.sample
@@ -60,7 +66,9 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.util.Date
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -78,15 +86,21 @@ object WebInterfaceManager {
 
     private const val LAST_WEBUI_UPDATE_CHECK_KEY = "lastWebUIUpdateCheck"
     private const val SERVED_WEBUI_FLAVOR_KEY = "servedWebUIFlavor"
+    private const val VERSION_UPDATE_TIMESTAMP_KEY = "webUIVersionUpdateTimestamp"
 
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
     private var currentUpdateTaskId: String = ""
 
+    val isSetupComplete = MutableStateFlow(false)
+
     private val json: Json by injectLazy()
     private val network: NetworkHelper by injectLazy()
 
-    private val notifyFlow =
-        MutableSharedFlow<WebUIUpdateStatus>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
+    private val CACHE_DURATION = 5.minutes
+    private val versionMappingCache = Cache.Builder<String, JsonArray>().expireAfterWrite(CACHE_DURATION).build()
+    private val previewVersionCache = Cache.Builder<String, String>().expireAfterWrite(CACHE_DURATION).build()
+
+    private val notifyFlow = MutableSharedFlow<WebUIUpdateStatus?>()
 
     private val statusFlow = MutableSharedFlow<WebUIUpdateStatus>()
     val status =
@@ -100,7 +114,10 @@ object WebInterfaceManager {
         scope.launch {
             @OptIn(FlowPreview::class)
             notifyFlow.sample(1.seconds).collect {
-                statusFlow.emit(it)
+                if (it != null) {
+                    logger.debug { "notifyFlow: sampling $it" }
+                    statusFlow.emit(it)
+                }
             }
         }
 
@@ -119,7 +136,7 @@ object WebInterfaceManager {
     fun getAboutInfo(): AboutWebUI {
         val currentVersion = getLocalVersion()
 
-        val failedToGetVersion = currentVersion === "r-1"
+        val failedToGetVersion = currentVersion == "r-1"
         if (failedToGetVersion) {
             throw Exception("Failed to get current version")
         }
@@ -127,6 +144,7 @@ object WebInterfaceManager {
         return AboutWebUI(
             channel = serverConfig.webUIChannel.value,
             tag = currentVersion,
+            updateTimestamp = preferences.getLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()),
         )
     }
 
@@ -151,12 +169,76 @@ object WebInterfaceManager {
 
     private var serveWebUI: () -> Unit = {}
 
-    fun setServeWebUI(serveWebUI: () -> Unit) {
-        this.serveWebUI = serveWebUI
+    fun setup(config: JavalinConfig) {
+        if (!serverConfig.webUIEnabled.value) {
+            return
+        }
+
+        File(applicationDirs.webUIServe).mkdirs()
+
+        config.staticFiles.add { staticFiles ->
+            if (ServerSubpath.isDefined()) staticFiles.hostedPath = ServerSubpath.normalized()
+            // Use canonical path to avoid Jetty alias issues
+            staticFiles.directory = File(applicationDirs.webUIServe).canonicalPath
+            staticFiles.location = Location.EXTERNAL
+            staticFiles.aliasCheck = AliasCheck { _, _ -> true }
+        }
+
+        serveWebUI = {
+            val updatedServableRoot = createServableRoot()
+            config.spaRoot.addFile(ServerSubpath.asRootPath(), "$updatedServableRoot/index.html", Location.EXTERNAL)
+
+            logger.info {
+                "Serving SPA files for ${serverConfig.webUIFlavor.value}" +
+                    if (ServerSubpath.isDefined()) " under subpath '${ServerSubpath.normalized()}'" else ""
+            }
+        }
+
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launchIO {
+            setupWebUI()
+            isSetupComplete.value = true
+        }
     }
 
-    private fun setServedWebUIFlavor(flavor: WebUIFlavor) {
+    private fun createServableRoot(): String {
+        val tempWebUIRoot = createServableDirectory()
+        val orgIndexHtml = File("$tempWebUIRoot/index.html")
+
+        if (ServerSubpath.isDefined() && orgIndexHtml.exists()) {
+            val originalIndexHtml = orgIndexHtml.readText()
+            val subpathInjectionBaseTag = "<base href=\"${ServerSubpath.asRootPath()}\">"
+
+            val indexHtmlWithSubpathInjection =
+                originalIndexHtml.replace(
+                    "<head>",
+                    "<head>$subpathInjectionBaseTag",
+                )
+
+            orgIndexHtml.writeText(indexHtmlWithSubpathInjection)
+        }
+
+        return tempWebUIRoot
+    }
+
+    private fun createServableDirectory(): String {
+        val originalWebUIRoot = applicationDirs.webUIRoot
+        val tempWebUIRoot = applicationDirs.webUIServe
+
+        File(tempWebUIRoot).deleteRecursively()
+        File(tempWebUIRoot).mkdirs()
+
+        File(originalWebUIRoot).copyRecursively(File(tempWebUIRoot), overwrite = true)
+
+        logger.debug { "Created servable WebUI directory at: $tempWebUIRoot" }
+
+        // Return canonical path to avoid Jetty alias issues
+        return File(tempWebUIRoot).canonicalPath
+    }
+
+    private fun updateServedWebUIInfo(flavor: WebUIFlavor) {
         preferences.edit().putString(SERVED_WEBUI_FLAVOR_KEY, flavor.uiName).apply()
+        preferences.edit().putLong(VERSION_UPDATE_TIMESTAMP_KEY, System.currentTimeMillis()).apply()
     }
 
     private fun getServedWebUIFlavor(): WebUIFlavor =
@@ -164,7 +246,6 @@ object WebInterfaceManager {
 
     private fun isAutoUpdateEnabled(): Boolean = serverConfig.webUIUpdateCheckInterval.value.toInt() > 0
 
-    @OptIn(DelicateCoroutinesApi::class)
     private fun scheduleWebUIUpdateCheck() {
         HAScheduler.descheduleCron(currentUpdateTaskId)
 
@@ -180,25 +261,27 @@ object WebInterfaceManager {
         val lastAutomatedUpdate = preferences.getLong(LAST_WEBUI_UPDATE_CHECK_KEY, System.currentTimeMillis())
 
         val task = {
-            val log =
-                KotlinLogging.logger(
-                    "${logger.name}::scheduleWebUIUpdateCheck(" +
-                        "flavor= ${WebUIFlavor.current.uiName}, " +
-                        "channel= ${serverConfig.webUIChannel.value}, " +
-                        "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
-                        "lastAutomatedUpdate= ${
-                            Date(
-                                lastAutomatedUpdate,
-                            )
-                        })",
-                )
-            log.debug { "called" }
+            if (isSetupComplete.value) {
+                val log =
+                    KotlinLogging.logger(
+                        "${logger.name}::scheduleWebUIUpdateCheck(" +
+                            "flavor= ${WebUIFlavor.current.uiName}, " +
+                            "channel= ${serverConfig.webUIChannel.value}, " +
+                            "interval= ${serverConfig.webUIUpdateCheckInterval.value}h, " +
+                            "lastAutomatedUpdate= ${
+                                Date(
+                                    lastAutomatedUpdate,
+                                )
+                            })",
+                    )
+                log.debug { "called" }
 
-            runBlocking {
-                try {
-                    checkForUpdate(WebUIFlavor.current)
-                } catch (e: Exception) {
-                    log.error(e) { "failed due to" }
+                runBlocking {
+                    try {
+                        checkForUpdate(WebUIFlavor.current)
+                    } catch (e: Exception) {
+                        log.error(e) { "failed due to" }
+                    }
                 }
             }
         }
@@ -206,6 +289,7 @@ object WebInterfaceManager {
         val wasPreviousUpdateCheckTriggered =
             (System.currentTimeMillis() - lastAutomatedUpdate) < updateInterval.inWholeMilliseconds
         if (!wasPreviousUpdateCheckTriggered) {
+            @OptIn(DelicateCoroutinesApi::class)
             GlobalScope.launch(Dispatchers.IO) {
                 task()
             }
@@ -217,24 +301,41 @@ object WebInterfaceManager {
 
     suspend fun setupWebUI() {
         if (serverConfig.webUIFlavor.value == WebUIFlavor.CUSTOM) {
+            serveWebUI()
             return
         }
 
-        val flavor = WebUIFlavor.current
         val servedFlavor = getServedWebUIFlavor()
 
         val log =
-            KotlinLogging.logger("${logger.name} setupWebUI(flavor= ${flavor.uiName}, servedFlavor= ${servedFlavor.uiName})")
+            KotlinLogging.logger(
+                "${logger.name} setupWebUI(flavor= ${WebUIFlavor.current.uiName}, servedFlavor= ${servedFlavor.uiName}, channel= ${serverConfig.webUIChannel})",
+            )
+
+        val flavor =
+            if (serverConfig.webUIChannel.value == WebUIChannel.BUNDLED) {
+                if (serverConfig.webUIFlavor.value != WebUIFlavor.default) {
+                    log.warn {
+                        "Changed flavor to ${WebUIFlavor.default.uiName}. Channel \"${WebUIChannel.BUNDLED}\" only works with the default flavor"
+                    }
+                }
+
+                WebUIFlavor.default
+            } else {
+                WebUIFlavor.current
+            }
 
         if (doesLocalWebUIExist(applicationDirs.webUIRoot)) {
             val currentVersion = getLocalVersion()
 
             log.info { "found webUI files - version= $currentVersion" }
+            serveWebUI()
 
             val hasFlavorChanged = flavor.uiName != servedFlavor.uiName
             if (hasFlavorChanged) {
                 try {
                     doInitialSetup(flavor)
+                    serveWebUI()
                     return
                 } catch (e: Exception) {
                     log.warn(e) { "Failed to install the version of the new flavor, proceeding with version of previous flavor" }
@@ -245,6 +346,7 @@ object WebInterfaceManager {
             if (!isLocalWebUIValid(flavorToValidate, applicationDirs.webUIRoot)) {
                 try {
                     doInitialSetup(flavorToValidate, isInvalid = true)
+                    serveWebUI()
                 } catch (e: Exception) {
                     log.warn(e) { "WebUI is invalid and failed to install a valid version, proceeding with invalid version" }
                 }
@@ -264,6 +366,7 @@ object WebInterfaceManager {
 
                 try {
                     setupBundledWebUI()
+                    serveWebUI()
                 } catch (e: Exception) {
                     log.error(e) { "failed the update to the bundled webUI" }
                 }
@@ -275,6 +378,7 @@ object WebInterfaceManager {
         log.warn { "no webUI files found, starting download..." }
         try {
             doInitialSetup(flavor)
+            serveWebUI()
         } catch (e: Exception) {
             log.error(e) {
                 "Failed to setup the webUI. Unable to start the server with a served webUI, change the settings to start" +
@@ -305,7 +409,7 @@ object WebInterfaceManager {
             try {
                 downloadVersion(flavor, getVersion())
                 true
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 false
             } ||
                 isLocalWebUIValid
@@ -332,7 +436,7 @@ object WebInterfaceManager {
 
         try {
             setupBundledWebUI()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             throw Exception("Unable to setup a webUI")
         }
     }
@@ -340,7 +444,7 @@ object WebInterfaceManager {
     private suspend fun setupBundledWebUI() {
         try {
             extractBundledWebUI()
-            setServedWebUIFlavor(WebUIFlavor.default)
+            updateServedWebUIInfo(WebUIFlavor.default)
             return
         } catch (e: BundledWebUIMissing) {
             logger.warn(e) { "setupBundledWebUI: fallback to downloading the version of the bundled webUI" }
@@ -383,6 +487,7 @@ object WebInterfaceManager {
         log.info { "An update is available, starting download..." }
         try {
             downloadVersion(flavor, getLatestCompatibleVersion(flavor))
+            serveWebUI()
         } catch (e: Exception) {
             log.warn(e) { "failed due to" }
         }
@@ -401,7 +506,7 @@ object WebInterfaceManager {
     private fun getLocalVersion(path: String = applicationDirs.webUIRoot): String =
         try {
             File("$path/revision").readText().trim()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             "r-1"
         }
 
@@ -459,6 +564,7 @@ object WebInterfaceManager {
         execute: suspend () -> T,
         maxRetries: Int = 3,
         retryCount: Int = 0,
+        timeout: Duration = 2.seconds,
     ): T {
         try {
             return execute()
@@ -466,6 +572,7 @@ object WebInterfaceManager {
             log.warn(e) { "(retry $retryCount/$maxRetries) failed due to" }
 
             if (retryCount < maxRetries) {
+                delay(timeout.times(retryCount + 1))
                 return executeWithRetry(log, execute, maxRetries, retryCount + 1)
             }
 
@@ -486,7 +593,7 @@ object WebInterfaceManager {
                     .string()
                     .trim()
             })
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
 
@@ -496,31 +603,38 @@ object WebInterfaceManager {
     }
 
     private suspend fun fetchPreviewVersion(flavor: WebUIFlavor): String =
-        executeWithRetry(KotlinLogging.logger("${logger.name} fetchPreviewVersion(${flavor.uiName})"), {
-            val releaseInfoJson =
-                network.client
-                    .newCall(GET(flavor.latestReleaseInfoUrl))
-                    .awaitSuccess()
-                    .body
-                    .string()
-            Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
-                ?: throw Exception("Failed to get the preview version tag")
-        })
-
-    private suspend fun fetchServerMappingFile(flavor: WebUIFlavor): JsonArray =
-        executeWithRetry(
-            KotlinLogging.logger("$logger fetchServerMappingFile(${flavor.uiName})"),
-            {
-                json
-                    .parseToJsonElement(
+        previewVersionCache.get(flavor.uiName) {
+            executeWithRetry(
+                KotlinLogging.logger("${logger.name} fetchPreviewVersion(${flavor.uiName})"),
+                {
+                    val releaseInfoJson =
                         network.client
-                            .newCall(GET(flavor.versionMappingUrl))
+                            .newCall(GET(flavor.latestReleaseInfoUrl))
                             .awaitSuccess()
                             .body
-                            .string(),
-                    ).jsonArray
-            },
-        )
+                            .string()
+                    Json.decodeFromString<JsonObject>(releaseInfoJson)["tag_name"]?.jsonPrimitive?.content
+                        ?: throw Exception("Failed to get the preview version tag")
+                },
+            )
+        }
+
+    private suspend fun fetchServerMappingFile(flavor: WebUIFlavor): JsonArray =
+        versionMappingCache.get(flavor.uiName) {
+            executeWithRetry(
+                KotlinLogging.logger("$logger fetchServerMappingFile(${flavor.uiName})"),
+                {
+                    json
+                        .parseToJsonElement(
+                            network.client
+                                .newCall(GET(flavor.versionMappingUrl))
+                                .awaitSuccess()
+                                .body
+                                .string(),
+                        ).jsonArray
+                },
+            )
+        }
 
     private suspend fun getLatestCompatibleVersion(flavor: WebUIFlavor): String {
         if (serverConfig.webUIChannel.value == WebUIChannel.BUNDLED) {
@@ -592,6 +706,7 @@ object WebInterfaceManager {
             val status = getStatus(version, state, progress)
 
             if (immediate) {
+                notifyFlow.emit(null)
                 statusFlow.emit(status)
                 return@launch
             }
@@ -604,12 +719,14 @@ object WebInterfaceManager {
         flavor: WebUIFlavor,
         version: String,
     ) {
-        scope.launch {
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launchIO {
             downloadVersion(flavor, version)
+            serveWebUI()
         }
     }
 
-    suspend fun downloadVersion(
+    private suspend fun downloadVersion(
         flavor: WebUIFlavor,
         version: String,
     ) {
@@ -640,11 +757,9 @@ object WebInterfaceManager {
             extractDownload(webUIZipPath, applicationDirs.webUIRoot)
             log.info { "Extracting WebUI zip Done." }
 
-            setServedWebUIFlavor(flavor)
+            updateServedWebUIInfo(flavor)
 
             emitStatus(version, FINISHED, 100, immediate = true)
-
-            serveWebUI()
         } catch (e: Exception) {
             emitStatus(version, ERROR, 0, immediate = true)
             throw e

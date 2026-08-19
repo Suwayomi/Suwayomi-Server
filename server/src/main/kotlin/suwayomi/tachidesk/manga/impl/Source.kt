@@ -15,16 +15,22 @@ import eu.kanade.tachiyomi.source.sourcePreferences
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.extension.Extension.getExtensionIconUrl
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrNull
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.Source.preferenceScreenMap
+import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.unregisterSource
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
@@ -35,20 +41,20 @@ import xyz.nulldev.androidcompat.androidimpl.CustomContext
 object Source {
     private val logger = KotlinLogging.logger {}
 
-    fun getSourceList(): List<SourceDataClass> {
-        return transaction {
+    suspend fun getSourceList(): List<SourceDataClass> {
+        return suspendTransaction {
             SourceTable.selectAll().mapNotNull {
-                val catalogueSource = getCatalogueSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
+                val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
                 val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
                 SourceDataClass(
                     id = it[SourceTable.id].value.toString(),
                     name = it[SourceTable.name],
                     lang = it[SourceTable.lang],
-                    iconUrl = getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
+                    iconUrl = proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
                     supportsLatest = catalogueSource.supportsLatest,
                     isConfigurable = catalogueSource is ConfigurableSource,
-                    isNsfw = it[SourceTable.isNsfw],
+                    isNsfw = it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
                     displayName = catalogueSource.toString(),
                     baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
                 )
@@ -56,23 +62,20 @@ object Source {
         }
     }
 
-    fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
-        return transaction {
-            val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@transaction null
-            val catalogueSource = getCatalogueSourceOrNull(sourceId) ?: return@transaction null
+    suspend fun getSource(sourceId: Long): SourceDataClass? { // all the data extracted fresh form the source instance
+        return suspendTransaction {
+            val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@suspendTransaction null
+            val catalogueSource = getSourceOrNull(sourceId) ?: return@suspendTransaction null
             val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
 
             SourceDataClass(
                 id = sourceId.toString(),
                 name = source[SourceTable.name],
                 lang = source[SourceTable.lang],
-                iconUrl =
-                    getExtensionIconUrl(
-                        extension[ExtensionTable.apkName],
-                    ),
+                iconUrl = proxyExtensionIconUrl(extension[ExtensionTable.pkgName]),
                 supportsLatest = catalogueSource.supportsLatest,
                 isConfigurable = catalogueSource is ConfigurableSource,
-                isNsfw = source[SourceTable.isNsfw],
+                isNsfw = source[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
                 displayName = catalogueSource.toString(),
                 baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
             )
@@ -99,13 +102,13 @@ object Source {
     /**
      *  Gets a source's PreferenceScreen, puts the result into [preferenceScreenMap]
      */
-    fun getSourcePreferences(sourceId: Long): List<PreferenceObject> =
+    suspend fun getSourcePreferences(sourceId: Long): List<PreferenceObject> =
         getSourcePreferencesRaw(sourceId).map {
             PreferenceObject(it::class.java.simpleName, it)
         }
 
-    fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
-        val source = getCatalogueSourceOrStub(sourceId)
+    suspend fun getSourcePreferencesRaw(sourceId: Long): List<Preference> {
+        val source = getSourceOrStub(sourceId)
 
         if (source is ConfigurableSource) {
             val sourceShardPreferences = source.sourcePreferences()
@@ -155,7 +158,7 @@ object Source {
         pref.callChangeListener(newValue)
 
         // must reload the source because a preference was changed
-        unregisterCatalogueSource(sourceId)
+        unregisterSource(sourceId)
     }
 
     fun getSourcesMetaMaps(ids: List<Long>): Map<Long, Map<String, String>> =
@@ -216,13 +219,14 @@ object Source {
                 }
 
             if (existingMetaByMetaId.isNotEmpty()) {
-                BatchUpdateStatement(SourceMetaTable).apply {
-                    existingMetaByMetaId.forEach { (metaId, entry) ->
-                        addBatch(EntityID(metaId, SourceMetaTable))
-                        this[SourceMetaTable.value] = entry.value
-                    }
-                    execute(this@transaction)
-                }
+                BatchUpdateStatement(SourceMetaTable)
+                    .apply {
+                        existingMetaByMetaId.forEach { (metaId, entry) ->
+                            addBatch(EntityID(metaId, SourceMetaTable))
+                            this[SourceMetaTable.value] = entry.value
+                        }
+                    }.toExecutable()
+                    .execute(this@transaction)
             }
 
             if (newMetaBySourceId.isNotEmpty()) {

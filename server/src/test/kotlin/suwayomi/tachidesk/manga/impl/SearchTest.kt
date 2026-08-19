@@ -14,19 +14,19 @@ import eu.kanade.tachiyomi.source.model.SManga
 import io.javalin.json.JavalinJackson
 import io.javalin.json.toJsonString
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import rx.Observable
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
 import suwayomi.tachidesk.manga.impl.Search.FilterObject
 import suwayomi.tachidesk.manga.impl.Search.SerializableGroup
 import suwayomi.tachidesk.manga.impl.Search.getFilterList
 import suwayomi.tachidesk.manga.impl.Search.setFilter
 import suwayomi.tachidesk.manga.impl.Search.sourceSearch
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.registerCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.unregisterCatalogueSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.registerSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.unregisterSource
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.createSMangas
@@ -41,12 +41,11 @@ class SearchTest : ApplicationTest() {
     ) : StubSource(id) {
         var mangas: List<SManga> = emptyList()
 
-        @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getSearchManga"))
-        override fun fetchSearchManga(
+        override suspend fun getSearchManga(
             page: Int,
             query: String,
             filters: FilterList,
-        ): Observable<MangasPage> = Observable.just(MangasPage(mangas, false))
+        ): MangasPage = MangasPage(mangas, false)
     }
 
     private val sourceId = 1L
@@ -55,7 +54,7 @@ class SearchTest : ApplicationTest() {
 
     @BeforeAll
     fun setup() {
-        registerCatalogueSource(sourceId to source)
+        registerSource(sourceId to source)
 
         this.source.mangas = createSMangas(mangasCount)
     }
@@ -73,7 +72,7 @@ class SearchTest : ApplicationTest() {
 
     @AfterAll
     fun teardown() {
-        unregisterCatalogueSource(this.sourceId)
+        unregisterSource(this.sourceId)
     }
 }
 
@@ -88,17 +87,18 @@ class FilterListTest : ApplicationTest() {
     }
 
     @Test
-    fun `empty FilterList returns empty List`() {
-        val source = registerSource(EmptyFilterListSource::class)
-        source.mFilterList = FilterList()
+    fun `empty FilterList returns empty List`() =
+        runTest {
+            val source = registerSource(EmptyFilterListSource::class)
+            source.mFilterList = FilterList()
 
-        val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(source.id, false)
 
-        assertEquals(
-            0,
-            filterList.size,
-        )
-    }
+            assertEquals(
+                0,
+                filterList.size,
+            )
+        }
 
     class FilterListSource(
         id: Long,
@@ -157,58 +157,59 @@ class FilterListTest : ApplicationTest() {
     }
 
     @Test
-    fun convertsEveryTypeCorrectly() {
-        val source = registerSource(FilterListSource::class)
-        val filterList = getFilterList(source.id, false)
+    fun convertsEveryTypeCorrectly() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
+            val filterList = getFilterList(source.id, false)
 
-        assertEquals(
-            FilterObject("Header", source.mFilterList[0]),
-            filterList[0],
-        )
-        assertEquals(
-            FilterObject("Separator", source.mFilterList[1]),
-            filterList[1],
-        )
-        assertEquals(
-            FilterObject("Select", source.mFilterList[2]),
-            filterList[2],
-        )
-        assertEquals(
-            FilterObject("Text", source.mFilterList[3]),
-            filterList[3],
-        )
-        assertEquals(
-            FilterObject("CheckBox", source.mFilterList[4]),
-            filterList[4],
-        )
-        assertEquals(
-            FilterObject("TriState", source.mFilterList[5]),
-            filterList[5],
-        )
-        assertEquals(
-            filterList[6],
-            FilterObject(
-                "Group",
-                SerializableGroup(
-                    source.mFilterList[6].name,
-                    listOf(
-                        FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[0]),
-                        FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[1]),
-                        FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[2]),
+            assertEquals(
+                FilterObject("Header", source.mFilterList[0]),
+                filterList[0],
+            )
+            assertEquals(
+                FilterObject("Separator", source.mFilterList[1]),
+                filterList[1],
+            )
+            assertEquals(
+                FilterObject("Select", source.mFilterList[2]),
+                filterList[2],
+            )
+            assertEquals(
+                FilterObject("Text", source.mFilterList[3]),
+                filterList[3],
+            )
+            assertEquals(
+                FilterObject("CheckBox", source.mFilterList[4]),
+                filterList[4],
+            )
+            assertEquals(
+                FilterObject("TriState", source.mFilterList[5]),
+                filterList[5],
+            )
+            assertEquals(
+                filterList[6],
+                FilterObject(
+                    "Group",
+                    SerializableGroup(
+                        source.mFilterList[6].name,
+                        listOf(
+                            FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[0]),
+                            FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[1]),
+                            FilterObject("CheckBox", (source.mFilterList[6].state as List<Filter<*>>)[2]),
+                        ),
                     ),
                 ),
-            ),
-        )
-        assertEquals(
-            FilterObject("Sort", source.mFilterList[7]),
-            filterList[7],
-        )
+            )
+            assertEquals(
+                FilterObject("Sort", source.mFilterList[7]),
+                filterList[7],
+            )
 
-        // make sure that we can convert this to json
-        JavalinJackson().toJsonString(filterList)
-    }
+            // make sure that we can convert this to json
+            JavalinJackson().toJsonString(filterList)
+        }
 
-    fun setFilter(
+    suspend fun setFilter(
         sourceId: Long,
         filterChange: FilterChange,
     ) {
@@ -216,133 +217,140 @@ class FilterListTest : ApplicationTest() {
     }
 
     @Test
-    fun `Header and Separator should not change`() {
-        val source = registerSource(FilterListSource::class)
+    fun `Header and Separator should not change`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
 
-        setFilter(
-            source.id,
-            listOf(FilterChange(0, "change!")),
-        )
+            setFilter(
+                source.id,
+                listOf(FilterChange(0, "change!")),
+            )
 
-        setFilter(
-            source.id,
-            listOf(FilterChange(1, "change!")),
-        )
+            setFilter(
+                source.id,
+                listOf(FilterChange(1, "change!")),
+            )
 
-        val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(source.id, false)
 
-        assertEquals(
-            filterList[0].filter.state,
-            0,
-        )
+            assertEquals(
+                filterList[0].filter.state,
+                0,
+            )
 
-        assertEquals(
-            filterList[1].filter.state,
-            0,
-        )
-    }
-
-    @Test
-    fun `Select changes are Int`() {
-        val source = registerSource(FilterListSource::class)
-
-        setFilter(
-            source.id,
-            listOf(FilterChange(2, "1")),
-        )
-
-        val filterList = getFilterList(source.id, false)
-
-        assertEquals(
-            filterList[2].filter.state,
-            1,
-        )
-    }
+            assertEquals(
+                filterList[1].filter.state,
+                0,
+            )
+        }
 
     @Test
-    fun `Text changes are String`() {
-        val source = registerSource(FilterListSource::class)
+    fun `Select changes are Int`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
 
-        setFilter(
-            source.id,
-            listOf(FilterChange(3, "I'm a changed man!")),
-        )
+            setFilter(
+                source.id,
+                listOf(FilterChange(2, "1")),
+            )
 
-        val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(source.id, false)
 
-        assertEquals(
-            filterList[3].filter.state,
-            "I'm a changed man!",
-        )
-    }
-
-    @Test
-    fun `CheckBox changes are Boolean`() {
-        val source = registerSource(FilterListSource::class)
-
-        setFilter(
-            source.id,
-            listOf(FilterChange(4, "true")),
-        )
-
-        val filterList = getFilterList(source.id, false)
-
-        assertEquals(
-            filterList[4].filter.state,
-            true,
-        )
-    }
+            assertEquals(
+                filterList[2].filter.state,
+                1,
+            )
+        }
 
     @Test
-    fun `TriState changes are Int`() {
-        val source = registerSource(FilterListSource::class)
+    fun `Text changes are String`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
 
-        setFilter(
-            source.id,
-            listOf(FilterChange(5, "1")),
-        )
+            setFilter(
+                source.id,
+                listOf(FilterChange(3, "I'm a changed man!")),
+            )
 
-        val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(source.id, false)
 
-        assertEquals(
-            filterList[5].filter.state,
-            Filter.TriState.STATE_INCLUDE,
-        )
-    }
-
-    @Test
-    fun `Group changes are Filters`() {
-        val source = registerSource(FilterListSource::class)
-
-        setFilter(
-            source.id,
-            listOf(FilterChange(6, """{"position":0,"state":"true"}""")),
-        )
-
-        val filterList = getFilterList(source.id, false)
-
-        assertEquals(
-            (filterList[6].filter.state as List<FilterObject>)[0].filter.state,
-            true,
-        )
-    }
+            assertEquals(
+                filterList[3].filter.state,
+                "I'm a changed man!",
+            )
+        }
 
     @Test
-    fun `Sort changes are Filter,Sort,Selection`() {
-        val source = registerSource(FilterListSource::class)
+    fun `CheckBox changes are Boolean`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
 
-        setFilter(
-            source.id,
-            listOf(FilterChange(7, """{"index":1,"ascending":"true"}""")),
-        )
+            setFilter(
+                source.id,
+                listOf(FilterChange(4, "true")),
+            )
 
-        val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(source.id, false)
 
-        assertEquals(
-            filterList[7].filter.state,
-            Filter.Sort.Selection(1, true),
-        )
-    }
+            assertEquals(
+                filterList[4].filter.state,
+                true,
+            )
+        }
+
+    @Test
+    fun `TriState changes are Int`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
+
+            setFilter(
+                source.id,
+                listOf(FilterChange(5, "1")),
+            )
+
+            val filterList = getFilterList(source.id, false)
+
+            assertEquals(
+                filterList[5].filter.state,
+                Filter.TriState.STATE_INCLUDE,
+            )
+        }
+
+    @Test
+    fun `Group changes are Filters`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
+
+            setFilter(
+                source.id,
+                listOf(FilterChange(6, """{"position":0,"state":"true"}""")),
+            )
+
+            val filterList = getFilterList(source.id, false)
+
+            assertEquals(
+                (filterList[6].filter.state as List<FilterObject>)[0].filter.state,
+                true,
+            )
+        }
+
+    @Test
+    fun `Sort changes are Filter,Sort,Selection`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
+
+            setFilter(
+                source.id,
+                listOf(FilterChange(7, """{"index":1,"ascending":"true"}""")),
+            )
+
+            val filterList = getFilterList(source.id, false)
+
+            assertEquals(
+                filterList[7].filter.state,
+                Filter.Sort.Selection(1, true),
+            )
+        }
 
     companion object {
         private var sourceCount = 0L
@@ -350,7 +358,7 @@ class FilterListTest : ApplicationTest() {
         private fun registerSource(sourceClass: KClass<*>): EmptyFilterListSource =
             synchronized(sourceClass) {
                 val source = sourceClass.primaryConstructor!!.call(sourceCount) as EmptyFilterListSource
-                registerCatalogueSource(sourceCount to source)
+                registerSource(sourceCount to source)
                 sourceCount++
                 source
             }
@@ -358,7 +366,7 @@ class FilterListTest : ApplicationTest() {
         @AfterAll
         @JvmStatic
         fun teardown() {
-            (0 until sourceCount).forEach { unregisterCatalogueSource(it) }
+            (0 until sourceCount).forEach { unregisterSource(it) }
         }
     }
 }

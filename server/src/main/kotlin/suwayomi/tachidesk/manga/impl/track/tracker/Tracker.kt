@@ -77,7 +77,20 @@ abstract class Tracker(
         url: String,
     ) {}
 
-    abstract suspend fun login(
+    suspend fun login(
+        userId: Int,
+        username: String,
+        password: String,
+    ) {
+        try {
+            loginImpl(userId, username, password)
+        } catch (e: Throwable) {
+            logout(userId)
+            throw e
+        }
+    }
+
+    abstract suspend fun loginImpl(
         userId: Int,
         username: String,
         password: String,

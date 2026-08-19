@@ -7,22 +7,28 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.local.LocalSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import java.time.Instant
+import kotlin.and
 
 object Library {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -31,7 +37,7 @@ object Library {
         userId: Int,
         mangaId: Int,
     ) {
-        val manga = getManga(userId, mangaId)
+        val manga = getManga(mangaId)
         if (!manga.inLibrary) {
             transaction {
                 val defaultCategories =
@@ -42,13 +48,9 @@ object Library {
                                 (CategoryTable.isDefault eq true) and
                                 (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
                         }.toList()
-                val existingCategories =
-                    CategoryMangaTable
-                        .selectAll()
-                        .where {
-                            MangaUserTable.user eq userId and (CategoryMangaTable.manga eq mangaId)
-                        }.toList()
+                val existingCategories = CategoryMangaTable.selectAll().where { CategoryMangaTable.manga eq mangaId }.toList()
 
+                // todo change to upsert
                 if (MangaUserTable.selectAll().where { MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }.isEmpty()) {
                     MangaUserTable.insert {
                         it[MangaUserTable.manga] = mangaId
@@ -65,7 +67,7 @@ object Library {
 
                 if (existingCategories.isEmpty()) {
                     defaultCategories.forEach { category ->
-                        CategoryMangaTable.insert {
+                        CategoryMangaTable.upsert(CategoryMangaTable.manga, CategoryMangaTable.category) {
                             it[CategoryMangaTable.category] = category[CategoryTable.id].value
                             it[CategoryMangaTable.manga] = mangaId
                             it[CategoryMangaTable.user] = userId
@@ -89,26 +91,35 @@ object Library {
                     it[inLibrary] = false
                 }
             }.apply {
-                handleMangaThumbnail(mangaId)
+                handleMangaThumabnail(mangaId)
             }
         }
     }
 
-    fun handleMangaThumbnail(mangaId: Int) {
+    fun handleMangaThumbnail(
+        mangaId: Int,
+    ) {
         scope.launch {
-            val mangaInLibrary =
+            // todo grab
+            val sourceId =
                 transaction {
-                    MangaUserTable
-                        .selectAll()
-                        .where {
-                            MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
-                        }.isNotEmpty()
+                    MangaTable
+                        .select(MangaTable.sourceReference)
+                        .where { MangaTable.id eq mangaId }
+                        .first()
+                        .get(MangaTable.sourceReference)
                 }
+
+            if (sourceId == LocalSource.ID) {
+                return@launch
+            }
+
             try {
-                if (mangaInLibrary) {
+                if (inLibrary) {
                     ThumbnailDownloadHelper.download(mangaId)
                 } else {
-                    ThumbnailDownloadHelper.delete(mangaId)
+                    ThumbnailDownloadHelper
+                        .delete(mangaId)
                 }
             } catch (e: Exception) {
                 // ignore

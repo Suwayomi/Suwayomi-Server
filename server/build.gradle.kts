@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.bundles.exposed)
     implementation(libs.postgres)
     implementation(libs.h2)
+    implementation(libs.hikaricp)
 
     // Exposed Migrations
     implementation(libs.exposed.migrations)
@@ -159,6 +160,8 @@ buildConfig {
 
     buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Suwayomi-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
+    buildConfigField("String", "JCEF_VERSION", quoteWrap(libs.versions.jcef.get()))
+    buildConfigField("String", "JCEF_JBR_RELEASE", quoteWrap(webviewJbrRelease))
 }
 
 tasks {
@@ -171,6 +174,8 @@ tasks {
                 "Implementation-Vendor" to "The Suwayomi Project",
                 "Specification-Version" to getTachideskVersion(),
                 "Implementation-Version" to getTachideskRevision(),
+                "Multi-Release" to true, // needed for polyglot
+                "X-JBR-Release" to webviewJbrRelease,
             )
         }
         archiveBaseName.set(rootProject.name)
@@ -181,7 +186,11 @@ tasks {
     }
 
     test {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            if (!project.hasProperty("masstest")) {
+                exclude("**/masstest/*")
+            }
+        }
         testLogging {
             showStandardStreams = true
             events("passed", "skipped", "failed")
@@ -249,6 +258,10 @@ tasks {
     }
 
     processResources {
+        dependsOn(":server:server-config-generate:generateSettings")
+    }
+
+    processTestResources {
         dependsOn(":server:server-config-generate:generateSettings")
     }
 }

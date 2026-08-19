@@ -63,8 +63,6 @@ object ExtensionController {
                 ctx.future {
                     future {
                         Extension.installExtension(pkgName)
-                    }.thenApply {
-                        ctx.status(it)
                     }
                 }
             },
@@ -99,8 +97,6 @@ object ExtensionController {
                             uploadedFile.content(),
                             uploadedFile.filename(),
                         )
-                    }.thenApply {
-                        ctx.status(it)
                     }
                 }
             },
@@ -126,8 +122,6 @@ object ExtensionController {
                 ctx.future {
                     future {
                         Extension.updateExtension(pkgName)
-                    }.thenApply {
-                        ctx.status(it)
                     }
                 }
             },
@@ -165,17 +159,17 @@ object ExtensionController {
     /** icon for extension named `apkName` */
     val icon =
         handler(
-            pathParam<String>("apkName"),
+            pathParam<String>("pkgName"),
             documentWith = {
                 withOperation {
                     summary("Extension icon")
                     description("Icon for extension named `apkName`")
                 }
             },
-            behaviorOf = { ctx, apkName ->
+            behaviorOf = { ctx, pkgName ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Extension.getExtensionIcon(apkName) }
+                    future { Extension.getExtensionIcon(pkgName) }
                         .thenApply {
                             ctx.header("content-type", it.second)
                             val httpCacheSeconds = 365.days.inWholeSeconds

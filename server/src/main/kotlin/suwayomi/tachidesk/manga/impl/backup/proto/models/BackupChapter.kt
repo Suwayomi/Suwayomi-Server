@@ -2,6 +2,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
+import suwayomi.tachidesk.manga.impl.util.lang.JsonObjectEmptyBytes
 
 @Serializable
 data class BackupChapter(
@@ -19,6 +20,10 @@ data class BackupChapter(
     // chapterNumber is called number is 1.x
     @ProtoNumber(9) var chapterNumber: Float = 0F,
     @ProtoNumber(10) var sourceOrder: Int = 0,
+    // syncyomi
+    @ProtoNumber(11) var lastModifiedAt: Long = 0,
+    @ProtoNumber(12) var version: Long = 0,
+    @ProtoNumber(13) var memo: ByteArray = JsonObjectEmptyBytes,
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 )

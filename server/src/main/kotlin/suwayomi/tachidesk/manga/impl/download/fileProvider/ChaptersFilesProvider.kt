@@ -11,13 +11,13 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import libcore.net.MimeUtils
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.graphql.types.DownloadConversion
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
@@ -26,14 +26,8 @@ import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.server.serverConfig
-import suwayomi.tachidesk.util.ConversionUtil
 import java.io.File
 import java.io.InputStream
-import javax.imageio.IIOImage
-import javax.imageio.ImageIO
-import javax.imageio.ImageWriteParam
-import javax.imageio.ImageWriter
 
 sealed class FileType {
     data class RegularFile(
@@ -49,6 +43,7 @@ sealed class FileType {
             is RegularFile -> {
                 this.file.name
             }
+
             is ZipFile -> {
                 this.entry.name
             }
@@ -59,6 +54,7 @@ sealed class FileType {
             is RegularFile -> {
                 this.file.extension
             }
+
             is ZipFile -> {
                 this.entry.name.substringAfterLast(".")
             }
@@ -74,15 +70,15 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 ) : DownloadedFilesProvider {
     protected val logger = KotlinLogging.logger {}
 
-    protected abstract fun getImageFiles(): List<Type>
+    protected abstract suspend fun getImageFiles(): List<Type>
 
-    protected abstract fun getImageInputStream(image: Type): InputStream
+    protected abstract suspend fun getImageInputStream(image: Type): InputStream
 
-    fun getImageImpl(index: Int): Pair<InputStream, String> {
+    suspend fun getImageImpl(index: Int): Pair<InputStream, String> {
         val images = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.sortedBy { it.getName() }
 
         if (images.isEmpty()) {
-            throw Exception("no downloaded images found")
+            throw NoSuchElementException("no downloaded images found")
         }
 
         val image = images[index]
@@ -91,22 +87,22 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         return Pair(getImageInputStream(image).buffered(), MimeUtils.guessMimeTypeFromExtension(imageFileType) ?: "image/$imageFileType")
     }
 
-    fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
+    suspend fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
 
-    override fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
+    override suspend fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
 
     /**
      * Extract the existing download to the base download folder (see [getChapterDownloadPath])
      */
-    protected abstract fun extractExistingDownload()
+    protected abstract suspend fun extractExistingDownload()
 
     protected abstract suspend fun handleSuccessfulDownload()
 
     @OptIn(FlowPreview::class)
     private suspend fun downloadImpl(
-        download: DownloadChapter,
+        download: DownloadQueueItem,
         scope: CoroutineScope,
-        step: suspend (DownloadChapter?, Boolean) -> Unit,
+        step: suspend (DownloadQueueItem?, Boolean) -> Unit,
     ): Boolean {
         val existingDownloadPageCount =
             try {
@@ -114,7 +110,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             } catch (_: Exception) {
                 0
             }
-        val pageCount = download.chapter.pageCount
+        val pageCount = download.pageCount
 
         check(pageCount > 0) { "pageCount must be greater than 0 - ChapterForDownload#getChapterDownloadReady not called" }
         check(existingDownloadPageCount == 0 || existingDownloadPageCount == pageCount) {
@@ -151,10 +147,12 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
             try {
                 Page
-                    .getPageImage(
+                    .getPageImageDownload(
                         mangaId = download.mangaId,
-                        chapterIndex = download.chapterIndex,
+                        chapterId = download.chapterId,
                         index = pageNum,
+                        downloadCacheFolder,
+                        fileName,
                     ) { flow ->
                         pageProgressJob =
                             flow
@@ -167,8 +165,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                                         false,
                                     ) // don't throw on canceled download here since we can't do anything
                                 }.launchIn(scope)
-                    }.first
-                    .close()
+                    }
             } finally {
                 // always cancel the page progress job even if it throws an exception to avoid memory leaks
                 pageProgressJob?.cancel()
@@ -187,8 +184,6 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                 ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()
             },
         )
-
-        maybeConvertPages(downloadCacheFolder)
 
         handleSuccessfulDownload()
 
@@ -213,112 +208,12 @@ abstract class ChaptersFilesProvider<Type : FileType>(
     /**
      * This function should never be called without calling [getChapterDownloadReady] beforehand.
      */
-    override fun download(): FileDownload3Args<DownloadChapter, CoroutineScope, suspend (DownloadChapter?, Boolean) -> Unit> =
+    override fun download(): FileDownload3Args<DownloadQueueItem, CoroutineScope, suspend (DownloadQueueItem?, Boolean) -> Unit> =
         FileDownload3Args(::downloadImpl)
 
-    abstract override fun delete(): Boolean
+    abstract override suspend fun delete(): Boolean
 
-    abstract fun getAsArchiveStream(): Pair<InputStream, Long>
+    abstract suspend fun getAsArchiveStream(): Pair<InputStream, Long>
 
-    abstract fun getArchiveSize(): Long
-
-    private fun maybeConvertPages(chapterCacheFolder: File) {
-        val conversions = serverConfig.downloadConversions.value
-
-        if (!chapterCacheFolder.isDirectory || conversions.isEmpty()) {
-            return
-        }
-
-        val pages =
-            chapterCacheFolder
-                .listFiles()
-                .orEmpty()
-                .filter { it.name != COMIC_INFO_FILE }
-
-        val pagesByMimeType =
-            pages
-                .groupBy { MimeUtils.guessMimeTypeFromExtension(it.extension) }
-                .mapValues { it.value.map { it.nameWithoutExtension } }
-
-        logger.debug { "maybeConvertPages: pagesByMimeType= $pagesByMimeType; conversions= $conversions" }
-
-        pages.forEach { page ->
-            val imageType = MimeUtils.guessMimeTypeFromExtension(page.extension) ?: return@forEach
-
-            val defaultConversion = conversions["default"]
-            val conversion = conversions[imageType]
-            val targetConversion = conversion ?: defaultConversion ?: return@forEach
-
-            val (targetMime) = targetConversion
-            val requiresConversion = imageType != targetMime && targetMime != "none"
-            if (!requiresConversion) {
-                return@forEach
-            }
-
-            convertPage(page, targetConversion)
-        }
-    }
-
-    private fun convertPage(
-        page: File,
-        conversion: DownloadConversion,
-    ) {
-        val (targetMime, compressionLevel) = conversion
-
-        val targetExtension =
-            MimeUtils.guessExtensionFromMimeType(targetMime) ?: targetMime.removePrefix("image/")
-
-        val convertedPage = File(page.parentFile, page.nameWithoutExtension + "." + targetExtension)
-
-        val conversionWriter = getConversionWriter(targetMime, compressionLevel)
-        if (conversionWriter == null) {
-            logger.warn { "Conversion aborted: No reader for target format $targetMime" }
-            return
-        }
-
-        val (writer, writerParams) = conversionWriter
-
-        val success =
-            try {
-                ImageIO.createImageOutputStream(convertedPage).use { outStream ->
-                    writer.setOutput(outStream)
-
-                    val inImage = ConversionUtil.readImage(page) ?: return@use false
-                    writer.write(null, IIOImage(inImage, null, null), writerParams)
-
-                    true
-                }
-            } catch (e: Exception) {
-                logger.warn(e) { "Conversion aborted: for image $page" }
-                false
-            }
-        writer.dispose()
-
-        if (success) {
-            page.delete()
-        } else {
-            convertedPage.delete()
-        }
-    }
-
-    private fun getConversionWriter(
-        targetMime: String,
-        compressionLevel: Double?,
-    ): Pair<ImageWriter, ImageWriteParam>? {
-        val writers = ImageIO.getImageWritersByMIMEType(targetMime)
-        val writer =
-            try {
-                writers.next()
-            } catch (_: NoSuchElementException) {
-                return null
-            }
-
-        val writerParams = writer.defaultWriteParam
-        compressionLevel?.let {
-            writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
-            writerParams.compressionQuality = it.toFloat()
-        }
-
-        return writer to writerParams
-    }
+    abstract suspend fun getArchiveSize(): Long
 }

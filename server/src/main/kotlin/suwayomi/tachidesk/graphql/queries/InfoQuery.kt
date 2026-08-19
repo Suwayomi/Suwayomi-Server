@@ -1,19 +1,17 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
-import graphql.schema.DataFetchingEnvironment
 import suwayomi.tachidesk.global.impl.AppUpdate
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.AboutWebUI
+import suwayomi.tachidesk.graphql.types.PlatformInfo
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateCheck
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
-import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.server.util.Platform
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
 
@@ -27,6 +25,7 @@ class InfoQuery {
         val buildTime: Long,
         val github: String,
         val discord: String,
+        val platformInfo: PlatformInfo,
     )
 
     fun aboutServer(dataFetchingEnvironment: DataFetchingEnvironment): AboutServerPayload {
@@ -40,6 +39,7 @@ class InfoQuery {
             BuildConfig.BUILD_TIME,
             BuildConfig.GITHUB,
             BuildConfig.DISCORD,
+            PlatformInfo(Platform.current),
         )
     }
 
@@ -50,9 +50,9 @@ class InfoQuery {
         val url: String,
     )
 
-    fun checkForServerUpdates(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CheckForServerUpdatesPayload>> =
+    @RequireAuth
+    fun checkForServerUpdates(): CompletableFuture<List<CheckForServerUpdatesPayload>> =
         future {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             AppUpdate.checkUpdate().map {
                 CheckForServerUpdatesPayload(
                     channel = it.channel,
@@ -62,15 +62,15 @@ class InfoQuery {
             }
         }
 
-    fun aboutWebUI(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<AboutWebUI> =
+    @RequireAuth
+    fun aboutWebUI(): CompletableFuture<AboutWebUI> =
         future {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             WebInterfaceManager.getAboutInfo()
         }
 
-    fun checkForWebUIUpdate(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<WebUIUpdateCheck> =
+    @RequireAuth
+    fun checkForWebUIUpdate(): CompletableFuture<WebUIUpdateCheck> =
         future {
-            dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
             val (version, updateAvailable) = WebInterfaceManager.isUpdateAvailable(WebUIFlavor.current, raiseError = true)
             WebUIUpdateCheck(
                 channel = serverConfig.webUIChannel.value,
@@ -79,8 +79,6 @@ class InfoQuery {
             )
         }
 
-    fun getWebUIUpdateStatus(dataFetchingEnvironment: DataFetchingEnvironment): WebUIUpdateStatus {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return WebInterfaceManager.status.value
-    }
+    @RequireAuth
+    fun getWebUIUpdateStatus(): WebUIUpdateStatus = WebInterfaceManager.status.value
 }

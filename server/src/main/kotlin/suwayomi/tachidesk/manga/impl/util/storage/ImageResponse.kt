@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl.util.storage
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import libcore.net.MimeUtils
 import okhttp3.Response
 import okhttp3.internal.closeQuietly
 import java.io.File
@@ -45,7 +46,7 @@ object ImageResponse {
     /**
      * Get a cached image response
      *
-     * Note: The caller should also call [clearCachedImage] when appropriate
+     * Note: The caller should also call [ImageResponse.clearCachedImage] when appropriate
      *
      * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
      * @param fileName what the saved cache file should be named
@@ -69,7 +70,12 @@ object ImageResponse {
 
         try {
             if (response.code == 200) {
-                val (actualSavePath, imageType) = saveImage(filePath, response.body.byteStream())
+                val (actualSavePath, imageType) =
+                    saveImage(
+                        filePath,
+                        response.body.byteStream(),
+                        response.header("Content-Type"),
+                    )
                 return pathToInputStream(actualSavePath) to imageType
             } else {
                 throw Exception("request error! ${response.code}")
@@ -87,20 +93,28 @@ object ImageResponse {
     fun saveImage(
         filePath: String,
         image: InputStream,
+        mimeType: String?,
     ): Pair<String, String> {
+        val mimeType = mimeType?.takeIf { it.startsWith("image/") }?.lowercase()
         val tmpSavePath = "$filePath.tmp"
         val tmpSaveFile = File(tmpSavePath)
         image.use { input -> tmpSaveFile.outputStream().use { output -> input.copyTo(output) } }
 
         // find image type
         val imageType =
-            ImageUtil.findImageType { tmpSaveFile.inputStream() }?.mime
-                ?: "image/jpeg"
+            ImageUtil.findImageType { tmpSaveFile.inputStream() }
+                ?: ImageUtil.ImageType.entries.find {
+                    it.mime == mimeType
+                }
+        val extension =
+            imageType?.extension ?: mimeType?.let {
+                MimeUtils.guessExtensionFromMimeType(it)
+            } ?: "jpg"
 
-        val actualSavePath = "$filePath.${imageType.substringAfter("/")}"
+        val actualSavePath = "$filePath.$extension"
 
         tmpSaveFile.renameTo(File(actualSavePath))
-        return Pair(actualSavePath, imageType)
+        return Pair(actualSavePath, imageType?.mime ?: mimeType ?: "image/jpeg")
     }
 
     fun clearCachedImage(

@@ -120,14 +120,16 @@ open class ConfigManager {
         }
     }
 
-    fun resetUserConfig(updateInternalConfig: Boolean = true): ConfigDocument {
+    private fun createConfigDocumentFromReference(): ConfigDocument {
         val serverConfigFileContent = this::class.java.getResource("/server-reference.conf")?.readText()
-        val serverConfigDoc = ConfigDocumentFactory.parseString(serverConfigFileContent)
-        userConfigFile.writeText(serverConfigDoc.render())
+        return ConfigDocumentFactory.parseString(serverConfigFileContent)
+    }
 
-        if (updateInternalConfig) {
-            getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
-        }
+    fun resetUserConfig(): ConfigDocument {
+        val serverConfigDoc = createConfigDocumentFromReference()
+
+        userConfigFile.writeText(serverConfigDoc.render())
+        getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
 
         return serverConfigDoc
     }
@@ -135,8 +137,9 @@ open class ConfigManager {
     /**
      * Makes sure the "UserConfig" is up-to-date.
      *
-     *  - adds missing settings
-     *  - removes outdated settings
+     *  - Adds missing settings
+     *  - Migrates deprecated settings
+     *  - Removes outdated settings
      */
     fun updateUserConfig(migrate: ConfigDocument.(Config) -> ConfigDocument) {
         val serverConfig = ConfigFactory.parseResources("server-reference.conf")
@@ -149,16 +152,17 @@ open class ConfigManager {
             }
         val hasMissingSettings = refKeys.any { !userConfig.hasPath(it) }
         val hasOutdatedSettings = userConfig.entrySet().any { !refKeys.contains(it.key) && it.key.count { c -> c == '.' } <= 1 }
+
         val isUserConfigOutdated = hasMissingSettings || hasOutdatedSettings
         if (!isUserConfigOutdated) {
             return
         }
 
         logger.debug {
-            "user config is out of date, updating... (missingSettings= $hasMissingSettings, outdatedSettings= $hasOutdatedSettings"
+            "user config is out of date, updating... (missingSettings= $hasMissingSettings, outdatedSettings= $hasOutdatedSettings)"
         }
 
-        var newUserConfigDoc: ConfigDocument = resetUserConfig(false)
+        var newUserConfigDoc: ConfigDocument = createConfigDocumentFromReference()
         userConfig
             .entrySet()
             .filter {
@@ -173,6 +177,23 @@ open class ConfigManager {
 
         userConfigFile.writeText(newUserConfigDoc.render())
         getUserConfig().entrySet().forEach { internalConfig = internalConfig.withValue(it.key, it.value) }
+    }
+
+    fun getRedactedConfig(nonPrivacySafeKeys: List<String>): Config {
+        val entries =
+            config.entrySet().associate { entry ->
+                val key = entry.key
+                val value =
+                    if (nonPrivacySafeKeys.any { key.split(".").getOrNull(1) == it }) {
+                        "[REDACTED]"
+                    } else {
+                        entry.value.unwrapped()
+                    }
+
+                key to value
+            }
+
+        return ConfigFactory.parseMap(entries)
     }
 }
 

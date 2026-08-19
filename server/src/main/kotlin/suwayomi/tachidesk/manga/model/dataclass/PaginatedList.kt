@@ -7,12 +7,21 @@ package suwayomi.tachidesk.manga.model.dataclass
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import java.util.Objects
 import kotlin.math.min
 
 open class PaginatedList<T>(
     val page: List<T>,
     val hasNextPage: Boolean,
-)
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is PaginatedList<T>) return false
+        return page == other.page && hasNextPage == other.hasNextPage
+    }
+
+    override fun hashCode(): Int = Objects.hash(page, hasNextPage)
+}
 
 const val PAGINATION_FACTOR = 50
 

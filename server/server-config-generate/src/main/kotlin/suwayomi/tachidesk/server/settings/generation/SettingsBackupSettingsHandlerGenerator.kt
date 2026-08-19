@@ -2,7 +2,6 @@ package suwayomi.tachidesk.server.settings.generation
 
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import java.io.File
-import kotlin.text.appendLine
 
 object SettingsBackupSettingsHandlerGenerator {
     fun generate(
@@ -35,7 +34,7 @@ object SettingsBackupSettingsHandlerGenerator {
         appendLine(
             KotlinFileGeneratorHelper.createImports(
                 listOf(
-                    "suwayomi.tachidesk.graphql.mutations.SettingsMutation",
+                    "suwayomi.tachidesk.server.settings.SettingsUpdater",
                     "suwayomi.tachidesk.manga.impl.backup.BackupFlags",
                     "suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings",
                     "suwayomi.tachidesk.server.serverConfig",
@@ -77,7 +76,7 @@ object SettingsBackupSettingsHandlerGenerator {
         appendLine("fun restore(backupServerSettings: BackupServerSettings?) {".addIndentation(indentation))
         appendLine("if (backupServerSettings == null) { return }".addIndentation(contentIndentation))
         appendLine()
-        appendLine("SettingsMutation().updateSettings(".addIndentation(contentIndentation))
+        appendLine("SettingsUpdater.updateAll(".addIndentation(contentIndentation))
         appendLine("backupServerSettings.copy(".addIndentation(indentation * 3))
 
         val deprecatedSettings = settings.filter { it.typeInfo.restoreLegacy != null }
@@ -86,6 +85,12 @@ object SettingsBackupSettingsHandlerGenerator {
                 "${setting.name} = SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.restoreLegacy!!(".addIndentation(indentation * 4) +
                     "backupServerSettings.${setting.name}" +
                     ") as? ${getSettingType(setting, false)},",
+            )
+        }
+        val excludedSettings = settings.filter { it.excludeFromBackup == true }
+        excludedSettings.forEach { setting ->
+            appendLine(
+                "${setting.name} = null,".addIndentation(indentation * 4),
             )
         }
         appendLine("),".addIndentation(indentation * 3))
@@ -126,6 +131,9 @@ object SettingsBackupSettingsHandlerGenerator {
     }
 
     private fun getConfigAccess(setting: SettingsRegistry.SettingMetadata): String {
+        if (setting.excludeFromBackup == true || setting.deprecated != null) {
+            return "null"
+        }
         if (setting.typeInfo.convertToBackupType != null) {
             return "SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.convertToBackupType!!(" +
                 "serverConfig.${setting.name}.value" +

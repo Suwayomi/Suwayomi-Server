@@ -14,14 +14,14 @@ import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
 import com.typesafe.config.ConfigValue
 import com.typesafe.config.parser.ConfigDocument
-import dev.datlag.kcef.KCEF
+import dorkbox.updates.Updates
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.javalin.json.JavalinJackson
+import io.javalin.json.JavalinJackson3
 import io.javalin.json.JsonMapper
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -37,19 +37,24 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
-import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.manga.impl.extension.ExtensionStoreService
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
+import suwayomi.tachidesk.server.util.CEFManager
 import suwayomi.tachidesk.server.util.ConfigTypeRegistration
+import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.SystemTray
+import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import xyz.nulldev.androidcompat.AndroidCompat
@@ -68,10 +73,6 @@ import java.net.Authenticator
 import java.net.PasswordAuthentication
 import java.security.Security
 import java.util.Locale
-import kotlin.io.path.Path
-import kotlin.io.path.createDirectories
-import kotlin.io.path.div
-import kotlin.math.roundToInt
 
 private val logger = KotlinLogging.logger {}
 
@@ -85,6 +86,7 @@ class ApplicationDirs(
     val localMangaRoot
         get() = serverConfig.localSourcePath.value.ifBlank { "$dataRoot/local" }
     val webUIRoot = "$dataRoot/webUI"
+    val webUIServe = "$tempRoot/webUI-serve"
     val automatedBackupRoot
         get() = serverConfig.backupPath.value.ifBlank { "$dataRoot/backups" }
 
@@ -95,6 +97,8 @@ class ApplicationDirs(
         get() = "$downloadsRoot/thumbnails"
     val mangaDownloadsRoot
         get() = "$downloadsRoot/mangas"
+
+    val cacheDir = "$dataRoot/cache"
 }
 
 @Suppress("DEPRECATION")
@@ -120,9 +124,8 @@ data class DatabaseSettings(
     val databaseUrl: String,
     val databaseUsername: String,
     val databasePassword: String,
+    val useHikariConnectionPool: Boolean,
 )
-
-val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
 val androidCompat by lazy { AndroidCompat() }
 
@@ -142,17 +145,18 @@ fun setupLogLevelUpdating(
     )
 }
 
-fun <T : Any> migrateConfig(
+fun migrateConfigValue(
     configDocument: ConfigDocument,
     config: Config,
     configKey: String,
     toConfigKey: String,
-    toType: (ConfigValue) -> T?,
+    toType: (ConfigValue) -> Any?,
 ): ConfigDocument {
     try {
         val configValue = config.getValue(configKey)
         val typedValue = toType(configValue)
         if (typedValue != null) {
+            logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
             return configDocument.withValue(
                 toConfigKey,
                 typedValue.toConfig("internal").getValue("internal"),
@@ -165,11 +169,59 @@ fun <T : Any> migrateConfig(
     return configDocument
 }
 
+fun migrateConfig(
+    configDocument: ConfigDocument,
+    config: Config,
+): ConfigDocument {
+    var updatedConfig = configDocument
+
+    val settingsRequiringMigration = SettingsRegistry.getAll().filterValues { it.deprecated?.replaceWith != null }
+    settingsRequiringMigration.forEach { (name, data) ->
+        val configKey = "server.$name"
+        val toConfigKey = "server.${data.deprecated!!.replaceWith}"
+
+        try {
+            config.getValue(configKey)
+        } catch (_: ConfigException) {
+            // Ignore, no migration required
+            return@forEach
+        }
+
+        logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
+
+        try {
+            if (data.deprecated!!.migrateConfig != null) {
+                updatedConfig = data.deprecated!!.migrateConfig!!(config.getValue(configKey), updatedConfig)
+                return@forEach
+            }
+
+            if (data.deprecated!!.migrateConfigValue != null) {
+                updatedConfig =
+                    migrateConfigValue(
+                        updatedConfig,
+                        config,
+                        configKey,
+                        toConfigKey,
+                        data.deprecated!!.migrateConfigValue!!,
+                    )
+                return@forEach
+            }
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to migrate config value: $configKey -> $toConfigKey" }
+            return@forEach
+        }
+
+        shutdownApp(ExitCode.ConfigMigrationMisconfiguredFailure)
+    }
+
+    return updatedConfig
+}
+
 fun serverModule(applicationDirs: ApplicationDirs): Module =
     module {
         single { applicationDirs }
         single<IUpdater> { Updater() }
-        single<JsonMapper> { JavalinJackson() }
+        single<JsonMapper> { JavalinJackson3() }
     }
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -219,13 +271,15 @@ fun applicationSetup() {
 
     logger.debug {
         "Loaded config:\n" +
-            GlobalConfigManager.config
-                .root()
+            GlobalConfigManager
+                .getRedactedConfig(
+                    SettingsRegistry
+                        .getAll()
+                        .filter { !it.value.privacySafe }
+                        .keys
+                        .toList(),
+                ).root()
                 .render(ConfigRenderOptions.concise().setFormatted(true))
-                .replace(
-                    Regex("(\"(?:basicAuth|auth)(?:Username|Password)\"\\s:\\s)(?!\"\")\".*\""),
-                    "$1\"******\"",
-                )
     }
 
     logger.debug { "Data Root directory is set to: ${applicationDirs.dataRoot}" }
@@ -307,43 +361,11 @@ fun applicationSetup() {
             }
         } else {
             // make sure the user config file is up-to-date
-            GlobalConfigManager.updateUserConfig { config ->
-                var updatedConfig = this
-                updatedConfig =
-                    migrateConfig(
-                        updatedConfig,
-                        config,
-                        "server.basicAuthEnabled",
-                        "server.authMode",
-                        toType = {
-                            if (it.unwrapped() as? Boolean == true) {
-                                AuthMode.BASIC_AUTH.name
-                            } else {
-                                null
-                            }
-                        },
-                    )
-                updatedConfig =
-                    migrateConfig(
-                        updatedConfig,
-                        config,
-                        "server.basicAuthUsername",
-                        "server.authUsername",
-                        toType = { it.unwrapped() as? String },
-                    )
-                updatedConfig =
-                    migrateConfig(
-                        updatedConfig,
-                        config,
-                        "server.basicAuthPassword",
-                        "server.authPassword",
-                        toType = { it.unwrapped() as? String },
-                    )
-                updatedConfig
-            }
+            GlobalConfigManager.updateUserConfig { migrateConfig(this, it) }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }
+        shutdownApp(ExitCode.SetupConfFileFailed)
     }
 
     // copy local source icon
@@ -356,6 +378,7 @@ fun applicationSetup() {
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while copying Local source's icon" }
+        shutdownApp(ExitCode.LocalSourceIconCopyFailure)
     }
 
     // fixes #119 , ref:
@@ -369,9 +392,16 @@ fun applicationSetup() {
         "Localization service initialized. Supported languages: ${LocalizationHelper.getSupportedLocales()}"
     }
 
+    runMigrations(applicationDirs)
+
     databaseUp()
 
-    LocalSource.register()
+    try {
+        LocalSource.register()
+    } catch (e: Exception) {
+        logger.error(e) { "Failed to setup LocalSource" }
+        shutdownApp(ExitCode.LocalSourceSetupFailure)
+    }
 
     serverConfig.subscribeTo(
         combine<Any, DatabaseSettings>(
@@ -379,17 +409,19 @@ fun applicationSetup() {
             serverConfig.databaseUrl,
             serverConfig.databaseUsername,
             serverConfig.databasePassword,
+            serverConfig.useHikariConnectionPool,
         ) { vargs ->
             DatabaseSettings(
                 vargs[0] as DatabaseType,
                 vargs[1] as String,
                 vargs[2] as String,
                 vargs[3] as String,
+                vargs[4] as Boolean,
             )
         }.distinctUntilChanged(),
-        { (databaseType, databaseUrl, databaseUsername, _) ->
+        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, hikariCp) ->
             logger.info {
-                "Database changed - type=$databaseType url=$databaseUrl, username=$databaseUsername, password=[REDACTED]"
+                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], hikaricp=$hikariCp"
             }
             databaseUp()
 
@@ -399,6 +431,7 @@ fun applicationSetup() {
     )
 
     // create system tray
+    Updates.ENABLE = false
     serverConfig.subscribeTo(
         serverConfig.systemTrayEnabled,
         { systemTrayEnabled ->
@@ -416,10 +449,8 @@ fun applicationSetup() {
         ignoreInitialValue = false,
     )
 
-    runMigrations(applicationDirs)
-
-    // Disable jetty's logging
     setLogLevelFor("org.eclipse.jetty", Level.OFF)
+    setLogLevelFor("com.zaxxer.hikari", Level.WARN)
 
     // socks proxy settings
     serverConfig.subscribeTo(
@@ -442,7 +473,7 @@ fun applicationSetup() {
         }.distinctUntilChanged(),
         { (proxyEnabled, proxyVersion, proxyHost, proxyPort, proxyUsername, proxyPassword) ->
             logger.info {
-                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=$proxyUsername, password=[REDACTED]"
+                "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=[REDACTED], password=[REDACTED]"
             }
             if (proxyEnabled) {
                 System.setProperty("socksProxyHost", proxyHost)
@@ -487,36 +518,18 @@ fun applicationSetup() {
     // start DownloadManager and restore + resume downloads
     DownloadManager.restoreAndResumeDownloads()
 
-    GlobalScope.launch {
-        val logger = KotlinLogging.logger("KCEF")
-        KCEF.init(
-            builder = {
-                progress {
-                    var lastNum = -1
-                    onDownloading {
-                        val num = it.roundToInt()
-                        if (num > lastNum) {
-                            lastNum = num
-                            logger.info { "KCEF download progress: $num%" }
-                        }
-                    }
-                }
-                download { github() }
-                settings {
-                    windowlessRenderingEnabled = true
-                    cachePath = (Path(applicationDirs.dataRoot) / "cache/kcef").toString()
-                }
-                appHandler(
-                    KCEF.AppHandler(
-                        arrayOf("--disable-gpu", "--off-screen-rendering-enabled", "--disable-dev-shm-usage"),
-                    ),
-                )
+    SyncManager.scheduleSyncTask()
 
-                val kcefDir = Path(applicationDirs.dataRoot) / "bin/kcef"
-                kcefDir.createDirectories()
-                installDir(kcefDir.toFile())
-            },
-            onError = { it?.printStackTrace() },
-        )
+    // asynchronously initialize CEF
+    GlobalScope.launch {
+        CEFManager.init()
     }
+
+    serverConfig.subscribeTo(
+        serverConfig.extensionStores,
+        { _ ->
+            ExtensionStoreService.syncPrefsToDb()
+        },
+        ignoreInitialValue = false,
+    )
 }

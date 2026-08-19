@@ -1,16 +1,8 @@
 package suwayomi.tachidesk.server.database.migration.helpers
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
-import org.jetbrains.exposed.sql.transactions.TransactionManager
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.serverConfig
-
-fun String.toSqlName(): String =
-    TransactionManager.current().db.identifierManager.let {
-        it.quoteIfNecessary(
-            it.inProperCase(this),
-        )
-    }
 
 abstract class RenameFieldMigration(
     tableName: String,

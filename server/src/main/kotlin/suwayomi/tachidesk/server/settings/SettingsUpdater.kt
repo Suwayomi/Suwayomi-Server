@@ -9,6 +9,8 @@ import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 
 object SettingsUpdater {
+    private val logger = KotlinLogging.logger { }
+
     private fun updateSetting(
         name: String,
         value: Any,
@@ -23,6 +25,15 @@ object SettingsUpdater {
             if (property != null) {
                 val stateFlow = property.get(serverConfig)
 
+                val validationError = SettingsValidator.validate(name, value)
+                val isValid = validationError == null
+
+                if (!isValid) {
+                    logger.warn { "Invalid value for setting $name: $validationError. Ignoring update." }
+
+                    return
+                }
+
                 val maybeConvertedValue =
                     SettingsRegistry
                         .get(name)
@@ -35,7 +46,7 @@ object SettingsUpdater {
                 (stateFlow as MutableStateFlow<Any>).value = maybeConvertedValue
             }
         } catch (e: Exception) {
-            KotlinLogging.logger { }.error(e) { "Failed to update setting $name due to" }
+            logger.error(e) { "Failed to update setting $name due to" }
         }
     }
 

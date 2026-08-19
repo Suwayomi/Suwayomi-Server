@@ -11,10 +11,10 @@ import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
@@ -22,13 +22,13 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 
-class SourceDataLoader : KotlinDataLoader<Long, SourceType?> {
+class SourceDataLoader : KotlinDataLoader<Long, SourceType> {
     override val dataLoaderName = "SourceDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, SourceType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, SourceType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
-                transaction {
+                suspendTransaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val source =
                         SourceTable
@@ -48,7 +48,7 @@ class SourcesForExtensionDataLoader : KotlinDataLoader<String, SourceNodeList> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, SourceNodeList> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
-                transaction {
+                suspendTransaction {
                     addLogger(Slf4jSqlDebugLogger)
 
                     val sourcesByExtensionPkg =

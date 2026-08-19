@@ -8,19 +8,20 @@
 package suwayomi.tachidesk.graphql.server
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoaderRegistryFactory
-import suwayomi.tachidesk.graphql.dataLoaders.BookmarkedChapterCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoriesForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoryDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoryForIdsDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoryMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChapterFlagCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChaptersForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackRecordDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackSearchDataLoader
-import suwayomi.tachidesk.graphql.dataLoaders.DownloadedChapterCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionStoreDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionsForExtensionStore
 import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.HasDuplicateChaptersForMangaDataLoader
@@ -44,7 +45,6 @@ import suwayomi.tachidesk.graphql.dataLoaders.TrackerDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerScoresDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerStatusesDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerTokenExpiredDataLoader
-import suwayomi.tachidesk.graphql.dataLoaders.UnreadChapterCountForMangaDataLoader
 
 class TachideskDataLoaderRegistryFactory {
     companion object {
@@ -53,9 +53,7 @@ class TachideskDataLoaderRegistryFactory {
                 MangaDataLoader(),
                 ChapterDataLoader(),
                 ChaptersForMangaDataLoader(),
-                DownloadedChapterCountForMangaDataLoader(),
-                UnreadChapterCountForMangaDataLoader(),
-                BookmarkedChapterCountForMangaDataLoader(),
+                ChapterFlagCountForMangaDataLoader(),
                 HasDuplicateChaptersForMangaDataLoader(),
                 LastReadChapterForMangaDataLoader(),
                 LatestReadChapterForMangaDataLoader(),
@@ -78,6 +76,8 @@ class TachideskDataLoaderRegistryFactory {
                 SourceMetaDataLoader(),
                 ExtensionDataLoader(),
                 ExtensionForSourceDataLoader(),
+                ExtensionsForExtensionStore(),
+                ExtensionStoreDataLoader(),
                 TrackerDataLoader(),
                 TrackerStatusesDataLoader(),
                 TrackerScoresDataLoader(),

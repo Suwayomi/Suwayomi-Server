@@ -9,29 +9,24 @@ package suwayomi.tachidesk.graphql.subscriptions
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
-import graphql.schema.DataFetchingEnvironment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdaterUpdates
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdateUpdates
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import uy.kohesive.injekt.injectLazy
 
 class UpdateSubscription {
     private val updater: IUpdater by injectLazy()
 
     @GraphQLDeprecated("Replaced with updates", ReplaceWith("updates(input)"))
-    fun updateStatusChanged(dataFetchingEnvironment: DataFetchingEnvironment): Flow<UpdateStatus> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return updater.status.map { updateStatus ->
+    @RequireAuth
+    fun updateStatusChanged(): Flow<UpdateStatus> =
+        updater.status.map { updateStatus ->
             UpdateStatus(updateStatus)
         }
-    }
 
     data class LibraryUpdateStatusChangedInput(
         @GraphQLDescription(
@@ -44,11 +39,8 @@ class UpdateSubscription {
         val maxUpdates: Int?,
     )
 
-    fun libraryUpdateStatusChanged(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: LibraryUpdateStatusChangedInput,
-    ): Flow<UpdaterUpdates> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun libraryUpdateStatusChanged(input: LibraryUpdateStatusChangedInput): Flow<UpdaterUpdates> {
         val omitUpdates = input.maxUpdates != null
         val maxUpdates = input.maxUpdates ?: 50
 

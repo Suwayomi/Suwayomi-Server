@@ -7,21 +7,24 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
-import org.jetbrains.exposed.sql.alias
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.count
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.leftJoin
-import org.jetbrains.exposed.sql.max
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.leftJoin
+import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.sql.or
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.wrapAsExpression
+import org.jetbrains.exposed.v1.core.wrapAsExpression
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -73,7 +76,11 @@ object CategoryManga {
             }
 
         dbTransaction {
-            CategoryMangaTable.batchInsert(newMangaCategoryMappings) { (mangaId, categoryId) ->
+            CategoryMangaTable.batchUpsert(
+                newMangaCategoryMappings,
+                CategoryMangaTable.manga,
+                CategoryMangaTable.category,
+            ) { (mangaId, categoryId) ->
                 this[CategoryMangaTable.manga] = mangaId
                 this[CategoryMangaTable.category] = categoryId
                 this[CategoryMangaTable.user] = userId
@@ -93,6 +100,12 @@ object CategoryManga {
                     (CategoryMangaTable.manga eq mangaId) and
                     (CategoryMangaTable.user eq userId)
             }
+        }
+    }
+
+    fun removeMangaFromAllCategories(mangaId: Int) {
+        transaction {
+            CategoryMangaTable.deleteWhere { CategoryMangaTable.manga eq mangaId }
         }
     }
 
@@ -131,12 +144,14 @@ object CategoryManga {
 
         val transform: (ResultRow) -> MangaDataClass = {
             // Map the data from the result row to the MangaDataClass
-            val dataClass = MangaTable.toDataClass(userId, it)
-            dataClass.lastReadAt = it[lastReadAt]
-            dataClass.unreadCount = it[unreadCount]
-            dataClass.downloadCount = it[downloadedCount]
-            dataClass.chapterCount = it[chapterCount]
-            dataClass
+            MangaTable
+                .toDataClass(userId, it)
+                .copy(
+                    lastReadAt = it[lastReadAt],
+                    unreadCount = it[unreadCount],
+                    downloadCount = it[downloadedCount],
+                    chapterCount = it[chapterCount],
+                )
         }
 
         return transaction {

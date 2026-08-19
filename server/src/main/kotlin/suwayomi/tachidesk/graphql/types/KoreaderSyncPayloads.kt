@@ -2,19 +2,17 @@ package suwayomi.tachidesk.graphql.types
 
 data class KoSyncStatusPayload(
     val isLoggedIn: Boolean,
+    val serverAddress: String?,
     val username: String?,
 )
 
 data class KoSyncConnectPayload(
     val clientMutationId: String?,
-    val success: Boolean,
+    val status: KoSyncStatusPayload,
     val message: String?,
-    val username: String?,
-    val settings: SettingsType,
 )
 
 data class LogoutKoSyncAccountPayload(
     val clientMutationId: String?,
-    val success: Boolean,
-    val settings: SettingsType,
+    val status: KoSyncStatusPayload,
 )

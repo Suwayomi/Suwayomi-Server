@@ -33,7 +33,7 @@ object SystemTray {
 
                 CacheUtil.clear(BuildConfig.NAME)
 
-                if (System.getProperty("os.name").startsWith("Mac")) {
+                if (Platform.current.os.isMacOS) {
                     SystemTray.FORCE_TRAY_TYPE = SystemTray.TrayType.Awt
                 }
 

@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.opds.dto
 
+import io.javalin.http.Context
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
 
 /**
@@ -69,4 +70,24 @@ data class OpdsMangaFilter(
             "genre" -> this.copy(genre = value)
             else -> this
         }
+
+    companion object {
+        /**
+         * Creates an OpdsMangaFilter directly from the Javalin Context, capturing all cross-filters.
+         */
+        fun fromContext(
+            ctx: Context,
+            primaryFilter: PrimaryFilterType = PrimaryFilterType.NONE,
+        ): OpdsMangaFilter =
+            OpdsMangaFilter(
+                sourceId = ctx.queryParam("source_id")?.toLongOrNull(),
+                categoryId = ctx.queryParam("category_id")?.toIntOrNull(),
+                statusId = ctx.queryParam("status_id")?.toIntOrNull(),
+                genre = ctx.queryParam("genre"),
+                langCode = ctx.queryParam("lang_code"),
+                sort = ctx.queryParam("sort"),
+                filter = ctx.queryParam("filter"),
+                primaryFilter = primaryFilter,
+            )
+    }
 }

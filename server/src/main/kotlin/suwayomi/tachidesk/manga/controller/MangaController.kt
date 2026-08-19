@@ -15,8 +15,9 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -35,7 +36,9 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable.user
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.server.user.requireUserWithBasicFallback
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -294,9 +297,13 @@ object MangaController {
                 body<Chapter.MangaChapterBatchEditInput>()
             },
             behaviorOf = { ctx, mangaId ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body())
-                Chapter.modifyChapters(userId, input, mangaId)
+                ctx.future {
+                    future {
+                        val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        val input = json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body())
+                        Chapter.modifyChapters(userId, input, mangaId)
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -314,16 +321,20 @@ object MangaController {
                 body<Chapter.ChapterBatchEditInput>()
             },
             behaviorOf = { ctx ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
-                Chapter.modifyChapters(
-                    userId,
-                    Chapter.MangaChapterBatchEditInput(
-                        input.chapterIds,
-                        null,
-                        input.change,
-                    ),
-                )
+                ctx.future {
+                    future {
+                        val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
+                        Chapter.modifyChapters(
+                            userId,
+                            Chapter.MangaChapterBatchEditInput(
+                                input.chapterIds,
+                                null,
+                                input.change,
+                            ),
+                        )
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -435,10 +446,14 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                Chapter.deleteChapter(mangaId, chapterIndex)
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        Chapter.deleteChapter(mangaId, chapterIndex)
 
-                ctx.status(200)
+                        ctx.status(200)
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -479,6 +494,7 @@ object MangaController {
             pathParam<Int>("index"),
             queryParam<Boolean?>("updateProgress"),
             queryParam<String?>("format"),
+            queryParam<Boolean?>("opds"),
             documentWith = {
                 withOperation {
                     summary("Get a chapter page")
@@ -487,24 +503,33 @@ object MangaController {
                     )
                 }
             },
-            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+            behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format, opds ->
+                if (opds == true) {
+                    ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                } else {
+                    val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()}
                 ctx.future {
-                    future { Page.getPageImage(mangaId, chapterIndex, index, format, null) }
-                        .thenApply {
-                            ctx.header("content-type", it.second)
-                            val httpCacheSeconds = 1.days.inWholeSeconds
-                            ctx.header("cache-control", "max-age=$httpCacheSeconds")
-                            ctx.result(it.first)
+                    future {
+                        Page.getPageImageServe(
+                            mangaId = mangaId,
+                            chapterIndex = chapterIndex,
+                            index = index,
+                            format = format,
+                        )
+                    }.thenApply {
+                        ctx.header("content-type", it.second)
+                        val httpCacheSeconds = 1.days.inWholeSeconds
+                        ctx.header("cache-control", "max-age=$httpCacheSeconds")
+                        ctx.result(it.first)
 
-                            if (updateProgress == true) {
-                                val chapterId = Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
-                                // Sync progress with KoreaderSync if chapter update was successful
-                                if (chapterId != -1) {
-                                    GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
-                                }
+                        if (updateProgress == true) {
+                            val chapterId = Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
+                            // Sync progress with KoreaderSync if chapter update was successful
+                            if (chapterId != -1) {
+                                GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
                             }
                         }
+                    }
                 }
             },
             withResults = {
@@ -525,10 +550,12 @@ object MangaController {
             },
             behaviorOf = { ctx, chapterId, markAsRead ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.disableCompression()
+                val contentType = serverConfig.opdsCbzMimetype.value.mediaType
                 if (ctx.method() == HandlerType.HEAD) {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzMetadataForDownload(userId, chapterId) }
-                            .thenApply { (fileName, fileSize, contentType) ->
+                            .thenApply { (fileName, fileSize) ->
                                 ctx.header("Content-Type", contentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
@@ -540,7 +567,7 @@ object MangaController {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzForDownload(userId, chapterId, shouldMarkAsRead) }
                             .thenApply { (inputStream, fileName, fileSize) ->
-                                ctx.header("Content-Type", "application/vnd.comicbook+zip")
+                                ctx.header("Content-Type", contentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
                                 ctx.result(inputStream)

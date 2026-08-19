@@ -12,12 +12,14 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.dataloader.DataLoaderOptions
-import org.jetbrains.exposed.sql.Slf4jSqlDebugLogger
-import org.jetbrains.exposed.sql.addLogger
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.andWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.cache.CustomCacheMap
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.MangaNodeList
@@ -31,10 +33,10 @@ import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.requireUser
 
-class MangaDataLoader : KotlinDataLoader<Int, MangaType?> {
+class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
     override val dataLoaderName = "MangaDataLoader"
 
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType?> =
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
@@ -136,6 +138,6 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
                     }
                 }
             },
-            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()),
+            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()).build(),
         )
 }

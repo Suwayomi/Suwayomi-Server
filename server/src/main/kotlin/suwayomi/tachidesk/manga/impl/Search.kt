@@ -7,14 +7,14 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
 import kotlinx.serialization.Serializable
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import uy.kohesive.injekt.injectLazy
 
@@ -25,7 +25,7 @@ object Search {
         searchTerm: String,
         pageNum: Int,
     ): PagedMangaListDataClass {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val searchManga = source.getSearchManga(pageNum, searchTerm, getFilterListOf(source))
         return searchManga.processEntries(userId, sourceId)
     }
@@ -36,7 +36,7 @@ object Search {
         pageNum: Int,
         filter: FilterData,
     ): PagedMangaListDataClass {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
         val searchManga = source.getSearchManga(pageNum, filter.searchTerm ?: "", filterList)
         return searchManga.processEntries(userId, sourceId)
@@ -45,7 +45,7 @@ object Search {
     private val filterListCache = mutableMapOf<Long, FilterList>()
 
     private fun getFilterListOf(
-        source: CatalogueSource,
+        source: Source,
         reset: Boolean = false,
     ): FilterList {
         if (reset || !filterListCache.containsKey(source.id)) {
@@ -54,11 +54,11 @@ object Search {
         return filterListCache[source.id]!!
     }
 
-    fun getFilterList(
+    suspend fun getFilterList(
         sourceId: Long,
         reset: Boolean,
     ): List<FilterObject> {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
 
         return getFilterListOf(source, reset).list.map {
             FilterObject(
@@ -88,7 +88,10 @@ object Search {
                             },
                         )
                     }
-                    else -> it
+
+                    else -> {
+                        it
+                    }
                 },
             )
         }
@@ -106,11 +109,11 @@ object Search {
         val filter: Filter<*>,
     )
 
-    fun setFilter(
+    suspend fun setFilter(
         sourceId: Long,
         changes: List<FilterChange>,
     ) {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val filterList = getFilterListOf(source, false)
         updateFilterList(filterList, changes)
     }
@@ -124,13 +127,27 @@ object Search {
                 is Filter.Header -> {
                     // NOOP
                 }
+
                 is Filter.Separator -> {
                     // NOOP
                 }
-                is Filter.Select<*> -> filter.state = change.state.toInt()
-                is Filter.Text -> filter.state = change.state
-                is Filter.CheckBox -> filter.state = change.state.toBooleanStrict()
-                is Filter.TriState -> filter.state = change.state.toInt()
+
+                is Filter.Select<*> -> {
+                    filter.state = change.state.toInt()
+                }
+
+                is Filter.Text -> {
+                    filter.state = change.state
+                }
+
+                is Filter.CheckBox -> {
+                    filter.state = change.state.toBooleanStrict()
+                }
+
+                is Filter.TriState -> {
+                    filter.state = change.state.toInt()
+                }
+
                 is Filter.Group<*> -> {
                     val groupChange = jsonMapper.fromJsonString<FilterChange>(change.state)
 
@@ -141,6 +158,7 @@ object Search {
                         is Filter.Select<*> -> groupFilter.state = groupChange.state.toInt()
                     }
                 }
+
                 is Filter.Sort -> {
                     filter.state = jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
                 }
@@ -149,11 +167,11 @@ object Search {
         return filterList
     }
 
-    fun buildFilterList(
+    suspend fun buildFilterList(
         sourceId: Long,
         changes: List<FilterChange>,
     ): FilterList {
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val filterList = source.getFilterList()
         return updateFilterList(filterList, changes)
     }

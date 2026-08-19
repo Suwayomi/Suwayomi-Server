@@ -12,3 +12,7 @@ ktlint_standard_no-consecutive-comments=disabled
 
 [**/generated/**]
 ktlint=disabled
+
+[*.json]
+indent_size=2
+indent_style = space

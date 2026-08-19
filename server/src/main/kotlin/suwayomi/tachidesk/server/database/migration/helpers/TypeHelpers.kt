@@ -6,7 +6,9 @@ import suwayomi.tachidesk.server.serverConfig
 val UNLIMITED_TEXT
     get() =
         when (serverConfig.databaseType.value) {
-            DatabaseType.H2 -> "VARCHAR" // the default length is `Integer.MAX_VALUE`
+            // the default length is `Integer.MAX_VALUE`
+            DatabaseType.H2 -> "VARCHAR"
+
             DatabaseType.POSTGRESQL -> "TEXT"
         }
 

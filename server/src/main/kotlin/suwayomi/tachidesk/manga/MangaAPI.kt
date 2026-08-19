@@ -34,7 +34,7 @@ object MangaAPI {
             get("update/{pkgName}", ExtensionController.update)
             get("uninstall/{pkgName}", ExtensionController.uninstall)
 
-            get("icon/{apkName}", ExtensionController.icon)
+            get("icon/{pkgName}", ExtensionController.icon)
         }
 
         path("source") {

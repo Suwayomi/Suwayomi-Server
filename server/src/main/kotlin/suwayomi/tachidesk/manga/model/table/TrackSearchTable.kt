@@ -7,14 +7,16 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
@@ -69,30 +71,31 @@ fun List<TrackSearch>.insertAll(): List<ResultRow> {
         val toUpdate = grouped[true]
         val toInsert = grouped[false]?.map { it.second }
         if (!toUpdate.isNullOrEmpty()) {
-            BatchUpdateStatement(TrackSearchTable).apply {
-                toUpdate.forEach { (id, trackSearch) ->
-                    id ?: return@forEach
-                    addBatch(EntityID(id, TrackSearchTable))
-                    this[TrackSearchTable.title] = trackSearch.title
-                    this[TrackSearchTable.totalChapters] = trackSearch.total_chapters
-                    this[TrackSearchTable.trackingUrl] = trackSearch.tracking_url
-                    this[TrackSearchTable.coverUrl] = trackSearch.cover_url
-                    this[TrackSearchTable.summary] = trackSearch.summary
-                    this[TrackSearchTable.publishingStatus] = trackSearch.publishing_status
-                    this[TrackSearchTable.publishingType] = trackSearch.publishing_type
-                    this[TrackSearchTable.startDate] = trackSearch.start_date
-                    this[TrackSearchTable.libraryId] = trackSearch.library_id
-                    this[TrackSearchTable.lastChapterRead] = trackSearch.last_chapter_read
-                    this[TrackSearchTable.status] = trackSearch.status
-                    this[TrackSearchTable.score] = trackSearch.score
-                    this[TrackSearchTable.startedReadingDate] = trackSearch.started_reading_date
-                    this[TrackSearchTable.finishedReadingDate] = trackSearch.finished_reading_date
-                    this[TrackSearchTable.private] = trackSearch.private
-                    this[TrackSearchTable.authors] = trackSearch.authors.ifEmpty { null }?.joinToString(",")
-                    this[TrackSearchTable.artists] = trackSearch.artists.ifEmpty { null }?.joinToString(",")
-                }
-                execute(this@transaction)
-            }
+            BatchUpdateStatement(TrackSearchTable)
+                .apply {
+                    toUpdate.forEach { (id, trackSearch) ->
+                        id ?: return@forEach
+                        addBatch(EntityID(id, TrackSearchTable))
+                        this[TrackSearchTable.title] = trackSearch.title
+                        this[TrackSearchTable.totalChapters] = trackSearch.total_chapters
+                        this[TrackSearchTable.trackingUrl] = trackSearch.tracking_url
+                        this[TrackSearchTable.coverUrl] = trackSearch.cover_url
+                        this[TrackSearchTable.summary] = trackSearch.summary
+                        this[TrackSearchTable.publishingStatus] = trackSearch.publishing_status
+                        this[TrackSearchTable.publishingType] = trackSearch.publishing_type
+                        this[TrackSearchTable.startDate] = trackSearch.start_date
+                        this[TrackSearchTable.libraryId] = trackSearch.library_id
+                        this[TrackSearchTable.lastChapterRead] = trackSearch.last_chapter_read
+                        this[TrackSearchTable.status] = trackSearch.status
+                        this[TrackSearchTable.score] = trackSearch.score
+                        this[TrackSearchTable.startedReadingDate] = trackSearch.started_reading_date
+                        this[TrackSearchTable.finishedReadingDate] = trackSearch.finished_reading_date
+                        this[TrackSearchTable.private] = trackSearch.private
+                        this[TrackSearchTable.authors] = trackSearch.authors.ifEmpty { null }?.joinToString(",")
+                        this[TrackSearchTable.artists] = trackSearch.artists.ifEmpty { null }?.joinToString(",")
+                    }
+                }.toExecutable()
+                .execute(this@transaction)
         }
         val insertedRows =
             if (!toInsert.isNullOrEmpty()) {

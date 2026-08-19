@@ -1,30 +1,38 @@
+@file:Suppress("RedundantNullableReturnType", "unused")
+
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.server.extensions.toGraphQLError
 import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
+import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jetbrains.exposed.v1.core.LikePattern
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
-import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MetaInput
 import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import uy.kohesive.injekt.injectLazy
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
@@ -112,16 +120,12 @@ class MangaMutation {
         }
     }
 
-    fun updateManga(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateMangaInput,
-    ): CompletableFuture<DataFetcherResult<UpdateMangaPayload?>> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun updateManga(input: UpdateMangaInput): CompletableFuture<UpdateMangaPayload?> {
         val (clientMutationId, id, patch) = input
 
         return future {
-            asDataFetcherResult {
-                updateMangas(userId, listOf(id), patch)
+            updateMangas(userId, listOf(id), patch)
 
                 val manga =
                     transaction {
@@ -134,39 +138,33 @@ class MangaMutation {
                         )
                     }
 
-                UpdateMangaPayload(
-                    clientMutationId = clientMutationId,
-                    manga = manga,
-                )
-            }
+            UpdateMangaPayload(
+                clientMutationId = clientMutationId,
+                manga = manga,
+            )
         }
     }
 
-    fun updateMangas(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateMangasInput,
-    ): CompletableFuture<DataFetcherResult<UpdateMangasPayload?>> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun updateMangas(input: UpdateMangasInput): CompletableFuture<UpdateMangasPayload?> {
         val (clientMutationId, ids, patch) = input
 
         return future {
-            asDataFetcherResult {
-                updateMangas(userId, ids, patch)
+            updateMangas(userId, ids, patch)
 
-                val mangas =
-                    transaction {
-                        MangaTable
+            val mangas =
+                transaction {
+                    MangaTable
                             .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id inList ids }
                             .map { MangaType(it) }
-                    }
+                }
 
-                UpdateMangasPayload(
-                    clientMutationId = clientMutationId,
-                    mangas = mangas,
-                )
-            }
+            UpdateMangasPayload(
+                clientMutationId = clientMutationId,
+                mangas = mangas,
+            )
         }
     }
 
@@ -180,30 +178,85 @@ class MangaMutation {
         val manga: MangaType,
     )
 
-    fun fetchManga(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: FetchMangaInput,
-    ): CompletableFuture<DataFetcherResult<FetchMangaPayload?>> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
+    fun fetchManga(input: FetchMangaInput): CompletableFuture<FetchMangaPayload?> {
         val (clientMutationId, id) = input
 
         return future {
-            asDataFetcherResult {
-                Manga.fetchManga(id)
+            Manga.updateMangaAndChapters(id, updateChapters = false)
 
-                val manga =
-                    transaction {
-                        MangaTable
+            val manga =
+                transaction {
+                    MangaTable
                             .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id eq id }
                             .first()
+                }
+            FetchMangaPayload(
+                clientMutationId = clientMutationId,
+                manga = MangaType(manga),
+            )
+        }
+    }
+
+    data class FetchMangaAndChaptersInput(
+        val clientMutationId: String? = null,
+        val id: Int,
+        val fetchManga: Boolean,
+        val fetchChapters: Boolean,
+    )
+
+    data class FetchMangaAndChaptersPayload(
+        val clientMutationId: String?,
+        val manga: MangaType,
+        val chapters: List<ChapterType>,
+    )
+
+    @RequireAuth
+    fun fetchMangaAndChapters(input: FetchMangaAndChaptersInput): CompletableFuture<DataFetcherResult<FetchMangaAndChaptersPayload?>> {
+        val (clientMutationId, id, fetchManga, fetchChapters) = input
+
+        return future {
+            val error =
+                try {
+                    Manga.updateMangaAndChapters(
+                        mangaId = id,
+                        updateManga = fetchManga,
+                        updateChapters = fetchChapters,
+                    )
+                    null
+                } catch (e: Exception) {
+                    KotlinLogging.logger { }.error(e) { "Error updating manga and chapters" }
+                    e
+                }
+
+            val (manga, chapters) =
+                transaction {
+                    Pair(
+                        MangaTable.selectAll().where { MangaTable.id eq id }.first(),
+                        ChapterTable
+                            .selectAll()
+                            .where { ChapterTable.manga eq id }
+                            .orderBy(ChapterTable.sourceOrder)
+                            .map { ChapterType(it) },
+                    )
+                }
+            @Suppress("UNCHECKED_CAST")
+            DataFetcherResult
+                .newResult<FetchMangaAndChaptersPayload>()
+                .data(
+                    FetchMangaAndChaptersPayload(
+                        clientMutationId = clientMutationId,
+                        manga = MangaType(manga),
+                        chapters = chapters,
+                    ),
+                ).also {
+                    if (error != null) {
+                        it.error(error.toGraphQLError())
                     }
-                FetchMangaPayload(
-                    clientMutationId = clientMutationId,
-                    manga = MangaType(manga),
-                )
-            }
+                }.build() as DataFetcherResult<FetchMangaAndChaptersPayload?>
         }
     }
 
@@ -217,18 +270,13 @@ class MangaMutation {
         val meta: MangaMetaType,
     )
 
-    fun setMangaMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: SetMangaMetaInput,
-    ): DataFetcherResult<SetMangaMetaPayload?> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun setMangaMeta(input: SetMangaMetaInput): SetMangaMetaPayload? {
         val (clientMutationId, meta) = input
 
-        return asDataFetcherResult {
-            Manga.modifyMangaMeta(userId, meta.mangaId, meta.key, meta.value)
+        Manga.modifyMangaMeta(userId, meta.mangaId, meta.key, meta.value)
 
-            SetMangaMetaPayload(clientMutationId, meta)
-        }
+        return SetMangaMetaPayload(clientMutationId, meta)
     }
 
     data class DeleteMangaMetaInput(
@@ -243,14 +291,11 @@ class MangaMutation {
         val manga: MangaType,
     )
 
-    fun deleteMangaMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: DeleteMangaMetaInput,
-    ): DataFetcherResult<DeleteMangaMetaPayload?> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun deleteMangaMeta(input: DeleteMangaMetaInput): DeleteMangaMetaPayload? {
         val (clientMutationId, mangaId, key) = input
 
-        return asDataFetcherResult {
+
             val (meta, manga) =
                 transaction {
                     val meta =
@@ -260,9 +305,9 @@ class MangaMutation {
                                 MangaMetaTable.user eq userId and
                                     (MangaMetaTable.ref eq mangaId) and
                                     (MangaMetaTable.key eq key)
-                            }.firstOrNull()
+                        }.firstOrNull()
 
-                    MangaMetaTable.deleteWhere {
+                MangaMetaTable.deleteWhere {
                         MangaMetaTable.user eq userId and
                             (MangaMetaTable.ref eq mangaId) and
                             (MangaMetaTable.key eq key)
@@ -279,14 +324,143 @@ class MangaMutation {
                             )
                         }
 
-                    if (meta != null) {
-                        MangaMetaType(meta)
-                    } else {
-                        null
-                    } to manga
+                if (meta != null) {
+                    MangaMetaType(meta)
+                } else {
+                    null
+                } to manga
+            }
+
+        return DeleteMangaMetaPayload(clientMutationId, meta, manga)
+    }
+
+    data class SetMangaMetasItem(
+        val mangaIds: List<Int>,
+        val metas: List<MetaInput>,
+    )
+
+    data class SetMangaMetasInput(
+        val clientMutationId: String? = null,
+        val items: List<SetMangaMetasItem>,
+    )
+
+    data class SetMangaMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<MangaMetaType>,
+        val mangas: List<MangaType>,
+    )
+
+    @RequireAuth
+    fun setMangaMetas(input: SetMangaMetasInput): SetMangaMetasPayload? {
+        val (clientMutationId, items) = input
+
+        val metaByMangaId =
+            items
+                .flatMap { item ->
+                    val metaMap = item.metas.associate { it.key to it.value }
+                    item.mangaIds.map { mangaId -> mangaId to metaMap }
+                }.groupBy({ it.first }, { it.second })
+                .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
+
+        Manga.modifyMangasMetas(metaByMangaId)
+
+        val allMangaIds = metaByMangaId.keys
+        val allMetaKeys = metaByMangaId.values.flatMap { it.keys }.distinct()
+
+        val (updatedMetas, mangas) =
+            transaction {
+                val updatedMetas =
+                    MangaMetaTable
+                        .selectAll()
+                        .where { (MangaMetaTable.ref inList allMangaIds) and (MangaMetaTable.key inList allMetaKeys) }
+                        .map { MangaMetaType(it) }
+
+                val mangas =
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.id inList allMangaIds }
+                        .map { MangaType(it) }
+                        .distinctBy { it.id }
+
+                updatedMetas to mangas
+            }
+
+        return SetMangaMetasPayload(clientMutationId, updatedMetas, mangas)
+    }
+
+    data class DeleteMangaMetasItem(
+        val mangaIds: List<Int>,
+        val keys: List<String>? = null,
+        val prefixes: List<String>? = null,
+    )
+
+    data class DeleteMangaMetasInput(
+        val clientMutationId: String? = null,
+        val items: List<DeleteMangaMetasItem>,
+    )
+
+    data class DeleteMangaMetasPayload(
+        val clientMutationId: String?,
+        val metas: List<MangaMetaType>,
+        val mangas: List<MangaType>,
+    )
+
+    @RequireAuth
+    fun deleteMangaMetas(input: DeleteMangaMetasInput): DeleteMangaMetasPayload? {
+        val (clientMutationId, items) = input
+
+        items.forEach { item ->
+            require(!item.keys.isNullOrEmpty() || !item.prefixes.isNullOrEmpty()) {
+                "Either 'keys' or 'prefixes' must be provided for each item"
+            }
+        }
+
+        val (allDeletedMetas, allMangaIds) =
+            transaction {
+                val deletedMetas = mutableListOf<MangaMetaType>()
+                val mangaIds = mutableSetOf<Int>()
+
+                items.forEach { item ->
+                    val keyCondition: Op<Boolean>? =
+                        item.keys?.takeIf { it.isNotEmpty() }?.let { MangaMetaTable.key inList it }
+
+                    val prefixCondition: Op<Boolean>? =
+                        item.prefixes
+                            ?.filter { it.isNotEmpty() }
+                            ?.map { (MangaMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.reduceOrNull { acc, op -> acc or op }
+
+                    val metaKeyCondition =
+                        if (keyCondition != null && prefixCondition != null) {
+                            keyCondition or prefixCondition
+                        } else {
+                            keyCondition ?: prefixCondition!!
+                        }
+
+                    val condition = (MangaMetaTable.ref inList item.mangaIds) and metaKeyCondition
+
+                    deletedMetas +=
+                        MangaMetaTable
+                            .selectAll()
+                            .where { condition }
+                            .map { MangaMetaType(it) }
+
+                    MangaMetaTable.deleteWhere { condition }
+                    mangaIds += item.mangaIds
                 }
 
-            DeleteMangaMetaPayload(clientMutationId, meta, manga)
-        }
+                deletedMetas to mangaIds
+            }
+
+        val mangas =
+            transaction {
+                MangaTable
+                    .selectAll()
+                    .where { MangaTable.id inList allMangaIds }
+                    .map { MangaType(it) }
+                    .distinctBy { it.id }
+            }
+
+        return DeleteMangaMetasPayload(clientMutationId, allDeletedMetas, mangas)
     }
 }

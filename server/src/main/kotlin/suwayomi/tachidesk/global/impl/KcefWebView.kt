@@ -1,15 +1,14 @@
 package suwayomi.tachidesk.global.impl
 
-import dev.datlag.kcef.KCEF
-import dev.datlag.kcef.KCEFBrowser
-import dev.datlag.kcef.KCEFClient
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
 import okhttp3.HttpUrl
+import org.cef.CefClient
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -20,12 +19,17 @@ import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
 import org.cef.handler.CefRequestHandlerAdapter
 import org.cef.handler.CefResourceRequestHandler
+import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.input.CefTouchEvent
 import org.cef.misc.BoolRef
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
+import xyz.nulldev.androidcompat.webkit.CefHelper
+import xyz.nulldev.androidcompat.webkit.dispose
+import xyz.nulldev.androidcompat.webkit.disposeWithJsHandler
+import xyz.nulldev.androidcompat.webkit.evaluateJavaScript
 import java.awt.Component
 import java.awt.HeadlessException
 import java.awt.Rectangle
@@ -47,8 +51,8 @@ import javax.swing.JPanel
 class KcefWebView {
     private val logger = KotlinLogging.logger {}
     private val renderHandler = RenderHandler()
-    private var kcefClient: KCEFClient? = null
-    private var browser: KCEFBrowser? = null
+    private var kcefClient: CefClient? = null
+    private var browser: CefBrowser? = null
     private var width = 1000
     private var height = 1000
 
@@ -76,7 +80,8 @@ class KcefWebView {
         }
     }
 
-    @Serializable sealed class Event
+    @Serializable
+    sealed class Event
 
     @Serializable
     @SerialName("consoleMessage")
@@ -135,7 +140,7 @@ class KcefWebView {
                     ConsoleEvent(level.ordinal, message, source, line),
                 ),
             )
-            logger.debug { "$source:$line: $message" }
+            logger.trace { "$source:$line: $message" }
             return true
         }
 
@@ -173,7 +178,7 @@ class KcefWebView {
             frame: CefFrame,
             httpStatusCode: Int,
         ) {
-            logger.info { "Load event: ${frame.name} - ${frame.url}" }
+            logger.trace { "Load event: ${frame.name} - ${frame.url}" }
             if (httpStatusCode > 0 && frame.isMain) handleLoad(frame.url, httpStatusCode)
             flush()
         }
@@ -189,6 +194,19 @@ class KcefWebView {
         }
     }
 
+    private inner class ResourceRequestHandler : CefResourceRequestHandlerAdapter() {
+        override fun onBeforeResourceLoad(
+            browser: CefBrowser?,
+            frame: CefFrame?,
+            request: CefRequest,
+        ): Boolean {
+            val ua = System.getProperty("http.agent")
+            request.setHeaderByName("user-agent", ua, true)
+            logger.trace { "Using user-agent $ua" }
+            return false
+        }
+    }
+
     private inner class RequestHandler : CefRequestHandlerAdapter() {
         override fun getResourceRequestHandler(
             browser: CefBrowser,
@@ -199,8 +217,8 @@ class KcefWebView {
             requestInitiator: String,
             disableDefaultHandling: BoolRef,
         ): CefResourceRequestHandler? {
-            logger.info { "Load resource: ${frame.name} - ${request.url}" }
-            return null
+            logger.trace { "Load resource: ${frame.name} - ${request.url}" }
+            return ResourceRequestHandler()
         }
     }
 
@@ -247,13 +265,15 @@ class KcefWebView {
     init {
         destroy()
         kcefClient =
-            KCEF.newClientBlocking().apply {
-                addDisplayHandler(DisplayHandler())
-                addLoadHandler(LoadHandler())
-                addRequestHandler(RequestHandler())
+            runBlocking {
+                CefHelper.createClient().apply {
+                    addDisplayHandler(DisplayHandler())
+                    addLoadHandler(LoadHandler())
+                    addRequestHandler(RequestHandler())
+                }
             }
 
-        logger.info { "Start loading cookies" }
+        logger.debug { "Start loading cookies" }
         CefCookieManager.getGlobalManager().apply {
             val cookies = networkHelper.cookieStore.getStoredCookies()
             for (cookie in cookies) {
@@ -277,7 +297,7 @@ class KcefWebView {
         browser?.close(true)
         browser?.dispose()
         browser = null
-        kcefClient?.dispose()
+        kcefClient?.disposeWithJsHandler()
         kcefClient = null
     }
 
@@ -289,6 +309,7 @@ class KcefWebView {
                 .createBrowser(
                     url,
                     CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                    false,
                     // NOTE: with a context, we don't seem to be getting any cookies
                 ).apply {
                     // NOTE: Without this, we don't seem to be receiving any events
@@ -307,7 +328,7 @@ class KcefWebView {
 
     private fun flush() {
         if (browser == null) return
-        logger.info { "Start cookie flush" }
+        logger.trace { "Start cookie flush" }
         CefCookieManager.getGlobalManager().visitAllCookies { it, _, _, _ ->
             try {
                 networkHelper.cookieStore.addAll(
@@ -367,37 +388,127 @@ class KcefWebView {
     ): KeyEvent? {
         val code =
             when (char.uppercaseChar()) {
-                in 'A'..'Z', in '0'..'9' -> char.uppercaseChar().code
-                '&' -> KeyEvent.VK_AMPERSAND
-                '*' -> KeyEvent.VK_ASTERISK
-                '@' -> KeyEvent.VK_AT
-                '\\' -> KeyEvent.VK_BACK_SLASH
-                '{' -> KeyEvent.VK_BRACELEFT
-                '}' -> KeyEvent.VK_BRACERIGHT
-                '^' -> KeyEvent.VK_CIRCUMFLEX
-                ']' -> KeyEvent.VK_CLOSE_BRACKET
-                ':' -> KeyEvent.VK_COLON
-                ',' -> KeyEvent.VK_COMMA
-                '$' -> KeyEvent.VK_DOLLAR
-                '=' -> KeyEvent.VK_EQUALS
-                '€' -> KeyEvent.VK_EURO_SIGN
-                '!' -> KeyEvent.VK_EXCLAMATION_MARK
-                '>' -> KeyEvent.VK_GREATER
-                '(' -> KeyEvent.VK_LEFT_PARENTHESIS
-                '<' -> KeyEvent.VK_LESS
-                '-' -> KeyEvent.VK_MINUS
-                '#' -> KeyEvent.VK_NUMBER_SIGN
-                '[' -> KeyEvent.VK_OPEN_BRACKET
-                '.' -> KeyEvent.VK_PERIOD
-                '+' -> KeyEvent.VK_PLUS
-                '\'' -> KeyEvent.VK_QUOTE
-                '"' -> KeyEvent.VK_QUOTEDBL
-                ')' -> KeyEvent.VK_RIGHT_PARENTHESIS
-                ';' -> KeyEvent.VK_SEMICOLON
-                '/' -> KeyEvent.VK_SLASH
-                ' ' -> KeyEvent.VK_SPACE
-                '_' -> KeyEvent.VK_UNDERSCORE
-                else ->
+                in 'A'..'Z', in '0'..'9' -> {
+                    char.uppercaseChar().code
+                }
+
+                '&' -> {
+                    KeyEvent.VK_AMPERSAND
+                }
+
+                '*' -> {
+                    KeyEvent.VK_ASTERISK
+                }
+
+                '@' -> {
+                    KeyEvent.VK_AT
+                }
+
+                '\\' -> {
+                    KeyEvent.VK_BACK_SLASH
+                }
+
+                '{' -> {
+                    KeyEvent.VK_BRACELEFT
+                }
+
+                '}' -> {
+                    KeyEvent.VK_BRACERIGHT
+                }
+
+                '^' -> {
+                    KeyEvent.VK_CIRCUMFLEX
+                }
+
+                ']' -> {
+                    KeyEvent.VK_CLOSE_BRACKET
+                }
+
+                ':' -> {
+                    KeyEvent.VK_COLON
+                }
+
+                ',' -> {
+                    KeyEvent.VK_COMMA
+                }
+
+                '$' -> {
+                    KeyEvent.VK_DOLLAR
+                }
+
+                '=' -> {
+                    KeyEvent.VK_EQUALS
+                }
+
+                '€' -> {
+                    KeyEvent.VK_EURO_SIGN
+                }
+
+                '!' -> {
+                    KeyEvent.VK_EXCLAMATION_MARK
+                }
+
+                '>' -> {
+                    KeyEvent.VK_GREATER
+                }
+
+                '(' -> {
+                    KeyEvent.VK_LEFT_PARENTHESIS
+                }
+
+                '<' -> {
+                    KeyEvent.VK_LESS
+                }
+
+                '-' -> {
+                    KeyEvent.VK_MINUS
+                }
+
+                '#' -> {
+                    KeyEvent.VK_NUMBER_SIGN
+                }
+
+                '[' -> {
+                    KeyEvent.VK_OPEN_BRACKET
+                }
+
+                '.' -> {
+                    KeyEvent.VK_PERIOD
+                }
+
+                '+' -> {
+                    KeyEvent.VK_PLUS
+                }
+
+                '\'' -> {
+                    KeyEvent.VK_QUOTE
+                }
+
+                '"' -> {
+                    KeyEvent.VK_QUOTEDBL
+                }
+
+                ')' -> {
+                    KeyEvent.VK_RIGHT_PARENTHESIS
+                }
+
+                ';' -> {
+                    KeyEvent.VK_SEMICOLON
+                }
+
+                '/' -> {
+                    KeyEvent.VK_SLASH
+                }
+
+                ' ' -> {
+                    KeyEvent.VK_SPACE
+                }
+
+                '_' -> {
+                    KeyEvent.VK_UNDERSCORE
+                }
+
+                else -> {
                     when (strKey) {
                         "Alt" -> KeyEvent.VK_ALT
                         "Backspace" -> KeyEvent.VK_BACK_SPACE
@@ -435,6 +546,7 @@ class KcefWebView {
                         "ArrowUp" -> KeyEvent.VK_UP
                         else -> KeyEvent.VK_UNDEFINED
                     }
+                }
             }
         if (id == KeyEvent.KEY_TYPED) {
             if (char == KeyEvent.CHAR_UNDEFINED && code != KeyEvent.VK_ENTER) return null
@@ -631,7 +743,7 @@ class KcefWebView {
         error: String? = null,
     ) {
         browser!!.evaluateJavaScript("return document.title") {
-            logger.info { "Load finished with title $it" }
+            logger.trace { "Load finished with title $it" }
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
                     LoadEvent(url, it ?: "", status, error),

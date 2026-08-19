@@ -31,7 +31,7 @@ body:
           required: true
         - label: I have written a short but informative title (ideally less than ~100 characters).
           required: true
-        - label: I have updated to the **[latest version](https://github.com/suwayomi/suwayomi-server/releases/latest)**.
+        - label: I have updated the (**[Suwayomi-WebUI](https://github.com/suwayomi/suwayomi-webui/releases/latest)** and **[Suwayomi-Server](https://github.com/suwayomi/suwayomi-server/releases/latest)**) to the latest versions
           required: true
         - label: I have filled out all of the requested information in this form, including specific version numbers.
           required: true

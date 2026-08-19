@@ -6,6 +6,7 @@
 package android.util;
 
 import org.slf4j.Logger;
+import org.slf4j.event.Level;
 import org.slf4j.LoggerFactory;
 
 import java.io.PrintWriter;
@@ -92,7 +93,7 @@ public final class Log {
     }
 
     private static int log(int level, String tag, String msg) {
-        logger.info(formatLog(level, tag, msg));
+        logger.atLevel(intToLevel(level)).log(formatLog(tag, msg));
         return tag.length() + msg.length(); //Not accurate, but never used anyways
     }
 
@@ -101,39 +102,35 @@ public final class Log {
     }
 
     private static int log(int level, String tag, String msg, Throwable t) {
-        logger.info(formatLog(level, tag, msg), t);
+        logger.atLevel(intToLevel(level)).setCause(t).log(formatLog(tag, msg));
         return tag.length() + msg.length(); //Not accurate, but never used anyways
     }
 
-    private static String formatLog(int level, String tag, String msg) {
+    private static String formatLog(String tag, String msg) {
         StringBuilder first = new StringBuilder("[");
-        switch(level) {
-            case ASSERT:
-                first.append("ASSERT");
-                break;
-            case DEBUG:
-                first.append("DEBUG");
-                break;
-            case ERROR:
-                first.append("ERROR");
-                break;
-            case INFO:
-                first.append("INFO");
-                break;
-            case VERBOSE:
-                first.append("VERBOSE");
-                break;
-            case WARN:
-                first.append("WARN");
-                break;
-            default:
-                first.append("UNKNOWN");
-                break;
-        }
-        first.append("] ");
         first.append(tag);
-        first.append(": ");
+        first.append("]: ");
         first.append(msg);
         return first.toString();
     }
+
+    private static Level intToLevel(int level) {
+        switch(level) {
+            case ASSERT:
+                return Level.ERROR;
+            case DEBUG:
+                return Level.DEBUG;
+            case ERROR:
+                return Level.ERROR;
+            case INFO:
+                return Level.INFO;
+            case VERBOSE:
+                return Level.TRACE;
+            case WARN:
+                return Level.WARN;
+            default:
+                return Level.INFO;
+        }
+
+  }
 }

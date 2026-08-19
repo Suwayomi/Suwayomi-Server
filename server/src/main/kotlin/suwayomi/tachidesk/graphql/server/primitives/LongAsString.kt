@@ -53,7 +53,7 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
                 ),
             )
         }
-        return input.value.toLong()
+        return input.value!!.toLong()
     }
 
     private fun valueToLiteralImpl(input: Any): StringValue = StringValue.newStringValue(input.toString()).build()

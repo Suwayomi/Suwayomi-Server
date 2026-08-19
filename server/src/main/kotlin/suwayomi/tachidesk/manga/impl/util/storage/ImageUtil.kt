@@ -71,6 +71,9 @@ object ImageUtil {
             if (bytes.compareWith(charByteArrayOf(0xFF, 0x0A))) {
                 return JXL
             }
+            if (bytes.compareWith(charByteArrayOf(0x00, 0x00, 0x00, 0x0C, 0x4A, 0x58, 0x4C, 0x20, 0x0D, 0x0A, 0x87, 0x0A))) {
+                return JXL
+            }
         } catch (_: Exception) {
         }
         return null

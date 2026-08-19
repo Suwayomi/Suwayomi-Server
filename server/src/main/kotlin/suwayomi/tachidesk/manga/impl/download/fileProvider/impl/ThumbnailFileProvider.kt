@@ -36,7 +36,7 @@ class ThumbnailFileProvider(
         return getCachedImageResponse(filePath, filePathWithoutExt)
     }
 
-    override fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
+    override suspend fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
 
     private suspend fun downloadImpl(): Boolean {
         val isExistingFile = getFilePath() != null
@@ -44,10 +44,11 @@ class ThumbnailFileProvider(
             return true
         }
 
-        Manga.fetchMangaThumbnail(mangaId).first.use { image ->
+        val (inputStream, mime) = Manga.fetchMangaThumbnail(mangaId)
+        inputStream.use { image ->
             makeSureDownloadDirExists()
             val filePath = getThumbnailDownloadPath(mangaId)
-            ImageResponse.saveImage(filePath, image)
+            ImageResponse.saveImage(filePath, image, mime)
         }
 
         return true
@@ -55,7 +56,7 @@ class ThumbnailFileProvider(
 
     override fun download(): FileDownload0Args = FileDownload0Args(::downloadImpl)
 
-    override fun delete(): Boolean {
+    override suspend fun delete(): Boolean {
         val filePath = getFilePath()
         if (filePath.isNullOrEmpty()) {
             return true

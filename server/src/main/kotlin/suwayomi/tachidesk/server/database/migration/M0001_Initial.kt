@@ -9,9 +9,9 @@ package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.helpers.AddTableMigration
 import eu.kanade.tachiyomi.source.model.SManga
-import org.jetbrains.exposed.dao.id.IdTable
-import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 
 /** initial migration, create all tables */
 @Suppress("ClassName", "unused")

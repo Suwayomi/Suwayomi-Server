@@ -7,28 +7,30 @@ package suwayomi.tachidesk.manga.impl.util.source
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.io.path.Path
+import kotlin.io.path.div
 
-object GetCatalogueSource {
+object GetSource {
     private val logger = KotlinLogging.logger { }
 
-    private val sourceCache = ConcurrentHashMap<Long, CatalogueSource>()
+    private val sourceCache = ConcurrentHashMap<Long, Source>()
     private val applicationDirs: ApplicationDirs by injectLazy()
 
-    private fun getCatalogueSource(sourceId: Long): CatalogueSource? {
-        val cachedResult: CatalogueSource? = sourceCache[sourceId]
+    private suspend fun getSource(sourceId: Long): Source? {
+        val cachedResult: Source? = sourceCache[sourceId]
         if (cachedResult != null) {
             return cachedResult
         }
@@ -44,10 +46,12 @@ object GetCatalogueSource {
                 ExtensionTable.selectAll().where { ExtensionTable.id eq extensionId }.first()
             }
 
-        val apkName = extensionRecord[ExtensionTable.apkName]
+        val apkName =
+            extensionRecord[ExtensionTable.apkName]
+                ?: throw NullPointerException("Missing apkName")
         val className = extensionRecord[ExtensionTable.classFQName]
         val jarName = apkName.substringBefore(".apk") + ".jar"
-        val jarPath = "${applicationDirs.extensionsRoot}/$jarName"
+        val jarPath = Path(applicationDirs.extensionsRoot) / jarName
 
         when (val instance = loadExtensionSources(jarPath, className)) {
             is Source -> listOf(instance)
@@ -59,25 +63,25 @@ object GetCatalogueSource {
         return sourceCache[sourceId]!!
     }
 
-    fun getCatalogueSourceOrNull(sourceId: Long): CatalogueSource? =
+    suspend fun getSourceOrNull(sourceId: Long): Source? =
         try {
-            getCatalogueSource(sourceId)
+            getSource(sourceId)
         } catch (e: Exception) {
             logger.warn(e) { "getCatalogueSource($sourceId) failed" }
             null
         }
 
-    fun getCatalogueSourceOrStub(sourceId: Long): CatalogueSource = getCatalogueSourceOrNull(sourceId) ?: StubSource(sourceId)
+    suspend fun getSourceOrStub(sourceId: Long): Source = getSourceOrNull(sourceId) ?: StubSource(sourceId)
 
-    fun registerCatalogueSource(sourcePair: Pair<Long, CatalogueSource>) {
+    fun registerSource(sourcePair: Pair<Long, Source>) {
         sourceCache += sourcePair
     }
 
-    fun unregisterCatalogueSource(sourceId: Long) {
+    fun unregisterSource(sourceId: Long) {
         sourceCache.remove(sourceId)
     }
 
-    fun unregisterAllCatalogueSources() {
+    fun unregisterAllSources() {
         (sourceCache - 0L).forEach { (id, _) ->
             sourceCache.remove(id)
         }

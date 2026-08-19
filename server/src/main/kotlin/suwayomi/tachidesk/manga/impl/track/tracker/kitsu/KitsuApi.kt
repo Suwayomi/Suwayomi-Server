@@ -80,7 +80,7 @@ class KitsuApi(
                     ).awaitSuccess()
                     .parseAs<KitsuAddMangaResult>()
                     .let {
-                        track.remote_id = it.data.id
+                        track.library_id = it.data.id
                         track
                     }
             }
@@ -92,7 +92,7 @@ class KitsuApi(
                 buildJsonObject {
                     putJsonObject("data") {
                         put("type", "libraryEntries")
-                        put("id", track.remote_id)
+                        put("id", track.library_id)
                         putJsonObject("attributes") {
                             put("status", track.toApiStatus())
                             put("progress", track.last_chapter_read.toInt())
@@ -108,7 +108,7 @@ class KitsuApi(
                 .newCall(
                     Request
                         .Builder()
-                        .url("${BASE_URL}library-entries/${track.remote_id}")
+                        .url("${BASE_URL}library-entries/${track.library_id}")
                         .headers(
                             headersOf("Content-Type", VND_API_JSON),
                         ).patch(data.toString().toRequestBody(VND_JSON_MEDIA_TYPE))
@@ -123,7 +123,7 @@ class KitsuApi(
             authClient
                 .newCall(
                     DELETE(
-                        "${BASE_URL}library-entries/${track.remote_id}",
+                        "${BASE_URL}library-entries/${track.library_id}",
                         headers = headersOf("Content-Type", VND_API_JSON),
                     ),
                 ).awaitSuccess()
@@ -208,7 +208,7 @@ class KitsuApi(
                 "${BASE_URL}library-entries"
                     .toUri()
                     .buildUpon()
-                    .encodedQuery("filter[id]=${track.remote_id}")
+                    .encodedQuery("filter[id]=${track.library_id}")
                     .appendQueryParameter("include", "manga")
                     .build()
             with(json) {

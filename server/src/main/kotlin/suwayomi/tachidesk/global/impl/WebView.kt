@@ -6,7 +6,7 @@ import io.javalin.websocket.WsMessageContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.eclipse.jetty.websocket.api.CloseStatus
+import org.eclipse.jetty.websocket.core.CloseStatus
 import suwayomi.tachidesk.manga.impl.update.Websocket
 
 object WebView : Websocket<String>() {
@@ -102,21 +102,25 @@ object WebView : Websocket<String>() {
                     val url = event.url
                     dr.loadUrl(url)
                     dr.resize(event.width, event.height)
-                    logger.info { "Loading URL $url" }
+                    logger.debug { "Loading URL $url" }
                 }
+
                 is ResizeMessage -> {
                     dr.resize(event.width, event.height)
-                    logger.info { "Resize browser" }
                 }
+
                 is JsEventMessage -> {
                     dr.event(event)
                 }
+
                 is JsPasteMessage -> {
                     dr.paste(event.data)
                 }
+
                 is JsCopyMessage -> {
                     dr.copy()
                 }
+
                 is JsPingMessage -> {
                     notifyAllClients("{\"type\":\"pong\"}")
                 }

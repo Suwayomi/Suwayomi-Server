@@ -15,6 +15,8 @@ import com.googlecode.d2j.reader.MultiDexFileReader
 import com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler
 import eu.kanade.tachiyomi.util.lang.Hash
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.ApkParsers
 import org.w3c.dom.Element
@@ -23,13 +25,15 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.pm.InstalledPackage.Companion.toList
 import xyz.nulldev.androidcompat.pm.toPackageInfo
-import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
-import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.nameWithoutExtension
+import kotlin.io.path.readBytes
 import kotlin.io.path.relativeTo
 
 object PackageTools {
@@ -40,22 +44,25 @@ object PackageTools {
     const val METADATA_SOURCE_CLASS = "tachiyomi.extension.class"
     const val METADATA_SOURCE_FACTORY = "tachiyomi.extension.factory"
     const val METADATA_NSFW = "tachiyomi.extension.nsfw"
+
+    const val METADATA_NAME = "tachiyomix.name"
+    const val METADATA_EXTENSION_LIB = "tachiyomix.extensionLib"
+    const val METADATA_CONTENT_WARNING = "tachiyomix.contentWarning"
+
     const val LIB_VERSION_MIN = 1.3
-    const val LIB_VERSION_MAX = 1.5
+    const val LIB_VERSION_MAX = 1.6
 
     /**
      * Convert dex to jar, a wrapper for the dex2jar library
      */
     fun dex2jar(
-        dexFile: String,
-        jarFile: String,
-        fileNameWithoutType: String,
+        dexFile: Path,
+        jarFile: Path,
     ) {
         // adopted from com.googlecode.dex2jar.tools.Dex2jarCmd.doCommandLine
         // source at: https://github.com/DexPatcher/dex2jar/tree/v2.1-20190905-lanchon/dex-tools/src/main/java/com/googlecode/dex2jar/tools/Dex2jarCmd.java
 
-        val jarFilePath = File(jarFile).toPath()
-        val reader = MultiDexFileReader.open(Files.readAllBytes(File(dexFile).toPath()))
+        val reader = MultiDexFileReader.open(dexFile.readBytes())
         val handler = BaksmaliBaseDexExceptionHandler()
         Dex2jar
             .from(reader)
@@ -67,10 +74,12 @@ object PackageTools {
             .printIR(false)
             .noCode(false)
             .skipExceptions(false)
-            .to(jarFilePath)
+            .dontSanitizeNames(true)
+            .computeFrames(true)
+            .to(jarFile)
         if (handler.hasException()) {
             val rootPath = Path(applicationDirs.extensionsRoot)
-            val errorFile: Path = rootPath.resolve("$fileNameWithoutType-error.txt")
+            val errorFile: Path = rootPath.resolve("${dexFile.nameWithoutExtension}-error.txt")
             logger.error {
                 """
                 Detail Error Information in File ${errorFile.relativeTo(rootPath)}
@@ -83,56 +92,55 @@ object PackageTools {
             }
             handler.dump(errorFile, emptyArray<String>())
         } else {
-            BytecodeEditor.fixAndroidClasses(jarFilePath)
+            BytecodeEditor.fixAndroidClasses(jarFile)
         }
     }
 
     /** A modified version of `xyz.nulldev.androidcompat.pm.InstalledPackage.info` */
-    fun getPackageInfo(apkFilePath: String): PackageInfo {
-        val apk = File(apkFilePath)
-        return ApkParsers.getMetaInfo(apk).toPackageInfo(apk).apply {
-            val parsed = ApkFile(apk)
-            val dbFactory = DocumentBuilderFactory.newInstance()
-            val dBuilder = dbFactory.newDocumentBuilder()
-            val doc =
-                parsed.manifestXml.byteInputStream().use {
-                    dBuilder.parse(it)
-                }
+    fun getPackageInfo(apkFile: Path): PackageInfo =
+        ApkParsers.getMetaInfo(apkFile.toFile()).toPackageInfo(apkFile.toFile()).apply {
+            ApkFile(apkFile.toFile()).use { parsed ->
+                val dbFactory = DocumentBuilderFactory.newInstance()
+                val dBuilder = dbFactory.newDocumentBuilder()
+                val doc =
+                    parsed.manifestXml.byteInputStream().use {
+                        dBuilder.parse(it)
+                    }
 
-            logger.trace { parsed.manifestXml }
+                logger.trace { parsed.manifestXml }
 
-            applicationInfo.metaData =
-                Bundle().apply {
-                    val appTag = doc.getElementsByTagName("application").item(0)
+                applicationInfo.metaData =
+                    Bundle().apply {
+                        val appTag = doc.getElementsByTagName("application").item(0)
 
-                    appTag
-                        ?.childNodes
-                        ?.toList()
-                        .orEmpty()
-                        .asSequence()
-                        .filter {
-                            it.nodeType == Node.ELEMENT_NODE
-                        }.map {
-                            it as Element
-                        }.filter {
-                            it.tagName == "meta-data"
-                        }.forEach {
-                            putString(
-                                it.attributes.getNamedItem("android:name").nodeValue,
-                                it.attributes.getNamedItem("android:value").nodeValue,
-                            )
-                        }
-                }
+                        appTag
+                            ?.childNodes
+                            ?.toList()
+                            .orEmpty()
+                            .asSequence()
+                            .filter {
+                                it.nodeType == Node.ELEMENT_NODE
+                            }.map {
+                                it as Element
+                            }.filter {
+                                it.tagName == "meta-data"
+                            }.forEach {
+                                putString(
+                                    it.attributes.getNamedItem("android:name").nodeValue,
+                                    it.attributes.getNamedItem("android:value").nodeValue,
+                                )
+                            }
+                    }
 
-            signatures =
-                (
-                    parsed.apkSingers.flatMap { it.certificateMetas }
-                    // + parsed.apkV2Singers.flatMap { it.certificateMetas }
-                ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
-                    .map { Signature(it.data) }
-                    .toTypedArray()
+                signatures =
+                    (
+                        parsed.apkSingers.flatMap { it.certificateMetas }
+                        // + parsed.apkV2Singers.flatMap { it.certificateMetas }
+                    ) // Blocked by: https://github.com/hsiafan/apk-parser/issues/72
+                        .map { Signature(it.data) }
+                        .toTypedArray()
+            }
         }
-    }
 
     fun getSignatureHash(pkgInfo: PackageInfo): String? {
         val signatures = pkgInfo.signatures
@@ -143,19 +151,38 @@ object PackageTools {
         }
     }
 
+    private val lockByJar = ConcurrentHashMap<String, Mutex>()
+
     val jarLoaderMap = mutableMapOf<String, URLClassLoader>()
 
-    /**
-     * loads the extension main class called [className] from the jar located at [jarPath]
-     * It may return an instance of HttpSource or SourceFactory depending on the extension.
-     */
-    fun loadExtensionSources(
-        jarPath: String,
+    suspend fun <T> blockJarUsageWhile(
+        jars: List<Path>,
+        block: suspend (loadSources: (jar: Path, className: String) -> Any) -> T,
+    ): T {
+        val mutexes = jars.map { lockByJar.getOrPut(it.absolutePathString()) { Mutex() } }
+
+        mutexes.forEach { it.lock() }
+
+        try {
+            return block { jar, className ->
+                check(jar in jars) { "Lock for $jar is not held" }
+
+                loadExtensionSourcesWithLockHeld(jar, className)
+            }
+        } finally {
+            mutexes.forEach { it.unlock() }
+        }
+    }
+
+    private fun loadExtensionSourcesWithLockHeld(
+        jar: Path,
         className: String,
     ): Any {
+        val jarPath = jar.absolutePathString()
+
         try {
             logger.debug { "loading jar with path: $jarPath" }
-            val classLoader = jarLoaderMap[jarPath] ?: URLClassLoader(arrayOf<URL>(Path(jarPath).toUri().toURL()))
+            val classLoader = jarLoaderMap[jarPath] ?: ChildFirstURLClassLoader(arrayOf<URL>(jar.toUri().toURL()))
             val classToLoad = Class.forName(className, false, classLoader)
 
             jarLoaderMap[jarPath] = classLoader
@@ -164,6 +191,21 @@ object PackageTools {
         } catch (e: Exception) {
             logger.error(e) { "Failed to load jar with path: $jarPath" }
             throw e
+        }
+    }
+
+    /**
+     * loads the extension main class called [className] from the jar located at [jarPath]
+     * It may return an instance of HttpSource or SourceFactory depending on the extension.
+     */
+    suspend fun loadExtensionSources(
+        jar: Path,
+        className: String,
+    ): Any {
+        val mutex = lockByJar.getOrPut(jar.absolutePathString()) { Mutex() }
+
+        mutex.withLock {
+            return loadExtensionSourcesWithLockHeld(jar, className)
         }
     }
 }

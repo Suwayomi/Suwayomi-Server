@@ -132,6 +132,7 @@ class Kitsu(
         return if (remoteTrack != null) {
             track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
             track.remote_id = remoteTrack.remote_id
+            track.library_id = remoteTrack.library_id
 
             if (track.status != COMPLETED) {
                 track.status = if (hasReadChapters) READING else track.status
@@ -160,7 +161,7 @@ class Kitsu(
         return track
     }
 
-    override suspend fun login(
+    override suspend fun loginImpl(
         userId: Int,
         username: String,
         password: String,

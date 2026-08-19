@@ -5,6 +5,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <title>${MR.strings.webview_label_title.localized(locale)}</title>
     <style>
@@ -408,7 +409,7 @@
                                 },
                                 "operationName": "LOGIN",
                             };
-                            const resp = await fetch("/api/graphql", {
+                            const resp = await fetch("../graphql", {
                                 "headers": {
                                     "Accept": "application/json, multipart/mixed",
                                     "Content-Type": "application/json",

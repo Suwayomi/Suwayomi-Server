@@ -10,12 +10,18 @@ package suwayomi.tachidesk.graphql.queries
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
@@ -28,36 +34,28 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
-import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
-import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.manga.model.table.MangaUserTable
-import suwayomi.tachidesk.manga.model.table.getWithUserData
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class MangaQuery {
+    @RequireAuth
     fun manga(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<MangaType> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
-    }
+    ): CompletableFuture<MangaType> = dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
 
     enum class MangaOrderBy(
         override val column: Column<*>,
@@ -222,10 +220,16 @@ class MangaQuery {
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
                 andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
             )
+
+        fun isFilteringForCategories(): Boolean =
+            this.categoryId != null ||
+                this.or?.any { it.isFilteringForCategories() } != null ||
+                this.and?.any { it.isFilteringForCategories() } != null ||
+                this.not?.isFilteringForCategories() != null
     }
 
+    @RequireAuth
     fun mangas(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: MangaCondition? = null,
         filter: MangaFilter? = null,
         @GraphQLDeprecated(
@@ -245,34 +249,28 @@ class MangaQuery {
         last: Int? = null,
         offset: Int? = null,
     ): MangaNodeList {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
-                val res =
+                val mangaIdsQuery =
                     MangaTable
                         .getWithUserData(userId)
                         .leftJoin(CategoryMangaTable)
-                        .select(MangaTable.columns)
-                        .where { CategoryMangaTable.user eq userId }
-                        .withDistinctOn(MangaTable.id)
+                        .select(MangaTable.id)
+                        .withDistinct()
+                        .applyOps(condition, filter)
 
-                res.applyOps(condition, filter)
-
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
-
-                        res.orderBy(orderByColumn to orderType)
+                val res =
+                    if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
+                        MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
+                    } else {
+                        MangaTable.selectAll().applyOps(condition, filter)
                     }
-                }
 
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(MangaTable.id)?.value
-                val lastResult = res.lastOrNull()?.get(MangaTable.id)?.value
+                val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+
+                val (total, firstResult, lastResult) = res.applySortAndGetPaginationInfo(actualSort, before, last, MangaTable.id)
 
                 res.applyBeforeAfter(
                     before = before,

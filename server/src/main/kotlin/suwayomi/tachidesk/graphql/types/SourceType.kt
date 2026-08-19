@@ -7,14 +7,16 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
-import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.ConfigurableSource
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.online.HttpSource
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -22,11 +24,12 @@ import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.Source.getSourcePreferencesRaw
 import suwayomi.tachidesk.manga.impl.extension.Extension
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
-import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 import androidx.preference.CheckBoxPreference as SourceCheckBoxPreference
 import androidx.preference.EditTextPreference as SourceEditTextPreference
@@ -40,35 +43,29 @@ class SourceType(
     val id: Long,
     val name: String,
     val lang: String,
+    val contentWarning: ContentWarning,
     val iconUrl: String,
     val supportsLatest: Boolean,
     val isConfigurable: Boolean,
+    @GraphQLDeprecated("", ReplaceWith("contentWarning"))
     val isNsfw: Boolean,
     val displayName: String,
+    val homeUrl: String?,
+    @GraphQLDeprecated("", ReplaceWith("homeUrl"))
     val baseUrl: String?,
 ) : Node {
-    constructor(source: SourceDataClass) : this(
-        id = source.id.toLong(),
-        name = source.name,
-        lang = source.lang,
-        iconUrl = source.iconUrl,
-        supportsLatest = source.supportsLatest,
-        isConfigurable = source.isConfigurable,
-        isNsfw = source.isNsfw,
-        displayName = source.displayName,
-        baseUrl = source.baseUrl,
-    )
-
-    constructor(row: ResultRow, sourceExtension: ResultRow, catalogueSource: CatalogueSource) : this(
+    constructor(row: ResultRow, sourceExtension: ResultRow, source: Source) : this(
         id = row[SourceTable.id].value,
         name = row[SourceTable.name],
         lang = row[SourceTable.lang],
-        iconUrl = Extension.getExtensionIconUrl(sourceExtension[ExtensionTable.apkName]),
-        supportsLatest = catalogueSource.supportsLatest,
-        isConfigurable = catalogueSource is ConfigurableSource,
-        isNsfw = row[SourceTable.isNsfw],
-        displayName = catalogueSource.toString(),
-        baseUrl = catalogueSource.runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
+        contentWarning = ContentWarning.valueOf(row[SourceTable.contentWarning]),
+        iconUrl = Extension.proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
+        supportsLatest = source.supportsLatest,
+        isConfigurable = source is ConfigurableSource,
+        isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+        displayName = source.toString(),
+        homeUrl = runCatching { (source as? HttpSource)?.getHomeUrl() }.getOrNull(),
+        baseUrl = runCatching { (source as? HttpSource)?.baseUrl }.getOrNull(),
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
@@ -77,19 +74,19 @@ class SourceType(
     fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> =
         dataFetchingEnvironment.getValueFromDataLoader<Long, ExtensionType>("ExtensionForSourceDataLoader", id)
 
-    fun preferences(): List<Preference> = getSourcePreferencesRaw(id).map { preferenceOf(it) }
+    fun preferences(): CompletableFuture<List<Preference>> = future { getSourcePreferencesRaw(id).map { preferenceOf(it) } }
 
-    fun filters(): List<Filter> = getCatalogueSourceOrStub(id).getFilterList().map { filterOf(it) }
+    fun filters(): CompletableFuture<List<Filter>> = future { getSourceOrStub(id).getFilterList().map { filterOf(it) } }
 
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<SourceMetaType>> =
         dataFetchingEnvironment.getValueFromDataLoader<Long, List<SourceMetaType>>("SourceMetaDataLoader", id)
 }
 
 @Suppress("ktlint:standard:function-naming")
-fun SourceType(row: ResultRow): SourceType? {
+suspend fun SourceType(row: ResultRow): SourceType? {
     val catalogueSource =
-        GetCatalogueSource
-            .getCatalogueSourceOrNull(row[SourceTable.id].value)
+        GetSource
+            .getSourceOrNull(row[SourceTable.id].value)
             ?: return null
     val sourceExtension =
         if (row.hasValue(ExtensionTable.id)) {
@@ -204,12 +201,27 @@ data class GroupFilter(
 
 fun filterOf(filter: SourceFilter<*>): Filter =
     when (filter) {
-        is SourceFilter.Header -> HeaderFilter(filter.name)
-        is SourceFilter.Separator -> SeparatorFilter(filter.name)
-        is SourceFilter.Select<*> -> SelectFilter(filter.name, filter.displayValues, filter.state)
-        is SourceFilter.Text -> TextFilter(filter.name, filter.state)
-        is SourceFilter.CheckBox -> CheckBoxFilter(filter.name, filter.state)
-        is SourceFilter.TriState ->
+        is SourceFilter.Header -> {
+            HeaderFilter(filter.name)
+        }
+
+        is SourceFilter.Separator -> {
+            SeparatorFilter(filter.name)
+        }
+
+        is SourceFilter.Select<*> -> {
+            SelectFilter(filter.name, filter.displayValues, filter.state)
+        }
+
+        is SourceFilter.Text -> {
+            TextFilter(filter.name, filter.state)
+        }
+
+        is SourceFilter.CheckBox -> {
+            CheckBoxFilter(filter.name, filter.state)
+        }
+
+        is SourceFilter.TriState -> {
             TriStateFilter(
                 filter.name,
                 when (filter.state) {
@@ -218,13 +230,22 @@ fun filterOf(filter: SourceFilter<*>): Filter =
                     else -> TriState.IGNORE
                 },
             )
-        is SourceFilter.Group<*> ->
+        }
+
+        is SourceFilter.Group<*> -> {
             GroupFilter(
                 filter.name,
                 filter.state.map { filterOf(it as SourceFilter<*>) },
             )
-        is SourceFilter.Sort -> SortFilter(filter.name, filter.values.asList(), filter.state?.let(SortFilter::SortSelection))
-        else -> throw RuntimeException("sealed class cannot have more subtypes!")
+        }
+
+        is SourceFilter.Sort -> {
+            SortFilter(filter.name, filter.values.asList(), filter.state?.let(SortFilter::SortSelection))
+        }
+
+        else -> {
+            throw RuntimeException("sealed class cannot have more subtypes!")
+        }
     }
 
 /*sealed interface FilterChange {
@@ -276,59 +297,56 @@ data class FilterChange(
 )
 
 fun updateFilterList(
-    source: CatalogueSource,
+    source: Source,
     changes: List<FilterChange>?,
 ): FilterList {
     val filterList = source.getFilterList()
+    applyFilterChanges(filterList, changes)
+    return filterList
+}
 
+private fun applyFilterChanges(
+    filterList: List<SourceFilter<*>>,
+    changes: List<FilterChange>?,
+) {
     changes?.forEach { change ->
         when (val filter = filterList[change.position]) {
             is SourceFilter.Header -> {
                 // NOOP
             }
+
             is SourceFilter.Separator -> {
                 // NOOP
             }
+
             is SourceFilter.Select<*> -> {
                 filter.state = change.selectState
                     ?: throw Exception("Expected select state change at position ${change.position}")
             }
+
             is SourceFilter.Text -> {
                 filter.state = change.textState
                     ?: throw Exception("Expected text state change at position ${change.position}")
             }
+
             is SourceFilter.CheckBox -> {
                 filter.state = change.checkBoxState
                     ?: throw Exception("Expected checkbox state change at position ${change.position}")
             }
+
             is SourceFilter.TriState -> {
                 filter.state = change.triState?.ordinal
                     ?: throw Exception("Expected tri state change at position ${change.position}")
             }
-            is SourceFilter.Group<*> -> {
-                val groupChange =
-                    change.groupChange
-                        ?: throw Exception("Expected group change at position ${change.position}")
 
-                when (val groupFilter = filter.state[groupChange.position]) {
-                    is SourceFilter.CheckBox -> {
-                        groupFilter.state = groupChange.checkBoxState
-                            ?: throw Exception("Expected checkbox state change at position ${change.position}")
-                    }
-                    is SourceFilter.TriState -> {
-                        groupFilter.state = groupChange.triState?.ordinal
-                            ?: throw Exception("Expected tri state change at position ${change.position}")
-                    }
-                    is SourceFilter.Text -> {
-                        groupFilter.state = groupChange.textState
-                            ?: throw Exception("Expected text state change at position ${change.position}")
-                    }
-                    is SourceFilter.Select<*> -> {
-                        groupFilter.state = groupChange.selectState
-                            ?: throw Exception("Expected select state change at position ${change.position}")
-                    }
-                }
+            is SourceFilter.Group<*> -> {
+                @Suppress("UNCHECKED_CAST")
+                applyFilterChanges(
+                    filter.state as List<SourceFilter<*>>,
+                    listOf(change.groupChange ?: throw Exception("Expected group change at position ${change.position}")),
+                )
             }
+
             is SourceFilter.Sort -> {
                 filter.state = change.sortState?.run {
                     SourceFilter.Sort.Selection(index, ascending)
@@ -336,7 +354,6 @@ fun updateFilterList(
             }
         }
     }
-    return filterList
 }
 
 sealed interface Preference
@@ -402,7 +419,7 @@ data class MultiSelectListPreference(
 
 fun preferenceOf(preference: SourcePreference): Preference =
     when (preference) {
-        is SourceSwitchPreference ->
+        is SourceSwitchPreference -> {
             SwitchPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -412,7 +429,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.currentValue as Boolean,
                 preference.defaultValue as Boolean,
             )
-        is SourceCheckBoxPreference ->
+        }
+
+        is SourceCheckBoxPreference -> {
             CheckBoxPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -422,7 +441,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.currentValue as Boolean,
                 preference.defaultValue as Boolean,
             )
-        is SourceEditTextPreference ->
+        }
+
+        is SourceEditTextPreference -> {
             EditTextPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -435,7 +456,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.dialogMessage?.toString(),
                 preference.text,
             )
-        is SourceListPreference ->
+        }
+
+        is SourceListPreference -> {
             ListPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -447,7 +470,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.entries.map { it.toString() },
                 preference.entryValues.map { it.toString() },
             )
-        is SourceMultiSelectListPreference ->
+        }
+
+        is SourceMultiSelectListPreference -> {
             MultiSelectListPreference(
                 preference.key,
                 preference.title?.toString(),
@@ -461,5 +486,9 @@ fun preferenceOf(preference: SourcePreference): Preference =
                 preference.entries.map { it.toString() },
                 preference.entryValues.map { it.toString() },
             )
-        else -> throw RuntimeException("sealed class cannot have more subtypes!")
+        }
+
+        else -> {
+            throw RuntimeException("sealed class cannot have more subtypes!")
+        }
     }

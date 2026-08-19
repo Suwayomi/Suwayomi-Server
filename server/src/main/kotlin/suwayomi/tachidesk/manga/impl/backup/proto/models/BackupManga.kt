@@ -3,6 +3,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto.models
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
+import suwayomi.tachidesk.manga.impl.util.lang.JsonObjectEmptyBytes
 
 @Serializable
 data class BackupManga(
@@ -34,6 +35,11 @@ data class BackupManga(
     @ProtoNumber(103) var viewer_flags: Int? = null,
     @ProtoNumber(104) var history: List<BackupHistory> = emptyList(),
     @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
+    // syncyomi
+    @ProtoNumber(106) var lastModifiedAt: Long = 0,
+    @ProtoNumber(109) var version: Long = 0,
+    @ProtoNumber(111) var initialized: Boolean = false,
+    @ProtoNumber(112) var memo: ByteArray = JsonObjectEmptyBytes,
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
 )

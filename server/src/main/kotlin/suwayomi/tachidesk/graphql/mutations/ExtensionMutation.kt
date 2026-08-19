@@ -1,20 +1,22 @@
+@file:Suppress("RedundantNullableReturnType", "unused")
+
 package suwayomi.tachidesk.graphql.mutations
 
 import eu.kanade.tachiyomi.source.local.LocalSource
-import graphql.execution.DataFetcherResult
-import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.UploadedFile
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.graphql.asDataFetcherResult
-import suwayomi.tachidesk.graphql.server.getAttribute
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.types.ExtensionStoreType
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
+import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class ExtensionMutation {
@@ -77,58 +79,48 @@ class ExtensionMutation {
         }
     }
 
-    fun updateExtension(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateExtensionInput,
-    ): CompletableFuture<DataFetcherResult<UpdateExtensionPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun updateExtension(input: UpdateExtensionInput): CompletableFuture<UpdateExtensionPayload?> {
         val (clientMutationId, id, patch) = input
 
         return future {
-            asDataFetcherResult {
-                updateExtensions(listOf(id), patch)
+            updateExtensions(listOf(id), patch)
 
-                val extension =
-                    transaction {
-                        ExtensionTable
-                            .selectAll()
-                            .where { ExtensionTable.pkgName eq id }
-                            .firstOrNull()
-                            ?.let { ExtensionType(it) }
-                    }
+            val extension =
+                transaction {
+                    ExtensionTable
+                        .selectAll()
+                        .where { ExtensionTable.pkgName eq id }
+                        .firstOrNull()
+                        ?.let { ExtensionType(it) }
+                }
 
-                UpdateExtensionPayload(
-                    clientMutationId = clientMutationId,
-                    extension = extension,
-                )
-            }
+            UpdateExtensionPayload(
+                clientMutationId = clientMutationId,
+                extension = extension,
+            )
         }
     }
 
-    fun updateExtensions(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: UpdateExtensionsInput,
-    ): CompletableFuture<DataFetcherResult<UpdateExtensionsPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun updateExtensions(input: UpdateExtensionsInput): CompletableFuture<UpdateExtensionsPayload?> {
         val (clientMutationId, ids, patch) = input
 
         return future {
-            asDataFetcherResult {
-                updateExtensions(ids, patch)
+            updateExtensions(ids, patch)
 
-                val extensions =
-                    transaction {
-                        ExtensionTable
-                            .selectAll()
-                            .where { ExtensionTable.pkgName inList ids }
-                            .map { ExtensionType(it) }
-                    }
+            val extensions =
+                transaction {
+                    ExtensionTable
+                        .selectAll()
+                        .where { ExtensionTable.pkgName inList ids }
+                        .map { ExtensionType(it) }
+                }
 
-                UpdateExtensionsPayload(
-                    clientMutationId = clientMutationId,
-                    extensions = extensions,
-                )
-            }
+            UpdateExtensionsPayload(
+                clientMutationId = clientMutationId,
+                extensions = extensions,
+            )
         }
     }
 
@@ -139,32 +131,36 @@ class ExtensionMutation {
     data class FetchExtensionsPayload(
         val clientMutationId: String?,
         val extensions: List<ExtensionType>,
+        val extensionStores: List<ExtensionStoreType>,
     )
 
-    fun fetchExtensions(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: FetchExtensionsInput,
-    ): CompletableFuture<DataFetcherResult<FetchExtensionsPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun fetchExtensions(input: FetchExtensionsInput): CompletableFuture<FetchExtensionsPayload?> {
         val (clientMutationId) = input
 
         return future {
-            asDataFetcherResult {
-                ExtensionsList.fetchExtensions()
+            ExtensionsList.fetchExtensions()
 
-                val extensions =
-                    transaction {
-                        ExtensionTable
-                            .selectAll()
-                            .where { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
-                            .map { ExtensionType(it) }
-                    }
+            val extensions =
+                transaction {
+                    ExtensionTable
+                        .selectAll()
+                        .where { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
+                        .map { ExtensionType(it) }
+                }
 
-                FetchExtensionsPayload(
-                    clientMutationId = clientMutationId,
-                    extensions = extensions,
-                )
-            }
+            val extensionStores =
+                transaction {
+                    ExtensionStoreTable
+                        .selectAll()
+                        .map { ExtensionStoreType(it) }
+                }
+
+            FetchExtensionsPayload(
+                clientMutationId = clientMutationId,
+                extensions = extensions,
+                extensionStores = extensionStores,
+            )
         }
     }
 
@@ -178,25 +174,20 @@ class ExtensionMutation {
         val extension: ExtensionType,
     )
 
-    fun installExternalExtension(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: InstallExternalExtensionInput,
-    ): CompletableFuture<DataFetcherResult<InstallExternalExtensionPayload?>> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun installExternalExtension(input: InstallExternalExtensionInput): CompletableFuture<InstallExternalExtensionPayload?> {
         val (clientMutationId, extensionFile) = input
 
         return future {
-            asDataFetcherResult {
-                Extension.installExternalExtension(extensionFile.content(), extensionFile.filename())
+            val pkgName = Extension.installExternalExtension(extensionFile.content(), extensionFile.filename())
 
-                val dbExtension =
-                    transaction { ExtensionTable.selectAll().where { ExtensionTable.apkName eq extensionFile.filename() }.first() }
+            val dbExtension =
+                transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
 
-                InstallExternalExtensionPayload(
-                    clientMutationId,
-                    extension = ExtensionType(dbExtension),
-                )
-            }
+            InstallExternalExtensionPayload(
+                clientMutationId,
+                extension = ExtensionType(dbExtension),
+            )
         }
     }
 }

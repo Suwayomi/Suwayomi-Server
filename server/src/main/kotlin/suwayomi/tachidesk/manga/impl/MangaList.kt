@@ -7,14 +7,20 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
-import org.jetbrains.exposed.dao.id.EntityID
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.batchInsert
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.statements.BatchUpdateStatement
-import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.util.source.GetCatalogueSource.getCatalogueSourceOrStub
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -34,7 +40,7 @@ object MangaList {
         require(pageNum > 0) {
             "pageNum = $pageNum is not in valid range"
         }
-        val source = getCatalogueSourceOrStub(sourceId)
+        val source = getSourceOrStub(sourceId)
         val mangasPage =
             if (popular) {
                 source.getPopularManga(pageNum)
@@ -75,6 +81,7 @@ object MangaList {
                         this[MangaTable.status] = it.status
                         this[MangaTable.thumbnail_url] = it.thumbnail_url
                         this[MangaTable.updateStrategy] = it.update_strategy.name
+                        this[MangaTable.memo] = it.memo
 
                         this[MangaTable.sourceReference] = sourceId
                     }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
@@ -86,33 +93,36 @@ object MangaList {
                 mangas
                     .mapNotNull { sManga ->
                         existingMangaUrlsToId[sManga.url]?.let { sManga to it }
-                    }.filterNot { (_, resultRows) ->
-                        resultRows.any { it[MangaUserTable.inLibrary] } // todo
+                    }.filterNot { (_, resultRow) ->
+                        // todo user
+                        resultRow[MangaUserTable.inLibrary] && resultRow[MangaTable.sourceReference] != LocalSource.ID
                     }
 
             if (mangaToUpdate.isNotEmpty()) {
-                BatchUpdateStatement(MangaTable).apply {
-                    mangaToUpdate.forEach { (sManga, mangas) ->
+                BatchUpdateStatement(MangaTable)
+                    .apply {
+                        mangaToUpdate.forEach { (sManga, mangas) ->
                         val manga = mangas.first()
-                        addBatch(EntityID(manga[MangaTable.id].value, MangaTable))
-                        this[MangaTable.title] = sManga.title
-                        this[MangaTable.artist] = sManga.artist ?: manga[MangaTable.artist]
-                        this[MangaTable.author] = sManga.author ?: manga[MangaTable.author]
-                        this[MangaTable.description] = sManga.description ?: manga[MangaTable.description]
-                        this[MangaTable.genre] = sManga.genre ?: manga[MangaTable.genre]
-                        this[MangaTable.status] = sManga.status
-                        this[MangaTable.thumbnail_url] = sManga.thumbnail_url ?: manga[MangaTable.thumbnail_url]
-                        this[MangaTable.updateStrategy] = sManga.update_strategy.name
-                        if (!sManga.thumbnail_url.isNullOrEmpty() && manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
-                            this[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                            Manga.clearThumbnail(manga[MangaTable.id].value)
-                        } else {
-                            this[MangaTable.thumbnailUrlLastFetched] =
-                                manga[MangaTable.thumbnailUrlLastFetched]
+                            addBatch(EntityID(manga[MangaTable.id].value, MangaTable))
+                            this[MangaTable.title] = sManga.title
+                            this[MangaTable.artist] = sManga.artist ?: manga[MangaTable.artist]
+                            this[MangaTable.author] = sManga.author ?: manga[MangaTable.author]
+                            this[MangaTable.description] = sManga.description ?: manga[MangaTable.description]
+                            this[MangaTable.genre] = sManga.genre ?: manga[MangaTable.genre]
+                            this[MangaTable.status] = sManga.status
+                            this[MangaTable.thumbnail_url] = sManga.thumbnail_url ?: manga[MangaTable.thumbnail_url]
+                            this[MangaTable.updateStrategy] = sManga.update_strategy.name
+                            this[MangaTable.memo] = sManga.memo
+                            if (!sManga.thumbnail_url.isNullOrEmpty() && manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
+                                this[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                                Manga.clearThumbnail(manga[MangaTable.id].value)
+                            } else {
+                                this[MangaTable.thumbnailUrlLastFetched] =
+                                    manga[MangaTable.thumbnailUrlLastFetched]
+                            }
                         }
-                    }
-                    execute(this@transaction)
-                }
+                    }.toExecutable()
+                    .execute(this@transaction)
             }
 
             val mangaUrlsToId =

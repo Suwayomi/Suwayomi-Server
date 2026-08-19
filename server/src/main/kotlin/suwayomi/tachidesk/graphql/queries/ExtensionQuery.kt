@@ -11,70 +11,71 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.local.LocalSource
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.Column
-import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.neq
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
+import suwayomi.tachidesk.graphql.queries.filter.ContentWarningFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
 import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
 import suwayomi.tachidesk.graphql.queries.filter.IntFilter
+import suwayomi.tachidesk.graphql.queries.filter.LongFilter
 import suwayomi.tachidesk.graphql.queries.filter.OpAnd
 import suwayomi.tachidesk.graphql.queries.filter.StringFilter
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEnum
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
-import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
-import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 
 class ExtensionQuery {
+    @RequireAuth
     fun extension(
         dataFetchingEnvironment: DataFetchingEnvironment,
         pkgName: String,
-    ): CompletableFuture<ExtensionType> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
-    }
+    ): CompletableFuture<ExtensionType> = dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
 
     enum class ExtensionOrderBy(
         override val column: Column<*>,
     ) : OrderBy<ExtensionType> {
         PKG_NAME(ExtensionTable.pkgName),
         NAME(ExtensionTable.name),
-        APK_NAME(ExtensionTable.apkName),
+
+        @GraphQLDeprecated("")
+        APK_NAME(ExtensionTable.pkgName),
         ;
 
         override fun greater(cursor: Cursor): Op<Boolean> =
             when (this) {
                 PKG_NAME -> ExtensionTable.pkgName greater cursor.value
                 NAME -> greaterNotUnique(ExtensionTable.name, ExtensionTable.pkgName, cursor, String::toString)
-                APK_NAME -> greaterNotUnique(ExtensionTable.apkName, ExtensionTable.pkgName, cursor, String::toString)
+                APK_NAME -> ExtensionTable.pkgName greater cursor.value
             }
 
         override fun less(cursor: Cursor): Op<Boolean> =
             when (this) {
                 PKG_NAME -> ExtensionTable.pkgName less cursor.value
                 NAME -> lessNotUnique(ExtensionTable.name, ExtensionTable.pkgName, cursor, String::toString)
-                APK_NAME -> lessNotUnique(ExtensionTable.apkName, ExtensionTable.pkgName, cursor, String::toString)
+                APK_NAME -> ExtensionTable.pkgName less cursor.value
             }
 
         override fun asCursor(type: ExtensionType): Cursor {
@@ -94,29 +95,46 @@ class ExtensionQuery {
     ) : Order<ExtensionOrderBy>
 
     data class ExtensionCondition(
+        val storeIndexUrl: String? = null,
+        @GraphQLDeprecated("", ReplaceWith("storeIndexUrl"))
         val repo: String? = null,
         val apkName: String? = null,
         val iconUrl: String? = null,
         val name: String? = null,
         val pkgName: String? = null,
+        val apkUrl: String? = null,
+        val jarUrl: String? = null,
+        val extensionLib: String? = null,
         val versionName: String? = null,
         val versionCode: Int? = null,
+        val versionCodeLong: Long? = null,
         val lang: String? = null,
+        @GraphQLDeprecated("", ReplaceWith("contentWarning"))
         val isNsfw: Boolean? = null,
+        val contentWarning: ContentWarning? = null,
         val isInstalled: Boolean? = null,
         val hasUpdate: Boolean? = null,
         val isObsolete: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
-            opAnd.eq(repo, ExtensionTable.repo)
+            opAnd.eq(storeIndexUrl, ExtensionTable.storeIndexUrl)
+            opAnd.eq(repo, ExtensionTable.storeIndexUrl)
             opAnd.eq(apkName, ExtensionTable.apkName)
             opAnd.eq(iconUrl, ExtensionTable.iconUrl)
+            opAnd.eq(apkUrl, ExtensionTable.apkUrl)
+            opAnd.eq(jarUrl, ExtensionTable.jarUrl)
             opAnd.eq(name, ExtensionTable.name)
+            opAnd.eq(extensionLib, ExtensionTable.extensionLib)
             opAnd.eq(versionName, ExtensionTable.versionName)
-            opAnd.eq(versionCode, ExtensionTable.versionCode)
+            opAnd.eq(versionCode?.toLong(), ExtensionTable.versionCode)
+            opAnd.eq(versionCodeLong, ExtensionTable.versionCode)
             opAnd.eq(lang, ExtensionTable.lang)
-            opAnd.eq(isNsfw, ExtensionTable.isNsfw)
+            opAnd.eq(
+                isNsfw?.let { if (it) ContentWarning.MIXED.ordinal else ContentWarning.SAFE.ordinal },
+                ExtensionTable.contentWarning,
+            )
+            opAnd.eq(contentWarning?.ordinal, ExtensionTable.contentWarning)
             opAnd.eq(isInstalled, ExtensionTable.isInstalled)
             opAnd.eq(hasUpdate, ExtensionTable.hasUpdate)
             opAnd.eq(isObsolete, ExtensionTable.isObsolete)
@@ -126,15 +144,24 @@ class ExtensionQuery {
     }
 
     data class ExtensionFilter(
+        val storeIndexUrl: StringFilter? = null,
+        @GraphQLDeprecated("", ReplaceWith("storeIndexUrl"))
         val repo: StringFilter? = null,
         val apkName: StringFilter? = null,
         val iconUrl: StringFilter? = null,
         val name: StringFilter? = null,
         val pkgName: StringFilter? = null,
+        val apkUrl: StringFilter? = null,
+        val jarUrl: StringFilter? = null,
         val versionName: StringFilter? = null,
+        val extensionLib: StringFilter? = null,
+        @GraphQLDeprecated("", ReplaceWith("versionCodeLong"))
         val versionCode: IntFilter? = null,
+        val versionCodeLong: LongFilter? = null,
         val lang: StringFilter? = null,
+        @GraphQLDeprecated("", ReplaceWith("contentWarning"))
         val isNsfw: BooleanFilter? = null,
+        val contentWarning: ContentWarningFilter? = null,
         val isInstalled: BooleanFilter? = null,
         val hasUpdate: BooleanFilter? = null,
         val isObsolete: BooleanFilter? = null,
@@ -144,23 +171,27 @@ class ExtensionQuery {
     ) : Filter<ExtensionFilter> {
         override fun getOpList(): List<Op<Boolean>> =
             listOfNotNull(
-                andFilterWithCompareString(ExtensionTable.repo, repo),
+                andFilterWithCompareString(ExtensionTable.storeIndexUrl, storeIndexUrl),
+                andFilterWithCompareString(ExtensionTable.storeIndexUrl, repo),
                 andFilterWithCompareString(ExtensionTable.apkName, apkName),
                 andFilterWithCompareString(ExtensionTable.iconUrl, iconUrl),
                 andFilterWithCompareString(ExtensionTable.name, name),
                 andFilterWithCompareString(ExtensionTable.pkgName, pkgName),
+                andFilterWithCompareString(ExtensionTable.apkUrl, apkUrl),
+                andFilterWithCompareString(ExtensionTable.jarUrl, jarUrl),
+                andFilterWithCompareString(ExtensionTable.extensionLib, extensionLib),
                 andFilterWithCompareString(ExtensionTable.versionName, versionName),
-                andFilterWithCompare(ExtensionTable.versionCode, versionCode),
+                andFilterWithCompare(ExtensionTable.versionCode, versionCodeLong),
                 andFilterWithCompareString(ExtensionTable.lang, lang),
-                andFilterWithCompare(ExtensionTable.isNsfw, isNsfw),
+                andFilterWithCompareEnum(ExtensionTable.contentWarning, contentWarning),
                 andFilterWithCompare(ExtensionTable.isInstalled, isInstalled),
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
                 andFilterWithCompare(ExtensionTable.isObsolete, isObsolete),
             )
     }
 
+    @RequireAuth
     fun extensions(
-        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: ExtensionCondition? = null,
         filter: ExtensionFilter? = null,
         @GraphQLDeprecated(
@@ -180,7 +211,6 @@ class ExtensionQuery {
         last: Int? = null,
         offset: Int? = null,
     ): ExtensionNodeList {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val queryResults =
             transaction {
                 val res = ExtensionTable.selectAll()
@@ -189,21 +219,12 @@ class ExtensionQuery {
 
                 res.applyOps(condition, filter)
 
-                if (order != null || orderBy != null || (last != null || before != null)) {
-                    val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
+                val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
+                val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
+                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                        res.orderBy(orderByColumn to orderType)
-                    }
-                }
-
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(ExtensionTable.pkgName)
-                val lastResult = res.lastOrNull()?.get(ExtensionTable.pkgName)
+                val (total, firstResult, lastResult) =
+                    res.applySortAndGetPaginationInfo(actualSort, before, last) { it?.get(ExtensionTable.pkgName) }
 
                 res.applyBeforeAfter(
                     before = before,

@@ -13,29 +13,28 @@ object OpdsAPI {
             // OPDS Search Description Feed
             get("search", OpdsV1Controller.searchFeed)
 
-            // --- Main Navigation Feeds ---
-
-            // Explore Navigation Feed
-            get("explore", OpdsV1Controller.exploreSourcesFeed)
-
             // Reading History Acquisition Feed
             get("history", OpdsV1Controller.historyFeed)
 
             // Library Updates Acquisition Feed
             get("library-updates", OpdsV1Controller.libraryUpdatesFeed)
 
-            // --- Library-Specific Feeds ---
+            // --- Remote Catalog Exploration ---
+            // List of available online sources
+            get("explore", OpdsV1Controller.exploreSourcesFeed)
+
+            // Browse series from a specific online source
+            path("explore/source/{sourceId}") {
+                get(OpdsV1Controller.exploreSourceFeed)
+            }
+
+            // --- Library Navigation Feeds ---
             path("library") {
                 // All Series in Library / Search Results Feed (Acquisition)
                 get("series", OpdsV1Controller.seriesFeed)
 
                 // Library Sources Navigation Feed
                 get("sources", OpdsV1Controller.librarySourcesFeed)
-
-                // Library Source-Specific Series Acquisition Feed
-                path("source/{sourceId}") {
-                    get(OpdsV1Controller.librarySourceFeed)
-                }
 
                 // Library Categories Navigation Feed
                 get("categories", OpdsV1Controller.categoriesFeed)
@@ -50,26 +49,10 @@ object OpdsAPI {
                 get("languages", OpdsV1Controller.languagesFeed)
             }
 
-            // --- Explore-Specific Feeds ---
-
-            // All Sources Navigation Feed (Explore)
-            get("sources", OpdsV1Controller.exploreSourcesFeed)
-
-            // Source-Specific Series Acquisition Feed (Explore)
+            // --- Library Series Filters ---
+            // Source-Specific Series Acquisition Feed (Library)
             path("source/{sourceId}") {
-                get(OpdsV1Controller.exploreSourceFeed)
-            }
-
-            // --- Item-Specific Feeds (Apply to both Library and Explore contexts) ---
-
-            // Series Chapters Acquisition Feed
-            path("series/{seriesId}/chapters") {
-                get(OpdsV1Controller.seriesChaptersFeed)
-            }
-
-            // Chapter Metadata Acquisition Feed
-            path("series/{seriesId}/chapter/{chapterIndex}/metadata") {
-                get(OpdsV1Controller.chapterMetadataFeed)
+                get(OpdsV1Controller.librarySourceFeed)
             }
 
             // Category-Specific Series Acquisition Feed (Library)
@@ -90,6 +73,16 @@ object OpdsAPI {
             // Language-Specific Series Acquisition Feed (Library)
             path("language/{langCode}") {
                 get(OpdsV1Controller.languageFeed)
+            }
+
+            // --- Item Specific Feeds ---
+            // Series Chapters Acquisition Feed
+            path("series/{seriesId}/chapters") {
+                get(OpdsV1Controller.seriesChaptersFeed)
+            }
+            // Chapter Metadata Acquisition Feed
+            path("series/{seriesId}/chapter/{chapterIndex}/metadata") {
+                get(OpdsV1Controller.chapterMetadataFeed)
             }
         }
     }

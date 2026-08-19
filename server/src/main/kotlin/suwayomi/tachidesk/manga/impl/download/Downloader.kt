@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl.download
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
@@ -17,17 +18,18 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
-import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Finished
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Queued
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.ERROR
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.FINISHED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PAUSED
@@ -38,8 +40,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 class Downloader(
     private val scope: CoroutineScope,
-    val sourceId: String,
-    private val downloadQueue: CopyOnWriteArrayList<DownloadChapter>,
+    val sourceId: Long,
+    private val downloadQueue: CopyOnWriteArrayList<DownloadQueueItem>,
     private val notifier: (immediate: Boolean, download: DownloadUpdate?) -> Unit,
     private val onComplete: () -> Unit,
     private val onDownloadFinished: () -> Unit,
@@ -52,7 +54,7 @@ class Downloader(
 
     private var job: Job? = null
     private val availableSourceDownloads
-        get() = downloadQueue.filter { it.manga.sourceId == sourceId }
+        get() = downloadQueue.filter { it.sourceId == sourceId }
 
     class StopDownloadException : Exception("Cancelled download")
 
@@ -60,12 +62,32 @@ class Downloader(
 
     class EmptyChapterException : Exception("Chapter does not have any pages to download")
 
+    private fun notify(
+        immediate: Boolean,
+        update: DownloadUpdate? = null,
+    ) {
+        val isDownloadCanceled = !downloadQueue.contains(update?.downloadQueueItem)
+        if (isDownloadCanceled) {
+            return
+        }
+
+        notifier(immediate, update)
+    }
+
+    private fun notify(
+        immediate: Boolean,
+        type: DownloadUpdateType,
+        download: DownloadQueueItem?,
+    ) {
+        notify(immediate, download?.let { DownloadUpdate(type, download, downloadQueue.indexOf(download)) })
+    }
+
     private suspend fun step(
-        downloadUpdate: DownloadUpdate?,
+        type: DownloadUpdateType,
+        download: DownloadQueueItem?,
         immediate: Boolean,
     ) {
-        val download = downloadUpdate?.downloadChapter
-        notifier(immediate, downloadUpdate)
+        notify(immediate, type, download)
         currentCoroutineContext().ensureActive()
         if (download != null && download != availableSourceDownloads.firstOrNull { it.state != Error }) {
             if (download in downloadQueue) {
@@ -94,7 +116,7 @@ class Downloader(
                         }
                     }
             logger.debug { "started" }
-            notifier(false, null)
+            notify(false)
         }
     }
 
@@ -105,9 +127,9 @@ class Downloader(
 
     private fun finishDownload(
         logger: KLogger,
-        download: DownloadChapter,
+        download: DownloadQueueItem,
     ) {
-        notifier(true, DownloadUpdate(FINISHED, download))
+        notify(true, FINISHED, download)
         downloadQueue -= download
         onDownloadFinished()
         logger.debug { "finished" }
@@ -123,6 +145,12 @@ class Downloader(
             val logContext = "${logger.name} - downloadChapter($download))"
             val downloadLogger = KotlinLogging.logger(logContext)
 
+            // Skip local source downloads
+            if (sourceId == LocalSource.ID) {
+                finishDownload(downloadLogger, download)
+                continue
+            }
+
             downloadLogger.debug { "start" }
 
             // handle cases were the downloader was stopped before the finished download could be removed from the queue
@@ -135,46 +163,50 @@ class Downloader(
 
             try {
                 download.state = Downloading
-                step(DownloadUpdate(PROGRESS, download), true)
+                step(PROGRESS, download, true)
 
-                download.chapter = getChapterDownloadReadyById(0, download.chapter.id)
+                val chapter = getChapterDownloadReadyById(0, download.chapterId)
 
-                if (download.chapter.pageCount <= 0) {
+                if (chapter.pageCount <= 0) {
                     throw EmptyChapterException()
                 }
 
-                ChapterDownloadHelper.download(download.mangaId, download.chapter.id, download, scope) { downloadChapter, immediate ->
-                    step(downloadChapter?.let { DownloadUpdate(PROGRESS, downloadChapter) }, immediate)
+                download.pageCount = chapter.pageCount
+
+                ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, immediate ->
+                    step(PROGRESS, downloadChapter, immediate)
                 }
                 download.state = Finished
                 transaction {
                     ChapterTable.update(
-                        { (ChapterTable.manga eq download.mangaId) and (ChapterTable.sourceOrder eq download.chapterIndex) },
+                        { (ChapterTable.id eq download.chapterId) },
                     ) {
                         it[isDownloaded] = true
                     }
                 }
                 finishDownload(downloadLogger, download)
             } catch (e: CancellationException) {
-                logger.debug { "Downloader was stopped" }
+                downloadLogger.debug { "Downloader was stopped" }
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
-                notifier(false, DownloadUpdate(STOPPED, download))
+                notify(false, STOPPED, download)
+            } catch (e: StopDownloadException) {
+                downloadLogger.debug { "Download was dequeued" }
             } catch (e: PauseDownloadException) {
                 downloadLogger.debug { "paused" }
                 download.state = Queued
-                notifier(false, DownloadUpdate(PAUSED, download))
+                notify(false, PAUSED, download)
             } catch (e: EmptyChapterException) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries = MAX_RETRIES
                 download.state = Error
-                notifier(false, DownloadUpdate(ERROR, download))
+                notify(false, ERROR, download)
             } catch (e: Exception) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries++
                 download.state = Queued
                 if (download.tries >= MAX_RETRIES) {
                     download.state = Error
-                    notifier(false, DownloadUpdate(ERROR, download))
+                    notify(false, ERROR, download)
                 }
             }
         }

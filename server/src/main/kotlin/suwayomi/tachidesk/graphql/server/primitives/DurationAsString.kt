@@ -25,7 +25,9 @@ private class GraphqlDurationAsStringCoercing : Coercing<Duration, String> {
     private fun toStringImpl(input: Any): String =
         when (input) {
             is Duration -> input.toIsoString()
+
             is String -> Duration.parse(input).toIsoString()
+
             else -> throw CoercingSerializeException(
                 "Expected a Duration or String but was ${CoercingUtil.typeName(input)}",
             )
@@ -69,7 +71,7 @@ private class GraphqlDurationAsStringCoercing : Coercing<Duration, String> {
             )
         }
         return try {
-            Duration.parse(input.value)
+            Duration.parse(input.value!!)
         } catch (e: IllegalArgumentException) {
             throw CoercingParseLiteralException(
                 "Invalid duration format: ${input.value}. Expected ISO-8601 duration string (e.g., 'PT30M', 'P1D')",
