@@ -51,9 +51,15 @@ class Shikimori(
 
     override fun getScoreList(userId: Int): List<String> = SCORE_LIST
 
-    override fun displayScore(userId: Int, track: Track): String = track.score.toInt().toString()
+    override fun displayScore(
+        userId: Int,
+        track: Track,
+    ): String = track.score.toInt().toString()
 
-    private suspend fun add(userId: Int, track: Track): Track = api(userId).addLibManga(track, getUsername(userId))
+    private suspend fun add(
+        userId: Int,
+        track: Track,
+    ): Track = api(userId).addLibManga(track, getUsername(userId))
 
     override suspend fun update(
         userId: Int,
@@ -73,7 +79,10 @@ class Shikimori(
         return api(userId).updateLibManga(track, getUsername(userId))
     }
 
-    override suspend fun delete(userId: Int, track: Track) {
+    override suspend fun delete(
+        userId: Int,
+        track: Track,
+    ) {
         api(userId).deleteLibManga(track)
     }
 
@@ -101,9 +110,15 @@ class Shikimori(
         }
     }
 
-    override suspend fun search(userId: Int, query: String): List<TrackSearch> = api(userId).search(query)
+    override suspend fun search(
+        userId: Int,
+        query: String,
+    ): List<TrackSearch> = api(userId).search(query)
 
-    override suspend fun refresh(userId: Int, track: Track): Track {
+    override suspend fun refresh(
+        userId: Int,
+        track: Track,
+    ): Track {
         api(userId).findLibManga(track, getUsername(userId))?.let { remoteTrack ->
             track.library_id = remoteTrack.library_id
             track.copyPersonalFrom(remoteTrack)
@@ -135,7 +150,10 @@ class Shikimori(
 
     override fun authUrl(): String = ShikimoriApi.authUrl().toString()
 
-    override suspend fun authCallback(userId: Int, url: String) {
+    override suspend fun authCallback(
+        userId: Int,
+        url: String,
+    ) {
         val token = url.extractToken("code") ?: throw IOException("cannot find token")
         login(userId, token)
     }
@@ -146,14 +164,20 @@ class Shikimori(
         password: String,
     ) = login(userId, password)
 
-    suspend fun login(userId: Int, code: String) {
+    suspend fun login(
+        userId: Int,
+        code: String,
+    ) {
         val oauth = api(userId).accessToken(code)
         interceptor(userId).newAuth(oauth)
         val user = api(userId).getCurrentUser()
         saveCredentials(userId, user.toString(), oauth.accessToken)
     }
 
-    fun saveToken(userId: Int, oauth: SMOAuth?) {
+    fun saveToken(
+        userId: Int,
+        oauth: SMOAuth?,
+    ) {
         trackPreferences.setTrackToken(userId, this, json.encodeToString(oauth))
     }
 

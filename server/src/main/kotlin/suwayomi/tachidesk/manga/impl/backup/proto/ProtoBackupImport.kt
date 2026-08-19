@@ -225,11 +225,11 @@ object ProtoBackupImport : ProtoBackupBase() {
 
                 BackupMangaHandler.restore(
                     userId,
-                backupManga = manga,
-                categoryMapping = categoryMapping,
-                sourceMapping = sourceMapping,
-                errors = errors,
-            flags = flags,
+                    backupManga = manga,
+                    categoryMapping = categoryMapping,
+                    sourceMapping = sourceMapping,
+                    errors = errors,
+                    flags = flags,
                 )
             }
         }

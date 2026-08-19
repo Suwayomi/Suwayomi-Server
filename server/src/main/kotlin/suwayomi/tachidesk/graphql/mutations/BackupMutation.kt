@@ -34,13 +34,17 @@ class BackupMutation {
     )
 
     @RequireAuth
-    fun restoreBackup(userId: Int, input: RestoreBackupInput): CompletableFuture<RestoreBackupPayload> {
+    fun restoreBackup(
+        userId: Int,
+        input: RestoreBackupInput,
+    ): CompletableFuture<RestoreBackupPayload> {
         val (clientMutationId, backup, flags) = input
 
         return future {
             val restoreId =
                 ProtoBackupImport.restore(
-                    userId, backup.content(),
+                    userId,
+                    backup.content(),
                     BackupFlags.fromPartial(flags),
                 )
 
@@ -77,7 +81,10 @@ class BackupMutation {
     )
 
     @RequireAuth
-    fun createBackup(userId: Int, input: CreateBackupInput? = null): CreateBackupPayload {
+    fun createBackup(
+        userId: Int,
+        input: CreateBackupInput? = null,
+    ): CreateBackupPayload {
         val filename = Backup.getFilename()
 
         val backup =

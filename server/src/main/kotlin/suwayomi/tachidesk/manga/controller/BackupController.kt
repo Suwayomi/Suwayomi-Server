@@ -115,8 +115,10 @@ object BackupController {
                 ctx.header("Content-Disposition", """attachment; filename="${Backup.getFilename()}"""")
                 ctx.future {
                     future {
-                        ProtoBackupExport.createBackup(userId,
-                            BackupFlags.DEFAULT)
+                        ProtoBackupExport.createBackup(
+                            userId,
+                            BackupFlags.DEFAULT,
+                        )
                     }.thenApply { ctx.result(it) }
                 }
             },

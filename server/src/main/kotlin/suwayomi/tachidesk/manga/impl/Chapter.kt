@@ -271,7 +271,7 @@ object Chapter {
                             // is recognized chapter number
                             if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
                                 // todo this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
-                                    // todo this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
+                                // todo this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
 
                                 // Try to use the fetch date of the original entry to not pollute 'Updates' tab
                                 deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
@@ -347,11 +347,13 @@ object Chapter {
             }
         }
 
-        val inLibrary = transaction {
-            MangaUserTable.select(MangaUserTable.id)
-                .where { MangaUserTable.manga eq mangaEntry[MangaTable.id] and (MangaUserTable.inLibrary eq true) }
-                .any()
-        }
+        val inLibrary =
+            transaction {
+                MangaUserTable
+                    .select(MangaUserTable.id)
+                    .where { MangaUserTable.manga eq mangaEntry[MangaTable.id] and (MangaUserTable.inLibrary eq true) }
+                    .any()
+            }
         if (inLibrary) {
             // We have to query the inserted chapters to get the up-to-date data. I.e. "last_modified_at" is not returned by the insert statement, due to being set by a DB trigger
             val insertedChapters =

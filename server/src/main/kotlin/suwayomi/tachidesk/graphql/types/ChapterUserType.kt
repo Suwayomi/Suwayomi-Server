@@ -11,8 +11,7 @@ class ChapterUserType(
     val lastPageRead: Int,
     val lastReadAt: Long,
     val chapterId: Int,
-): Node {
-
+) : Node {
     constructor(row: ResultRow) : this(
         row[ChapterUserTable.isRead],
         row[ChapterUserTable.isBookmarked],

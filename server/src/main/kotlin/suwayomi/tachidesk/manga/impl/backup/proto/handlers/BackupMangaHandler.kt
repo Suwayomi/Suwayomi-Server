@@ -56,7 +56,10 @@ object BackupMangaHandler {
         EXISTING,
     }
 
-    fun backup(userId: Int, flags: BackupFlags): List<BackupManga> =
+    fun backup(
+        userId: Int,
+        flags: BackupFlags,
+    ): List<BackupManga> =
         dbTransaction {
             if (!flags.includeManga) {
                 return@dbTransaction emptyList()
@@ -279,8 +282,8 @@ object BackupMangaHandler {
                 MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
                     it[MangaUserTable.user] = userId
                     it[MangaUserTable.manga] = mangaId
-                    it[inLibrary] = dbManga?.get(MangaUserTable.inLibrary) == true
-                        || manga.favorite
+                    it[inLibrary] = dbManga?.get(MangaUserTable.inLibrary) == true ||
+                        manga.favorite
                     it[inLibraryAt] = dbManga?.get(MangaUserTable.inLibraryAt)
                         ?: manga.dateAdded.milliseconds.inWholeSeconds
                 }
@@ -396,8 +399,7 @@ object BackupMangaHandler {
                     .where {
                         (ChapterUserTable.user eq userId) and
                             (ChapterUserTable.chapter inList chaptersToUpdateToDbChapter.map { it.second[ChapterTable.id].value })
-                    }
-                    .associate { it[ChapterUserTable.chapter].value to it }
+                    }.associate { it[ChapterUserTable.chapter].value to it }
 
             ChapterUserTable.batchUpsert(
                 chaptersToUpdateToDbChapter,

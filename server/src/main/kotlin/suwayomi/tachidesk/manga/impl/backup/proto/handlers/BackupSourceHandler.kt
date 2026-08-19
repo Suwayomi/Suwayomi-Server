@@ -52,7 +52,10 @@ object BackupSourceHandler {
                 }.toList()
         }
 
-    fun restore(userId: Int, backupSources: List<BackupSource>) {
+    fun restore(
+        userId: Int,
+        backupSources: List<BackupSource>,
+    ) {
         modifySourceMetas(userId, backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
     }
 }

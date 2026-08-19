@@ -162,7 +162,10 @@ object SyncManager {
         }
     }
 
-    private suspend fun syncData(userId: Int, periodic: Boolean = false) {
+    private suspend fun syncData(
+        userId: Int,
+        periodic: Boolean = false,
+    ) {
         val startInstant = Clock.System.now()
         _lastSyncState.value = SyncState.Started(startInstant)
 
@@ -454,7 +457,10 @@ object SyncManager {
         return Pair(favorites, nonFavorites)
     }
 
-    private fun updateNonFavorites(userId: Int, nonFavorites: List<BackupManga>) {
+    private fun updateNonFavorites(
+        userId: Int,
+        nonFavorites: List<BackupManga>,
+    ) {
         nonFavorites.forEach { nonFavorite ->
             val localManga =
                 transaction {
@@ -469,14 +475,16 @@ object SyncManager {
                 }
 
             if (localManga != null) {
-                val inLibrary = transaction {
-                    MangaUserTable.select(MangaUserTable.id)
-                        .where {
-                            (MangaUserTable.user eq userId) and
-                                (MangaUserTable.manga eq localManga.id) and
-                                (MangaUserTable.inLibrary eq true)
-                        }.any()
-                }
+                val inLibrary =
+                    transaction {
+                        MangaUserTable
+                            .select(MangaUserTable.id)
+                            .where {
+                                (MangaUserTable.user eq userId) and
+                                    (MangaUserTable.manga eq localManga.id) and
+                                    (MangaUserTable.inLibrary eq true)
+                            }.any()
+                    }
                 if (inLibrary != nonFavorite.favorite) {
                     transaction {
                         MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {

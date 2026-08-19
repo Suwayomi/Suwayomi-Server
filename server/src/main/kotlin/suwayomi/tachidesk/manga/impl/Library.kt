@@ -33,11 +33,13 @@ object Library {
         userId: Int,
         mangaId: Int,
     ) {
-        val inLibrary = transaction {
-            MangaUserTable.select(MangaUserTable.id)
-                .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
-                .any()
-        }
+        val inLibrary =
+            transaction {
+                MangaUserTable
+                    .select(MangaUserTable.id)
+                    .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
+                    .any()
+            }
         if (!inLibrary) {
             transaction {
                 val defaultCategories =
@@ -76,11 +78,13 @@ object Library {
         userId: Int,
         mangaId: Int,
     ) {
-        val inLibrary = transaction {
-            MangaUserTable.select(MangaUserTable.id)
-                .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
-                .any()
-        }
+        val inLibrary =
+            transaction {
+                MangaUserTable
+                    .select(MangaUserTable.id)
+                    .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
+                    .any()
+            }
         if (inLibrary) {
             transaction {
                 MangaUserTable.update({ MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }) {
@@ -92,9 +96,7 @@ object Library {
         }
     }
 
-    fun handleMangaThumbnail(
-        mangaId: Int,
-    ) {
+    fun handleMangaThumbnail(mangaId: Int) {
         scope.launch {
             val sourceId =
                 transaction {
@@ -104,11 +106,13 @@ object Library {
                         .first()
                         .get(MangaTable.sourceReference)
                 }
-            val inLibrary = transaction {
-                MangaUserTable.select(MangaUserTable.id)
-                    .where { MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true) }
-                    .any()
-            }
+            val inLibrary =
+                transaction {
+                    MangaUserTable
+                        .select(MangaUserTable.id)
+                        .where { MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true) }
+                        .any()
+                }
 
             if (sourceId == LocalSource.ID) {
                 return@launch

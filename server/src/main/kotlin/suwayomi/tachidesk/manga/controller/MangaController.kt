@@ -489,11 +489,12 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format, opds ->
-                val userId = if (opds == true) {
-                    ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
-                } else {
-                    ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                }
+                val userId =
+                    if (opds == true) {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                    } else {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                    }
                 ctx.future {
                     future {
                         Page.getPageImageServe(

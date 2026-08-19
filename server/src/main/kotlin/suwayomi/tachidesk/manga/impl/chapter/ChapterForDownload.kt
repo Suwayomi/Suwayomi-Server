@@ -70,7 +70,10 @@ fun updateChapterPersistence(
     }
 }
 
-private fun clampLastPageReads(chapterId: Int, pageCount: Int) {
+private fun clampLastPageReads(
+    chapterId: Int,
+    pageCount: Int,
+) {
     ChapterUserTable
         .selectAll()
         .where {

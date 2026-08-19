@@ -51,6 +51,7 @@ class M0063_AddUsers : Migration() {
                         SELECT 'admin','$password';
                         """.trimIndent()
                     }
+
                     DatabaseType.POSTGRESQL -> {
                         @Language("SQL")
                         """
@@ -148,8 +149,8 @@ class M0063_AddUsers : Migration() {
         val role = varchar("role", 24)
     }
 
-
     object MangaTable : IntIdTable()
+
     object MangaUserTable : IntIdTable() {
         val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
@@ -158,6 +159,7 @@ class M0063_AddUsers : Migration() {
     }
 
     object ChapterTable : IntIdTable()
+
     object ChapterUserTable : IntIdTable() {
         val chapter = reference("chapter", ChapterTable, ReferenceOption.CASCADE)
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)

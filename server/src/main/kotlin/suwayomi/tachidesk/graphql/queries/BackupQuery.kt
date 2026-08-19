@@ -27,7 +27,10 @@ class BackupQuery {
     )
 
     @RequireAuth
-    fun validateBackup(userId: Int, input: ValidateBackupInput): ValidateBackupResult {
+    fun validateBackup(
+        userId: Int,
+        input: ValidateBackupInput,
+    ): ValidateBackupResult {
         val result = ProtoBackupValidator.validate(userId, input.backup.content())
         return ValidateBackupResult(
             result.missingSourceIds.map { ValidateBackupSource(it.first, it.second) },

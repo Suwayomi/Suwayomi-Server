@@ -101,7 +101,7 @@ object MangaList {
                 BatchUpdateStatement(MangaTable)
                     .apply {
                         mangaToUpdate.forEach { (sManga, mangas) ->
-                        val manga = mangas.first()
+                            val manga = mangas.first()
                             addBatch(EntityID(manga[MangaTable.id].value, MangaTable))
                             this[MangaTable.title] = sManga.title
                             this[MangaTable.artist] = sManga.artist ?: manga[MangaTable.artist]

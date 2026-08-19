@@ -123,10 +123,11 @@ class ChapterMutation {
                                 this[ChapterUserTable.isBookmarked] = it
                             }
                             patch.lastPageRead?.also {
-                                this[ChapterUserTable.lastPageRead] = it.coerceIn(
-                                    0,
-                                chapterIdToPageCount[chapterId] ?: 0
-                                )
+                                this[ChapterUserTable.lastPageRead] =
+                                    it.coerceIn(
+                                        0,
+                                        chapterIdToPageCount[chapterId] ?: 0,
+                                    )
                                 this[ChapterUserTable.lastReadAt] = now
                             }
                         }
@@ -146,21 +147,24 @@ class ChapterMutation {
     }
 
     @RequireAuth
-    fun updateChapter(userId: Int, input: UpdateChapterInput): UpdateChapterPayload? {
+    fun updateChapter(
+        userId: Int,
+        input: UpdateChapterInput,
+    ): UpdateChapterPayload? {
         val (clientMutationId, id, patch) = input
 
         updateChapters(userId, listOf(id), patch)
 
-            val chapter =
-                transaction {
-                    ChapterType(
-                        ChapterTable
-                            .getWithUserData(userId)
-                            .selectAll()
-                            .where { ChapterTable.id eq id }
-                            .first(),
-                    )
-                }
+        val chapter =
+            transaction {
+                ChapterType(
+                    ChapterTable
+                        .getWithUserData(userId)
+                        .selectAll()
+                        .where { ChapterTable.id eq id }
+                        .first(),
+                )
+            }
 
         return UpdateChapterPayload(
             clientMutationId = clientMutationId,
@@ -169,7 +173,10 @@ class ChapterMutation {
     }
 
     @RequireAuth
-    fun updateChapters(userId: Int, input: UpdateChaptersInput): UpdateChaptersPayload? {
+    fun updateChapters(
+        userId: Int,
+        input: UpdateChaptersInput,
+    ): UpdateChaptersPayload? {
         val (clientMutationId, ids, patch) = input
 
         updateChapters(userId, ids, patch)
@@ -177,10 +184,10 @@ class ChapterMutation {
         val chapters =
             transaction {
                 ChapterTable
-                        .getWithUserData(userId)
-                        .selectAll()
-                        .where { ChapterTable.id inList ids }
-                        .map { ChapterType(it) }
+                    .getWithUserData(userId)
+                    .selectAll()
+                    .where { ChapterTable.id inList ids }
+                    .map { ChapterType(it) }
             }
 
         return UpdateChaptersPayload(
@@ -201,7 +208,10 @@ class ChapterMutation {
 
     @RequireAuth
     @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
-    fun fetchChapters(userId: Int, input: FetchChaptersInput): CompletableFuture<FetchChaptersPayload?> {
+    fun fetchChapters(
+        userId: Int,
+        input: FetchChaptersInput,
+    ): CompletableFuture<FetchChaptersPayload?> {
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -211,7 +221,7 @@ class ChapterMutation {
                 transaction {
                     ChapterTable
                         .getWithUserData(userId)
-                            .selectAll()
+                        .selectAll()
                         .where { ChapterTable.manga eq mangaId }
                         .orderBy(ChapterTable.sourceOrder)
                         .map { ChapterType(it) }
@@ -235,7 +245,10 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun setChapterMeta(userId: Int, input: SetChapterMetaInput): SetChapterMetaPayload? {
+    fun setChapterMeta(
+        userId: Int,
+        input: SetChapterMetaInput,
+    ): SetChapterMetaPayload? {
         val (clientMutationId, meta) = input
 
         Chapter.modifyChapterMeta(userId, meta.chapterId, meta.key, meta.value)
@@ -256,36 +269,39 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun deleteChapterMeta(userId: Int, input: DeleteChapterMetaInput): DeleteChapterMetaPayload? {
+    fun deleteChapterMeta(
+        userId: Int,
+        input: DeleteChapterMetaInput,
+    ): DeleteChapterMetaPayload? {
         val (clientMutationId, chapterId, key) = input
 
-            val (meta, chapter) =
-                transaction {
-                    val meta =
-                        ChapterMetaTable
-                            .selectAll()
-                            .where {
-                                ChapterMetaTable.user eq userId and
-                                    (ChapterMetaTable.ref eq chapterId) and
-                                    (ChapterMetaTable.key eq key)
+        val (meta, chapter) =
+            transaction {
+                val meta =
+                    ChapterMetaTable
+                        .selectAll()
+                        .where {
+                            ChapterMetaTable.user eq userId and
+                                (ChapterMetaTable.ref eq chapterId) and
+                                (ChapterMetaTable.key eq key)
                         }.firstOrNull()
 
                 ChapterMetaTable.deleteWhere {
-                        ChapterMetaTable.user eq userId and
-                            (ChapterMetaTable.ref eq chapterId) and
-                            (ChapterMetaTable.key eq key)
-                    }
+                    ChapterMetaTable.user eq userId and
+                        (ChapterMetaTable.ref eq chapterId) and
+                        (ChapterMetaTable.key eq key)
+                }
 
-                    val chapter =
-                        transaction {
-                            ChapterType(
-                                ChapterTable
-                                    .getWithUserData(userId)
-                                    .selectAll()
-                                    .where { ChapterTable.id eq chapterId }
-                                    .first(),
-                            )
-                        }
+                val chapter =
+                    transaction {
+                        ChapterType(
+                            ChapterTable
+                                .getWithUserData(userId)
+                                .selectAll()
+                                .where { ChapterTable.id eq chapterId }
+                                .first(),
+                        )
+                    }
 
                 if (meta != null) {
                     ChapterMetaType(meta)
@@ -314,7 +330,10 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun setChapterMetas(userId: Int, input: SetChapterMetasInput): SetChapterMetasPayload? {
+    fun setChapterMetas(
+        userId: Int,
+        input: SetChapterMetasInput,
+    ): SetChapterMetasPayload? {
         val (clientMutationId, items) = input
 
         val metaByChapterId =
@@ -335,8 +354,10 @@ class ChapterMutation {
                 val updatedMetas =
                     ChapterMetaTable
                         .selectAll()
-                        .where { (ChapterMetaTable.user eq userId) and (ChapterMetaTable.ref inList allChapterIds) and (ChapterMetaTable.key inList allMetaKeys) }
-                        .map { ChapterMetaType(it) }
+                        .where {
+                            (ChapterMetaTable.user eq userId) and (ChapterMetaTable.ref inList allChapterIds) and
+                                (ChapterMetaTable.key inList allMetaKeys)
+                        }.map { ChapterMetaType(it) }
 
                 val chapters =
                     ChapterTable
@@ -369,7 +390,10 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun deleteChapterMetas(userId: Int, input: DeleteChapterMetasInput): DeleteChapterMetasPayload? {
+    fun deleteChapterMetas(
+        userId: Int,
+        input: DeleteChapterMetasInput,
+    ): DeleteChapterMetasPayload? {
         val (clientMutationId, items) = input
 
         items.forEach { item ->
@@ -448,7 +472,10 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun fetchChapterPages(userId: Int, input: FetchChapterPagesInput): CompletableFuture<FetchChapterPagesPayload?> {
+    fun fetchChapterPages(
+        userId: Int,
+        input: FetchChapterPagesInput,
+    ): CompletableFuture<FetchChapterPagesPayload?> {
         val (clientMutationId, chapterId) = input
         val paramsMap = input.toParams()
 

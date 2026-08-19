@@ -160,7 +160,8 @@ object MangaRepository {
                     .join(ChapterTable.getWithUserData(userId), JoinType.LEFT, MangaTable.id, ChapterTable.manga)
 
             if (criteria.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga, additionalConstraint = {
+                baseJoin =
+                    baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga, additionalConstraint = {
                         CategoryMangaTable.user eq
                             userId
                     })
@@ -362,7 +363,10 @@ object MangaRepository {
      * @param activeFilters The currently active filters to respect during count calculation.
      * @return A map where keys are filter names and values are the counts.
      */
-    fun getLibraryFilterCounts(userId: Int, activeFilters: OpdsMangaFilter): Map<String, Long> =
+    fun getLibraryFilterCounts(
+        userId: Int,
+        activeFilters: OpdsMangaFilter,
+    ): Map<String, Long> =
         transaction {
             var baseJoin =
                 MangaTable

@@ -513,9 +513,7 @@ object Manga {
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
     }
 
-    fun getLatestChapter(
-        mangaId: Int,
-    ): ChapterDataClass? =
+    fun getLatestChapter(mangaId: Int): ChapterDataClass? =
         transaction {
             ChapterTable
                 .selectAll()
@@ -533,7 +531,7 @@ object Manga {
                 .selectAll()
                 .where { (ChapterTable.manga eq mangaId) and (ChapterUserTable.isRead eq false) }
                 .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                .map { ChapterTable.toDataClass( it) }
+                .map { ChapterTable.toDataClass(it) }
         }
 
     fun isInIncludedDownloadCategory(

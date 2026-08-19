@@ -48,7 +48,10 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMeta(userId: Int, input: SetSourceMetaInput): SetSourceMetaPayload? {
+    fun setSourceMeta(
+        userId: Int,
+        input: SetSourceMetaInput,
+    ): SetSourceMetaPayload? {
         val (clientMutationId, meta) = input
 
         Source.modifyMeta(userId, meta.sourceId, meta.key, meta.value)
@@ -69,7 +72,10 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMeta(userId: Int, input: DeleteSourceMetaInput): CompletableFuture<DeleteSourceMetaPayload?> {
+    fun deleteSourceMeta(
+        userId: Int,
+        input: DeleteSourceMetaInput,
+    ): CompletableFuture<DeleteSourceMetaPayload?> {
         val (clientMutationId, sourceId, key) = input
 
         return future {
@@ -125,7 +131,10 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMetas(userId: Int, input: SetSourceMetasInput): CompletableFuture<SetSourceMetasPayload?> {
+    fun setSourceMetas(
+        userId: Int,
+        input: SetSourceMetasInput,
+    ): CompletableFuture<SetSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
         return future {
@@ -147,8 +156,10 @@ class SourceMutation {
                     val updatedMetas =
                         SourceMetaTable
                             .selectAll()
-                            .where { (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList allSourceIds) and (SourceMetaTable.key inList allMetaKeys) }
-                            .map { SourceMetaType(it) }
+                            .where {
+                                (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList allSourceIds) and
+                                    (SourceMetaTable.key inList allMetaKeys)
+                            }.map { SourceMetaType(it) }
 
                     val sources =
                         SourceTable
@@ -182,7 +193,10 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMetas(userId: Int, input: DeleteSourceMetasInput): CompletableFuture<DeleteSourceMetasPayload?> {
+    fun deleteSourceMetas(
+        userId: Int,
+        input: DeleteSourceMetasInput,
+    ): CompletableFuture<DeleteSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
         return future {
@@ -214,7 +228,8 @@ class SourceMutation {
                                 keyCondition ?: prefixCondition!!
                             }
 
-                        val condition = (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
+                        val condition =
+                            (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
 
                         deletedMetas +=
                             SourceMetaTable
@@ -293,7 +308,8 @@ class SourceMutation {
 
             val mangas =
                 transaction {
-                    MangaTable.selectAll()
+                    MangaTable
+                        .selectAll()
                         .where { MangaTable.id inList mangaIds }
                         .map { MangaType(it) }
                 }.sortedBy {

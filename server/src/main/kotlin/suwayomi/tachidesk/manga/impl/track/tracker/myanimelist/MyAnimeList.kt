@@ -186,7 +186,7 @@ class MyAnimeList(
 
     suspend fun login(
         userId: Int,
-        authCode: String
+        authCode: String,
     ) {
         val oauth = api(userId).getAccessToken(authCode)
         interceptor(userId).setAuth(oauth)

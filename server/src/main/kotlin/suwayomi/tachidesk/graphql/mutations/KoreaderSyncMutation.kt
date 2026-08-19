@@ -65,7 +65,10 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun pushKoSyncProgress(userId: Int, input: PushKoSyncProgressInput): CompletableFuture<PushKoSyncProgressPayload?> =
+    fun pushKoSyncProgress(
+        userId: Int,
+        input: PushKoSyncProgressInput,
+    ): CompletableFuture<PushKoSyncProgressPayload?> =
         future {
             KoreaderSyncService.pushProgress(userId, input.chapterId)
 
@@ -97,7 +100,10 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun pullKoSyncProgress(userId: Int, input: PullKoSyncProgressInput): CompletableFuture<PullKoSyncProgressPayload?> =
+    fun pullKoSyncProgress(
+        userId: Int,
+        input: PullKoSyncProgressInput,
+    ): CompletableFuture<PullKoSyncProgressPayload?> =
         future {
             val syncResult = KoreaderSyncService.checkAndPullProgress(userId, input.chapterId)
             var syncConflictInfo: SyncConflictInfoType? = null

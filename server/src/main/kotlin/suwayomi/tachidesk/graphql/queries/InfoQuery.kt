@@ -28,16 +28,17 @@ class InfoQuery {
         val platformInfo: PlatformInfo,
     )
 
-    fun aboutServer(): AboutServerPayload = AboutServerPayload(
-        BuildConfig.NAME,
-        BuildConfig.VERSION,
-        BuildConfig.REVISION,
-        BuildConfig.BUILD_TYPE,
-        BuildConfig.BUILD_TIME,
-        BuildConfig.GITHUB,
-        BuildConfig.DISCORD,
-        PlatformInfo(Platform.current),
-    )
+    fun aboutServer(): AboutServerPayload =
+        AboutServerPayload(
+            BuildConfig.NAME,
+            BuildConfig.VERSION,
+            BuildConfig.REVISION,
+            BuildConfig.BUILD_TYPE,
+            BuildConfig.BUILD_TIME,
+            BuildConfig.GITHUB,
+            BuildConfig.DISCORD,
+            PlatformInfo(Platform.current),
+        )
 
     data class CheckForServerUpdatesPayload(
         /** [channel] mirrors [suwayomi.tachidesk.server.BuildConfig.BUILD_TYPE] */

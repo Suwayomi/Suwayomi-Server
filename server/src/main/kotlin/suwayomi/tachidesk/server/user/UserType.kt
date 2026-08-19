@@ -44,7 +44,9 @@ fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
             throw UnauthorizedException()
         }
 
-        is UserType.User -> id
+        is UserType.User -> {
+            id
+        }
     }
 
 fun getUserFromToken(token: String?): UserType {
@@ -61,14 +63,20 @@ fun getUserFromToken(token: String?): UserType {
 
 fun UserType.requirePermissions(vararg permissions: Permissions) {
     when (this) {
-        is UserType.Admin -> Unit
+        is UserType.Admin -> {
+            Unit
+        }
+
         is UserType.User -> {
             val userPermissions = this.permissions
             if (!permissions.all { it in userPermissions }) {
                 throw ForbiddenException()
             }
         }
-        UserType.Visitor -> throw UnauthorizedException()
+
+        UserType.Visitor -> {
+            throw UnauthorizedException()
+        }
     }
 }
 

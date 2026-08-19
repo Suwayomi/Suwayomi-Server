@@ -59,8 +59,7 @@ class ChapterQuery {
     fun chapter(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<ChapterType> =
-        dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
+    ): CompletableFuture<ChapterType> = dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
 
     enum class ChapterOrderBy(
         override val column: Column<*>,

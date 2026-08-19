@@ -161,7 +161,10 @@ object Source {
         unregisterSource(sourceId)
     }
 
-    fun getSourcesMetaMaps(userId: Int, ids: List<Long>): Map<Long, Map<String, String>> =
+    fun getSourcesMetaMaps(
+        userId: Int,
+        ids: List<Long>,
+    ): Map<Long, Map<String, String>> =
         transaction {
             SourceMetaTable
                 .selectAll()

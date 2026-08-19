@@ -102,7 +102,10 @@ object CategoryManga {
         }
     }
 
-    fun removeMangaFromAllCategories(userId: Int, mangaId: Int) {
+    fun removeMangaFromAllCategories(
+        userId: Int,
+        mangaId: Int,
+    ) {
         transaction {
             CategoryMangaTable.deleteWhere { (CategoryMangaTable.user eq userId) and (CategoryMangaTable.manga eq mangaId) }
         }

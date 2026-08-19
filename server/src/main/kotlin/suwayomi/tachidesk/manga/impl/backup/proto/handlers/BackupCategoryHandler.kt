@@ -22,7 +22,10 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.database.dbTransaction
 
 object BackupCategoryHandler {
-    fun backup(userId: Int, flags: BackupFlags): List<BackupCategory> =
+    fun backup(
+        userId: Int,
+        flags: BackupFlags,
+    ): List<BackupCategory> =
         dbTransaction {
             val categories =
                 CategoryTable
@@ -52,7 +55,10 @@ object BackupCategoryHandler {
             }
         }
 
-    fun restore(userId: Int, backupCategories: List<BackupCategory>): Map<Int, Int> {
+    fun restore(
+        userId: Int,
+        backupCategories: List<BackupCategory>,
+    ): Map<Int, Int> {
         val dbCategories = Category.getCategoryList(userId)
         val dbCategoriesByName = dbCategories.associateBy { it.name }
         val dbCategoriesByUid = dbCategories.associateBy { it.uid }

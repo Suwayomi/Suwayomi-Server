@@ -504,7 +504,10 @@ class TrackQuery {
     )
 
     @RequireAuth
-    fun searchTracker(userId: Int, input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> =
+    fun searchTracker(
+        userId: Int,
+        input: SearchTrackerInput,
+    ): CompletableFuture<SearchTrackerPayload> =
         future {
             val tracker =
                 requireNotNull(TrackerManager.getTracker(input.trackerId)) {

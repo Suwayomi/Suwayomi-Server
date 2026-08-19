@@ -158,7 +158,7 @@ class Bangumi(
 
     suspend fun login(
         userId: Int,
-        code: String
+        code: String,
     ) {
         val oauth = api(userId).accessToken(code)
         interceptor(userId).newAuth(oauth)

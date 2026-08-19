@@ -8,8 +8,7 @@ class MangaUserType(
     val inLibrary: Boolean,
     val inLibraryAt: Long,
     val mangaId: Int,
-): Node {
-
+) : Node {
     constructor(row: ResultRow) : this(
         row[MangaUserTable.inLibrary],
         row[MangaUserTable.inLibraryAt],

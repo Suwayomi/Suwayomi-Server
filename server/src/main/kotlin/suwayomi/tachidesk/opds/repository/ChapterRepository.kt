@@ -84,7 +84,7 @@ object ChapterRepository {
                 val baseQuery =
                     ChapterTable
                         .getWithUserData(userId)
-                    .select(ChapterTable.columns + ChapterUserTable.columns)
+                        .select(ChapterTable.columns + ChapterUserTable.columns)
                         .where(finalCondition)
 
                 val totalCount = baseQuery.count()

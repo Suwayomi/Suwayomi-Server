@@ -88,25 +88,25 @@ class CategoryMutation {
                             CategoryMetaTable.user eq userId and
                                 (CategoryMetaTable.ref eq categoryId) and
                                 (CategoryMetaTable.key eq key)
-                    }.firstOrNull()
+                        }.firstOrNull()
 
-            CategoryMetaTable.deleteWhere {
+                CategoryMetaTable.deleteWhere {
                     CategoryMetaTable.user eq userId and
                         (CategoryMetaTable.ref eq categoryId) and
                         (CategoryMetaTable.key eq key)
                 }
 
-            val category =
-                transaction {
-                    CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.first())
-                }
+                val category =
+                    transaction {
+                        CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.first())
+                    }
 
-            if (meta != null) {
-                CategoryMetaType(meta)
-            } else {
-                null
-            } to category
-        }
+                if (meta != null) {
+                    CategoryMetaType(meta)
+                } else {
+                    null
+                } to category
+            }
 
         return DeleteCategoryMetaPayload(clientMutationId, meta, category)
     }
@@ -128,7 +128,10 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun setCategoryMetas(userId: Int, input: SetCategoryMetasInput): SetCategoryMetasPayload? {
+    fun setCategoryMetas(
+        userId: Int,
+        input: SetCategoryMetasInput,
+    ): SetCategoryMetasPayload? {
         val (clientMutationId, items) = input
 
         val metaByCategoryId =
@@ -149,8 +152,10 @@ class CategoryMutation {
                 val updatedMetas =
                     CategoryMetaTable
                         .selectAll()
-                        .where { (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList allCategoryIds) and (CategoryMetaTable.key inList allMetaKeys) }
-                        .map { CategoryMetaType(it) }
+                        .where {
+                            (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList allCategoryIds) and
+                                (CategoryMetaTable.key inList allMetaKeys)
+                        }.map { CategoryMetaType(it) }
 
                 val categories =
                     CategoryTable
@@ -183,7 +188,10 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategoryMetas(userId: Int, input: DeleteCategoryMetasInput): DeleteCategoryMetasPayload? {
+    fun deleteCategoryMetas(
+        userId: Int,
+        input: DeleteCategoryMetasInput,
+    ): DeleteCategoryMetasPayload? {
         val (clientMutationId, items) = input
 
         items.forEach { item ->
@@ -214,7 +222,8 @@ class CategoryMutation {
                             keyCondition ?: prefixCondition!!
                         }
 
-                    val condition = (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
+                    val condition =
+                        (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
 
                     deletedMetas +=
                         CategoryMetaTable
@@ -308,7 +317,10 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateCategory(userId: Int, input: UpdateCategoryInput): UpdateCategoryPayload? {
+    fun updateCategory(
+        userId: Int,
+        input: UpdateCategoryInput,
+    ): UpdateCategoryPayload? {
         val (clientMutationId, id, patch) = input
 
         updateCategories(userId, listOf(id), patch)
@@ -356,7 +368,10 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun updateCategoryOrder(userId: Int, input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload? {
+    fun updateCategoryOrder(
+        userId: Int,
+        input: UpdateCategoryOrderInput,
+    ): UpdateCategoryOrderPayload? {
         val (clientMutationId, categoryId, position) = input
         require(position > 0) {
             "'order' must not be <= 0"
@@ -391,10 +406,10 @@ class CategoryMutation {
         val categories =
             transaction {
                 CategoryTable
-                        .selectAll()
-                        .where { CategoryTable.user eq userId }
-                        .orderBy(CategoryTable.order)
-                        .map { CategoryType(it) }
+                    .selectAll()
+                    .where { CategoryTable.user eq userId }
+                    .orderBy(CategoryTable.order)
+                    .map { CategoryType(it) }
             }
 
         return UpdateCategoryOrderPayload(
@@ -418,7 +433,10 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun createCategory(userId: Int, input: CreateCategoryInput): CreateCategoryPayload? {
+    fun createCategory(
+        userId: Int,
+        input: CreateCategoryInput,
+    ): CreateCategoryPayload? {
         val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
         transaction {
             require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
@@ -445,18 +463,18 @@ class CategoryMutation {
                 val id =
                     CategoryTable.insertAndGetId {
                         it[CategoryTable.user] = userId
-                            it[CategoryTable.name] = input.name
-                            it[CategoryTable.order] = order ?: Int.MAX_VALUE
-                            if (default != null) {
-                                it[CategoryTable.isDefault] = default
-                            }
-                            if (includeInUpdate != null) {
-                                it[CategoryTable.includeInUpdate] = includeInUpdate.value
-                            }
-                            if (includeInDownload != null) {
-                                it[CategoryTable.includeInDownload] = includeInDownload.value
-                            }
+                        it[CategoryTable.name] = input.name
+                        it[CategoryTable.order] = order ?: Int.MAX_VALUE
+                        if (default != null) {
+                            it[CategoryTable.isDefault] = default
                         }
+                        if (includeInUpdate != null) {
+                            it[CategoryTable.includeInUpdate] = includeInUpdate.value
+                        }
+                        if (includeInDownload != null) {
+                            it[CategoryTable.includeInDownload] = includeInDownload.value
+                        }
+                    }
 
                 Category.normalizeCategories(userId)
 
@@ -478,7 +496,10 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategory(userId: Int, input: DeleteCategoryInput): DeleteCategoryPayload? {
+    fun deleteCategory(
+        userId: Int,
+        input: DeleteCategoryInput,
+    ): DeleteCategoryPayload? {
         val (clientMutationId, categoryId) = input
         if (categoryId == 0) { // Don't delete default category
             return DeleteCategoryPayload(
@@ -500,7 +521,7 @@ class CategoryMutation {
                     transaction {
                         MangaTable
                             .getWithUserData(userId)
-                                .innerJoin(CategoryMangaTable)
+                            .innerJoin(CategoryMangaTable)
                             .selectAll()
                             .where { CategoryMangaTable.category eq categoryId and (CategoryMangaTable.user eq userId) }
                             .map { MangaType(it) }
@@ -570,7 +591,10 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateMangaCategories(userId: Int, input: UpdateMangaCategoriesInput): UpdateMangaCategoriesPayload? {
+    fun updateMangaCategories(
+        userId: Int,
+        input: UpdateMangaCategoriesInput,
+    ): UpdateMangaCategoriesPayload? {
         val (clientMutationId, id, patch) = input
 
         updateMangas(userId, listOf(id), patch)
@@ -587,7 +611,10 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateMangasCategories(userId: Int, input: UpdateMangasCategoriesInput): UpdateMangasCategoriesPayload? {
+    fun updateMangasCategories(
+        userId: Int,
+        input: UpdateMangasCategoriesInput,
+    ): UpdateMangasCategoriesPayload? {
         val (clientMutationId, ids, patch) = input
 
         updateMangas(userId, ids, patch)

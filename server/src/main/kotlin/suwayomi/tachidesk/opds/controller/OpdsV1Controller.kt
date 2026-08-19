@@ -167,9 +167,14 @@ object OpdsV1Controller {
                     }
                 } else {
                     val criteria = OpdsMangaFilter.fromContext(ctx, PrimaryFilterType.NONE)
-                    getLibraryFeed(userId,
+                    getLibraryFeed(
+                        userId,
                         ctx,
-                        locale, criteria, false, pageNumber ?: 1)
+                        locale,
+                        criteria,
+                        false,
+                        pageNumber ?: 1,
+                    )
                 }
             },
             withResults = { httpCode(HttpStatus.OK) },
