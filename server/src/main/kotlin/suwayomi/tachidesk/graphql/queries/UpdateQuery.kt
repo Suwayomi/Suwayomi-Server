@@ -3,6 +3,7 @@ package suwayomi.tachidesk.graphql.queries
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import kotlinx.coroutines.flow.first
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.types.LastUpdateErrorType
 import suwayomi.tachidesk.graphql.types.LibraryUpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -32,4 +33,7 @@ class UpdateQuery {
 
     @RequireAuth
     fun lastUpdateTimestamp(): LastUpdateTimestampPayload = LastUpdateTimestampPayload(updater.getLastUpdateTimestamp())
+
+    @RequireAuth
+    fun lastUpdateErrors(): List<LastUpdateErrorType> = updater.getLastUpdateErrors().map(::LastUpdateErrorType)
 }
