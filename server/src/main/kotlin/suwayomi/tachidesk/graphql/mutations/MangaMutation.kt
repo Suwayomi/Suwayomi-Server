@@ -3,6 +3,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.toGraphQLError
 import graphql.execution.DataFetcherResult
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -73,6 +74,7 @@ class MangaMutation {
     )
 
     private suspend fun updateMangas(
+        @GraphQLIgnore
         userId: Int,
         ids: List<Int>,
         patch: UpdateMangaPatch,
@@ -124,6 +126,7 @@ class MangaMutation {
 
     @RequireAuth
     fun updateManga(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateMangaInput,
     ): CompletableFuture<UpdateMangaPayload?> {
@@ -152,6 +155,7 @@ class MangaMutation {
 
     @RequireAuth
     fun updateMangas(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateMangasInput,
     ): CompletableFuture<UpdateMangasPayload?> {
@@ -189,6 +193,7 @@ class MangaMutation {
     @RequireAuth
     @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
     fun fetchManga(
+        @GraphQLIgnore
         userId: Int,
         input: FetchMangaInput,
     ): CompletableFuture<FetchMangaPayload?> {
@@ -283,6 +288,7 @@ class MangaMutation {
 
     @RequireAuth
     fun setMangaMeta(
+        @GraphQLIgnore
         userId: Int,
         input: SetMangaMetaInput,
     ): SetMangaMetaPayload? {
@@ -307,6 +313,7 @@ class MangaMutation {
 
     @RequireAuth
     fun deleteMangaMeta(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteMangaMetaInput,
     ): DeleteMangaMetaPayload? {
@@ -368,6 +375,7 @@ class MangaMutation {
 
     @RequireAuth
     fun setMangaMetas(
+        @GraphQLIgnore
         userId: Int,
         input: SetMangaMetasInput,
     ): SetMangaMetasPayload? {
@@ -428,6 +436,7 @@ class MangaMutation {
 
     @RequireAuth
     fun deleteMangaMetas(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteMangaMetasInput,
     ): DeleteMangaMetasPayload? {

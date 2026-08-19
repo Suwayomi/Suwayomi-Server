@@ -7,6 +7,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -49,6 +50,7 @@ class SourceMutation {
 
     @RequireAuth
     fun setSourceMeta(
+        @GraphQLIgnore
         userId: Int,
         input: SetSourceMetaInput,
     ): SetSourceMetaPayload? {
@@ -73,6 +75,7 @@ class SourceMutation {
 
     @RequireAuth
     fun deleteSourceMeta(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteSourceMetaInput,
     ): CompletableFuture<DeleteSourceMetaPayload?> {
@@ -132,6 +135,7 @@ class SourceMutation {
 
     @RequireAuth
     fun setSourceMetas(
+        @GraphQLIgnore
         userId: Int,
         input: SetSourceMetasInput,
     ): CompletableFuture<SetSourceMetasPayload?> {
@@ -194,6 +198,7 @@ class SourceMutation {
 
     @RequireAuth
     fun deleteSourceMetas(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteSourceMetasInput,
     ): CompletableFuture<DeleteSourceMetasPayload?> {

@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lowerCase
@@ -146,6 +147,7 @@ class UserMutation {
 
     @RequireAuth
     fun setPassword(
+        @GraphQLIgnore
         userId: Int,
         input: SetPasswordInput,
     ): SetPasswordPayload {

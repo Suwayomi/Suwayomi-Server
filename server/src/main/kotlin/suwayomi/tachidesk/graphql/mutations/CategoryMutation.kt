@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -50,6 +51,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun setCategoryMeta(
+        @GraphQLIgnore
         userId: Int,
         input: SetCategoryMetaInput,
     ): SetCategoryMetaPayload? {
@@ -74,6 +76,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun deleteCategoryMeta(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteCategoryMetaInput,
     ): DeleteCategoryMetaPayload? {
@@ -129,6 +132,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun setCategoryMetas(
+        @GraphQLIgnore
         userId: Int,
         input: SetCategoryMetasInput,
     ): SetCategoryMetasPayload? {
@@ -189,6 +193,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun deleteCategoryMetas(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteCategoryMetasInput,
     ): DeleteCategoryMetasPayload? {
@@ -280,6 +285,7 @@ class CategoryMutation {
     )
 
     private fun updateCategories(
+        @GraphQLIgnore
         userId: Int,
         ids: List<Int>,
         patch: UpdateCategoryPatch,
@@ -318,6 +324,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun updateCategory(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateCategoryInput,
     ): UpdateCategoryPayload? {
@@ -338,6 +345,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun updateCategories(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateCategoriesInput,
     ): UpdateCategoriesPayload? {
@@ -369,6 +377,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun updateCategoryOrder(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateCategoryOrderInput,
     ): UpdateCategoryOrderPayload? {
@@ -434,6 +443,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun createCategory(
+        @GraphQLIgnore
         userId: Int,
         input: CreateCategoryInput,
     ): CreateCategoryPayload? {
@@ -497,6 +507,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun deleteCategory(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteCategoryInput,
     ): DeleteCategoryPayload? {
@@ -592,6 +603,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun updateMangaCategories(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateMangaCategoriesInput,
     ): UpdateMangaCategoriesPayload? {
@@ -612,6 +624,7 @@ class CategoryMutation {
 
     @RequireAuth
     fun updateMangasCategories(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateMangasCategoriesInput,
     ): UpdateMangasCategoriesPayload? {

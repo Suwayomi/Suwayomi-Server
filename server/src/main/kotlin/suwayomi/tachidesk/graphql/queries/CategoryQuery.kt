@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
@@ -125,6 +126,7 @@ class CategoryQuery {
 
     @RequireAuth
     fun categories(
+        @GraphQLIgnore
         userId: Int,
         condition: CategoryCondition? = null,
         filter: CategoryFilter? = null,

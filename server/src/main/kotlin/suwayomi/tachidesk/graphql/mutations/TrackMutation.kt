@@ -4,6 +4,7 @@ package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -32,6 +33,7 @@ class TrackMutation {
 
     @RequireAuth
     fun loginTrackerOAuth(
+        @GraphQLIgnore
         userId: Int,
         input: LoginTrackerOAuthInput,
     ): CompletableFuture<LoginTrackerOAuthPayload> {
@@ -65,6 +67,7 @@ class TrackMutation {
 
     @RequireAuth
     fun loginTrackerCredentials(
+        @GraphQLIgnore
         userId: Int,
         input: LoginTrackerCredentialsInput,
     ): CompletableFuture<LoginTrackerCredentialsPayload> {
@@ -96,6 +99,7 @@ class TrackMutation {
 
     @RequireAuth
     fun logoutTracker(
+        @GraphQLIgnore
         userId: Int,
         input: LogoutTrackerInput,
     ): CompletableFuture<LogoutTrackerPayload> {
@@ -133,6 +137,7 @@ class TrackMutation {
 
     @RequireAuth
     fun bindTrack(
+        @GraphQLIgnore
         userId: Int,
         input: BindTrackInput,
     ): CompletableFuture<BindTrackPayload> {
@@ -176,6 +181,7 @@ class TrackMutation {
 
     @RequireAuth
     fun bindTrackRecord(
+        @GraphQLIgnore
         userId: Int,
         input: BindTrackRecordInput,
     ): CompletableFuture<BindTrackRecordPayload?> {
@@ -208,6 +214,7 @@ class TrackMutation {
 
     @RequireAuth
     fun fetchTrack(
+        @GraphQLIgnore
         userId: Int,
         input: FetchTrackInput,
     ): CompletableFuture<FetchTrackPayload> {
@@ -245,6 +252,7 @@ class TrackMutation {
 
     @RequireAuth
     fun unbindTrack(
+        @GraphQLIgnore
         userId: Int,
         input: UnbindTrackInput,
     ): CompletableFuture<UnbindTrackPayload> {
@@ -280,6 +288,7 @@ class TrackMutation {
 
     @RequireAuth
     fun trackProgress(
+        @GraphQLIgnore
         userId: Int,
         input: TrackProgressInput,
     ): CompletableFuture<TrackProgressPayload?> {
@@ -326,6 +335,7 @@ class TrackMutation {
 
     @RequireAuth
     fun updateTrack(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateTrackInput,
     ): CompletableFuture<UpdateTrackPayload> =

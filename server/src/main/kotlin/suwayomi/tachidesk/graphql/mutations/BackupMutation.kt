@@ -3,6 +3,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import io.javalin.http.UploadedFile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
@@ -35,6 +36,7 @@ class BackupMutation {
 
     @RequireAuth
     fun restoreBackup(
+        @GraphQLIgnore
         userId: Int,
         input: RestoreBackupInput,
     ): CompletableFuture<RestoreBackupPayload> {
@@ -82,6 +84,7 @@ class BackupMutation {
 
     @RequireAuth
     fun createBackup(
+        @GraphQLIgnore
         userId: Int,
         input: CreateBackupInput? = null,
     ): CreateBackupPayload {

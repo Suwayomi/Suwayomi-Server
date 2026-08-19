@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -31,6 +32,7 @@ class MetaMutation {
 
     @RequireAuth
     fun setGlobalMeta(
+        @GraphQLIgnore
         userId: Int,
         input: SetGlobalMetaInput,
     ): SetGlobalMetaPayload? {
@@ -53,6 +55,7 @@ class MetaMutation {
 
     @RequireAuth
     fun deleteGlobalMeta(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteGlobalMetaInput,
     ): DeleteGlobalMetaPayload? {
@@ -90,6 +93,7 @@ class MetaMutation {
 
     @RequireAuth
     fun setGlobalMetas(
+        @GraphQLIgnore
         userId: Int,
         input: SetGlobalMetasInput,
     ): SetGlobalMetasPayload? {

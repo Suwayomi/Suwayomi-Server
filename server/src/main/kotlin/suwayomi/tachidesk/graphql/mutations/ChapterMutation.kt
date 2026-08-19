@@ -3,6 +3,7 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.LikePattern
@@ -148,6 +149,7 @@ class ChapterMutation {
 
     @RequireAuth
     fun updateChapter(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateChapterInput,
     ): UpdateChapterPayload? {
@@ -174,6 +176,7 @@ class ChapterMutation {
 
     @RequireAuth
     fun updateChapters(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateChaptersInput,
     ): UpdateChaptersPayload? {
@@ -209,6 +212,7 @@ class ChapterMutation {
     @RequireAuth
     @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
     fun fetchChapters(
+        @GraphQLIgnore
         userId: Int,
         input: FetchChaptersInput,
     ): CompletableFuture<FetchChaptersPayload?> {
@@ -246,6 +250,7 @@ class ChapterMutation {
 
     @RequireAuth
     fun setChapterMeta(
+        @GraphQLIgnore
         userId: Int,
         input: SetChapterMetaInput,
     ): SetChapterMetaPayload? {
@@ -270,6 +275,7 @@ class ChapterMutation {
 
     @RequireAuth
     fun deleteChapterMeta(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteChapterMetaInput,
     ): DeleteChapterMetaPayload? {
@@ -331,6 +337,7 @@ class ChapterMutation {
 
     @RequireAuth
     fun setChapterMetas(
+        @GraphQLIgnore
         userId: Int,
         input: SetChapterMetasInput,
     ): SetChapterMetasPayload? {
@@ -391,6 +398,7 @@ class ChapterMutation {
 
     @RequireAuth
     fun deleteChapterMetas(
+        @GraphQLIgnore
         userId: Int,
         input: DeleteChapterMetasInput,
     ): DeleteChapterMetasPayload? {
@@ -473,6 +481,7 @@ class ChapterMutation {
 
     @RequireAuth
     fun fetchChapterPages(
+        @GraphQLIgnore
         userId: Int,
         input: FetchChapterPagesInput,
     ): CompletableFuture<FetchChapterPagesPayload?> {

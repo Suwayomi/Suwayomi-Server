@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
@@ -132,6 +133,7 @@ class TrackQuery {
 
     @RequireAuth
     fun trackers(
+        @GraphQLIgnore
         userId: Int,
         condition: TrackerCondition? = null,
         @GraphQLDeprecated(
@@ -410,6 +412,7 @@ class TrackQuery {
 
     @RequireAuth
     fun trackRecords(
+        @GraphQLIgnore
         userId: Int,
         condition: TrackRecordCondition? = null,
         filter: TrackRecordFilter? = null,
@@ -505,6 +508,7 @@ class TrackQuery {
 
     @RequireAuth
     fun searchTracker(
+        @GraphQLIgnore
         userId: Int,
         input: SearchTrackerInput,
     ): CompletableFuture<SearchTrackerPayload> =

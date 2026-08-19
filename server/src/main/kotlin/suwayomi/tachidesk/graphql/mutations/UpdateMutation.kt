@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -29,6 +30,7 @@ class UpdateMutation {
 
     @RequireAuth
     fun updateLibrary(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateLibraryInput,
     ): CompletableFuture<UpdateLibraryPayload?> {
@@ -62,6 +64,7 @@ class UpdateMutation {
 
     @RequireAuth
     fun updateLibraryManga(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateLibraryMangaInput,
     ): CompletableFuture<UpdateLibraryMangaPayload?> {
@@ -96,6 +99,7 @@ class UpdateMutation {
 
     @RequireAuth
     fun updateCategoryManga(
+        @GraphQLIgnore
         userId: Int,
         input: UpdateCategoryMangaInput,
     ): CompletableFuture<UpdateCategoryMangaPayload?> {

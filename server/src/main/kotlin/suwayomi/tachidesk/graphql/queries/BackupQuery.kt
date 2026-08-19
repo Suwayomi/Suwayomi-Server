@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import io.javalin.http.UploadedFile
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
@@ -28,6 +29,7 @@ class BackupQuery {
 
     @RequireAuth
     fun validateBackup(
+        @GraphQLIgnore
         userId: Int,
         input: ValidateBackupInput,
     ): ValidateBackupResult {

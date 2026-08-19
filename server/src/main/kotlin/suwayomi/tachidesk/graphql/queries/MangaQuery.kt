@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
@@ -232,6 +233,7 @@ class MangaQuery {
 
     @RequireAuth
     fun mangas(
+        @GraphQLIgnore
         userId: Int,
         condition: MangaCondition? = null,
         filter: MangaFilter? = null,
@@ -264,9 +266,9 @@ class MangaQuery {
 
                 val res =
                     if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
-                        MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
+                        MangaTable.getWithUserData(userId).selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
                     } else {
-                        MangaTable.selectAll().applyOps(condition, filter)
+                        MangaTable.getWithUserData(userId).selectAll().applyOps(condition, filter)
                     }
 
                 val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
