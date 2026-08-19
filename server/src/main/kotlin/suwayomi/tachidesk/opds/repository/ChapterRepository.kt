@@ -126,7 +126,6 @@ object ChapterRepository {
                                         isMarkedAsDownloaded = isDownloaded,
                                         dbPageCount = pageCount,
                                         downloadPageCount = physicalPageCount,
-                                        lastPageRead = entry.lastPageRead,
                                         logger = logger,
                                     )
                                 ) {

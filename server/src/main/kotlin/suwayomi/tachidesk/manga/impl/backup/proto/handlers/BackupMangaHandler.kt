@@ -13,13 +13,12 @@ import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
-import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -345,60 +344,87 @@ object BackupMangaHandler {
 
         val insertedChapterIds =
             if (flags.includeChapters) {
-                ChapterTable
-                    .batchInsert(chaptersToInsert) { chapter ->
-                        this[ChapterTable.url] = chapter.url
-                        this[ChapterTable.name] = chapter.name
-                        if (chapter.dateUpload == 0L) {
-                            this[ChapterTable.date_upload] = chapter.dateFetch
-                        } else {
-                            this[ChapterTable.date_upload] = chapter.dateUpload
-                        }
-                        this[ChapterTable.chapter_number] = chapter.chapterNumber
-                        this[ChapterTable.scanlator] = chapter.scanlator
+                val insertedIds =
+                    ChapterTable
+                        .batchInsert(chaptersToInsert) { chapter ->
+                            this[ChapterTable.url] = chapter.url
+                            this[ChapterTable.name] = chapter.name
+                            if (chapter.dateUpload == 0L) {
+                                this[ChapterTable.date_upload] = chapter.dateFetch
+                            } else {
+                                this[ChapterTable.date_upload] = chapter.dateUpload
+                            }
+                            this[ChapterTable.chapter_number] = chapter.chapterNumber
+                            this[ChapterTable.scanlator] = chapter.scanlator
 
-                        this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.sourceOrder
-                        this[ChapterTable.manga] = mangaId
+                            this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.sourceOrder
+                            this[ChapterTable.manga] = mangaId
 
-                        this[ChapterTable.isRead] = chapter.read
-                        this[ChapterTable.lastPageRead] = chapter.lastPageRead.coerceAtLeast(0)
-                        this[ChapterTable.isBookmarked] = chapter.bookmark
+                            this[ChapterTable.fetchedAt] = chapter.dateFetch.milliseconds.inWholeSeconds
 
-                        this[ChapterTable.fetchedAt] = chapter.dateFetch.milliseconds.inWholeSeconds
+                            this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
+                            this[ChapterTable.version] = chapter.version
+                            this[ChapterTable.memo] = Json.decodeFromString<JsonObject>(chapter.memo.decodeToString())
+                        }.map { it[ChapterTable.id].value }
 
-                        if (flags.includeHistory) {
-                            this[ChapterTable.lastReadAt] =
-                                historyByChapter[chapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0
-                        }
+                ChapterUserTable.batchUpsert(
+                    insertedIds.zip(chaptersToInsert),
+                    ChapterUserTable.user,
+                    ChapterUserTable.chapter,
+                ) { (dbChapterId, chapter) ->
+                    this[ChapterUserTable.chapter] = dbChapterId
+                    this[ChapterUserTable.user] = userId
+                    this[ChapterUserTable.isRead] = chapter.read
+                    this[ChapterUserTable.lastPageRead] = chapter.lastPageRead.coerceAtLeast(0)
+                    this[ChapterUserTable.isBookmarked] = chapter.bookmark
 
-                        this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
-                        this[ChapterTable.version] = chapter.version
-                        this[ChapterTable.memo] = Json.decodeFromString<JsonObject>(chapter.memo.decodeToString())
-                    }.map { it[ChapterTable.id].value }
+                    if (flags.includeHistory) {
+                        this[ChapterUserTable.lastReadAt] =
+                            historyByChapter[chapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0
+                    }
+                }
+
+                insertedIds
             } else {
                 emptyList()
             }
 
         if (chaptersToUpdateToDbChapter.isNotEmpty()) {
-            BatchUpdateStatement(ChapterTable)
-                .apply {
-                    chaptersToUpdateToDbChapter.forEach { (backupChapter, dbChapter) ->
-                        addBatch(EntityID(dbChapter[ChapterTable.id].value, ChapterTable))
-                        if (flags.includeChapters) {
-                            this[ChapterTable.isRead] = backupChapter.read || dbChapter[ChapterTable.isRead]
-                            this[ChapterTable.lastPageRead] =
-                                max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
-                            this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
-                        }
-
-                        if (flags.includeHistory) {
-                            this[ChapterTable.lastReadAt] =
-                                (historyByChapter[backupChapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0)
-                                    .coerceAtLeast(dbChapter[ChapterTable.lastReadAt])
-                        }
+            val existingUserData =
+                ChapterUserTable
+                    .selectAll()
+                    .where {
+                        (ChapterUserTable.user eq userId) and
+                            (ChapterUserTable.chapter inList chaptersToUpdateToDbChapter.map { it.second[ChapterTable.id].value })
                     }
-                }.toExecutable()
-                .execute(this@dbTransaction)
+                    .associate { it[ChapterUserTable.chapter].value to it }
+
+            ChapterUserTable.batchUpsert(
+                chaptersToUpdateToDbChapter,
+                ChapterUserTable.user,
+                ChapterUserTable.chapter,
+            ) { (backupChapter, dbChapter) ->
+                val dbChapterId = dbChapter[ChapterTable.id].value
+                val userData = existingUserData[dbChapterId]
+
+                this[ChapterUserTable.chapter] = dbChapterId
+                this[ChapterUserTable.user] = userId
+                if (flags.includeChapters) {
+                    this[ChapterUserTable.isRead] =
+                        backupChapter.read || (userData?.get(ChapterUserTable.isRead) ?: false)
+                    this[ChapterUserTable.lastPageRead] =
+                        max(backupChapter.lastPageRead, userData?.get(ChapterUserTable.lastPageRead) ?: 0)
+                            .coerceAtLeast(0)
+                    this[ChapterUserTable.isBookmarked] =
+                        backupChapter.bookmark || (userData?.get(ChapterUserTable.isBookmarked) ?: false)
+                }
+
+                if (flags.includeHistory) {
+                    this[ChapterUserTable.lastReadAt] =
+                        (historyByChapter[backupChapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0)
+                            .coerceAtLeast(userData?.get(ChapterUserTable.lastReadAt) ?: 0)
+                }
+            }
         }
 
         if (flags.includeClientData) {

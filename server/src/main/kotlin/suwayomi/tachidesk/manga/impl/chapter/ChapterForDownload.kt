@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -41,7 +42,6 @@ fun updateChapterPersistence(
     isMarkedAsDownloaded: Boolean,
     dbPageCount: Int,
     downloadPageCount: Int,
-    lastPageRead: Int,
     logger: KLogger,
 ): Boolean {
     if (isMarkedAsDownloaded && dbPageCount == downloadPageCount) {
@@ -62,12 +62,24 @@ fun updateChapterPersistence(
             logger.debug { "use page count of downloaded chapter" }
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[pageCount] = downloadPageCount
-                it[ChapterTable.lastPageRead] = lastPageRead.coerceAtMost(downloadPageCount - 1).coerceAtLeast(0)
             }
+            clampLastPageReads(chapterId, downloadPageCount)
             needsUpdate = true
         }
         needsUpdate
     }
+}
+
+private fun clampLastPageReads(chapterId: Int, pageCount: Int) {
+    ChapterUserTable
+        .selectAll()
+        .where {
+            ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greaterEq pageCount)
+        }.forEach { row ->
+            ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
+                it[ChapterUserTable.lastPageRead] = row[ChapterUserTable.lastPageRead].coerceAtMost(pageCount - 1).coerceAtLeast(0)
+            }
+        }
 }
 
 suspend fun refreshChapterPageList(
@@ -109,8 +121,8 @@ suspend fun refreshChapterPageList(
 
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[pageCount] = pageList.size
-                it[lastPageRead] = chapterEntry[ChapterTable.lastPageRead].coerceAtMost(pageList.size - 1).coerceAtLeast(0)
             }
+            clampLastPageReads(chapterId, pageList.size)
         }
         pageList.size
     }
@@ -177,7 +189,6 @@ private class ChapterForDownload(
                     isMarkedAsDownloaded,
                     dbPageCount,
                     downloadPageCount,
-                    chapterEntry[ChapterTable.lastPageRead],
                     log,
                 )
             ) {
