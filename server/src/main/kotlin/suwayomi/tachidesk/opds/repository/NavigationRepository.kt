@@ -182,7 +182,7 @@ object NavigationRepository {
                     .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName, mangaCount)
                     .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "source_id")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "source_id")
 
             query
                 .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
@@ -241,7 +241,7 @@ object NavigationRepository {
                     .select(CategoryTable.id, CategoryTable.name, mangaCount)
                     .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "category_id")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "category_id")
 
             query
                 .groupBy(CategoryTable.id, CategoryTable.name)
@@ -286,7 +286,7 @@ object NavigationRepository {
                     .select(MangaTable.genre)
                     .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "genre")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "genre")
 
             val allGenres =
                 query
@@ -352,7 +352,7 @@ object NavigationRepository {
                         .select(MangaTable.status, countExpr)
                         .where { MangaUserTable.inLibrary eq true }
 
-                query.applyOpdsMangaFilter(activeFilters, excludeField = "status_id")
+                query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "status_id")
 
                 query
                     .groupBy(MangaTable.status)
@@ -405,7 +405,7 @@ object NavigationRepository {
                     .select(SourceTable.lang, mangaCount)
                     .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "lang_code")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "lang_code")
 
             query
                 .groupBy(SourceTable.lang)

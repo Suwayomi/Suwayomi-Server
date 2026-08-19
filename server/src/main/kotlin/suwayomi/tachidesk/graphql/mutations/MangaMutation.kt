@@ -9,12 +9,13 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
-import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -91,10 +92,11 @@ class MangaMutation {
 
             if (patch.inLibrary != null) {
                 val now = Instant.now().epochSecond
+                // todo user suport
                 MangaUserTable.update({ MangaUserTable.manga inList ids }) { update ->
                     patch.inLibrary.also {
                         update[inLibrary] = it
-                        if (it) update[inLibraryAt] = Instant.now().epochSecond
+                        if (it) update[inLibraryAt] = now
                     }
                 }
             }
@@ -107,7 +109,7 @@ class MangaMutation {
                             MangaTable
                                 .selectAll()
                                 .where { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
-                                .map { MangaTable.toDataClass(userId, it) }
+                                .map { MangaTable.toDataClass(it) }
                         }
 
                     updater.addMangasToQueue(mangas)
@@ -121,7 +123,7 @@ class MangaMutation {
     }
 
     @RequireAuth
-    fun updateManga(input: UpdateMangaInput): CompletableFuture<UpdateMangaPayload?> {
+    fun updateManga(userId: Int, input: UpdateMangaInput): CompletableFuture<UpdateMangaPayload?> {
         val (clientMutationId, id, patch) = input
 
         return future {
@@ -146,7 +148,7 @@ class MangaMutation {
     }
 
     @RequireAuth
-    fun updateMangas(input: UpdateMangasInput): CompletableFuture<UpdateMangasPayload?> {
+    fun updateMangas(userId: Int, input: UpdateMangasInput): CompletableFuture<UpdateMangasPayload?> {
         val (clientMutationId, ids, patch) = input
 
         return future {
@@ -180,7 +182,7 @@ class MangaMutation {
 
     @RequireAuth
     @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
-    fun fetchManga(input: FetchMangaInput): CompletableFuture<FetchMangaPayload?> {
+    fun fetchManga(userId: Int, input: FetchMangaInput): CompletableFuture<FetchMangaPayload?> {
         val (clientMutationId, id) = input
 
         return future {
@@ -271,7 +273,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun setMangaMeta(input: SetMangaMetaInput): SetMangaMetaPayload? {
+    fun setMangaMeta(userId: Int, input: SetMangaMetaInput): SetMangaMetaPayload? {
         val (clientMutationId, meta) = input
 
         Manga.modifyMangaMeta(userId, meta.mangaId, meta.key, meta.value)
@@ -292,7 +294,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun deleteMangaMeta(input: DeleteMangaMetaInput): DeleteMangaMetaPayload? {
+    fun deleteMangaMeta(userId: Int, input: DeleteMangaMetaInput): DeleteMangaMetaPayload? {
         val (clientMutationId, mangaId, key) = input
 
 
@@ -351,7 +353,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun setMangaMetas(input: SetMangaMetasInput): SetMangaMetasPayload? {
+    fun setMangaMetas(userId: Int, input: SetMangaMetasInput): SetMangaMetasPayload? {
         val (clientMutationId, items) = input
 
         val metaByMangaId =
@@ -362,7 +364,7 @@ class MangaMutation {
                 }.groupBy({ it.first }, { it.second })
                 .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
 
-        Manga.modifyMangasMetas(metaByMangaId)
+        Manga.modifyMangasMetas(userId, metaByMangaId)
 
         val allMangaIds = metaByMangaId.keys
         val allMetaKeys = metaByMangaId.values.flatMap { it.keys }.distinct()
@@ -372,7 +374,7 @@ class MangaMutation {
                 val updatedMetas =
                     MangaMetaTable
                         .selectAll()
-                        .where { (MangaMetaTable.ref inList allMangaIds) and (MangaMetaTable.key inList allMetaKeys) }
+                        .where { (MangaMetaTable.user eq userId) and (MangaMetaTable.ref inList allMangaIds) and (MangaMetaTable.key inList allMetaKeys) }
                         .map { MangaMetaType(it) }
 
                 val mangas =
@@ -406,7 +408,7 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun deleteMangaMetas(input: DeleteMangaMetasInput): DeleteMangaMetasPayload? {
+    fun deleteMangaMetas(userId: Int, input: DeleteMangaMetasInput): DeleteMangaMetasPayload? {
         val (clientMutationId, items) = input
 
         items.forEach { item ->
@@ -437,7 +439,7 @@ class MangaMutation {
                             keyCondition ?: prefixCondition!!
                         }
 
-                    val condition = (MangaMetaTable.ref inList item.mangaIds) and metaKeyCondition
+                    val condition = (MangaMetaTable.user eq userId) and (MangaMetaTable.ref inList item.mangaIds) and metaKeyCondition
 
                     deletedMetas +=
                         MangaMetaTable

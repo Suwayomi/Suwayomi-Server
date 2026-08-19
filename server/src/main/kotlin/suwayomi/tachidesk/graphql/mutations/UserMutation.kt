@@ -3,14 +3,16 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.lowerCase
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
@@ -142,12 +144,11 @@ class UserMutation {
         val clientMutationId: String?,
     )
 
+    @RequireAuth
     fun setPassword(
-        dataFetchingEnvironment: DataFetchingEnvironment,
+        userId: Int,
         input: SetPasswordInput,
     ): SetPasswordPayload {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-
         val (clientMutationId, password) = input
         transaction {
             UserAccountTable.update({ UserAccountTable.id eq userId }) {

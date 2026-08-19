@@ -12,12 +12,12 @@ import io.javalin.http.HttpStatus
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -61,10 +61,10 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        Manga.getManga(userId, mangaId, onlineFetch)
+                        Manga.getManga(mangaId, onlineFetch)
                     }.thenApply { ctx.json(it) }
                 }
             },
@@ -273,9 +273,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Chapter.getChapterList(userId, mangaId, onlineFetch) }
+                    future { Chapter.getChapterList(mangaId, onlineFetch) }
                         .thenApply { ctx.json(it) }
                 }
             },
@@ -363,26 +363,11 @@ object MangaController {
                             if (syncResult.shouldUpdate) {
                                 // Update DB for SILENT and RECEIVE
                                 transaction {
-                                    val existingRecord =
-                                        ChapterUserTable
-                                            .selectAll()
-                                            .where {
-                                                (ChapterUserTable.chapter eq chapter.id) and
-                                                    (ChapterUserTable.user eq userId)
-                                            }.singleOrNull()
-
-                                    if (existingRecord != null) {
-                                        ChapterUserTable.update({ ChapterUserTable.id eq existingRecord[ChapterUserTable.id] }) {
-                                            it[lastPageRead] = syncResult.pageRead
-                                            it[lastReadAt] = syncResult.timestamp
-                                        }
-                                    } else {
-                                        ChapterUserTable.insert {
-                                            it[user] = userId
-                                            it[ChapterUserTable.chapter] = chapter.id
-                                            it[lastPageRead] = syncResult.pageRead
-                                            it[lastReadAt] = syncResult.timestamp
-                                        }
+                                    ChapterUserTable.upsert(ChapterUserTable.chapter, ChapterUserTable.user) {
+                                        it[user] = userId
+                                        it[ChapterUserTable.chapter] = chapter.id
+                                        it[lastPageRead] = syncResult.pageRead
+                                        it[lastReadAt] = syncResult.timestamp
                                     }
                                 }
                             }
@@ -504,10 +489,11 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, chapterIndex, index, updateProgress, format, opds ->
-                if (opds == true) {
+                val userId = if (opds == true) {
                     ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
                 } else {
-                    val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()}
+                    ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                }
                 ctx.future {
                     future {
                         Page.getPageImageServe(
@@ -554,7 +540,7 @@ object MangaController {
                 val contentType = serverConfig.opdsCbzMimetype.value.mediaType
                 if (ctx.method() == HandlerType.HEAD) {
                     ctx.future {
-                        future { ChapterDownloadHelper.getCbzMetadataForDownload(userId, chapterId) }
+                        future { ChapterDownloadHelper.getCbzMetadataForDownload(chapterId) }
                             .thenApply { (fileName, fileSize) ->
                                 ctx.header("Content-Type", contentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")

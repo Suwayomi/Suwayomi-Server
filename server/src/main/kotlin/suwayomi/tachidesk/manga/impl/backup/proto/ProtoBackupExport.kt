@@ -157,9 +157,9 @@ object ProtoBackupExport : ProtoBackupBase() {
                 val backupMangas = BackupMangaHandler.backup(userId, flags)
                 Backup(
                     backupMangas,
-                    BackupCategoryHandler.backup(flags),
-                    BackupSourceHandler.backup(backupMangas, flags),
-                    BackupGlobalMetaHandler.backup(flags),
+                    BackupCategoryHandler.backup(userId, flags),
+                    BackupSourceHandler.backup(userId, backupMangas, flags),
+                    BackupGlobalMetaHandler.backup(userId, flags),
                     BackupSettingsHandler.backup(flags),
                 )
             }

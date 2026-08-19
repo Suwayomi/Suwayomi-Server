@@ -241,6 +241,7 @@ object Track {
     }
 
     fun bindTrackRecord(
+        userId: Int,
         mangaId: Int,
         trackRecordId: Int,
     ): Int {
@@ -250,7 +251,8 @@ object Track {
                     TrackRecordTable
                         .selectAll()
                         .where {
-                            (TrackRecordTable.id eq trackRecordId)
+                            (TrackRecordTable.id eq trackRecordId) and
+                                (TrackRecordTable.user eq userId)
                         }.first()
                         .toTrackRecordDataClass()
 
@@ -258,7 +260,9 @@ object Track {
                     TrackRecordTable
                         .selectAll()
                         .where {
-                            (TrackRecordTable.mangaId eq mangaId) and (TrackRecordTable.trackerId eq trackRecord.trackerId)
+                            (TrackRecordTable.mangaId eq mangaId) and
+                                (TrackRecordTable.trackerId eq trackRecord.trackerId) and
+                                (TrackRecordTable.user eq userId)
                         }.firstOrNull()
                         ?.toTrackRecordDataClass()
 
@@ -274,12 +278,12 @@ object Track {
         if (hasRecordForTracker) {
             val updatedTrack = trackRecord.copy(id = existingTrackRecord.id, mangaId = mangaId).toTrack()
 
-            return updateTrackRecord(updatedTrack)
+            return updateTrackRecord(userId, updatedTrack)
         }
 
         val newTrack = trackRecord.copy(mangaId = mangaId).toTrack()
 
-        return insertTrackRecord(newTrack)
+        return insertTrackRecord(userId, newTrack)
     }
 
     suspend fun refresh(

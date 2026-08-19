@@ -17,9 +17,11 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.types.StartSyncResult
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Library.handleMangaThumbnail
@@ -37,6 +39,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
@@ -52,6 +55,7 @@ data class SyncData(
     val backup: Backup? = null,
 )
 
+// todo user accounts
 object SyncManager {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
@@ -131,7 +135,7 @@ object SyncManager {
 
         GlobalScope.launch {
             try {
-                syncData(periodic)
+                syncData(1, periodic)
             } finally {
                 syncMutex.unlock()
             }
@@ -148,7 +152,7 @@ object SyncManager {
         if (syncMutex.tryLock()) {
             // there is no ongoing sync, so start one
             try {
-                syncData()
+                syncData(1)
             } finally {
                 syncMutex.unlock()
             }
@@ -158,7 +162,7 @@ object SyncManager {
         }
     }
 
-    private suspend fun syncData(periodic: Boolean = false) {
+    private suspend fun syncData(userId: Int, periodic: Boolean = false) {
         val startInstant = Clock.System.now()
         _lastSyncState.value = SyncState.Started(startInstant)
 
@@ -195,12 +199,12 @@ object SyncManager {
                 )
 
             _lastSyncState.value = SyncState.CreatingBackup(startInstant)
-            val backupMangas = BackupMangaHandler.backup(backupFlags)
+            val backupMangas = BackupMangaHandler.backup(userId, backupFlags)
             val backup =
                 Backup(
                     backupMangas,
-                    BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
-                    BackupSourceHandler.backup(backupMangas, backupFlags),
+                    BackupCategoryHandler.backup(userId, backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
+                    BackupSourceHandler.backup(userId, backupMangas, backupFlags),
                     emptyMap(),
                     null,
                 )
@@ -237,9 +241,9 @@ object SyncManager {
 
             val isLibraryEmpty =
                 transaction {
-                    MangaTable
+                    MangaUserTable
                         .selectAll()
-                        .where { MangaTable.inLibrary eq true }
+                        .where { MangaUserTable.user eq 1 and (MangaUserTable.inLibrary eq true) }
                         .empty()
                 }
 
@@ -251,7 +255,7 @@ object SyncManager {
             }
 
             val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
-            updateNonFavorites(nonFavorites)
+            updateNonFavorites(userId, nonFavorites)
 
             val newSyncData =
                 backup.copy(
@@ -273,7 +277,7 @@ object SyncManager {
             if (serverConfig.syncDataCategories.value) {
                 val mergedUids = newSyncData.backupCategories.map { it.uid }.toSet()
                 val mergedNames = newSyncData.backupCategories.map { it.name }.toSet()
-                val localCategories = Category.getCategoryList().filterNot { it.default } // Exclude system category
+                val localCategories = Category.getCategoryList(userId).filterNot { it.default } // Exclude system category
                 val categoriesToDelete =
                     localCategories.filter {
                         it.uid !in mergedUids && it.name !in mergedNames
@@ -281,7 +285,7 @@ object SyncManager {
                 if (categoriesToDelete.isNotEmpty()) {
                     transaction {
                         categoriesToDelete.forEach {
-                            Category.removeCategory(it.id)
+                            Category.removeCategory(userId, it.id)
                         }
                     }
                 }
@@ -290,6 +294,7 @@ object SyncManager {
             val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
             val restoreId =
                 ProtoBackupImport.restore(
+                    userId = userId,
                     sourceStream = backupStream,
                     flags = backupFlags,
                     isSync = true,
@@ -449,7 +454,7 @@ object SyncManager {
         return Pair(favorites, nonFavorites)
     }
 
-    private fun updateNonFavorites(nonFavorites: List<BackupManga>) {
+    private fun updateNonFavorites(userId: Int, nonFavorites: List<BackupManga>) {
         nonFavorites.forEach { nonFavorite ->
             val localManga =
                 transaction {
@@ -464,13 +469,24 @@ object SyncManager {
                 }
 
             if (localManga != null) {
-                if (localManga.inLibrary != nonFavorite.favorite) {
+                val inLibrary = transaction {
+                    MangaUserTable.select(MangaUserTable.id)
+                        .where {
+                            (MangaUserTable.user eq userId) and
+                                (MangaUserTable.manga eq localManga.id) and
+                                (MangaUserTable.inLibrary eq true)
+                        }.any()
+                }
+                if (inLibrary != nonFavorite.favorite) {
                     transaction {
-                        MangaTable.update({ MangaTable.id eq localManga.id }) {
-                            it[inLibrary] = nonFavorite.favorite
+                        MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
+                            it[MangaUserTable.manga] = localManga.id
+                            it[MangaUserTable.user] = userId
+                            it[MangaUserTable.inLibrary] = nonFavorite.favorite
+                            it[MangaUserTable.inLibraryAt] = nonFavorite.dateAdded
                         }
                     }.apply {
-                        handleMangaThumbnail(localManga.id, nonFavorite.favorite)
+                        handleMangaThumbnail(localManga.id)
                     }
                 }
             }

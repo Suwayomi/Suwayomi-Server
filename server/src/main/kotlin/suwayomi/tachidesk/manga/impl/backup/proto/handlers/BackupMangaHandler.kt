@@ -8,7 +8,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -23,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
@@ -39,8 +39,11 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackRecordDataClass
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.database.dbTransaction
 import java.util.Date
 import kotlin.math.max
@@ -54,13 +57,18 @@ object BackupMangaHandler {
         EXISTING,
     }
 
-    fun backup(flags: BackupFlags): List<BackupManga> =
+    fun backup(userId: Int, flags: BackupFlags): List<BackupManga> =
         dbTransaction {
             if (!flags.includeManga) {
                 return@dbTransaction emptyList()
             }
 
-            val manga = MangaTable.selectAll().where { MangaTable.inLibrary eq true }.toList()
+            val manga =
+                MangaTable
+                    .getWithUserData(userId)
+                    .selectAll()
+                    .where { MangaUserTable.inLibrary eq true }
+                    .toList()
 
             manga.map { mangaRow ->
                 val backupManga =
@@ -74,7 +82,7 @@ object BackupMangaHandler {
                         genre = mangaRow[MangaTable.genre]?.split(", ") ?: emptyList(),
                         status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                         thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
-                        dateAdded = mangaRow[MangaTable.inLibraryAt].seconds.inWholeMilliseconds,
+                        dateAdded = mangaRow[MangaUserTable.inLibraryAt].seconds.inWholeMilliseconds,
                         viewer = 0, // not supported in Tachidesk
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
                         lastModifiedAt = mangaRow[MangaTable.lastModifiedAt],
@@ -86,13 +94,14 @@ object BackupMangaHandler {
                 val mangaId = mangaRow[MangaTable.id].value
 
                 if (flags.includeClientData) {
-                    backupManga.meta = Manga.getMangaMetaMap(mangaId)
+                    backupManga.meta = Manga.getMangaMetaMap(userId, mangaId)
                 }
 
                 if (flags.includeChapters || flags.includeHistory) {
                     val chapters =
                         transaction {
                             ChapterTable
+                                .getWithUserData(userId)
                                 .selectAll()
                                 .where { ChapterTable.manga eq mangaId }
                                 .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
@@ -101,7 +110,7 @@ object BackupMangaHandler {
 
                     if (flags.includeChapters) {
                         val chapterToMeta =
-                            Chapter.getChaptersMetaMaps(chapters.map { it[ChapterTable.id].value })
+                            Chapter.getChaptersMetaMaps(userId, chapters.map { it[ChapterTable.id].value })
 
                         backupManga.chapters =
                             chapters.map {
@@ -109,9 +118,9 @@ object BackupMangaHandler {
                                     url = it[ChapterTable.url],
                                     name = it[ChapterTable.name],
                                     scanlator = it[ChapterTable.scanlator],
-                                    read = it[ChapterTable.isRead],
-                                    bookmark = it[ChapterTable.isBookmarked],
-                                    lastPageRead = it[ChapterTable.lastPageRead],
+                                    read = it[ChapterUserTable.isRead],
+                                    bookmark = it[ChapterUserTable.isBookmarked],
+                                    lastPageRead = it[ChapterUserTable.lastPageRead],
                                     dateFetch = it[ChapterTable.fetchedAt].seconds.inWholeMilliseconds,
                                     dateUpload = it[ChapterTable.date_upload],
                                     chapterNumber = it[ChapterTable.chapter_number],
@@ -129,10 +138,10 @@ object BackupMangaHandler {
                     if (flags.includeHistory) {
                         backupManga.history =
                             chapters.mapNotNull {
-                                if (it[ChapterTable.lastReadAt] > 0) {
+                                if (it[ChapterUserTable.lastReadAt] > 0) {
                                     BackupHistory(
                                         url = it[ChapterTable.url],
-                                        lastRead = it[ChapterTable.lastReadAt].seconds.inWholeMilliseconds,
+                                        lastRead = it[ChapterUserTable.lastReadAt].seconds.inWholeMilliseconds,
                                     )
                                 } else {
                                     null
@@ -142,12 +151,12 @@ object BackupMangaHandler {
                 }
 
                 if (flags.includeCategories) {
-                    backupManga.categories = CategoryManga.getMangaCategories(mangaId).map { it.order }
+                    backupManga.categories = CategoryManga.getMangaCategories(userId, mangaId).map { it.order }
                 }
 
                 if (flags.includeTracking) {
                     val tracks =
-                        Tracker.getTrackRecordsByMangaId(mangaRow[MangaTable.id].value).mapNotNull {
+                        Tracker.getTrackRecordsByMangaId(userId, mangaRow[MangaTable.id].value).mapNotNull {
                             if (it.record == null) {
                                 null
                             } else {
@@ -178,6 +187,7 @@ object BackupMangaHandler {
         }
 
     fun restore(
+        userId: Int,
         backupManga: BackupManga,
         categoryMapping: Map<Int, Int>,
         sourceMapping: Map<Long, String>,
@@ -192,7 +202,7 @@ object BackupMangaHandler {
         val dbCategoryIds = categories.mapNotNull { categoryMapping[it] }
 
         try {
-            restoreMangaData(backupManga, chapters, dbCategoryIds, history, tracking, flags)
+            restoreMangaData(userId, backupManga, chapters, dbCategoryIds, history, tracking, flags)
         } catch (e: Exception) {
             val sourceName = sourceMapping[backupManga.source] ?: backupManga.source.toString()
             errors.add(Date() to "${backupManga.title} [$sourceName]: ${e.message}")
@@ -200,6 +210,7 @@ object BackupMangaHandler {
     }
 
     private fun restoreMangaData(
+        userId: Int,
         manga: BackupManga,
         chapters: List<BackupChapter>,
         categoryIds: List<Int>,
@@ -210,6 +221,7 @@ object BackupMangaHandler {
         val dbManga =
             transaction {
                 MangaTable
+                    .getWithUserData(userId)
                     .selectAll()
                     .where { (MangaTable.url eq manga.url) and (MangaTable.sourceReference eq manga.source) }
                     .firstOrNull()
@@ -238,10 +250,6 @@ object BackupMangaHandler {
 
                                 it[initialized] = manga.description != null
 
-                                it[inLibrary] = manga.favorite
-
-                                it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
-
                                 it[lastModifiedAt] = manga.lastModifiedAt
                                 it[version] = manga.version
                                 it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
@@ -261,10 +269,6 @@ object BackupMangaHandler {
 
                             it[initialized] = dbManga[initialized] || manga.description != null
 
-                            it[inLibrary] = manga.favorite || dbManga[inLibrary]
-
-                            it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
-
                             it[lastModifiedAt] = manga.lastModifiedAt
                             it[version] = manga.version
                             it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
@@ -273,28 +277,37 @@ object BackupMangaHandler {
                         dbMangaId
                     }
 
+                MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
+                    it[MangaUserTable.user] = userId
+                    it[MangaUserTable.manga] = mangaId
+                    it[inLibrary] = dbManga?.get(MangaUserTable.inLibrary) == true
+                        || manga.favorite
+                    it[inLibraryAt] = dbManga?.get(MangaUserTable.inLibraryAt)
+                        ?: manga.dateAdded.milliseconds.inWholeSeconds
+                }
+
                 // delete thumbnail in case cached data still exists
                 clearThumbnail(mangaId)
 
                 if (flags.includeClientData && manga.meta.isNotEmpty()) {
-                    modifyMangasMetas(mapOf(mangaId to manga.meta))
+                    modifyMangasMetas(userId, mapOf(mangaId to manga.meta))
                 }
 
                 // merge chapter data
                 if (flags.includeChapters || flags.includeHistory) {
-                    restoreMangaChapterData(mangaId, restoreMode, chapters, history, flags)
+                    restoreMangaChapterData(userId, mangaId, restoreMode, chapters, history, flags)
                 }
 
                 // update categories
                 if (flags.includeCategories) {
-                    restoreMangaCategoryData(mangaId, categoryIds)
+                    restoreMangaCategoryData(userId, mangaId, categoryIds)
                 }
 
                 mangaId
             }
 
         if (flags.includeTracking) {
-            restoreMangaTrackerData(mangaId, tracks)
+            restoreMangaTrackerData(userId, mangaId, tracks)
         }
 
         // TODO: insert/merge history
@@ -320,6 +333,7 @@ object BackupMangaHandler {
     }
 
     private fun restoreMangaChapterData(
+        userId: Int,
         mangaId: Int,
         restoreMode: RestoreMode,
         chapters: List<BackupChapter>,
@@ -400,25 +414,27 @@ object BackupMangaHandler {
                         chapterId to backupChapter.meta
                     }
 
-            modifyChaptersMetas(metaEntryByChapterId)
+            modifyChaptersMetas(userId, metaEntryByChapterId)
         }
     }
 
     private fun restoreMangaCategoryData(
+        userId: Int,
         mangaId: Int,
         categoryIds: List<Int>,
     ) {
-        CategoryManga.removeMangaFromAllCategories(mangaId)
-        CategoryManga.addMangaToCategories(mangaId, categoryIds)
+        CategoryManga.removeMangaFromAllCategories(userId, mangaId)
+        CategoryManga.addMangaToCategories(userId, mangaId, categoryIds)
     }
 
     private fun restoreMangaTrackerData(
+        userId: Int,
         mangaId: Int,
         tracks: List<BackupTracking>,
     ) {
         val dbTrackRecordsByTrackerId =
             Tracker
-                .getTrackRecordsByMangaId(mangaId)
+                .getTrackRecordsByMangaId(userId, mangaId)
                 .mapNotNull { it.record?.toTrack() }
                 .associateBy { it.tracker_id }
 
@@ -448,8 +464,8 @@ object BackupMangaHandler {
                     }
                 }.partition { (it.id ?: -1) > 0 }
 
-        Tracker.updateTrackRecords(existingTracks)
-        Tracker.insertTrackRecords(newTracks)
+        Tracker.updateTrackRecords(userId, existingTracks)
+        Tracker.insertTrackRecords(userId, newTracks)
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)

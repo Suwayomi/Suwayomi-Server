@@ -13,11 +13,9 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.andWhere
-import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -47,6 +45,8 @@ import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -59,10 +59,8 @@ class ChapterQuery {
     fun chapter(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
-    ): CompletableFuture<ChapterType> {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
-        return dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
-    }
+    ): CompletableFuture<ChapterType> =
+        dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
 
     enum class ChapterOrderBy(
         override val column: Column<*>,
@@ -206,6 +204,7 @@ class ChapterQuery {
 
     @RequireAuth
     fun chapters(
+        userId: Int,
         condition: ChapterCondition? = null,
         filter: ChapterFilter? = null,
         @GraphQLDeprecated(

@@ -11,15 +11,15 @@ import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 
 object BackupGlobalMetaHandler {
-    fun backup(flags: BackupFlags): Map<String, String> {
+    fun backup(userId: Int, flags: BackupFlags): Map<String, String> {
         if (!flags.includeClientData) {
             return emptyMap()
         }
 
-        return GlobalMeta.getMetaMap()
+        return GlobalMeta.getMetaMap(userId)
     }
 
-    fun restore(meta: Map<String, String>) {
-        GlobalMeta.modifyMetas(meta)
+    fun restore(userId: Int, meta: Map<String, String>) {
+        GlobalMeta.modifyMetas(userId, meta)
     }
 }

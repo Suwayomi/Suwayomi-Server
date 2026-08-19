@@ -25,6 +25,7 @@ import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MangaUserType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -140,4 +141,25 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
             },
             DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()).build(),
         )
+}
+
+class MangaUserForMangaDataLoader : KotlinDataLoader<Int, MangaUserType> {
+    override val dataLoaderName = "MangaUserForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaUserType> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val manga =
+                        MangaUserTable
+                            .selectAll()
+                            .where { MangaUserTable.user eq userId and (MangaUserTable.manga inList ids) }
+                            .map { MangaUserType(it) }
+                            .associateBy { it.mangaId }
+                    ids.map { manga[it] }
+                }
+            }
+        }
 }

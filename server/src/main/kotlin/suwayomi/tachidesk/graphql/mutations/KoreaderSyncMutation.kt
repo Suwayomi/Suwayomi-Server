@@ -6,6 +6,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
@@ -14,6 +15,7 @@ import suwayomi.tachidesk.graphql.types.LogoutKoSyncAccountPayload
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
@@ -63,9 +65,9 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun pushKoSyncProgress(input: PushKoSyncProgressInput): CompletableFuture<PushKoSyncProgressPayload?> =
+    fun pushKoSyncProgress(userId: Int, input: PushKoSyncProgressInput): CompletableFuture<PushKoSyncProgressPayload?> =
         future {
-            KoreaderSyncService.pushProgress(input.chapterId)
+            KoreaderSyncService.pushProgress(userId, input.chapterId)
 
             val chapter =
                 transaction {
@@ -95,9 +97,9 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun pullKoSyncProgress(input: PullKoSyncProgressInput): CompletableFuture<PullKoSyncProgressPayload?> =
+    fun pullKoSyncProgress(userId: Int, input: PullKoSyncProgressInput): CompletableFuture<PullKoSyncProgressPayload?> =
         future {
-            val syncResult = KoreaderSyncService.checkAndPullProgress(input.chapterId)
+            val syncResult = KoreaderSyncService.checkAndPullProgress(userId, input.chapterId)
             var syncConflictInfo: SyncConflictInfoType? = null
 
             if (syncResult != null) {
@@ -111,7 +113,9 @@ class KoreaderSyncMutation {
 
                 if (syncResult.shouldUpdate) {
                     transaction {
-                        ChapterTable.update({ ChapterTable.id eq input.chapterId }) {
+                        ChapterUserTable.upsert(ChapterUserTable.user, ChapterUserTable.chapter) {
+                            it[user] = userId
+                            it[chapter] = input.chapterId
                             it[lastPageRead] = syncResult.pageRead
                             it[lastReadAt] = syncResult.timestamp
                         }

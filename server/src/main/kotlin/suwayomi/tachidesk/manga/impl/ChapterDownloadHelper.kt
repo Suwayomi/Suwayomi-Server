@@ -70,7 +70,7 @@ object ChapterDownloadHelper {
         chapterId: Int,
     ): Long = provider(mangaId, chapterId).getArchiveSize()
 
-    private fun getChapterWithCbzFileName(userId: Int, chapterId: Int): Pair<ChapterDataClass, String> =
+    private fun getChapterWithCbzFileName(chapterId: Int): Pair<ChapterDataClass, String> =
         transaction {
             val row =
                 (ChapterTable innerJoin MangaTable)
@@ -78,7 +78,7 @@ object ChapterDownloadHelper {
                     .where { ChapterTable.id eq chapterId }
                     .firstOrNull() ?: throw IllegalArgumentException("ChapterId $chapterId not found")
 
-            val chapter = ChapterTable.toDataClass(userId, row)
+            val chapter = ChapterTable.toDataClass(row)
             val mangaTitle = row[MangaTable.title].trim()
 
             val scanlatorName = chapter.scanlator?.trim()?.takeIf { it.isNotEmpty() }

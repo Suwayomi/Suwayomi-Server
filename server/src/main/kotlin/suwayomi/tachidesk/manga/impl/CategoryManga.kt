@@ -10,7 +10,6 @@ package suwayomi.tachidesk.manga.impl
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.alias
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
@@ -18,7 +17,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.max
-import org.jetbrains.exposed.sql.or
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.wrapAsExpression
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -103,9 +102,9 @@ object CategoryManga {
         }
     }
 
-    fun removeMangaFromAllCategories(mangaId: Int) {
+    fun removeMangaFromAllCategories(userId: Int, mangaId: Int) {
         transaction {
-            CategoryMangaTable.deleteWhere { CategoryMangaTable.manga eq mangaId }
+            CategoryMangaTable.deleteWhere { (CategoryMangaTable.user eq userId) and (CategoryMangaTable.manga eq mangaId) }
         }
     }
 
@@ -145,7 +144,7 @@ object CategoryManga {
         val transform: (ResultRow) -> MangaDataClass = {
             // Map the data from the result row to the MangaDataClass
             MangaTable
-                .toDataClass(userId, it)
+                .toDataClass(it)
                 .copy(
                     lastReadAt = it[lastReadAt],
                     unreadCount = it[unreadCount],
@@ -194,7 +193,7 @@ object CategoryManga {
                 .innerJoin(CategoryTable)
                 .selectAll()
                 .where {
-                    CategoryMangaTable.manga eq mangaId and (CategoryTable.user eq userId) and (CategoryMangaTable.user eq userId)
+                    CategoryMangaTable.manga eq mangaId and (CategoryTable.user eq userId)
                 }.orderBy(CategoryTable.order to SortOrder.ASC)
                 .map {
                     CategoryTable.toDataClass(it)

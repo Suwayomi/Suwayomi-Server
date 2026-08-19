@@ -50,6 +50,7 @@ import suwayomi.tachidesk.server.serverConfig
  * @param excludeField The field to exclude from filtering.
  */
 fun Query.applyOpdsMangaFilter(
+    userId: Int,
     criteria: OpdsMangaFilter,
     excludeField: String? = null,
 ) {
@@ -82,7 +83,7 @@ fun Query.applyOpdsMangaFilter(
                 "unread" -> {
                     andWhere {
                         MangaTable.id inSubQuery
-                            ChapterTable.select(ChapterTable.manga).where { ChapterTable.isRead eq false }
+                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isRead eq false }
                     }
                 }
 
@@ -170,7 +171,7 @@ object MangaRepository {
                     .select(MangaTable.columns + SourceTable.lang + SourceTable.name + unreadCount + MangaUserTable.columns)
                     .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(criteria)
+            query.applyOpdsMangaFilter(userId, criteria)
             applyMangaLibrarySort(query, sort)
 
             query.groupBy(MangaTable.id, SourceTable.lang, SourceTable.name)
@@ -378,14 +379,14 @@ object MangaRepository {
                     .where { MangaUserTable.inLibrary eq true }
                     .withDistinct()
 
-            baseQuery.applyOpdsMangaFilter(activeFilters, excludeField = "filter")
+            baseQuery.applyOpdsMangaFilter(userId, activeFilters, excludeField = "filter")
 
             val unreadCount =
                 baseQuery
                     .copy()
                     .andWhere {
                         MangaTable.id inSubQuery
-                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterTable.isRead eq false }
+                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isRead eq false }
                     }.count()
             val downloadedCount =
                 baseQuery

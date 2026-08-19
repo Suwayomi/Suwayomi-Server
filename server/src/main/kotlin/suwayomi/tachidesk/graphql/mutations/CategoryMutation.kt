@@ -2,7 +2,6 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
-import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -51,10 +50,9 @@ class CategoryMutation {
 
     @RequireAuth
     fun setCategoryMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
+        userId: Int,
         input: SetCategoryMetaInput,
     ): SetCategoryMetaPayload? {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, meta) = input
 
         Category.modifyMeta(userId, meta.categoryId, meta.key, meta.value)
@@ -76,10 +74,9 @@ class CategoryMutation {
 
     @RequireAuth
     fun deleteCategoryMeta(
-        dataFetchingEnvironment: DataFetchingEnvironment,
+        userId: Int,
         input: DeleteCategoryMetaInput,
     ): DeleteCategoryMetaPayload? {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, categoryId, key) = input
 
         val (meta, category) =
@@ -131,7 +128,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun setCategoryMetas(input: SetCategoryMetasInput): SetCategoryMetasPayload? {
+    fun setCategoryMetas(userId: Int, input: SetCategoryMetasInput): SetCategoryMetasPayload? {
         val (clientMutationId, items) = input
 
         val metaByCategoryId =
@@ -142,7 +139,7 @@ class CategoryMutation {
                 }.groupBy({ it.first }, { it.second })
                 .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
 
-        Category.modifyCategoriesMetas(metaByCategoryId)
+        Category.modifyCategoriesMetas(userId, metaByCategoryId)
 
         val allCategoryIds = metaByCategoryId.keys
         val allMetaKeys = metaByCategoryId.values.flatMap { item -> item.keys }.distinct()
@@ -152,13 +149,13 @@ class CategoryMutation {
                 val updatedMetas =
                     CategoryMetaTable
                         .selectAll()
-                        .where { (CategoryMetaTable.ref inList allCategoryIds) and (CategoryMetaTable.key inList allMetaKeys) }
+                        .where { (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList allCategoryIds) and (CategoryMetaTable.key inList allMetaKeys) }
                         .map { CategoryMetaType(it) }
 
                 val categories =
                     CategoryTable
                         .selectAll()
-                        .where { CategoryTable.id inList allCategoryIds }
+                        .where { CategoryTable.user eq userId and (CategoryTable.id inList allCategoryIds) }
                         .map { CategoryType(it) }
                         .distinctBy { it.id }
 
@@ -186,7 +183,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategoryMetas(input: DeleteCategoryMetasInput): DeleteCategoryMetasPayload? {
+    fun deleteCategoryMetas(userId: Int, input: DeleteCategoryMetasInput): DeleteCategoryMetasPayload? {
         val (clientMutationId, items) = input
 
         items.forEach { item ->
@@ -217,7 +214,7 @@ class CategoryMutation {
                             keyCondition ?: prefixCondition!!
                         }
 
-                    val condition = (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
+                    val condition = (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
 
                     deletedMetas +=
                         CategoryMetaTable
@@ -311,7 +308,7 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateCategory(input: UpdateCategoryInput): UpdateCategoryPayload? {
+    fun updateCategory(userId: Int, input: UpdateCategoryInput): UpdateCategoryPayload? {
         val (clientMutationId, id, patch) = input
 
         updateCategories(userId, listOf(id), patch)
@@ -329,10 +326,9 @@ class CategoryMutation {
 
     @RequireAuth
     fun updateCategories(
-        dataFetchingEnvironment: DataFetchingEnvironment,
+        userId: Int,
         input: UpdateCategoriesInput,
     ): UpdateCategoriesPayload? {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
         val (clientMutationId, ids, patch) = input
 
         updateCategories(userId, ids, patch)
@@ -360,7 +356,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun updateCategoryOrder(input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload? {
+    fun updateCategoryOrder(userId: Int, input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload? {
         val (clientMutationId, categoryId, position) = input
         require(position > 0) {
             "'order' must not be <= 0"
@@ -422,7 +418,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun createCategory(input: CreateCategoryInput): CreateCategoryPayload? {
+    fun createCategory(userId: Int, input: CreateCategoryInput): CreateCategoryPayload? {
         val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
         transaction {
             require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
@@ -482,7 +478,7 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategory(input: DeleteCategoryInput): DeleteCategoryPayload? {
+    fun deleteCategory(userId: Int, input: DeleteCategoryInput): DeleteCategoryPayload? {
         val (clientMutationId, categoryId) = input
         if (categoryId == 0) { // Don't delete default category
             return DeleteCategoryPayload(
@@ -574,7 +570,7 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateMangaCategories(input: UpdateMangaCategoriesInput): UpdateMangaCategoriesPayload? {
+    fun updateMangaCategories(userId: Int, input: UpdateMangaCategoriesInput): UpdateMangaCategoriesPayload? {
         val (clientMutationId, id, patch) = input
 
         updateMangas(userId, listOf(id), patch)
@@ -591,7 +587,7 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateMangasCategories(input: UpdateMangasCategoriesInput): UpdateMangasCategoriesPayload? {
+    fun updateMangasCategories(userId: Int, input: UpdateMangasCategoriesInput): UpdateMangasCategoriesPayload? {
         val (clientMutationId, ids, patch) = input
 
         updateMangas(userId, ids, patch)

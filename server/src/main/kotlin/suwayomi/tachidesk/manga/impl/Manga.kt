@@ -24,8 +24,6 @@ import io.github.reactivecircus.cache4k.Cache
 import io.javalin.http.HttpStatus
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import okhttp3.CacheControl
 import okhttp3.Response
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -34,10 +32,9 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
@@ -262,7 +259,7 @@ object Manga {
         mangaId: Int,
         onlineFetch: Boolean = false,
     ): MangaDataClass {
-        val mangaDaaClass = getManga(userId, mangaId, onlineFetch)
+        val mangaDaaClass = getManga(mangaId, onlineFetch)
 
         return transaction {
             val unreadCount =
@@ -296,7 +293,7 @@ object Manga {
                 unreadCount = unreadCount,
                 downloadCount = downloadCount,
                 chapterCount = chapterCount,
-                lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(userId, it) },
+                lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) },
             )
         }
     }
@@ -382,7 +379,7 @@ object Manga {
     }
 
     private suspend fun fetchThumbnailUrl(mangaId: Int): String? {
-        getManga(0, mangaId, true)
+        getManga(mangaId, true)
         return transaction {
             MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
         }[MangaTable.thumbnail_url]
@@ -486,7 +483,7 @@ object Manga {
                     .selectAll()
                     .where {
                         MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
-                    }.isNotEmpty()
+                    }.any()
             }
         val mangaSource =
             transaction {
@@ -517,17 +514,14 @@ object Manga {
     }
 
     fun getLatestChapter(
-        userId: Int,
         mangaId: Int,
     ): ChapterDataClass? =
         transaction {
             ChapterTable
-                .getWithUserData(
-                    userId,
-                ).selectAll()
+                .selectAll()
                 .where { ChapterTable.manga eq mangaId }
                 .maxByOrNull { it[ChapterTable.sourceOrder] }
-        }?.let { ChapterTable.toDataClass(userId, it) }
+        }?.let { ChapterTable.toDataClass(it) }
 
     fun getUnreadChapters(
         userId: Int,
@@ -539,7 +533,7 @@ object Manga {
                 .selectAll()
                 .where { (ChapterTable.manga eq mangaId) and (ChapterUserTable.isRead eq false) }
                 .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                .map { ChapterTable.toDataClass(userId, it) }
+                .map { ChapterTable.toDataClass( it) }
         }
 
     fun isInIncludedDownloadCategory(

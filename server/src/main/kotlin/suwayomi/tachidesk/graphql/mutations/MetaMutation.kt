@@ -5,7 +5,7 @@ package suwayomi.tachidesk.graphql.mutations
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
@@ -30,7 +30,7 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun setGlobalMeta(input: SetGlobalMetaInput): SetGlobalMetaPayload? {
+    fun setGlobalMeta(userId: Int, input: SetGlobalMetaInput): SetGlobalMetaPayload? {
         val (clientMutationId, meta) = input
 
         GlobalMeta.modifyMeta(userId, meta.key, meta.value)
@@ -49,7 +49,7 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun deleteGlobalMeta(input: DeleteGlobalMetaInput): DeleteGlobalMetaPayload? {
+    fun deleteGlobalMeta(userId: Int, input: DeleteGlobalMetaInput): DeleteGlobalMetaPayload? {
         val (clientMutationId, key) = input
 
         val meta =
@@ -83,17 +83,17 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun setGlobalMetas(input: SetGlobalMetasInput): SetGlobalMetasPayload? {
+    fun setGlobalMetas(userId: Int, input: SetGlobalMetasInput): SetGlobalMetasPayload? {
         val (clientMutationId, metas) = input
 
         val metaMap = metas.associate { it.key to it.value }
-        GlobalMeta.modifyMetas(metaMap)
+        GlobalMeta.modifyMetas(userId, metaMap)
 
         val updatedMetas =
             transaction {
                 GlobalMetaTable
                     .selectAll()
-                    .where { GlobalMetaTable.key inList metaMap.keys }
+                    .where { (GlobalMetaTable.user eq userId) and (GlobalMetaTable.key inList metaMap.keys) }
                     .map { GlobalMetaType(it) }
             }
 

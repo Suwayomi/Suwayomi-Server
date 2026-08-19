@@ -58,7 +58,6 @@ object MangaList {
         transaction {
             val existingMangaUrlsToId =
                 MangaTable
-                    .leftJoin(MangaUserTable)
                     .selectAll()
                     .where {
                         (MangaTable.sourceReference eq sourceId) and
@@ -95,7 +94,7 @@ object MangaList {
                         existingMangaUrlsToId[sManga.url]?.let { sManga to it }
                     }.filterNot { (_, resultRow) ->
                         // todo user
-                        resultRow[MangaUserTable.inLibrary] && resultRow[MangaTable.sourceReference] != LocalSource.ID
+                        resultRow[MangaTable.inLibrary] && resultRow[MangaTable.sourceReference] != LocalSource.ID
                     }
 
             if (mangaToUpdate.isNotEmpty()) {
@@ -148,7 +147,7 @@ object MangaList {
                     .selectAll()
                     .where {
                         MangaTable.id inList mangaIds
-                    }.map { MangaTable.toDataClass(userId, it) }
+                    }.map { MangaTable.toDataClass(it) }
             }
         return PagedMangaListDataClass(
             mangaList,

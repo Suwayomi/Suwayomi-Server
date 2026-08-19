@@ -377,7 +377,7 @@ object DownloadManager {
             transaction {
                 chapters
                     .distinctBy { chapter -> chapter[MangaTable.id] }
-                    .map { MangaTable.toDataClass(0, it) }
+                    .map { MangaTable.toDataClass(it) }
                     .associateBy { it.id }
             }
 
@@ -388,7 +388,7 @@ object DownloadManager {
                     Pair(
                         // this should be safe because mangas is created above from chapters
                         mangas[it[ChapterTable.manga].value]!!,
-                        ChapterTable.toDataClass(0, it),
+                        ChapterTable.toDataClass(it),
                     )
                 }
             }

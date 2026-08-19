@@ -6,6 +6,7 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -131,6 +132,7 @@ class TrackQuery {
 
     @RequireAuth
     fun trackers(
+        userId: Int,
         condition: TrackerCondition? = null,
         @GraphQLDeprecated(
             "Replaced with order",
@@ -151,7 +153,6 @@ class TrackQuery {
     ): TrackerNodeList {
         val (queryResults, resultsAsType) =
             run {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 var res = TrackerManager.services.map { TrackerType(it, userId) }
 
                 if (condition != null) {
@@ -409,6 +410,7 @@ class TrackQuery {
 
     @RequireAuth
     fun trackRecords(
+        userId: Int,
         condition: TrackRecordCondition? = null,
         filter: TrackRecordFilter? = null,
         @GraphQLDeprecated(
@@ -430,7 +432,6 @@ class TrackQuery {
     ): TrackRecordNodeList {
         val queryResults =
             transaction {
-                val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
                 val res = TrackRecordTable.selectAll().where { TrackRecordTable.user eq userId }
 
                 res.applyOps(condition, filter)
@@ -503,7 +504,7 @@ class TrackQuery {
     )
 
     @RequireAuth
-    fun searchTracker(input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> =
+    fun searchTracker(userId: Int, input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> =
         future {
             val tracker =
                 requireNotNull(TrackerManager.getTracker(input.trackerId)) {

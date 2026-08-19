@@ -3,7 +3,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
-import graphql.schema.DataFetchingEnvironment
 import io.javalin.http.UploadedFile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
@@ -34,11 +33,8 @@ class BackupMutation {
         val status: BackupRestoreStatus?,
     )
 
-    fun restoreBackup(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: RestoreBackupInput,
-    ): CompletableFuture<RestoreBackupPayload> {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun restoreBackup(userId: Int, input: RestoreBackupInput): CompletableFuture<RestoreBackupPayload> {
         val (clientMutationId, backup, flags) = input
 
         return future {
@@ -80,11 +76,8 @@ class BackupMutation {
         val url: String,
     )
 
-    fun createBackup(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: CreateBackupInput? = null,
-    ): CreateBackupPayload {
-        val userId = dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requireUser()
+    @RequireAuth
+    fun createBackup(userId: Int, input: CreateBackupInput? = null): CreateBackupPayload {
         val filename = Backup.getFilename()
 
         val backup =

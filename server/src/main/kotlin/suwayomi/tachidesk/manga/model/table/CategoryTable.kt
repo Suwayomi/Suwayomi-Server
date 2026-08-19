@@ -39,5 +39,4 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
         version = categoryEntry[version],
         uid = categoryEntry[uid],
         lastModifiedAt = categoryEntry[lastModifiedAt],
-        user = user,
     )

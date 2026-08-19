@@ -25,14 +25,14 @@ data class ChapterDataClass(
     val chapterNumber: Float,
     val scanlator: String?,
     val mangaId: Int,
-    /** chapter is read */
-    val read: Boolean,
-    /** chapter is bookmarked */
-    val bookmarked: Boolean,
-    /** last read page, zero means not read/no data */
-    val lastPageRead: Int,
-    /** last read page, zero means not read/no data */
-    val lastReadAt: Long,
+    @Deprecated("")
+    val read: Boolean = false,
+    @Deprecated("")
+    val bookmarked: Boolean = false,
+    @Deprecated("")
+    val lastPageRead: Int = 0,
+    @Deprecated("")
+    val lastReadAt: Long = 0,
     // TODO(v0.6.0): rename to sourceOrder
     /** this chapter's index, starts with 1 */
     val index: Int,
@@ -87,10 +87,5 @@ data class ChapterDataClass(
                 .count()
                 .toInt()
         }
-    }
-
-    @Deprecated("Remove with V1 Api")
-    val meta: Map<String, String> by lazy {
-        getChapterMetaMap(id)
     }
 }

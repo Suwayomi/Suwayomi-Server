@@ -33,14 +33,4 @@ data class CategoryDataClass(
     val version: Long,
     val uid: Long,
     val lastModifiedAt: Long,
-) {
-    @Deprecated("Remove with V1 Api")
-    val size: Int by lazy {
-        Category.getCategorySize(id)
-    }
-
-    @Deprecated("Remove with V1 Api")
-    val meta: Map<String, String> by lazy {
-        Category.getCategoryMetaMap(id)
-    }
-}
+)

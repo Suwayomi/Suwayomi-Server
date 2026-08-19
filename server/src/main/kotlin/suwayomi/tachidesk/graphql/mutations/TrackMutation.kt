@@ -31,7 +31,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun loginTrackerOAuth(input: LoginTrackerOAuthInput): CompletableFuture<LoginTrackerOAuthPayload> {
+    fun loginTrackerOAuth(userId: Int, input: LoginTrackerOAuthInput): CompletableFuture<LoginTrackerOAuthPayload> {
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
@@ -61,7 +61,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun loginTrackerCredentials(input: LoginTrackerCredentialsInput): CompletableFuture<LoginTrackerCredentialsPayload> {
+    fun loginTrackerCredentials(userId: Int, input: LoginTrackerCredentialsInput): CompletableFuture<LoginTrackerCredentialsPayload> {
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
@@ -89,7 +89,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun logoutTracker(input: LogoutTrackerInput): CompletableFuture<LogoutTrackerPayload> {
+    fun logoutTracker(userId: Int, input: LogoutTrackerInput): CompletableFuture<LogoutTrackerPayload> {
         val tracker =
             requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                 "Could not find tracker"
@@ -123,7 +123,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun bindTrack(input: BindTrackInput): CompletableFuture<BindTrackPayload> {
+    fun bindTrack(userId: Int, input: BindTrackInput): CompletableFuture<BindTrackPayload> {
         val (clientMutationId, mangaId, trackerId, remoteId, private) = input
 
         return future {
@@ -163,11 +163,11 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun bindTrackRecord(input: BindTrackRecordInput): CompletableFuture<BindTrackRecordPayload?> {
+    fun bindTrackRecord(userId: Int, input: BindTrackRecordInput): CompletableFuture<BindTrackRecordPayload?> {
         val (clientMutationId, mangaId, trackRecordId) = input
 
         return future {
-            val boundTrackRecordId = Track.bindTrackRecord(mangaId, trackRecordId)
+            val boundTrackRecordId = Track.bindTrackRecord(userId, mangaId, trackRecordId)
 
             val trackRecord =
                 transaction {
@@ -192,7 +192,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun fetchTrack(input: FetchTrackInput): CompletableFuture<FetchTrackPayload> {
+    fun fetchTrack(userId: Int, input: FetchTrackInput): CompletableFuture<FetchTrackPayload> {
         val (clientMutationId, recordId) = input
 
         return future {
@@ -226,7 +226,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun unbindTrack(input: UnbindTrackInput): CompletableFuture<UnbindTrackPayload> {
+    fun unbindTrack(userId: Int, input: UnbindTrackInput): CompletableFuture<UnbindTrackPayload> {
         val (clientMutationId, recordId, deleteRemoteTrack) = input
 
         return future {
@@ -258,7 +258,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun trackProgress(input: TrackProgressInput): CompletableFuture<TrackProgressPayload?> {
+    fun trackProgress(userId: Int, input: TrackProgressInput): CompletableFuture<TrackProgressPayload?> {
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -301,7 +301,7 @@ class TrackMutation {
     )
 
     @RequireAuth
-    fun updateTrack(input: UpdateTrackInput): CompletableFuture<UpdateTrackPayload> =
+    fun updateTrack(userId: Int, input: UpdateTrackInput): CompletableFuture<UpdateTrackPayload> =
         future {
             Track.update(
                 userId,

@@ -1140,9 +1140,10 @@ class ServerConfig(
     )
 
     val multiUser: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 73,
+        protoNumber = 98,
         defaultValue = false,
         group = SettingGroup.AUTH,
+        privacySafe = true
     )
 
     /** ****************************************************************** **/

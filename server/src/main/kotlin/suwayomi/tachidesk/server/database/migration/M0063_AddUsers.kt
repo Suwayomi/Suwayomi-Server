@@ -9,19 +9,19 @@ package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.Migration
 import org.intellij.lang.annotations.Language
-import org.jetbrains.exposed.dao.id.IntIdTable
-import org.jetbrains.exposed.sql.ReferenceOption
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.Table
-import org.jetbrains.exposed.sql.transactions.TransactionManager
-import org.jetbrains.exposed.sql.vendors.currentDialect
+import org.jetbrains.exposed.v1.core.ReferenceOption
+import org.jetbrains.exposed.v1.core.Table
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import org.jetbrains.exposed.v1.jdbc.SchemaUtils
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
+import org.jetbrains.exposed.v1.jdbc.vendors.currentDialectMetadata
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
 import suwayomi.tachidesk.server.serverConfig
 
 @Suppress("ClassName", "unused")
-class M0053_AddUsers : Migration() {
+class M0063_AddUsers : Migration() {
     class UserSql {
         private val password = Bcrypt.encryptPassword("password")
         val userAccountTable = "USERACCOUNT".toSqlName()
@@ -176,8 +176,7 @@ class M0053_AddUsers : Migration() {
         with(TransactionManager.current()) {
             SchemaUtils.create(UserAccountTable, UserRolesTable, UserPermissionsTable, ChapterUserTable, MangaUserTable)
             exec(sql)
-            commit()
-            currentDialect.resetCaches()
+            currentDialectMetadata.resetCaches()
         }
     }
 }

@@ -28,7 +28,7 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<UpdateLibraryPayload?> {
+    fun updateLibrary(userId: Int, input: UpdateLibraryInput): CompletableFuture<UpdateLibraryPayload?> {
         updater.addCategoriesToUpdateQueue(
             Category.getCategoryList(userId).filter { input.categories?.contains(it.id) ?: true },
             clear = true,
@@ -58,8 +58,9 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<UpdateLibraryMangaPayload?> {
+    fun updateLibraryManga(userId: Int, input: UpdateLibraryMangaInput): CompletableFuture<UpdateLibraryMangaPayload?> {
         updateLibrary(
+            userId,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
                 categories = null, // todo filter by user's categories
@@ -88,8 +89,9 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<UpdateCategoryMangaPayload?> {
+    fun updateCategoryManga(userId: Int, input: UpdateCategoryMangaInput): CompletableFuture<UpdateCategoryMangaPayload?> {
         updateLibrary(
+            userId,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
                 categories = input.categories, // todo filter by user's categories

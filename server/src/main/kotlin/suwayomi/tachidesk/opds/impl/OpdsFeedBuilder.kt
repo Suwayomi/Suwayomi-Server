@@ -669,7 +669,7 @@ object OpdsFeedBuilder {
         // If no chapters are found in the database, attempt to fetch them from the source.
         if (chapterEntries.isEmpty() && totalChapters == 0L) {
             try {
-                Manga.updateMangaAndChapters(1, mangaId, updateManga = false)
+                Manga.updateMangaAndChapters(mangaId, updateManga = false)
 
                 // Re-query after fetching.
                 val (refetchedChapters, refetchedTotal) =

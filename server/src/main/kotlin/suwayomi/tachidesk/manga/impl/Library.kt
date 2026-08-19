@@ -20,25 +20,25 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
-import suwayomi.tachidesk.manga.impl.Manga.getManga
-import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
-import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import java.time.Instant
-import kotlin.and
 
 object Library {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    suspend fun addMangaToLibrary(
+    fun addMangaToLibrary(
         userId: Int,
         mangaId: Int,
     ) {
-        val manga = getManga(mangaId)
-        if (!manga.inLibrary) {
+        val inLibrary = transaction {
+            MangaUserTable.select(MangaUserTable.id)
+                .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
+                .any()
+        }
+        if (!inLibrary) {
             transaction {
                 val defaultCategories =
                     CategoryTable
@@ -50,19 +50,11 @@ object Library {
                         }.toList()
                 val existingCategories = CategoryMangaTable.selectAll().where { CategoryMangaTable.manga eq mangaId }.toList()
 
-                // todo change to upsert
-                if (MangaUserTable.selectAll().where { MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }.isEmpty()) {
-                    MangaUserTable.insert {
-                        it[MangaUserTable.manga] = mangaId
-                        it[MangaUserTable.user] = userId
-                        it[inLibrary] = true
-                        it[inLibraryAt] = Instant.now().epochSecond
-                    }
-                } else {
-                    MangaUserTable.update({ MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }) {
-                        it[inLibrary] = true
-                        it[inLibraryAt] = Instant.now().epochSecond
-                    }
+                MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
+                    it[MangaUserTable.manga] = mangaId
+                    it[MangaUserTable.user] = userId
+                    it[MangaUserTable.inLibrary] = true
+                    it[MangaUserTable.inLibraryAt] = Instant.now().epochSecond
                 }
 
                 if (existingCategories.isEmpty()) {
@@ -80,18 +72,22 @@ object Library {
         }
     }
 
-    suspend fun removeMangaFromLibrary(
+    fun removeMangaFromLibrary(
         userId: Int,
         mangaId: Int,
     ) {
-        val manga = getManga(userId, mangaId)
-        if (manga.inLibrary) {
+        val inLibrary = transaction {
+            MangaUserTable.select(MangaUserTable.id)
+                .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
+                .any()
+        }
+        if (inLibrary) {
             transaction {
                 MangaUserTable.update({ MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }) {
-                    it[inLibrary] = false
+                    it[MangaUserTable.inLibrary] = false
                 }
             }.apply {
-                handleMangaThumabnail(mangaId)
+                handleMangaThumbnail(mangaId)
             }
         }
     }
@@ -100,7 +96,6 @@ object Library {
         mangaId: Int,
     ) {
         scope.launch {
-            // todo grab
             val sourceId =
                 transaction {
                     MangaTable
@@ -109,6 +104,11 @@ object Library {
                         .first()
                         .get(MangaTable.sourceReference)
                 }
+            val inLibrary = transaction {
+                MangaUserTable.select(MangaUserTable.id)
+                    .where { MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true) }
+                    .any()
+            }
 
             if (sourceId == LocalSource.ID) {
                 return@launch

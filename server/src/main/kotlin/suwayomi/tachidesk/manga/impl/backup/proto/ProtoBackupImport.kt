@@ -193,7 +193,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         val categoryMapping =
             if (flags.includeCategories) {
                 updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
-                BackupCategoryHandler.restore(backup.backupCategories)
+                BackupCategoryHandler.restore(userId, backup.backupCategories)
             } else {
                 emptyMap()
             }
@@ -201,9 +201,9 @@ object ProtoBackupImport : ProtoBackupBase() {
         if (flags.includeClientData) {
             updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreSettings + restoreCategories + restoreMeta, restoreAmount))
 
-            BackupGlobalMetaHandler.restore(backup.meta)
+            BackupGlobalMetaHandler.restore(userId, backup.meta)
 
-            BackupSourceHandler.restore(backup.backupSources)
+            BackupSourceHandler.restore(userId, backup.backupSources)
         }
 
         // Store source mapping for error messages

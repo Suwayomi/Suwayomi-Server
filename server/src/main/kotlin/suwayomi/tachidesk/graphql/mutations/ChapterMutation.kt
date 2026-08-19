@@ -14,12 +14,15 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -32,6 +35,7 @@ import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.net.URLEncoder
@@ -119,9 +123,10 @@ class ChapterMutation {
                                 this[ChapterUserTable.isBookmarked] = it
                             }
                             patch.lastPageRead?.also {
-                                this[ChapterUserTable.lastPageRead] = it // todo user accounts it.coerceAtMost(
-                                // chapterIdToPageCount[this.chapter] ?: 0
-                                // ).coerceAtLeast(0)
+                                this[ChapterUserTable.lastPageRead] = it.coerceIn(
+                                    0,
+                                chapterIdToPageCount[chapterId] ?: 0
+                                )
                                 this[ChapterUserTable.lastReadAt] = now
                             }
                         }
@@ -141,7 +146,7 @@ class ChapterMutation {
     }
 
     @RequireAuth
-    fun updateChapter(input: UpdateChapterInput): UpdateChapterPayload? {
+    fun updateChapter(userId: Int, input: UpdateChapterInput): UpdateChapterPayload? {
         val (clientMutationId, id, patch) = input
 
         updateChapters(userId, listOf(id), patch)
@@ -164,7 +169,7 @@ class ChapterMutation {
     }
 
     @RequireAuth
-    fun updateChapters(input: UpdateChaptersInput): UpdateChaptersPayload? {
+    fun updateChapters(userId: Int, input: UpdateChaptersInput): UpdateChaptersPayload? {
         val (clientMutationId, ids, patch) = input
 
         updateChapters(userId, ids, patch)
@@ -196,7 +201,7 @@ class ChapterMutation {
 
     @RequireAuth
     @GraphQLDeprecated("Deprecated in Tachiyomix 1.6", ReplaceWith("fetchMangaAndChapters"))
-    fun fetchChapters(input: FetchChaptersInput): CompletableFuture<FetchChaptersPayload?> {
+    fun fetchChapters(userId: Int, input: FetchChaptersInput): CompletableFuture<FetchChaptersPayload?> {
         val (clientMutationId, mangaId) = input
 
         return future {
@@ -230,7 +235,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun setChapterMeta(input: SetChapterMetaInput): SetChapterMetaPayload? {
+    fun setChapterMeta(userId: Int, input: SetChapterMetaInput): SetChapterMetaPayload? {
         val (clientMutationId, meta) = input
 
         Chapter.modifyChapterMeta(userId, meta.chapterId, meta.key, meta.value)
@@ -251,7 +256,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun deleteChapterMeta(input: DeleteChapterMetaInput): DeleteChapterMetaPayload? {
+    fun deleteChapterMeta(userId: Int, input: DeleteChapterMetaInput): DeleteChapterMetaPayload? {
         val (clientMutationId, chapterId, key) = input
 
             val (meta, chapter) =
@@ -309,7 +314,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun setChapterMetas(input: SetChapterMetasInput): SetChapterMetasPayload? {
+    fun setChapterMetas(userId: Int, input: SetChapterMetasInput): SetChapterMetasPayload? {
         val (clientMutationId, items) = input
 
         val metaByChapterId =
@@ -320,7 +325,7 @@ class ChapterMutation {
                 }.groupBy({ it.first }, { it.second })
                 .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
 
-        Chapter.modifyChaptersMetas(metaByChapterId)
+        Chapter.modifyChaptersMetas(userId, metaByChapterId)
 
         val allChapterIds = metaByChapterId.keys
         val allMetaKeys = metaByChapterId.values.flatMap { it.keys }.distinct()
@@ -330,7 +335,7 @@ class ChapterMutation {
                 val updatedMetas =
                     ChapterMetaTable
                         .selectAll()
-                        .where { (ChapterMetaTable.ref inList allChapterIds) and (ChapterMetaTable.key inList allMetaKeys) }
+                        .where { (ChapterMetaTable.user eq userId) and (ChapterMetaTable.ref inList allChapterIds) and (ChapterMetaTable.key inList allMetaKeys) }
                         .map { ChapterMetaType(it) }
 
                 val chapters =
@@ -364,7 +369,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun deleteChapterMetas(input: DeleteChapterMetasInput): DeleteChapterMetasPayload? {
+    fun deleteChapterMetas(userId: Int, input: DeleteChapterMetasInput): DeleteChapterMetasPayload? {
         val (clientMutationId, items) = input
 
         items.forEach { item ->
@@ -395,7 +400,7 @@ class ChapterMutation {
                             keyCondition ?: prefixCondition!!
                         }
 
-                    val condition = (ChapterMetaTable.ref inList item.chapterIds) and metaKeyCondition
+                    val condition = (ChapterMetaTable.user eq userId) and (ChapterMetaTable.ref inList item.chapterIds) and metaKeyCondition
 
                     deletedMetas +=
                         ChapterMetaTable
@@ -443,7 +448,7 @@ class ChapterMutation {
     )
 
     @RequireAuth
-    fun fetchChapterPages(input: FetchChapterPagesInput): CompletableFuture<FetchChapterPagesPayload?> {
+    fun fetchChapterPages(userId: Int, input: FetchChapterPagesInput): CompletableFuture<FetchChapterPagesPayload?> {
         val (clientMutationId, chapterId) = input
         val paramsMap = input.toParams()
 
@@ -464,26 +469,11 @@ class ChapterMutation {
                 if (syncResult.shouldUpdate) {
                     // Update DB for SILENT and RECEIVE
                     transaction {
-                        val existingRecord =
-                                ChapterUserTable
-                                    .selectAll()
-                                    .where {
-                                        (ChapterUserTable.chapter eq chapter.id) and
-                                            (ChapterUserTable.user eq userId)
-                                    }.singleOrNull()
-
-                            if (existingRecord != null) {
-                                ChapterUserTable.update({ ChapterUserTable.id eq existingRecord[ChapterUserTable.id] }) {
-                                    it[lastPageRead] = syncResult.pageRead
-                                    it[lastReadAt] = syncResult.timestamp
-                                }
-                            } else {
-                                ChapterUserTable.insert {
-                                    it[user] = userId
-                                    it[ChapterUserTable.chapter] = chapter.id
-                                    it[lastPageRead] = syncResult.pageRead
-                                    it[lastReadAt] = syncResult.timestamp
-                                }
+                        ChapterUserTable.upsert(ChapterUserTable.chapter, ChapterUserTable.user) {
+                            it[user] = userId
+                            it[ChapterUserTable.chapter] = chapter.id
+                            it[lastPageRead] = syncResult.pageRead
+                            it[lastReadAt] = syncResult.timestamp
                         }
                     }
                 }

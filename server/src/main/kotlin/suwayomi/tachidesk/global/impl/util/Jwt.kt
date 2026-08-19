@@ -7,8 +7,9 @@ import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
 import suwayomi.tachidesk.global.model.table.UserRolesTable
 import suwayomi.tachidesk.server.serverConfig
@@ -37,7 +38,7 @@ object Jwt {
 
     @OptIn(ExperimentalEncodingApi::class)
     fun generateSecret(): String {
-        val byteString = preferenceStore.getString(PREF_KEY, "")
+        val byteString = preferenceStore.getString(PREF_KEY, "").orEmpty()
         val decodedKeyBytes =
             try {
                 Base64.Default.decode(byteString)
