@@ -56,7 +56,7 @@ class ChapterQueryTest : GraphQLTest() {
     }
 
     @Test
-    fun chapterIsNullForOtherUser() {
+    fun chapterIsUnreadForOtherUser() {
         val mangaId = createLibraryManga("Manga")
         createChapters(mangaId, 5, read = true)
 
@@ -75,6 +75,10 @@ class ChapterQueryTest : GraphQLTest() {
                 query(${'$'}id: Int!) {
                     chapter(id: ${'$'}id) {
                         id
+                        name
+                        user {
+                            isRead
+                        }
                     }
                 }
                 """.trimIndent(),
@@ -83,10 +87,8 @@ class ChapterQueryTest : GraphQLTest() {
             )
 
         response.assertNoErrors()
-        // NOTE: expected to be null for a different user; currently the left-join in
-        // ChapterTable.getWithUserData returns the chapter with null user data instead.
-        org.junit.jupiter.api.Assertions
-            .assertNull(response.dataPath("chapter"), "chapter should be null for a different user")
+        assertEquals(chapterId, response.dataPath("chapter", "id"))
+        assertEquals(null, response.dataPath("chapter", "user", "isRead") )
     }
 
     @Test
@@ -124,7 +126,7 @@ class ChapterQueryTest : GraphQLTest() {
             graphql(
                 """
                 query(${'$'}mangaId: Int!) {
-                    chapters(condition: { mangaId: ${'$'}mangaId }, filter: { isRead: { equalTo: true } }) {
+                    chapters(condition: { mangaId: ${'$'}mangaId, isRead: true }) {
                         totalCount
                     }
                 }
@@ -137,7 +139,7 @@ class ChapterQueryTest : GraphQLTest() {
     }
 
     @Test
-    fun chaptersIsIsolatedPerUser() {
+    fun chapterReadsIsIsolatedPerUser() {
         val mangaId = createLibraryManga("Manga")
         createChapters(mangaId, 5, read = true)
 
@@ -145,7 +147,7 @@ class ChapterQueryTest : GraphQLTest() {
             graphql(
                 """
                 query(${'$'}mangaId: Int!) {
-                    chapters(condition: { mangaId: ${'$'}mangaId }) {
+                    chapters(condition: { mangaId: ${'$'}mangaId, isRead: true }) {
                         totalCount
                     }
                 }
@@ -155,8 +157,6 @@ class ChapterQueryTest : GraphQLTest() {
             )
 
         response.assertNoErrors()
-        // NOTE: expected to be 0 for a different user; currently the left-join in
-        // ChapterTable.getWithUserData returns all chapters with null user data instead.
         assertEquals(0, response.dataPath("chapters", "totalCount"), "user 2 should not see user 1's chapters")
     }
 

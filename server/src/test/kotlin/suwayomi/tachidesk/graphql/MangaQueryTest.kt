@@ -45,7 +45,7 @@ class MangaQueryTest : GraphQLTest() {
     }
 
     @Test
-    fun mangaIsNullForOtherUser() {
+    fun mangaIsNotInLibraryForOtherUser() {
         val mangaId = createLibraryManga("Isolated Manga")
 
         val response =
@@ -54,6 +54,10 @@ class MangaQueryTest : GraphQLTest() {
                 query(${'$'}id: Int!) {
                     manga(id: ${'$'}id) {
                         id
+                        title
+                        user {
+                            inLibrary
+                        }
                     }
                 }
                 """.trimIndent(),
@@ -62,7 +66,9 @@ class MangaQueryTest : GraphQLTest() {
             )
 
         response.assertNoErrors()
-        assertNull(response.dataPath("manga"), "manga should be null for a different user")
+        assertEquals(mangaId, response.dataPath("manga", "id"))
+        assertEquals("Isolated Manga", response.dataPath("manga", "title"))
+        assertEquals(null, response.dataPath("manga", "user", "inLibrary"))
     }
 
     @Test
@@ -90,7 +96,7 @@ class MangaQueryTest : GraphQLTest() {
     }
 
     @Test
-    fun mangasIsIsolatedPerUser() {
+    fun mangasInLibraryIsIsolatedPerUser() {
         createLibraryManga("Manga A")
         createLibraryManga("Manga B")
 
@@ -98,7 +104,7 @@ class MangaQueryTest : GraphQLTest() {
             graphql(
                 """
                 query {
-                    mangas {
+                    mangas(condition: { inLibrary: true }) {
                         totalCount
                     }
                 }

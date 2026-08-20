@@ -114,8 +114,8 @@ class TrackQueryTest : GraphQLTest() {
                 user = user2,
             )
 
-        response.assertNoErrors()
-        assertEquals(null, response.dataPath("trackRecord"), "trackRecord should be null for a different user")
+        // error is expected since single item queries error when not usable
+        response.assertHasError()
     }
 
     @Test
