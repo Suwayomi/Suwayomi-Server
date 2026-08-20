@@ -33,13 +33,14 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
-import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
@@ -179,10 +180,10 @@ object SyncManager {
             }
 
             transaction {
-                MangaTable.update({ MangaTable.isSyncing eq true }) {
+                MangaUserTable.update({ MangaUserTable.isSyncing eq true }) {
                     it[isSyncing] = false
                 }
-                ChapterTable.update({ ChapterTable.isSyncing eq true }) {
+                ChapterUserTable.update({ ChapterUserTable.isSyncing eq true }) {
                     it[isSyncing] = false
                 }
                 CategoryTable.update({ CategoryTable.isSyncing eq true }) {
@@ -257,7 +258,7 @@ object SyncManager {
                 return
             }
 
-            val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
+            val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(userId, remoteBackup)
             updateNonFavorites(userId, nonFavorites)
 
             val newSyncData =
@@ -355,22 +356,33 @@ object SyncManager {
     }
 
     private fun isMangaDifferent(
+        userId: Int,
         localManga: MangaDataClass,
         remoteManga: BackupManga,
     ): Boolean {
-        if (localManga.version != remoteManga.version) {
+        val localVersion =
+            transaction {
+                MangaUserTable
+                    .select(MangaUserTable.version)
+                    .where { (MangaUserTable.user eq userId) and (MangaUserTable.manga eq localManga.id) }
+                    .map { it[MangaUserTable.version] }
+                    .firstOrNull() ?: 0
+            }
+
+        if (localVersion != remoteManga.version) {
             return true
         }
 
-        val localChapters =
+        val localChapterVersions =
             transaction {
                 ChapterTable
+                    .getWithUserData(userId)
                     .selectAll()
                     .where { ChapterTable.manga eq localManga.id }
-                    .map { ChapterTable.toDataClass(it) }
+                    .associate { it[ChapterTable.url] to (it.getOrNull(ChapterUserTable.version) ?: 0) }
             }
 
-        if (areChaptersDifferent(localChapters, remoteManga.chapters)) {
+        if (areChaptersDifferent(localChapterVersions, remoteManga.chapters)) {
             return true
         }
 
@@ -387,21 +399,20 @@ object SyncManager {
     }
 
     private fun areChaptersDifferent(
-        localChapters: List<ChapterDataClass>,
+        localChapterVersions: Map<String, Long>,
         remoteChapters: List<BackupChapter>,
     ): Boolean {
-        val localChapterMap = localChapters.associateBy { it.url }
         val remoteChapterMap = remoteChapters.associateBy { it.url }
 
-        if (localChapterMap.size != remoteChapterMap.size) {
+        if (localChapterVersions.size != remoteChapterMap.size) {
             return true
         }
 
-        for ((url, localChapter) in localChapterMap) {
+        for ((url, localVersion) in localChapterVersions) {
             val remoteChapter = remoteChapterMap[url]
 
             // If a matching remote chapter doesn't exist, or the version numbers are different, consider them different
-            if (remoteChapter == null || localChapter.version != remoteChapter.version) {
+            if (remoteChapter == null || localVersion != remoteChapter.version) {
                 return true
             }
         }
@@ -409,7 +420,10 @@ object SyncManager {
         return false
     }
 
-    private fun filterFavoritesAndNonFavorites(backup: Backup): Pair<List<BackupManga>, List<BackupManga>> {
+    private fun filterFavoritesAndNonFavorites(
+        userId: Int,
+        backup: Backup,
+    ): Pair<List<BackupManga>, List<BackupManga>> {
         val favorites = mutableListOf<BackupManga>()
         val nonFavorites = mutableListOf<BackupManga>()
 
@@ -433,7 +447,7 @@ object SyncManager {
                     when {
                         // Checks if the manga is in favorites and needs updating or adding
                         remoteManga.favorite -> {
-                            if (localManga == null || isMangaDifferent(localManga, remoteManga)) {
+                            if (localManga == null || isMangaDifferent(userId, localManga, remoteManga)) {
                                 logger.debug { "Adding to favorites: ${remoteManga.title}" }
                                 favorites.add(remoteManga)
                             } else {

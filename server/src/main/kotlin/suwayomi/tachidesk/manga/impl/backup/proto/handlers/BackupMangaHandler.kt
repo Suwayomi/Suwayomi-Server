@@ -87,8 +87,8 @@ object BackupMangaHandler {
                         dateAdded = mangaRow[MangaUserTable.inLibraryAt].seconds.inWholeMilliseconds,
                         viewer = 0, // not supported in Tachidesk
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
-                        lastModifiedAt = mangaRow[MangaTable.lastModifiedAt],
-                        version = mangaRow[MangaTable.version],
+                        lastModifiedAt = mangaRow[MangaUserTable.lastModifiedAt],
+                        version = mangaRow[MangaUserTable.version],
                         initialized = mangaRow[MangaTable.initialized],
                         memo = Json.encodeToString(mangaRow[MangaTable.memo]).encodeToByteArray(),
                     )
@@ -120,15 +120,15 @@ object BackupMangaHandler {
                                     url = it[ChapterTable.url],
                                     name = it[ChapterTable.name],
                                     scanlator = it[ChapterTable.scanlator],
-                                    read = it[ChapterUserTable.isRead],
-                                    bookmark = it[ChapterUserTable.isBookmarked],
-                                    lastPageRead = it[ChapterUserTable.lastPageRead],
+                                    read = it.getOrNull(ChapterUserTable.isRead) ?: false,
+                                    bookmark = it.getOrNull(ChapterUserTable.isBookmarked) ?: false,
+                                    lastPageRead = it.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
                                     dateFetch = it[ChapterTable.fetchedAt].seconds.inWholeMilliseconds,
                                     dateUpload = it[ChapterTable.date_upload],
                                     chapterNumber = it[ChapterTable.chapter_number],
                                     sourceOrder = chapters.size - it[ChapterTable.sourceOrder],
-                                    lastModifiedAt = it[ChapterTable.lastModifiedAt],
-                                    version = it[ChapterTable.version],
+                                    lastModifiedAt = it.getOrNull(ChapterUserTable.lastModifiedAt) ?: 0,
+                                    version = it.getOrNull(ChapterUserTable.version) ?: 0,
                                     memo = Json.encodeToString(it[ChapterTable.memo]).encodeToByteArray(),
                                 ).apply {
                                     if (flags.includeClientData) {
@@ -140,10 +140,11 @@ object BackupMangaHandler {
                     if (flags.includeHistory) {
                         backupManga.history =
                             chapters.mapNotNull {
-                                if (it[ChapterUserTable.lastReadAt] > 0) {
+                                val lastReadAt = it.getOrNull(ChapterUserTable.lastReadAt) ?: 0
+                                if (lastReadAt > 0) {
                                     BackupHistory(
                                         url = it[ChapterTable.url],
-                                        lastRead = it[ChapterUserTable.lastReadAt].seconds.inWholeMilliseconds,
+                                        lastRead = lastReadAt.seconds.inWholeMilliseconds,
                                     )
                                 } else {
                                     null
@@ -252,8 +253,6 @@ object BackupMangaHandler {
 
                                 it[initialized] = manga.description != null
 
-                                it[lastModifiedAt] = manga.lastModifiedAt
-                                it[version] = manga.version
                                 it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
                             }.value
                     } else {
@@ -271,8 +270,6 @@ object BackupMangaHandler {
 
                             it[initialized] = dbManga[initialized] || manga.description != null
 
-                            it[lastModifiedAt] = manga.lastModifiedAt
-                            it[version] = manga.version
                             it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
                         }
 
@@ -286,6 +283,10 @@ object BackupMangaHandler {
                         manga.favorite
                     it[inLibraryAt] = dbManga?.get(MangaUserTable.inLibraryAt)
                         ?: manga.dateAdded.milliseconds.inWholeSeconds
+
+                    it[version] = manga.version
+                    it[lastModifiedAt] = manga.lastModifiedAt
+                    it[isSyncing] = true
                 }
 
                 // delete thumbnail in case cached data still exists
@@ -365,8 +366,6 @@ object BackupMangaHandler {
 
                             this[ChapterTable.fetchedAt] = chapter.dateFetch.milliseconds.inWholeSeconds
 
-                            this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
-                            this[ChapterTable.version] = chapter.version
                             this[ChapterTable.memo] = Json.decodeFromString<JsonObject>(chapter.memo.decodeToString())
                         }.map { it[ChapterTable.id].value }
 
@@ -380,6 +379,10 @@ object BackupMangaHandler {
                     this[ChapterUserTable.isRead] = chapter.read
                     this[ChapterUserTable.lastPageRead] = chapter.lastPageRead.coerceAtLeast(0)
                     this[ChapterUserTable.isBookmarked] = chapter.bookmark
+
+                    this[ChapterUserTable.version] = chapter.version
+                    this[ChapterUserTable.lastModifiedAt] = chapter.lastModifiedAt
+                    this[ChapterUserTable.isSyncing] = true
 
                     if (flags.includeHistory) {
                         this[ChapterUserTable.lastReadAt] =
@@ -420,6 +423,11 @@ object BackupMangaHandler {
                     this[ChapterUserTable.isBookmarked] =
                         backupChapter.bookmark || (userData?.get(ChapterUserTable.isBookmarked) ?: false)
                 }
+
+                this[ChapterUserTable.version] =
+                    max(backupChapter.version, userData?.get(ChapterUserTable.version) ?: 0)
+                this[ChapterUserTable.lastModifiedAt] = backupChapter.lastModifiedAt
+                this[ChapterUserTable.isSyncing] = true
 
                 if (flags.includeHistory) {
                     this[ChapterUserTable.lastReadAt] =

@@ -39,31 +39,218 @@ class M0063_AddUsers : Migration() {
         val chapterTable = "CHAPTER".toSqlName()
         val mangaTable = "MANGA".toSqlName()
 
+        private val adminUserInsert =
+            when (serverConfig.databaseType.value) {
+                DatabaseType.H2 -> {
+                    @Language("SQL")
+                    """
+                    INSERT INTO $userAccountTable(USERNAME, PASSWORD)
+                    SELECT 'admin','$password';
+                    """.trimIndent()
+                }
+
+                DatabaseType.POSTGRESQL -> {
+                    @Language("SQL")
+                    """
+                    INSERT INTO $userAccountTable(ID, USERNAME, PASSWORD)
+                    SELECT 1,'admin','$password';
+                    """.trimIndent()
+                }
+            }
+
+        private val syncYomiTriggerDdl =
+            when (serverConfig.databaseType.value) {
+                DatabaseType.H2 -> h2SyncYomiTriggers()
+                DatabaseType.POSTGRESQL -> postgresSyncYomiTriggers()
+            }
+
+        // language=h2
+        fun h2SyncYomiTriggers(): String =
+            """
+            -- The syncyomi triggers from M0056 target the old single-user schema, drop them
+            DROP TRIGGER IF EXISTS update_manga_version;
+            DROP TRIGGER IF EXISTS update_chapter_and_manga_version;
+            DROP TRIGGER IF EXISTS update_manga_last_modified_at;
+            DROP TRIGGER IF EXISTS insert_manga_last_modified_at;
+            DROP TRIGGER IF EXISTS update_chapter_last_modified_at;
+            DROP TRIGGER IF EXISTS insert_chapter_last_modified_at;
+            DROP TRIGGER IF EXISTS insert_manga_category_update_version;
+
+            -- Recreate the syncyomi triggers on the user specific tables
+            CREATE TRIGGER IF NOT EXISTS update_manga_user_version
+            BEFORE UPDATE ON $mangaUserTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaUserVersionTrigger";
+
+            CREATE TRIGGER IF NOT EXISTS update_chapter_user_version
+            BEFORE UPDATE ON $chapterUserTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterUserVersionTrigger";
+
+            CREATE TRIGGER IF NOT EXISTS update_manga_user_last_modified_at
+            BEFORE UPDATE ON $mangaUserTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaUserLastModifiedAtTrigger";
+
+            CREATE TRIGGER IF NOT EXISTS insert_manga_user_last_modified_at
+            BEFORE INSERT ON $mangaUserTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaUserLastModifiedAtTrigger";
+
+            CREATE TRIGGER IF NOT EXISTS update_chapter_user_last_modified_at
+            BEFORE UPDATE ON $chapterUserTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterUserLastModifiedAtTrigger";
+
+            CREATE TRIGGER IF NOT EXISTS insert_chapter_user_last_modified_at
+            BEFORE INSERT ON $chapterUserTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterUserLastModifiedAtTrigger";
+
+            CREATE TRIGGER IF NOT EXISTS update_manga_bump_user_versions
+            AFTER UPDATE ON $mangaTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaBumpUserVersionsTrigger";
+
+            CREATE TRIGGER IF NOT EXISTS insert_manga_category_update_version
+            AFTER INSERT ON $categoryMangaTable
+            FOR EACH ROW
+            CALL "suwayomi.tachidesk.server.database.trigger.InsertMangaCategoryUpdateVersionTrigger";
+            """.trimIndent()
+
+        // language=postgresql
+        fun postgresSyncYomiTriggers(): String =
+            """
+            -- The syncyomi triggers from M0056 target the old single-user schema, drop them
+            DROP TRIGGER IF EXISTS update_manga_version ON $mangaTable;
+            DROP FUNCTION IF EXISTS update_manga_version();
+            DROP TRIGGER IF EXISTS update_chapter_and_manga_version ON $chapterTable;
+            DROP FUNCTION IF EXISTS update_chapter_and_manga_version();
+            DROP TRIGGER IF EXISTS update_manga_last_modified_at ON $mangaTable;
+            DROP FUNCTION IF EXISTS update_manga_last_modified_at();
+            DROP TRIGGER IF EXISTS update_chapter_last_modified_at ON $chapterTable;
+            DROP FUNCTION IF EXISTS update_chapter_last_modified_at();
+            DROP TRIGGER IF EXISTS insert_manga_category_update_version ON $categoryMangaTable;
+            DROP FUNCTION IF EXISTS insert_manga_category_update_version();
+
+            -- Recreate the syncyomi triggers on the user specific tables
+            CREATE OR REPLACE FUNCTION update_manga_user_version()
+            RETURNS trigger AS \$\$
+            BEGIN
+                IF NOT NEW.is_syncing
+                   AND ROW(NEW.in_library, NEW.in_library_at)
+                       IS DISTINCT FROM
+                       ROW(OLD.in_library, OLD.in_library_at)
+                THEN
+                    NEW.version := NEW.version + 1;
+                END IF;
+
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER update_manga_user_version
+            BEFORE UPDATE ON $mangaUserTable
+            FOR EACH ROW
+            EXECUTE FUNCTION update_manga_user_version();
+
+            CREATE OR REPLACE FUNCTION update_chapter_user_version()
+            RETURNS trigger AS \$\$
+            BEGIN
+                IF NOT NEW.is_syncing
+                   AND ROW(NEW.read, NEW.bookmark, NEW.last_page_read)
+                       IS DISTINCT FROM
+                       ROW(OLD.read, OLD.bookmark, OLD.last_page_read)
+                THEN
+                    NEW.version := NEW.version + 1;
+
+                    UPDATE $mangaUserTable SET version = version + 1
+                    WHERE user_id = NEW.user_id
+                      AND is_syncing = FALSE
+                      AND manga = (SELECT manga FROM $chapterTable WHERE id = NEW.chapter);
+                END IF;
+
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER update_chapter_user_version
+            BEFORE UPDATE ON $chapterUserTable
+            FOR EACH ROW
+            EXECUTE FUNCTION update_chapter_user_version();
+
+            CREATE OR REPLACE FUNCTION update_manga_user_last_modified_at()
+            RETURNS trigger AS \$\$
+            BEGIN
+                NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER update_manga_user_last_modified_at
+            BEFORE UPDATE OR INSERT ON $mangaUserTable
+            FOR EACH ROW
+            EXECUTE FUNCTION update_manga_user_last_modified_at();
+
+            CREATE OR REPLACE FUNCTION update_chapter_user_last_modified_at()
+            RETURNS trigger AS \$\$
+            BEGIN
+                NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER update_chapter_user_last_modified_at
+            BEFORE UPDATE OR INSERT ON $chapterUserTable
+            FOR EACH ROW
+            EXECUTE FUNCTION update_chapter_user_last_modified_at();
+
+            CREATE OR REPLACE FUNCTION update_manga_bump_user_versions()
+            RETURNS trigger AS \$\$
+            BEGIN
+                IF ROW(NEW.url, NEW.description) IS DISTINCT FROM ROW(OLD.url, OLD.description)
+                THEN
+                    UPDATE $mangaUserTable
+                    SET version = version + 1,
+                        last_modified_at = EXTRACT(EPOCH FROM NOW())
+                    WHERE manga = NEW.id
+                      AND is_syncing = FALSE;
+                END IF;
+
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER update_manga_bump_user_versions
+            AFTER UPDATE ON $mangaTable
+            FOR EACH ROW
+            EXECUTE FUNCTION update_manga_bump_user_versions();
+
+            CREATE OR REPLACE FUNCTION insert_manga_category_update_version()
+            RETURNS trigger AS \$\$
+            BEGIN
+                UPDATE $mangaUserTable SET version = version + 1
+                WHERE manga = NEW.manga
+                  AND user_id = NEW.user_id
+                  AND is_syncing = FALSE;
+
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER insert_manga_category_update_version
+            AFTER INSERT ON $categoryMangaTable
+            FOR EACH ROW
+            EXECUTE FUNCTION insert_manga_category_update_version();
+            """.trimIndent()
+
         @Language("SQL")
         val sql =
             """
-            ${
-                when (serverConfig.databaseType.value) {
-                    DatabaseType.H2 -> {
-                        @Language("SQL")
-                        """
-                        INSERT INTO $userAccountTable(USERNAME, PASSWORD)
-                        SELECT 'admin','$password';
-                        """.trimIndent()
-                    }
-
-                    DatabaseType.POSTGRESQL -> {
-                        @Language("SQL")
-                        """
-                        INSERT INTO $userAccountTable(ID, USERNAME, PASSWORD)
-                        SELECT 1,'admin','$password';
-                        """.trimIndent()
-                    }
-                }
-            }
+            $adminUserInsert
             INSERT INTO $userRolesTable(USER_ID, ROLE)
             SELECT 1, 'ADMIN';
-            
+
             -- Step 1: Add USER_ID column to tables CATEGORY, MANGAMETA, CHAPTERMETA, CATEGORYMANGA, GLOBALMETA, and CATEGORYMETA
             ALTER TABLE $categoryTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
             ALTER TABLE $tractRecordTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
@@ -83,41 +270,69 @@ class M0063_AddUsers : Migration() {
             ALTER TABLE $globalMetaTable ADD CONSTRAINT FK_GLOBALMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             ALTER TABLE $categoryMetaTable ADD CONSTRAINT FK_CATEGORYMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             ALTER TABLE $sourceMetaTable ADD CONSTRAINT FK_SOURCEMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            
+
             ALTER TABLE $categoryTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             ALTER TABLE $tractRecordTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             ALTER TABLE $mangaMetaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             ALTER TABLE $chapterMetaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             ALTER TABLE $categoryMangaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             ALTER TABLE $globalMetaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             ALTER TABLE $categoryMetaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             ALTER TABLE $sourceMetaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
-            
+
             -- Step 4: Backfill the CHAPTERUSER and MANGAUSER tables with existing data
             INSERT INTO $chapterUserTable (LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, CHAPTER, USER_ID)
             SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, ID AS CHAPTER, 1 AS USER_ID
             FROM $chapterTable;
-            
+
             INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, MANGA, USER_ID)
             SELECT IN_LIBRARY, IN_LIBRARY_AT, ID AS MANGA, 1 AS USER_ID
             FROM $mangaTable;
-            
-            -- Step 5: Remove extracted columns from CHAPTER and MANGA tables
+
+            -- Step 5: Move the syncyomi columns (VERSION, IS_SYNCING, LAST_MODIFIED_AT) to the user specific tables
+            ALTER TABLE $mangaUserTable ADD COLUMN IF NOT EXISTS VERSION BIGINT NOT NULL DEFAULT 0;
+            ALTER TABLE $mangaUserTable ADD COLUMN IF NOT EXISTS IS_SYNCING BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE $mangaUserTable ADD COLUMN IF NOT EXISTS LAST_MODIFIED_AT BIGINT NOT NULL DEFAULT 0;
+
+            UPDATE $mangaUserTable
+            SET VERSION = (SELECT VERSION FROM $mangaTable WHERE $mangaTable.ID = $mangaUserTable.MANGA),
+                IS_SYNCING = (SELECT IS_SYNCING FROM $mangaTable WHERE $mangaTable.ID = $mangaUserTable.MANGA),
+                LAST_MODIFIED_AT = (SELECT LAST_MODIFIED_AT FROM $mangaTable WHERE $mangaTable.ID = $mangaUserTable.MANGA);
+
+            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS VERSION BIGINT NOT NULL DEFAULT 0;
+            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS IS_SYNCING BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS LAST_MODIFIED_AT BIGINT NOT NULL DEFAULT 0;
+
+            UPDATE $chapterUserTable
+            SET VERSION = (SELECT VERSION FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER),
+                IS_SYNCING = (SELECT IS_SYNCING FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER),
+                LAST_MODIFIED_AT = (SELECT LAST_MODIFIED_AT FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER);
+
+            -- Step 6: Remove the syncyomi columns from the MANGA and CHAPTER tables
+            ALTER TABLE $mangaTable DROP COLUMN VERSION;
+            ALTER TABLE $mangaTable DROP COLUMN IS_SYNCING;
+            ALTER TABLE $mangaTable DROP COLUMN LAST_MODIFIED_AT;
+
+            ALTER TABLE $chapterTable DROP COLUMN VERSION;
+            ALTER TABLE $chapterTable DROP COLUMN IS_SYNCING;
+            ALTER TABLE $chapterTable DROP COLUMN LAST_MODIFIED_AT;
+
+            -- Step 7: Remove the extracted columns from the CHAPTER and MANGA tables
             ALTER TABLE $chapterTable
             DROP COLUMN LAST_READ_AT;
             ALTER TABLE $chapterTable
@@ -126,11 +341,13 @@ class M0063_AddUsers : Migration() {
             DROP COLUMN BOOKMARK;
             ALTER TABLE $chapterTable
             DROP COLUMN READ;
-            
+
             ALTER TABLE $mangaTable
             DROP COLUMN IN_LIBRARY;
             ALTER TABLE $mangaTable
             DROP COLUMN IN_LIBRARY_AT;
+
+            $syncYomiTriggerDdl
             """.trimIndent()
     }
 
@@ -156,6 +373,9 @@ class M0063_AddUsers : Migration() {
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val inLibrary = bool("in_library").default(false)
         val inLibraryAt = long("in_library_at").default(0)
+        val version = long("version").default(0)
+        val isSyncing = bool("is_syncing").default(false)
+        val lastModifiedAt = long("last_modified_at").default(0)
     }
 
     object ChapterTable : IntIdTable()
@@ -168,6 +388,9 @@ class M0063_AddUsers : Migration() {
         val isBookmarked = bool("bookmark").default(false)
         val lastPageRead = integer("last_page_read").default(0)
         val lastReadAt = long("last_read_at").default(0)
+        val version = long("version").default(0)
+        val isSyncing = bool("is_syncing").default(false)
+        val lastModifiedAt = long("last_modified_at").default(0)
     }
 
     val sql by lazy {

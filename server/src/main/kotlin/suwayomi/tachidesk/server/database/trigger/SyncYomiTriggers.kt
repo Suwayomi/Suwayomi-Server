@@ -6,8 +6,11 @@ import java.sql.ResultSet
 import kotlin.random.Random
 import kotlin.time.Clock
 
+@Deprecated("Removed, but needs to be kept due to migrations")
+class UpdateMangaVersionTrigger : DeprecatedTrigger()
+
 @Suppress("unused")
-class UpdateMangaVersionTrigger : TriggerAdapter() {
+class UpdateMangaUserVersionTrigger : TriggerAdapter() {
     override fun fire(
         conn: Connection,
         oldRow: ResultSet,
@@ -15,9 +18,8 @@ class UpdateMangaVersionTrigger : TriggerAdapter() {
     ) {
         val isSyncing = newRow.getBoolean("is_syncing")
         val hasChanged =
-            oldRow.getString("url") != newRow.getString("url") ||
-                oldRow.getString("description") != newRow.getString("description") ||
-                oldRow.getBoolean("in_library") != newRow.getBoolean("in_library")
+            oldRow.getBoolean("in_library") != newRow.getBoolean("in_library") ||
+                oldRow.getLong("in_library_at") != newRow.getLong("in_library_at")
 
         if (!isSyncing && hasChanged) {
             val currentVersion = newRow.getLong("version")
@@ -26,8 +28,11 @@ class UpdateMangaVersionTrigger : TriggerAdapter() {
     }
 }
 
+@Deprecated("Removed, but needs to be kept due to migrations")
+class UpdateChapterAndMangaVersionTrigger : DeprecatedTrigger()
+
 @Suppress("unused")
-class UpdateChapterAndMangaVersionTrigger : TriggerAdapter() {
+class UpdateChapterUserVersionTrigger : TriggerAdapter() {
     override fun fire(
         conn: Connection,
         oldRow: ResultSet,
@@ -43,20 +48,41 @@ class UpdateChapterAndMangaVersionTrigger : TriggerAdapter() {
             val currentVersion = newRow.getLong("version")
             newRow.updateLong("version", currentVersion + 1)
 
-            val mangaId = newRow.getInt("manga")
+            val chapterId = newRow.getInt("chapter")
+            val userId = newRow.getInt("user_id")
             conn
                 .prepareStatement(
-                    "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
+                    "UPDATE MANGAUSER SET version = version + 1 " +
+                        "WHERE user_id = ? AND NOT is_syncing " +
+                        "AND manga = (SELECT manga FROM CHAPTER WHERE id = ?)",
                 ).use {
-                    it.setInt(1, mangaId)
+                    it.setInt(1, userId)
+                    it.setInt(2, chapterId)
                     it.executeUpdate()
                 }
         }
     }
 }
 
+@Deprecated("Removed, but needs to be kept due to migrations")
+class UpdateMangaLastModifiedAtTrigger : DeprecatedTrigger()
+
 @Suppress("unused")
-class UpdateMangaLastModifiedAtTrigger : TriggerAdapter() {
+class UpdateMangaUserLastModifiedAtTrigger : TriggerAdapter() {
+    override fun fire(
+        conn: Connection,
+        oldRow: ResultSet?,
+        newRow: ResultSet,
+    ) {
+        newRow.updateLong("last_modified_at", Clock.System.now().epochSeconds)
+    }
+}
+
+@Deprecated("Removed, but needs to be kept due to migrations")
+class UpdateChapterLastModifiedAtTrigger : DeprecatedTrigger()
+
+@Suppress("unused")
+class UpdateChapterUserLastModifiedAtTrigger : TriggerAdapter() {
     override fun fire(
         conn: Connection,
         oldRow: ResultSet?,
@@ -67,13 +93,28 @@ class UpdateMangaLastModifiedAtTrigger : TriggerAdapter() {
 }
 
 @Suppress("unused")
-class UpdateChapterLastModifiedAtTrigger : TriggerAdapter() {
+class UpdateMangaBumpUserVersionsTrigger : TriggerAdapter() {
     override fun fire(
         conn: Connection,
-        oldRow: ResultSet?,
+        oldRow: ResultSet,
         newRow: ResultSet,
     ) {
-        newRow.updateLong("last_modified_at", Clock.System.now().epochSeconds)
+        val hasChanged =
+            oldRow.getString("url") != newRow.getString("url") ||
+                oldRow.getString("description") != newRow.getString("description")
+
+        if (hasChanged) {
+            val mangaId = newRow.getInt("id")
+            conn
+                .prepareStatement(
+                    "UPDATE MANGAUSER SET version = version + 1, last_modified_at = ? " +
+                        "WHERE manga = ? AND NOT is_syncing",
+                ).use {
+                    it.setLong(1, Clock.System.now().epochSeconds)
+                    it.setInt(2, mangaId)
+                    it.executeUpdate()
+                }
+        }
     }
 }
 
@@ -85,12 +126,14 @@ class InsertMangaCategoryUpdateVersionTrigger : TriggerAdapter() {
         newRow: ResultSet,
     ) {
         val mangaId = newRow.getInt("manga")
+        val userId = newRow.getInt("user_id")
 
         conn
             .prepareStatement(
-                "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
+                "UPDATE MANGAUSER SET version = version + 1 WHERE manga = ? AND user_id = ? AND NOT is_syncing",
             ).use {
                 it.setInt(1, mangaId)
+                it.setInt(2, userId)
                 it.executeUpdate()
             }
     }

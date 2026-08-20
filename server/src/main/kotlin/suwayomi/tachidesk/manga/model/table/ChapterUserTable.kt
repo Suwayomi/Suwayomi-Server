@@ -21,6 +21,11 @@ object ChapterUserTable : IntIdTable() {
     val isBookmarked = bool("bookmark").default(false)
     val lastPageRead = integer("last_page_read").default(0)
     val lastReadAt = long("last_read_at").default(0)
+
+    // syncyomi
+    val version = long("version").default(0)
+    val isSyncing = bool("is_syncing").default(false)
+    val lastModifiedAt = long("last_modified_at").default(0)
 }
 
 fun ChapterTable.getWithUserData(userId: Int) =
