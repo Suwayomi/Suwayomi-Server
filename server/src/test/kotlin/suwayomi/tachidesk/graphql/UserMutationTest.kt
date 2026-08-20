@@ -6,14 +6,13 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.test.GraphQLTest
+import kotlin.test.Test
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class UserMutationTest : GraphQLTest() {
     private val visitor: UserType = UserType.Visitor

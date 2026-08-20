@@ -1,11 +1,11 @@
 package suwayomi.tachidesk.graphql
 
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class MetaMutationTest : GraphQLTest() {
     @Test
@@ -78,12 +78,14 @@ class MetaMutationTest : GraphQLTest() {
                 }
                 """.trimIndent(),
                 mapOf(
-                    "input" to mapOf(
-                        "metas" to listOf(
-                            mapOf("key" to "k1", "value" to "v1"),
-                            mapOf("key" to "k2", "value" to "v2"),
+                    "input" to
+                        mapOf(
+                            "metas" to
+                                listOf(
+                                    mapOf("key" to "k1", "value" to "v1"),
+                                    mapOf("key" to "k2", "value" to "v2"),
+                                ),
                         ),
-                    ),
                 ),
             )
 
@@ -104,12 +106,14 @@ class MetaMutationTest : GraphQLTest() {
             }
             """.trimIndent(),
             mapOf(
-                "input" to mapOf(
-                    "metas" to listOf(
-                        mapOf("key" to "k1", "value" to "v1"),
-                        mapOf("key" to "k2", "value" to "v2"),
+                "input" to
+                    mapOf(
+                        "metas" to
+                            listOf(
+                                mapOf("key" to "k1", "value" to "v1"),
+                                mapOf("key" to "k2", "value" to "v2"),
+                            ),
                     ),
-                ),
             ),
         )
 

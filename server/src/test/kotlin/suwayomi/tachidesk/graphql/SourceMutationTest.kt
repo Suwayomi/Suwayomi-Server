@@ -1,11 +1,11 @@
 package suwayomi.tachidesk.graphql
 
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class SourceMutationTest : GraphQLTest() {
     // the local source registered in the test setup has id 0
@@ -81,17 +81,20 @@ class SourceMutationTest : GraphQLTest() {
                 }
                 """.trimIndent(),
                 mapOf(
-                    "input" to mapOf(
-                        "items" to listOf(
-                            mapOf(
-                                "sourceIds" to listOf(sourceId),
-                                "metas" to listOf(
-                                    mapOf("key" to "sk1", "value" to "sv1"),
-                                    mapOf("key" to "sk2", "value" to "sv2"),
+                    "input" to
+                        mapOf(
+                            "items" to
+                                listOf(
+                                    mapOf(
+                                        "sourceIds" to listOf(sourceId),
+                                        "metas" to
+                                            listOf(
+                                                mapOf("key" to "sk1", "value" to "sv1"),
+                                                mapOf("key" to "sk2", "value" to "sv2"),
+                                            ),
+                                    ),
                                 ),
-                            ),
                         ),
-                    ),
                 ),
             )
 
@@ -112,17 +115,20 @@ class SourceMutationTest : GraphQLTest() {
             }
             """.trimIndent(),
             mapOf(
-                "input" to mapOf(
-                    "items" to listOf(
-                        mapOf(
-                            "sourceIds" to listOf(sourceId),
-                            "metas" to listOf(
-                                mapOf("key" to "sk1", "value" to "sv1"),
-                                mapOf("key" to "sk2", "value" to "sv2"),
+                "input" to
+                    mapOf(
+                        "items" to
+                            listOf(
+                                mapOf(
+                                    "sourceIds" to listOf(sourceId),
+                                    "metas" to
+                                        listOf(
+                                            mapOf("key" to "sk1", "value" to "sv1"),
+                                            mapOf("key" to "sk2", "value" to "sv2"),
+                                        ),
+                                ),
                             ),
-                        ),
                     ),
-                ),
             ),
         )
 

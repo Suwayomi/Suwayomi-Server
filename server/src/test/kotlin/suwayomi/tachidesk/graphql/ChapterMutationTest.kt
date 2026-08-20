@@ -4,8 +4,6 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
@@ -17,11 +15,17 @@ import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createChapters
 import suwayomi.tachidesk.test.createLibraryManga
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ChapterMutationTest : GraphQLTest() {
     private fun firstChapterId(mangaId: Int): Int =
         transaction {
-            ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }.first()[ChapterTable.id].value
+            ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq mangaId }
+                .first()[ChapterTable.id]
+                .value
         }
 
     @Test
@@ -159,17 +163,20 @@ class ChapterMutationTest : GraphQLTest() {
                 }
                 """.trimIndent(),
                 mapOf(
-                    "input" to mapOf(
-                        "items" to listOf(
-                            mapOf(
-                                "chapterIds" to chapterIds,
-                                "metas" to listOf(
-                                    mapOf("key" to "ck1", "value" to "cv1"),
-                                    mapOf("key" to "ck2", "value" to "cv2"),
+                    "input" to
+                        mapOf(
+                            "items" to
+                                listOf(
+                                    mapOf(
+                                        "chapterIds" to chapterIds,
+                                        "metas" to
+                                            listOf(
+                                                mapOf("key" to "ck1", "value" to "cv1"),
+                                                mapOf("key" to "ck2", "value" to "cv2"),
+                                            ),
+                                    ),
                                 ),
-                            ),
                         ),
-                    ),
                 ),
             )
 
@@ -193,17 +200,20 @@ class ChapterMutationTest : GraphQLTest() {
             }
             """.trimIndent(),
             mapOf(
-                "input" to mapOf(
-                    "items" to listOf(
-                        mapOf(
-                            "chapterIds" to listOf(chapterId),
-                            "metas" to listOf(
-                                mapOf("key" to "ck1", "value" to "cv1"),
-                                mapOf("key" to "ck2", "value" to "cv2"),
+                "input" to
+                    mapOf(
+                        "items" to
+                            listOf(
+                                mapOf(
+                                    "chapterIds" to listOf(chapterId),
+                                    "metas" to
+                                        listOf(
+                                            mapOf("key" to "ck1", "value" to "cv1"),
+                                            mapOf("key" to "ck2", "value" to "cv2"),
+                                        ),
+                                ),
                             ),
-                        ),
                     ),
-                ),
             ),
         )
 

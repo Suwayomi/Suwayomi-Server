@@ -1,8 +1,8 @@
 package suwayomi.tachidesk.graphql
 
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.test.GraphQLTest
+import kotlin.test.Test
+import kotlin.test.assertNotNull
 
 class GraphQLSmokeTest : GraphQLTest() {
     @Test

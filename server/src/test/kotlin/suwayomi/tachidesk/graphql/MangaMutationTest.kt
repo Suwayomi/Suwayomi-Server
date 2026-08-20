@@ -1,8 +1,6 @@
 package suwayomi.tachidesk.graphql
 
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -10,6 +8,8 @@ import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class MangaMutationTest : GraphQLTest() {
     @Test
@@ -139,17 +139,20 @@ class MangaMutationTest : GraphQLTest() {
                 }
                 """.trimIndent(),
                 mapOf(
-                    "input" to mapOf(
-                        "items" to listOf(
-                            mapOf(
-                                "mangaIds" to listOf(mangaId),
-                                "metas" to listOf(
-                                    mapOf("key" to "mk1", "value" to "mv1"),
-                                    mapOf("key" to "mk2", "value" to "mv2"),
+                    "input" to
+                        mapOf(
+                            "items" to
+                                listOf(
+                                    mapOf(
+                                        "mangaIds" to listOf(mangaId),
+                                        "metas" to
+                                            listOf(
+                                                mapOf("key" to "mk1", "value" to "mv1"),
+                                                mapOf("key" to "mk2", "value" to "mv2"),
+                                            ),
+                                    ),
                                 ),
-                            ),
                         ),
-                    ),
                 ),
             )
 
@@ -172,17 +175,20 @@ class MangaMutationTest : GraphQLTest() {
             }
             """.trimIndent(),
             mapOf(
-                "input" to mapOf(
-                    "items" to listOf(
-                        mapOf(
-                            "mangaIds" to listOf(mangaId),
-                            "metas" to listOf(
-                                mapOf("key" to "mk1", "value" to "mv1"),
-                                mapOf("key" to "mk2", "value" to "mv2"),
+                "input" to
+                    mapOf(
+                        "items" to
+                            listOf(
+                                mapOf(
+                                    "mangaIds" to listOf(mangaId),
+                                    "metas" to
+                                        listOf(
+                                            mapOf("key" to "mk1", "value" to "mv1"),
+                                            mapOf("key" to "mk2", "value" to "mv2"),
+                                        ),
+                                ),
                             ),
-                        ),
                     ),
-                ),
             ),
         )
 

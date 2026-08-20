@@ -1,7 +1,8 @@
 package suwayomi.tachidesk.graphql
 
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.test.GraphQLTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class UpdateMutationTest : GraphQLTest() {
     @Test
@@ -19,6 +20,6 @@ class UpdateMutationTest : GraphQLTest() {
             )
 
         response.assertNoErrors()
-        org.junit.jupiter.api.Assertions.assertEquals("stopId", response.dataPath("updateStop", "clientMutationId"))
+        assertEquals("stopId", response.dataPath("updateStop", "clientMutationId"))
     }
 }

@@ -1,8 +1,6 @@
 package suwayomi.tachidesk.graphql
 
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -12,6 +10,8 @@ import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class CategoryMutationTest : GraphQLTest() {
     @Test
@@ -217,17 +217,20 @@ class CategoryMutationTest : GraphQLTest() {
                 }
                 """.trimIndent(),
                 mapOf(
-                    "input" to mapOf(
-                        "items" to listOf(
-                            mapOf(
-                                "categoryIds" to listOf(categoryId),
-                                "metas" to listOf(
-                                    mapOf("key" to "cmk1", "value" to "cmv1"),
-                                    mapOf("key" to "cmk2", "value" to "cmv2"),
+                    "input" to
+                        mapOf(
+                            "items" to
+                                listOf(
+                                    mapOf(
+                                        "categoryIds" to listOf(categoryId),
+                                        "metas" to
+                                            listOf(
+                                                mapOf("key" to "cmk1", "value" to "cmv1"),
+                                                mapOf("key" to "cmk2", "value" to "cmv2"),
+                                            ),
+                                    ),
                                 ),
-                            ),
                         ),
-                    ),
                 ),
             )
 
@@ -249,17 +252,20 @@ class CategoryMutationTest : GraphQLTest() {
             }
             """.trimIndent(),
             mapOf(
-                "input" to mapOf(
-                    "items" to listOf(
-                        mapOf(
-                            "categoryIds" to listOf(categoryId),
-                            "metas" to listOf(
-                                mapOf("key" to "cmk1", "value" to "cmv1"),
-                                mapOf("key" to "cmk2", "value" to "cmv2"),
+                "input" to
+                    mapOf(
+                        "items" to
+                            listOf(
+                                mapOf(
+                                    "categoryIds" to listOf(categoryId),
+                                    "metas" to
+                                        listOf(
+                                            mapOf("key" to "cmk1", "value" to "cmv1"),
+                                            mapOf("key" to "cmk2", "value" to "cmv2"),
+                                        ),
+                                ),
                             ),
-                        ),
                     ),
-                ),
             ),
         )
 

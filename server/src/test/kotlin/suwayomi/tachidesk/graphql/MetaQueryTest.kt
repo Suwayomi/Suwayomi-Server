@@ -5,13 +5,13 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class MetaQueryTest : GraphQLTest() {
     private val user2: UserType = UserType.Admin(2)

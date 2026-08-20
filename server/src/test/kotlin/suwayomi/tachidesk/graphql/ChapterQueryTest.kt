@@ -3,8 +3,6 @@ package suwayomi.tachidesk.graphql
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -16,6 +14,8 @@ import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createChapters
 import suwayomi.tachidesk.test.createLibraryManga
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ChapterQueryTest : GraphQLTest() {
     private val user2: UserType = UserType.Admin(2)
@@ -88,7 +88,7 @@ class ChapterQueryTest : GraphQLTest() {
 
         response.assertNoErrors()
         assertEquals(chapterId, response.dataPath("chapter", "id"))
-        assertEquals(null, response.dataPath("chapter", "user", "isRead") )
+        assertEquals(null, response.dataPath("chapter", "user", "isRead"))
     }
 
     @Test

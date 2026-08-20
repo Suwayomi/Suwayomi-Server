@@ -18,7 +18,7 @@ import graphql.execution.DataFetcherExceptionHandlerResult
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
-import org.junit.jupiter.api.Assertions
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
@@ -28,6 +28,8 @@ import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.UserType
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * Base class for executing GraphQL queries and mutations end-to-end against the real schema,
@@ -83,7 +85,7 @@ abstract class GraphQLTest : ApplicationTest() {
      * created for them without violating the `USER_ID` foreign key.
      */
     protected fun createTestUser(username: String): Int =
-        org.jetbrains.exposed.v1.jdbc.transactions.transaction {
+        transaction {
             UserAccountTable
                 .insertAndGetId {
                     it[UserAccountTable.username] = username
@@ -117,7 +119,7 @@ abstract class GraphQLTest : ApplicationTest() {
 
     /** Assert that the response contains no GraphQL errors. */
     protected fun GraphQLResponse<*>.assertNoErrors() {
-        Assertions.assertTrue(
+        assertTrue(
             errors.isNullOrEmpty(),
             "Expected no GraphQL errors but got: $errors",
         )
@@ -125,7 +127,7 @@ abstract class GraphQLTest : ApplicationTest() {
 
     /** Assert that the response contains at least one GraphQL error. */
     protected fun GraphQLResponse<*>.assertHasError() {
-        Assertions.assertFalse(
+        assertFalse(
             errors.isNullOrEmpty(),
             "Expected GraphQL errors but none were returned",
         )
