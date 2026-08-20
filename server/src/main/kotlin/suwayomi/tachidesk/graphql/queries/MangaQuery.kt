@@ -251,15 +251,15 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults =
             transaction {
-                val mangaIdsQuery =
-                    MangaTable
-                        .leftJoin(CategoryMangaTable)
-                        .select(MangaTable.id)
-                        .withDistinct()
-                        .applyOps(condition, filter)
-
                 val res =
                     if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
+                        val mangaIdsQuery =
+                            MangaTable
+                                .leftJoin(CategoryMangaTable)
+                                .select(MangaTable.id)
+                                .withDistinct()
+                                .applyOps(condition, filter)
+
                         MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
                     } else {
                         MangaTable.selectAll().applyOps(condition, filter)

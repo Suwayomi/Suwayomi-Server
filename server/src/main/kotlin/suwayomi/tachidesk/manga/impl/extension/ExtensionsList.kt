@@ -217,6 +217,8 @@ object ExtensionsList {
                 if (removeExtensions.isNotEmpty()) {
                     ExtensionTable.deleteWhere { ExtensionTable.pkgName inList removeExtensions }
                 }
+
+                uniqueExtensions.forEach { Extension.updateExtensionSourcesDatabase(it.pkgName, it.sources) }
             }
         }
     }

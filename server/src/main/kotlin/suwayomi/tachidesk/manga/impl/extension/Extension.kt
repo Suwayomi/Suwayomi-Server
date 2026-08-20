@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.local.LocalSource
+import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.bean.Icon
@@ -50,6 +51,8 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionSource
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -527,13 +530,25 @@ object Extension {
                 it[this.classFQName] = className
             }
 
-            updateExtensionSourcesDatabase(pkgName, httpSources)
+            updateExtensionSourcesDatabase(
+                pkgName,
+                httpSources.map {
+                    ExtensionSource(
+                        id = it.id,
+                        name = it.name,
+                        lang = it.lang,
+                        homeUrl = (it as HttpSource).baseUrl,
+                        message = null,
+                        contentWarning = ContentWarning.valueOf(contentWarning),
+                    )
+                },
+            )
         }
     }
 
     fun updateExtensionSourcesDatabase(
         pkgName: String,
-        sources: List<Source>,
+        sources: List<ExtensionSource>,
     ) {
         dbTransaction {
             val resultRow =
