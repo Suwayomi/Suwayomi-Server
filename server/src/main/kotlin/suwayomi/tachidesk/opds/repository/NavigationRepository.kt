@@ -145,8 +145,7 @@ object NavigationRepository {
                         ExtensionTable,
                         onColumn = { SourceTable.extension },
                         otherColumn = { ExtensionTable.id },
-                    )
-                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
+                    ).select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .where { ExtensionTable.isInstalled eq true }
                     .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
@@ -181,8 +180,7 @@ object NavigationRepository {
                         MangaTable.getWithUserData(userId),
                         { SourceTable.id },
                         { MangaTable.sourceReference },
-                    )
-                    .leftJoin(
+                    ).leftJoin(
                         ExtensionTable,
                         onColumn = { SourceTable.extension },
                         otherColumn = { ExtensionTable.id },
@@ -238,8 +236,7 @@ object NavigationRepository {
                     ExtensionTable,
                     onColumn = { SourceTable.extension },
                     otherColumn = { ExtensionTable.id },
-                )
-                .select(SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
+                ).select(SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                 .where { SourceTable.id eq sourceId }
                 .firstOrNull()
                 ?.let {
@@ -274,8 +271,7 @@ object NavigationRepository {
                         SourceTable,
                         { MangaTable.sourceReference },
                         { SourceTable.id },
-                    )
-                    .select(CategoryTable.id, CategoryTable.name, mangaCount)
+                    ).select(CategoryTable.id, CategoryTable.name, mangaCount)
                     .where { MangaUserTable.inLibrary eq true }
 
             query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "category_id")

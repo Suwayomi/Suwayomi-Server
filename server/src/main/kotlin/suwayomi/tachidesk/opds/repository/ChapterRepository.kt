@@ -229,13 +229,11 @@ object ChapterRepository {
                         MangaTable.getWithUserData(userId),
                         { ChapterTable.manga },
                         { MangaTable.id },
-                    )
-                    .innerJoin(
+                    ).innerJoin(
                         SourceTable,
                         { MangaTable.sourceReference },
                         { SourceTable.id },
-                    )
-                    .select(
+                    ).select(
                         ChapterTable.columns + MangaTable.title + MangaTable.author +
                             MangaTable.thumbnail_url + MangaTable.id + SourceTable.lang,
                     ).where { MangaUserTable.inLibrary eq true }
@@ -289,13 +287,11 @@ object ChapterRepository {
                         MangaTable.getWithUserData(userId),
                         { ChapterTable.manga },
                         { MangaTable.id },
-                    )
-                    .innerJoin(
+                    ).innerJoin(
                         SourceTable,
                         { MangaTable.sourceReference },
                         { SourceTable.id },
-                    )
-                    .select(
+                    ).select(
                         ChapterTable.columns + MangaTable.title + MangaTable.author + MangaTable.thumbnail_url + MangaTable.id +
                             SourceTable.lang,
                     ).where { ChapterUserTable.lastReadAt greater 0L }
