@@ -159,11 +159,15 @@ object CategoryManga {
                     MangaTable
                         .getWithUserData(userId)
                         .leftJoin(ChapterTable.getWithUserData(userId), { MangaTable.id }, { ChapterTable.manga })
-                        .leftJoin(CategoryMangaTable)
+                        .leftJoin(
+                            CategoryMangaTable,
+                            onColumn = { MangaTable.id },
+                            otherColumn = { CategoryMangaTable.manga },
+                            additionalConstraint = { CategoryMangaTable.user eq userId },
+                        )
                         .select(columns = selectedColumns)
                         .where {
                             (MangaUserTable.inLibrary eq true) and
-                                (CategoryMangaTable.user eq userId) and
                                 CategoryMangaTable.category.isNull()
                         }
                 } else {

@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -67,9 +68,14 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                         if (ids.contains(0)) {
                             MangaTable
                                 .getWithUserData(userId)
-                                .leftJoin(CategoryMangaTable)
+                                .leftJoin(
+                                    CategoryMangaTable,
+                                    onColumn = { MangaTable.id },
+                                    otherColumn = { CategoryMangaTable.manga },
+                                    additionalConstraint = { CategoryMangaTable.user eq userId },
+                                )
                                 .selectAll()
-                                .where { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
+                                .where { MangaUserTable.inLibrary eq true }
                                 .andWhere { CategoryMangaTable.manga.isNull() }
                                 .map { MangaType(it) }
                                 .let {

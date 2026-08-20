@@ -13,6 +13,7 @@ import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.andWhere
@@ -155,9 +156,14 @@ object Category {
         transaction {
             MangaTable
                 .getWithUserData(userId)
-                .leftJoin(CategoryMangaTable)
+                .leftJoin(
+                    CategoryMangaTable,
+                    onColumn = { MangaTable.id },
+                    otherColumn = { CategoryMangaTable.manga },
+                    additionalConstraint = { CategoryMangaTable.user eq userId },
+                )
                 .selectAll()
-                .where { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
+                .where { MangaUserTable.inLibrary eq true }
                 .andWhere { CategoryMangaTable.manga.isNull() }
                 .empty()
                 .not()
@@ -201,9 +207,14 @@ object Category {
             if (categoryId == DEFAULT_CATEGORY_ID) {
                 MangaTable
                     .getWithUserData(userId)
-                    .leftJoin(CategoryMangaTable)
+                    .leftJoin(
+                        CategoryMangaTable,
+                        onColumn = { MangaTable.id },
+                        otherColumn = { CategoryMangaTable.manga },
+                        additionalConstraint = { CategoryMangaTable.user eq userId },
+                    )
                     .selectAll()
-                    .where { MangaUserTable.inLibrary eq true and (CategoryMangaTable.user eq userId) }
+                    .where { MangaUserTable.inLibrary eq true }
                     .andWhere { CategoryMangaTable.manga.isNull() }
             } else {
                 CategoryMangaTable
