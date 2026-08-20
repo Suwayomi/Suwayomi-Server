@@ -43,22 +43,26 @@ object Source {
 
     suspend fun getSourceList(): List<SourceDataClass> {
         return suspendTransaction {
-            SourceTable.selectAll().mapNotNull {
-                val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
-                val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
+            SourceTable
+                .leftJoin(ExtensionTable)
+                .selectAll()
+                .where { ExtensionTable.isInstalled eq true }
+                .mapNotNull {
+                    val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
+                    val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
 
-                SourceDataClass(
-                    id = it[SourceTable.id].value.toString(),
-                    name = it[SourceTable.name],
-                    lang = it[SourceTable.lang],
-                    iconUrl = proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
-                    supportsLatest = catalogueSource.supportsLatest,
-                    isConfigurable = catalogueSource is ConfigurableSource,
-                    isNsfw = it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
-                    displayName = catalogueSource.toString(),
-                    baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
-                )
-            }
+                    SourceDataClass(
+                        id = it[SourceTable.id].value.toString(),
+                        name = it[SourceTable.name],
+                        lang = it[SourceTable.lang],
+                        iconUrl = proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
+                        supportsLatest = catalogueSource.supportsLatest,
+                        isConfigurable = catalogueSource is ConfigurableSource,
+                        isNsfw = it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+                        displayName = catalogueSource.toString(),
+                        baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
+                    )
+                }
         }
     }
 
