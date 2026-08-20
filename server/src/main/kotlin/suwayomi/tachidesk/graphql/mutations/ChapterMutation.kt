@@ -98,15 +98,19 @@ class ChapterMutation {
                     .apply {
                         ids.forEach { chapterId ->
                             addBatch(EntityID(chapterId, ChapterTable))
-                            patch.isRead?.also {
-                                this[ChapterTable.isRead] = it
-                            }
                             patch.isBookmarked?.also {
                                 this[ChapterTable.isBookmarked] = it
                             }
                             patch.lastPageRead?.also {
                                 this[ChapterTable.lastPageRead] = it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
                                 this[ChapterTable.lastReadAt] = now
+                            }
+                            patch.isRead?.also {
+                                this[ChapterTable.isRead] = it
+                                if (!it) {
+                                    this[ChapterTable.lastPageRead] = 0
+                                    this[ChapterTable.lastReadAt] = 0
+                                }
                             }
                         }
                     }.toExecutable()

@@ -472,9 +472,6 @@ object Chapter {
 
                 if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
                     ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) { update ->
-                        isRead?.also {
-                            update[ChapterTable.isRead] = it
-                        }
                         isBookmarked?.also {
                             update[ChapterTable.isBookmarked] = it
                         }
@@ -482,12 +479,23 @@ object Chapter {
                             update[ChapterTable.lastPageRead] = it
                             update[lastReadAt] = Instant.now().epochSecond
                         }
+                        isRead?.also {
+                            update[ChapterTable.isRead] = it
+                            if (!it) {
+                                update[ChapterTable.lastPageRead] = 0
+                                update[lastReadAt] = 0
+                            }
+                        }
                     }
                 }
 
                 markPrevRead?.let {
                     ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }) {
                         it[ChapterTable.isRead] = markPrevRead
+                        if (!markPrevRead) {
+                            it[ChapterTable.lastPageRead] = 0
+                            it[ChapterTable.lastReadAt] = 0
+                        }
                     }
                 }
 
@@ -575,15 +583,19 @@ object Chapter {
         transaction {
             val now = Instant.now().epochSecond
             ChapterTable.update({ condition }) { update ->
-                isRead?.also {
-                    update[ChapterTable.isRead] = it
-                }
                 isBookmarked?.also {
                     update[ChapterTable.isBookmarked] = it
                 }
                 lastPageRead?.also {
                     update[ChapterTable.lastPageRead] = it
                     update[lastReadAt] = now
+                }
+                isRead?.also {
+                    update[ChapterTable.isRead] = it
+                    if (!it) {
+                        update[ChapterTable.lastPageRead] = 0
+                        update[lastReadAt] = 0
+                    }
                 }
             }
         }
