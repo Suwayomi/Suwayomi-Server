@@ -19,7 +19,7 @@ enum class ExitCode(
     MutexCheckFailedTachideskRunning(1),
     MutexCheckFailedAnotherAppRunning(2),
     WebUISetupFailure(3),
-    ConfigMigrationMisconfiguredFailure(4),
+    ConfigMigrationFailure(4),
     DbMigrationFailure(5),
     SetupConfFileFailed(6),
     LocalSourceIconCopyFailure(7),
