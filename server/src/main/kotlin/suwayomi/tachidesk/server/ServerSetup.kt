@@ -145,81 +145,6 @@ fun setupLogLevelUpdating(
     )
 }
 
-fun migrateConfigValue(
-    configDocument: ConfigDocument,
-    config: Config,
-    configKey: String,
-    toConfigKey: String,
-    toType: (ConfigValue) -> Any?,
-): ConfigDocument {
-    try {
-        val configValue = config.getValue(configKey)
-        val typedValue = toType(configValue)
-        if (typedValue != null) {
-            logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
-            return configDocument.withValue(
-                toConfigKey,
-                typedValue.toConfig("internal").getValue("internal"),
-            )
-        }
-    } catch (_: ConfigException) {
-        // ignore, likely already migrated
-    }
-
-    return configDocument
-}
-
-fun migrateConfig(
-    configDocument: ConfigDocument,
-    config: Config,
-): ConfigDocument {
-    var updatedConfig = configDocument
-
-    SettingsRegistry.getAll().forEach { (name, data) ->
-        if (data.deprecated == null || data.deprecated is SettingsRegistry.SettingDeprecated.Remove) {
-            return@forEach
-        }
-
-        val deprecated = data.deprecated as SettingsRegistry.SettingDeprecated.Migrate
-
-        val configKey = "server.$name"
-        val toConfigKey = "server.${deprecated.replaceWith}"
-
-        try {
-            config.getValue(configKey)
-        } catch (_: ConfigException) {
-            // Ignore, no migration required
-            return@forEach
-        }
-
-        logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
-
-        try {
-            when (deprecated) {
-                is SettingsRegistry.SettingDeprecated.Migrate.Config -> {
-                    updatedConfig = deprecated.migrateConfig(config.getValue(configKey), updatedConfig)
-                }
-
-                is SettingsRegistry.SettingDeprecated.Migrate.ConfigValue -> {
-                    updatedConfig =
-                        migrateConfigValue(
-                            updatedConfig,
-                            config,
-                            configKey,
-                            toConfigKey,
-                            deprecated.migrateConfigValue,
-                        )
-                }
-            }
-        } catch (e: Exception) {
-            logger.warn(e) { "Failed to migrate config value: $configKey -> $toConfigKey" }
-            shutdownApp(ExitCode.ConfigMigrationFailure)
-        }
-    }
-
-    return updatedConfig
-}
-
 fun serverModule(applicationDirs: ApplicationDirs): Module =
     module {
         single { applicationDirs }
@@ -364,7 +289,16 @@ fun applicationSetup() {
             }
         } else {
             // make sure the user config file is up-to-date
-            GlobalConfigManager.updateUserConfig { migrateConfig(this, it) }
+            GlobalConfigManager.updateUserConfig {
+                try {
+                    migrateConfig(this, it)
+                } catch (e: Throwable) {
+                    logger.error(e) { "Failed to migrate config" }
+                    shutdownApp(ExitCode.ConfigMigrationFailure)
+                }
+
+                this
+            }
         }
     } catch (e: Exception) {
         logger.error(e) { "Exception while creating initial server.conf" }
