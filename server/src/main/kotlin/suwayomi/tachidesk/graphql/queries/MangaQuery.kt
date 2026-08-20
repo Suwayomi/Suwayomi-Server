@@ -14,9 +14,11 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.select
@@ -259,8 +261,12 @@ class MangaQuery {
                 val mangaIdsQuery =
                     MangaTable
                         .getWithUserData(userId)
-                        .leftJoin(CategoryMangaTable)
-                        .select(MangaTable.id)
+                        .leftJoin(
+                            CategoryMangaTable,
+                            onColumn = { MangaTable.id },
+                            otherColumn = { CategoryMangaTable.manga },
+                            additionalConstraint = { CategoryMangaTable.user eq userId },
+                        ).select(MangaTable.id)
                         .withDistinct()
                         .applyOps(condition, filter)
 

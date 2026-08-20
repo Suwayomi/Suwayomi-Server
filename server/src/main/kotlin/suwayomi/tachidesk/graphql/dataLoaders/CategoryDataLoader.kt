@@ -15,6 +15,7 @@ import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
@@ -87,12 +88,15 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
                     addLogger(Slf4jSqlDebugLogger)
                     val itemsByRef =
                         CategoryMangaTable
-                            .innerJoin(CategoryTable)
-                            .selectAll()
+                            .innerJoin(
+                                CategoryTable,
+                                onColumn = { CategoryMangaTable.category },
+                                otherColumn = { CategoryTable.id },
+                                additionalConstraint = { CategoryTable.user eq userId },
+                            ).selectAll()
                             .where {
                                 CategoryMangaTable.manga inList ids and
-                                    (CategoryMangaTable.user eq userId) and
-                                    (CategoryTable.user eq userId)
+                                    (CategoryMangaTable.user eq userId)
                             }.map { Pair(it[CategoryMangaTable.manga].value, CategoryType(it)) }
                             .groupBy { it.first }
                             .mapValues { it.value.map { pair -> pair.second } }

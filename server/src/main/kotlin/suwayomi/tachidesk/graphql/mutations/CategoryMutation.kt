@@ -9,6 +9,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.minus
@@ -529,9 +530,13 @@ class CategoryMutation {
                     transaction {
                         MangaTable
                             .getWithUserData(userId)
-                            .innerJoin(CategoryMangaTable)
-                            .selectAll()
-                            .where { CategoryMangaTable.category eq categoryId and (CategoryMangaTable.user eq userId) }
+                            .innerJoin(
+                                CategoryMangaTable,
+                                onColumn = { MangaTable.id },
+                                otherColumn = { CategoryMangaTable.manga },
+                                additionalConstraint = { CategoryMangaTable.user eq userId },
+                            ).selectAll()
+                            .where { CategoryMangaTable.category eq categoryId }
                             .map { MangaType(it) }
                     }
 

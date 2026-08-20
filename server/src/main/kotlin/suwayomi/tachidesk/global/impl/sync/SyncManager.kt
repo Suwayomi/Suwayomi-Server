@@ -17,6 +17,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -389,9 +390,13 @@ object SyncManager {
         val localCategories =
             transaction {
                 CategoryMangaTable
-                    .innerJoin(CategoryTable)
-                    .selectAll()
-                    .where { CategoryMangaTable.manga eq localManga.id }
+                    .innerJoin(
+                        CategoryTable,
+                        onColumn = { CategoryMangaTable.category },
+                        otherColumn = { CategoryTable.id },
+                        additionalConstraint = { CategoryTable.user eq userId },
+                    ).selectAll()
+                    .where { (CategoryMangaTable.user eq userId) and (CategoryMangaTable.manga eq localManga.id) }
                     .map { it[CategoryTable.order] }
             }
 

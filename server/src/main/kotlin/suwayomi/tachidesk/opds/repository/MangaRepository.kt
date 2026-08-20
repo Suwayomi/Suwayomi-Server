@@ -11,7 +11,9 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.core.max
@@ -156,15 +158,27 @@ object MangaRepository {
             var baseJoin =
                 MangaTable
                     .getWithUserData(userId)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .join(ChapterTable.getWithUserData(userId), JoinType.LEFT, MangaTable.id, ChapterTable.manga)
+                    .innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    )
+                    .leftJoin(
+                        ChapterTable.getWithUserData(userId),
+                        { MangaTable.id },
+                        { ChapterTable.manga },
+                    )
 
             if (criteria.categoryId != null) {
                 baseJoin =
-                    baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga, additionalConstraint = {
-                        CategoryMangaTable.user eq
-                            userId
-                    })
+                    baseJoin.leftJoin(
+                        CategoryMangaTable,
+                        { MangaTable.id },
+                        { CategoryMangaTable.manga },
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    )
             }
 
             val query =
@@ -255,7 +269,11 @@ object MangaRepository {
             transaction {
                 MangaTable
                     .getWithUserData(userId)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    )
                     .select(MangaTable.columns + MangaUserTable.columns + SourceTable.name + SourceTable.lang)
                     .where { MangaTable.id inList mangaIds }
                     .map { it.toOpdsMangaAcqEntry() }
@@ -297,7 +315,11 @@ object MangaRepository {
             val query =
                 MangaTable
                     .getWithUserData(userId)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    )
                     .select(MangaTable.columns + MangaUserTable.columns + SourceTable.name + SourceTable.lang)
                     .where(finalCondition)
                     .groupBy(MangaTable.id, SourceTable.name, SourceTable.lang)
@@ -372,10 +394,19 @@ object MangaRepository {
             var baseJoin =
                 MangaTable
                     .getWithUserData(userId)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    )
 
             if (activeFilters.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                baseJoin = baseJoin.leftJoin(
+                    CategoryMangaTable,
+                    { MangaTable.id },
+                    { CategoryMangaTable.manga },
+                    additionalConstraint = { CategoryMangaTable.user eq userId }
+                )
             }
 
             val baseQuery =

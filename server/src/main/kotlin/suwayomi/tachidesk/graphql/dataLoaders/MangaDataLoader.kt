@@ -73,8 +73,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                                     onColumn = { MangaTable.id },
                                     otherColumn = { CategoryMangaTable.manga },
                                     additionalConstraint = { CategoryMangaTable.user eq userId },
-                                )
-                                .selectAll()
+                                ).selectAll()
                                 .where { MangaUserTable.inLibrary eq true }
                                 .andWhere { CategoryMangaTable.manga.isNull() }
                                 .map { MangaType(it) }

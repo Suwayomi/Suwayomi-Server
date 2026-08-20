@@ -161,8 +161,7 @@ object Category {
                     onColumn = { MangaTable.id },
                     otherColumn = { CategoryMangaTable.manga },
                     additionalConstraint = { CategoryMangaTable.user eq userId },
-                )
-                .selectAll()
+                ).selectAll()
                 .where { MangaUserTable.inLibrary eq true }
                 .andWhere { CategoryMangaTable.manga.isNull() }
                 .empty()
@@ -212,8 +211,7 @@ object Category {
                         onColumn = { MangaTable.id },
                         otherColumn = { CategoryMangaTable.manga },
                         additionalConstraint = { CategoryMangaTable.user eq userId },
-                    )
-                    .selectAll()
+                    ).selectAll()
                     .where { MangaUserTable.inLibrary eq true }
                     .andWhere { CategoryMangaTable.manga.isNull() }
             } else {

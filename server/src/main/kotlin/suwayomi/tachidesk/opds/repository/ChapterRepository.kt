@@ -16,6 +16,7 @@ import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -224,11 +225,19 @@ object ChapterRepository {
             val query =
                 ChapterTable
                     .getWithUserData(userId)
-                    .join(MangaTable.getWithUserData(userId), JoinType.INNER, ChapterTable.manga, MangaTable.id)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .innerJoin(
+                        MangaTable.getWithUserData(userId),
+                        { ChapterTable.manga },
+                        { MangaTable.id },
+                    )
+                    .innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    )
                     .select(
-                        ChapterTable.columns + MangaTable.title + MangaTable.author + MangaTable.thumbnail_url + MangaTable.id +
-                            SourceTable.lang,
+                        ChapterTable.columns + MangaTable.title + MangaTable.author +
+                            MangaTable.thumbnail_url + MangaTable.id + SourceTable.lang,
                     ).where { MangaUserTable.inLibrary eq true }
 
             val totalCount = query.count()
@@ -276,8 +285,16 @@ object ChapterRepository {
             val query =
                 ChapterTable
                     .getWithUserData(userId)
-                    .join(MangaTable.getWithUserData(userId), JoinType.INNER, ChapterTable.manga, MangaTable.id)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .innerJoin(
+                        MangaTable.getWithUserData(userId),
+                        { ChapterTable.manga },
+                        { MangaTable.id },
+                    )
+                    .innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    )
                     .select(
                         ChapterTable.columns + MangaTable.title + MangaTable.author + MangaTable.thumbnail_url + MangaTable.id +
                             SourceTable.lang,

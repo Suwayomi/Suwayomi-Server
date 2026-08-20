@@ -14,6 +14,7 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.max
@@ -158,14 +159,16 @@ object CategoryManga {
                 if (categoryId == DEFAULT_CATEGORY_ID) {
                     MangaTable
                         .getWithUserData(userId)
-                        .leftJoin(ChapterTable.getWithUserData(userId), { MangaTable.id }, { ChapterTable.manga })
                         .leftJoin(
+                            ChapterTable.getWithUserData(userId),
+                            { MangaTable.id },
+                            { ChapterTable.manga },
+                        ).leftJoin(
                             CategoryMangaTable,
                             onColumn = { MangaTable.id },
                             otherColumn = { CategoryMangaTable.manga },
                             additionalConstraint = { CategoryMangaTable.user eq userId },
-                        )
-                        .select(columns = selectedColumns)
+                        ).select(columns = selectedColumns)
                         .where {
                             (MangaUserTable.inLibrary eq true) and
                                 CategoryMangaTable.category.isNull()
@@ -173,9 +176,16 @@ object CategoryManga {
                 } else {
                     MangaTable
                         .getWithUserData(userId)
-                        .innerJoin(CategoryMangaTable)
-                        .leftJoin(ChapterTable.getWithUserData(userId), { MangaTable.id }, { ChapterTable.manga })
-                        .select(columns = selectedColumns)
+                        .leftJoin(
+                            CategoryMangaTable,
+                            onColumn = { MangaTable.id },
+                            otherColumn = { CategoryMangaTable.manga },
+                            additionalConstraint = { CategoryMangaTable.user eq userId },
+                        ).leftJoin(
+                            ChapterTable.getWithUserData(userId),
+                            { MangaTable.id },
+                            { ChapterTable.manga },
+                        ).select(columns = selectedColumns)
                         .where { (MangaUserTable.inLibrary eq true) and (CategoryMangaTable.category eq categoryId) }
                 }
 
@@ -210,11 +220,14 @@ object CategoryManga {
         buildMap {
             transaction {
                 CategoryMangaTable
-                    .innerJoin(CategoryTable)
-                    .selectAll()
+                    .innerJoin(
+                        CategoryTable,
+                        onColumn = { CategoryMangaTable.category },
+                        otherColumn = { CategoryTable.id },
+                        additionalConstraint = { CategoryTable.user eq userId },
+                    ).selectAll()
                     .where {
-                        (CategoryTable.user eq userId) and
-                            (CategoryMangaTable.user eq userId) and
+                        (CategoryMangaTable.user eq userId) and
                             (CategoryMangaTable.manga inList mangaIDs)
                     }.groupBy { it[CategoryMangaTable.manga] }
                     .forEach {
