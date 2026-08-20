@@ -213,6 +213,7 @@ fun migrateConfig(
             }
         } catch (e: Exception) {
             logger.warn(e) { "Failed to migrate config value: $configKey -> $toConfigKey" }
+            shutdownApp(ExitCode.ConfigMigrationFailure)
         }
     }
 
