@@ -175,10 +175,15 @@ fun migrateConfig(
 ): ConfigDocument {
     var updatedConfig = configDocument
 
-    val settingsRequiringMigration = SettingsRegistry.getAll().filterValues { it.deprecated?.replaceWith != null }
-    settingsRequiringMigration.forEach { (name, data) ->
+    SettingsRegistry.getAll().forEach { (name, data) ->
+        if (data.deprecated == null || data.deprecated is SettingsRegistry.SettingDeprecated.Remove) {
+            return@forEach
+        }
+
+        val deprecated = data.deprecated as SettingsRegistry.SettingDeprecated.Migrate
+
         val configKey = "server.$name"
-        val toConfigKey = "server.${data.deprecated!!.replaceWith}"
+        val toConfigKey = "server.${deprecated.replaceWith}"
 
         try {
             config.getValue(configKey)
@@ -190,28 +195,25 @@ fun migrateConfig(
         logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
 
         try {
-            if (data.deprecated!!.migrateConfig != null) {
-                updatedConfig = data.deprecated!!.migrateConfig!!(config.getValue(configKey), updatedConfig)
-                return@forEach
-            }
+            when (deprecated) {
+                is SettingsRegistry.SettingDeprecated.Migrate.Config -> {
+                    updatedConfig = deprecated.migrateConfig(config.getValue(configKey), updatedConfig)
+                }
 
-            if (data.deprecated!!.migrateConfigValue != null) {
-                updatedConfig =
-                    migrateConfigValue(
-                        updatedConfig,
-                        config,
-                        configKey,
-                        toConfigKey,
-                        data.deprecated!!.migrateConfigValue!!,
-                    )
-                return@forEach
+                is SettingsRegistry.SettingDeprecated.Migrate.ConfigValue -> {
+                    updatedConfig =
+                        migrateConfigValue(
+                            updatedConfig,
+                            config,
+                            configKey,
+                            toConfigKey,
+                            deprecated.migrateConfigValue,
+                        )
+                }
             }
         } catch (e: Exception) {
             logger.warn(e) { "Failed to migrate config value: $configKey -> $toConfigKey" }
-            return@forEach
         }
-
-        shutdownApp(ExitCode.ConfigMigrationMisconfiguredFailure)
     }
 
     return updatedConfig
