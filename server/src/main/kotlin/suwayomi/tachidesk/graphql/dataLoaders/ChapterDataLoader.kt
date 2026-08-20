@@ -299,8 +299,8 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
         }
 }
 
-class ChapterUserForMangaDataLoader : KotlinDataLoader<Int, ChapterUserType> {
-    override val dataLoaderName = "ChapterUserForMangaDataLoader"
+class ChapterUserForChapterDataLoader : KotlinDataLoader<Int, ChapterUserType> {
+    override val dataLoaderName = "ChapterUserForChapterDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterUserType> =
         DataLoaderFactory.newDataLoader { ids ->

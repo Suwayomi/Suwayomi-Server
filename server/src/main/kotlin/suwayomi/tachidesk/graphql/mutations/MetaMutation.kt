@@ -125,7 +125,11 @@ class MetaMutation {
     )
 
     @RequireAuth
-    fun deleteGlobalMetas(input: DeleteGlobalMetasInput): DeleteGlobalMetasPayload? {
+    fun deleteGlobalMetas(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteGlobalMetasInput,
+    ): DeleteGlobalMetasPayload? {
         val (clientMutationId, keys, prefixes) = input
 
         require(!keys.isNullOrEmpty() || !prefixes.isNullOrEmpty()) {
@@ -143,11 +147,12 @@ class MetaMutation {
                         ?.reduceOrNull { acc, op -> acc or op }
 
                 val finalCondition =
-                    if (keyCondition != null && prefixCondition != null) {
-                        keyCondition or prefixCondition
-                    } else {
-                        keyCondition ?: prefixCondition!!
-                    }
+                    (GlobalMetaTable.user eq userId) and
+                        if (keyCondition != null && prefixCondition != null) {
+                            keyCondition or prefixCondition
+                        } else {
+                            keyCondition ?: prefixCondition!!
+                        }
 
                 val metas =
                     GlobalMetaTable

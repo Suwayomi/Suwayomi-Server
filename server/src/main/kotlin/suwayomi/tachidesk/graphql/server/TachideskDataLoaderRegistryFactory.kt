@@ -15,7 +15,7 @@ import suwayomi.tachidesk.graphql.dataLoaders.CategoryMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterFlagCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterMetaDataLoader
-import suwayomi.tachidesk.graphql.dataLoaders.ChapterUserForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChapterUserForChapterDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChaptersForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackRecordDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackSearchDataLoader
@@ -63,7 +63,7 @@ class TachideskDataLoaderRegistryFactory {
                 LatestUploadedChapterForMangaDataLoader(),
                 FirstUnreadChapterForMangaDataLoader(),
                 HighestNumberedChapterForMangaDataLoader(),
-                ChapterUserForMangaDataLoader(),
+                ChapterUserForChapterDataLoader(),
                 GlobalMetaDataLoader(),
                 ChapterMetaDataLoader(),
                 MangaMetaDataLoader(),
