@@ -44,7 +44,6 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_NSFW
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_SOURCE_CLASS
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
-import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.ResourceArscIconParser
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
@@ -528,13 +527,25 @@ object Extension {
                 it[this.classFQName] = className
             }
 
-            val extensionId =
+            updateExtensionSourcesDatabase(pkgName, httpSources)
+        }
+    }
+
+    fun updateExtensionSourcesDatabase(
+        pkgName: String,
+        sources: List<Source>,
+    ) {
+        dbTransaction {
+            val resultRow =
                 ExtensionTable
                     .select(
                         ExtensionTable.id,
+                        ExtensionTable.contentWarning,
                     ).where { ExtensionTable.pkgName eq pkgName }
-                    .first()[ExtensionTable.id]
-                    .value
+                    .first()
+
+            val extensionId = resultRow[ExtensionTable.id].value
+            val contentWarning = resultRow[ExtensionTable.contentWarning]
 
             val dbSourceIds =
                 SourceTable
@@ -542,10 +553,10 @@ object Extension {
                         SourceTable.id,
                     ).where { SourceTable.extension eq extensionId }
                     .map { it[SourceTable.id].value }
-            val httpSourceIds = httpSources.map { it.id }.toSet()
+            val httpSourceIds = sources.map { it.id }.toSet()
 
             val (sourceIdsToUpdate, sourceIdsToDelete) = dbSourceIds.partition { it in httpSourceIds }
-            val sourcesToInsert = httpSources.filterNot { sourceIdsToUpdate.contains(it.id) }
+            val sourcesToInsert = sources.filterNot { sourceIdsToUpdate.contains(it.id) }
 
             SourceTable.deleteWhere { SourceTable.id inList sourceIdsToDelete }
 
@@ -563,7 +574,7 @@ object Extension {
                         sourceIdsToUpdate.forEach { sourceId ->
                             addBatch(EntityID(sourceId, SourceTable))
 
-                            val httpSource = httpSources.find { it.id == sourceId }!!
+                            val httpSource = sources.find { it.id == sourceId }!!
 
                             this[SourceTable.name] = httpSource.name
                             this[SourceTable.lang] = httpSource.lang
