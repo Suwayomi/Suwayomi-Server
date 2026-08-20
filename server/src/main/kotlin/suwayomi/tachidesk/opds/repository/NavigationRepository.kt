@@ -4,6 +4,7 @@ import dev.icerock.moko.resources.StringResource
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.alias
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.countDistinct
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
@@ -174,7 +175,16 @@ object NavigationRepository {
                     .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
 
             if (activeFilters.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                baseJoin =
+                    baseJoin.join(
+                        CategoryMangaTable,
+                        JoinType.LEFT,
+                        MangaTable.id,
+                        CategoryMangaTable.manga,
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    )
             }
 
             val query =
@@ -232,12 +242,23 @@ object NavigationRepository {
 
             val query =
                 CategoryTable
-                    .join(CategoryMangaTable, JoinType.INNER, CategoryTable.id, CategoryMangaTable.category, additionalConstraint = {
-                        CategoryMangaTable.user eq
-                            userId
-                    })
-                    .join(MangaTable.getWithUserData(userId), JoinType.INNER, CategoryMangaTable.manga, MangaTable.id)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .join(
+                        CategoryMangaTable,
+                        JoinType.INNER,
+                        CategoryTable.id,
+                        CategoryMangaTable.category,
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId and (CategoryTable.user eq userId)
+                        },
+                    ).join(
+                        MangaTable.getWithUserData(userId),
+                        JoinType.INNER,
+                        CategoryMangaTable.manga,
+                        MangaTable.id,
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    ).join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
                     .select(CategoryTable.id, CategoryTable.name, mangaCount)
                     .where { MangaUserTable.inLibrary eq true }
 
@@ -278,7 +299,16 @@ object NavigationRepository {
                     .getWithUserData(userId)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
             if (activeFilters.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                baseJoin =
+                    baseJoin.join(
+                        CategoryMangaTable,
+                        JoinType.LEFT,
+                        MangaTable.id,
+                        CategoryMangaTable.manga,
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    )
             }
 
             val query =
@@ -344,7 +374,16 @@ object NavigationRepository {
                         .getWithUserData(userId)
                         .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
                 if (activeFilters.categoryId != null) {
-                    baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                    baseJoin =
+                        baseJoin.join(
+                            CategoryMangaTable,
+                            JoinType.LEFT,
+                            MangaTable.id,
+                            CategoryMangaTable.manga,
+                            additionalConstraint = {
+                                CategoryMangaTable.user eq userId
+                            },
+                        )
                 }
 
                 val query =
@@ -397,7 +436,16 @@ object NavigationRepository {
                 SourceTable
                     .join(MangaTable.getWithUserData(userId), JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
             if (activeFilters.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                baseJoin =
+                    baseJoin.join(
+                        CategoryMangaTable,
+                        JoinType.LEFT,
+                        MangaTable.id,
+                        CategoryMangaTable.manga,
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    )
             }
 
             val query =

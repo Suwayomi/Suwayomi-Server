@@ -40,12 +40,10 @@ class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
-                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val manga =
                         MangaTable
-                            .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id inList ids }
                             .map { MangaType(it) }
@@ -100,12 +98,10 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, MangaNodeList> =
         DataLoaderFactory.newDataLoader<Long, MangaNodeList> { ids ->
             future {
-                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val mangaBySourceId =
                         MangaTable
-                            .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.sourceReference inList ids }
                             .map { MangaType(it) }
@@ -122,14 +118,12 @@ class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<List<Int>, MangaNodeList> =
         DataLoaderFactory.newDataLoader(
             { mangaIds ->
-                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 future {
                     transaction {
                         addLogger(Slf4jSqlDebugLogger)
                         val ids = mangaIds.flatten().distinct()
                         val manga =
                             MangaTable
-                                .getWithUserData(userId)
                                 .selectAll()
                                 .where { MangaTable.id inList ids }
                                 .map { MangaType(it) }

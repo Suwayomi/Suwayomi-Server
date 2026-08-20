@@ -12,12 +12,13 @@ import eu.kanade.tachiyomi.source.model.SManga
 import io.github.oshai.kotlinlogging.DelegatingKLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.JsonObject
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.Logger
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
@@ -81,9 +82,9 @@ fun createChapters(
                 this[ChapterTable.memo] = JsonObject.EMPTY
             }
 
-        val chapters = ChapterTable.select { ChapterTable.manga eq mangaId }.map { it[ChapterTable.id].value }
-        ChapterMetaTable.batchInsert(chapters) {
-            this[ChapterUserTable.chapter] = mangaId
+        val chapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }.map { it[ChapterTable.id].value }
+        ChapterUserTable.batchInsert(chapters) {
+            this[ChapterUserTable.chapter] = it
             this[ChapterUserTable.user] = 1
             this[ChapterUserTable.isRead] = read
         }

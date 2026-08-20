@@ -16,13 +16,11 @@ import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
-import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
@@ -36,8 +34,6 @@ import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
-import suwayomi.tachidesk.manga.model.table.getWithUserData
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.net.URLEncoder
 import java.time.Instant
@@ -161,7 +157,6 @@ class ChapterMutation {
             transaction {
                 ChapterType(
                     ChapterTable
-                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.id eq id }
                         .first(),
@@ -187,7 +182,6 @@ class ChapterMutation {
         val chapters =
             transaction {
                 ChapterTable
-                    .getWithUserData(userId)
                     .selectAll()
                     .where { ChapterTable.id inList ids }
                     .map { ChapterType(it) }
@@ -224,7 +218,6 @@ class ChapterMutation {
             val chapters =
                 transaction {
                     ChapterTable
-                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.manga eq mangaId }
                         .orderBy(ChapterTable.sourceOrder)
@@ -302,7 +295,6 @@ class ChapterMutation {
                     transaction {
                         ChapterType(
                             ChapterTable
-                                .getWithUserData(userId)
                                 .selectAll()
                                 .where { ChapterTable.id eq chapterId }
                                 .first(),

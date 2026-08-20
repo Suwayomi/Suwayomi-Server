@@ -43,12 +43,10 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
-                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val chapters =
                         ChapterTable
-                            .getWithUserData(userId)
                             .selectAll()
                             .where { ChapterTable.id inList ids }
                             .map { ChapterType(it) }
@@ -65,12 +63,10 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterNodeList> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
-                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val chaptersByMangaId =
                         ChapterTable
-                            .getWithUserData(userId)
                             .selectAll()
                             .where { ChapterTable.manga inList ids }
                             .map { ChapterType(it) }
@@ -161,10 +157,7 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
                         ChapterTable
                             .select(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
                             .where {
-                                (
-                                    ChapterTable.manga inList
-                                        ids
-                                ) and
+                                (ChapterTable.manga inList ids) and
                                     (ChapterTable.chapter_number greaterEq 0f)
                             }.groupBy(ChapterTable.manga, ChapterTable.chapter_number)
                             .having { ChapterTable.chapter_number.count() greater 1 }

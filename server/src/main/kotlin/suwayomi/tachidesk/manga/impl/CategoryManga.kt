@@ -123,21 +123,17 @@ object CategoryManga {
             wrapAsExpression<Long>(
                 ChapterTable
                     .getWithUserData(userId)
-                    .select(
-                        ChapterTable.id.count(),
-                    ).where {
-                        (
-                            (ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())) and
-                                (ChapterTable.manga eq MangaTable.id)
-                        )
+                    .select(ChapterTable.id.count())
+                    .where {
+                        (ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())) and
+                            (ChapterTable.manga eq MangaTable.id)
                     },
             )
         val downloadedCount =
             wrapAsExpression<Long>(
                 ChapterTable
-                    .select(
-                        ChapterTable.id.count(),
-                    ).where { ((ChapterTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id)) },
+                    .select(ChapterTable.id.count())
+                    .where { (ChapterTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id) },
             )
 
         val chapterCount = ChapterTable.id.count().alias("chapter_count")

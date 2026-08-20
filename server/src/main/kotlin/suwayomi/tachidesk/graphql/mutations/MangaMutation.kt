@@ -32,7 +32,6 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
-import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import uy.kohesive.injekt.injectLazy
@@ -139,7 +138,6 @@ class MangaMutation {
                 transaction {
                     MangaType(
                         MangaTable
-                            .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id eq id }
                             .first(),
@@ -167,7 +165,6 @@ class MangaMutation {
             val mangas =
                 transaction {
                     MangaTable
-                        .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id inList ids }
                         .map { MangaType(it) }
@@ -205,7 +202,6 @@ class MangaMutation {
             val manga =
                 transaction {
                     MangaTable
-                        .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id eq id }
                         .first()
@@ -340,7 +336,6 @@ class MangaMutation {
                     transaction {
                         MangaType(
                             MangaTable
-                                .getWithUserData(userId)
                                 .selectAll()
                                 .where { MangaTable.id eq mangaId }
                                 .first(),

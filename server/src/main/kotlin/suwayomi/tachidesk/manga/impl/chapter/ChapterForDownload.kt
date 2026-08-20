@@ -219,7 +219,6 @@ private class ChapterForDownload(
         optMangaId: Int? = null,
     ) = transaction {
         ChapterTable
-            .getWithUserData(userId)
             .selectAll()
             .where {
                 if (optChapterId != null) {

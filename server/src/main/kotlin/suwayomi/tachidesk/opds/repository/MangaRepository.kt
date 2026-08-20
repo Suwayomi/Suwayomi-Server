@@ -169,7 +169,7 @@ object MangaRepository {
 
             val query =
                 baseJoin
-                    .select(MangaTable.columns + SourceTable.lang + SourceTable.name + unreadCount + MangaUserTable.columns)
+                    .select(MangaTable.columns + MangaUserTable.columns + SourceTable.lang + SourceTable.name + unreadCount)
                     .where { MangaUserTable.inLibrary eq true }
 
             query.applyOpdsMangaFilter(userId, criteria)
@@ -254,8 +254,9 @@ object MangaRepository {
         val mangaEntries =
             transaction {
                 MangaTable
+                    .getWithUserData(userId)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(MangaTable.columns + SourceTable.name + SourceTable.lang)
+                    .select(MangaTable.columns + MangaUserTable.columns + SourceTable.name + SourceTable.lang)
                     .where { MangaTable.id inList mangaIds }
                     .map { it.toOpdsMangaAcqEntry() }
             }.sortedBy { manga -> mangaIds.indexOf(manga.id) }
@@ -297,7 +298,7 @@ object MangaRepository {
                 MangaTable
                     .getWithUserData(userId)
                     .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(MangaTable.columns + SourceTable.name + SourceTable.lang)
+                    .select(MangaTable.columns + MangaUserTable.columns + SourceTable.name + SourceTable.lang)
                     .where(finalCondition)
                     .groupBy(MangaTable.id, SourceTable.name, SourceTable.lang)
                     .orderBy(MangaTable.title to SortOrder.ASC)

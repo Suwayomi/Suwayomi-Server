@@ -34,9 +34,6 @@ import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
-import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.JavalinSetup.getAttribute
-import suwayomi.tachidesk.server.user.requireUser
 
 class CategoryMutation {
     data class SetCategoryMetaInput(

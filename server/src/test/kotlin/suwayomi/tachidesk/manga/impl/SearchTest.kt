@@ -64,7 +64,7 @@ class SearchTest : ApplicationTest() {
         val searchResults =
             runBlocking {
                 // todo user accounts
-                sourceSearch(1, sourceId, "all the mangas", 1)
+                sourceSearch(sourceId, "all the mangas", 1)
             }
 
         assertEquals(mangasCount, searchResults.mangaList.size, "should return all the mangas")

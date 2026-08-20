@@ -9,8 +9,6 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
@@ -24,7 +22,6 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
-import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.time.Instant
 
@@ -32,7 +29,6 @@ object MangaList {
     fun proxyThumbnailUrl(mangaId: Int): String = "/api/v1/manga/$mangaId/thumbnail"
 
     suspend fun getMangaList(
-        userId: Int,
         sourceId: Long,
         pageNum: Int = 1,
         popular: Boolean,
@@ -51,7 +47,7 @@ object MangaList {
                     throw Exception("Source $source doesn't support latest")
                 }
             }
-        return mangasPage.processEntries(userId, sourceId)
+        return mangasPage.processEntries(sourceId)
     }
 
     fun MangasPage.insertOrUpdate(sourceId: Long): List<Int> =
@@ -134,16 +130,12 @@ object MangaList {
             }
         }
 
-    fun MangasPage.processEntries(
-        userId: Int,
-        sourceId: Long,
-    ): PagedMangaListDataClass {
+    fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
         val mangasPage = this
         val mangaList =
             transaction {
                 val mangaIds = insertOrUpdate(sourceId)
                 return@transaction MangaTable
-                    .getWithUserData(userId)
                     .selectAll()
                     .where {
                         MangaTable.id inList mangaIds
