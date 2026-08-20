@@ -8,12 +8,12 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class CategoryControllerTest : ApplicationTest() {
     @Test

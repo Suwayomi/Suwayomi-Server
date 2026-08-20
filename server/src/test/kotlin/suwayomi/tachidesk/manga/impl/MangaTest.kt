@@ -8,14 +8,14 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MangaTest : ApplicationTest() {

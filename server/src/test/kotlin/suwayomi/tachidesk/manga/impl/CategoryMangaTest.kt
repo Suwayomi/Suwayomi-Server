@@ -14,9 +14,6 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -27,6 +24,9 @@ import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createChapters
 import suwayomi.tachidesk.test.createLibraryManga
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CategoryMangaTest : ApplicationTest() {
@@ -84,7 +84,7 @@ class CategoryMangaTest : ApplicationTest() {
         // constraint added in M0062_PreventDuplicatedCategoryManga. If that constraint is ever
         // dropped or weakened, this insert would succeed and silently inflate category/library
         // counts.
-        assertThrows(ExposedSQLException::class.java) {
+        assertFailsWith<ExposedSQLException> {
             transaction {
                 CategoryMangaTable.insert {
                     it[CategoryMangaTable.manga] = mangaId

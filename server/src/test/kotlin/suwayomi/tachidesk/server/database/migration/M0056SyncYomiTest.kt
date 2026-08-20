@@ -2,12 +2,12 @@ package suwayomi.tachidesk.server.database
 
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.server.database.migration.M0056_SyncYomi
 import suwayomi.tachidesk.test.ApplicationTest
 import java.util.UUID
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class M0056SyncYomiTest {
     companion object {
