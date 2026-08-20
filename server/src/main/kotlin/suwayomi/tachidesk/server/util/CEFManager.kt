@@ -93,7 +93,9 @@ object CEFManager {
             CefHelper.cefApp.value = Result.success(null)
 
             if (!serverConfig.kcefEnabled.value) {
-                throw CefException("CEF is disabled")
+                logger.info { "CEF is disabled" }
+                CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
+                return
             }
 
             System.loadLibrary("jawt")
@@ -128,7 +130,7 @@ object CEFManager {
                             )
                             cefSettings.apply {
                                 windowless_rendering_enabled = true
-                                cache_path = (Path(applicationDirs.dataRoot) / "cache/kcef").absolutePathString()
+                                cache_path = (Path(applicationDirs.cacheDir) / "kcef").absolutePathString()
                                 log_severity =
                                     if (serverConfig.debugLogsEnabled.value) {
                                         LogSeverity.LOGSEVERITY_VERBOSE
@@ -293,17 +295,17 @@ object CEFManager {
             val osPackageList =
                 packageUrlList
                     .filter { url ->
-                        platform.os.values.any { os ->
+                        platform.os.aliases.any { os ->
                             url.contains(os, true)
                         }
                     }.ifEmpty {
                         release.assets
                             .filter { asset ->
-                                platform.os.values.any { os ->
+                                platform.os.aliases.any { os ->
                                     asset.name.contains(os, true) || asset.downloadUrl.contains(os, true)
                                 } && asset.downloadUrl.isNotBlank()
                             }.filter { asset ->
-                                platform.arch.values.any { arch ->
+                                platform.arch.aliases.any { arch ->
                                     asset.name.contains(arch, ignoreCase = true) ||
                                         asset.downloadUrl.contains(
                                             arch,
@@ -314,7 +316,7 @@ object CEFManager {
                     }
             val platformPackageList =
                 osPackageList.filter { url ->
-                    platform.arch.values.any { arch ->
+                    platform.arch.aliases.any { arch ->
                         url.contains(arch, true)
                     }
                 }
@@ -459,7 +461,7 @@ object CEFManager {
             val os = Platform.current.os
             when {
                 os.isLinux -> linuxMove(installDir)
-                os.isMacOSX -> macMove(installDir)
+                os.isMacOS -> macMove(installDir)
                 os.isWindows -> winMove(installDir)
                 else -> linuxMove(installDir)
             }

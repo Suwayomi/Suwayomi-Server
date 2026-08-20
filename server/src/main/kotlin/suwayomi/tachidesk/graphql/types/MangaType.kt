@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.ResultRow
 import suwayomi.tachidesk.graphql.cache.CustomCacheMap
+import suwayomi.tachidesk.graphql.dataLoaders.MangaChapterStats
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -67,9 +68,7 @@ class MangaType(
                 ?.filter { it.contains(mangaId) }
                 ?.forEach { mangaForIdsDataLoader.clear(it) }
 
-            dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader")?.clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("UnreadChapterCountForMangaDataLoader")?.clear(mangaId)
-            dataFetchingEnvironment.getDataLoader<Int, Int>("BookmarkedChapterCountForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, Int>("ChapterFlagCountForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("HasDuplicateChaptersForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LatestReadChapterForMangaDataLoader")?.clear(mangaId)
@@ -128,13 +127,19 @@ class MangaType(
     )
 
     fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
-        dataFetchingEnvironment.getValueFromDataLoader("DownloadedChapterCountForMangaDataLoader", id)
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
+            it.downloadCount
+        }
 
     fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
-        dataFetchingEnvironment.getValueFromDataLoader("UnreadChapterCountForMangaDataLoader", id)
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
+            it.unreadCount
+        }
 
     fun bookmarkCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
-        dataFetchingEnvironment.getValueFromDataLoader("BookmarkedChapterCountForMangaDataLoader", id)
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
+            it.bookmarkCount
+        }
 
     fun hasDuplicateChapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
         dataFetchingEnvironment.getValueFromDataLoader("HasDuplicateChaptersForMangaDataLoader", id)

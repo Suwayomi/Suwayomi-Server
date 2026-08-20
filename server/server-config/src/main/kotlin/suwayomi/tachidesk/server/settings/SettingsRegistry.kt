@@ -13,7 +13,7 @@ object SettingsRegistry {
      * If neither is specified, the server will exit on startup due to being misconfigured.
      */
     data class SettingDeprecated(
-        val replaceWith: String? = null,
+        val replaceWith: String?,
         val message: String,
         /**
          * For cases which do not require custom config miration logic.

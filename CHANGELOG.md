@@ -8,16 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**Downloads**) Try to preserve downloaded files during a chapter list update for chapters with title and/or scanlator change
+- (**Downloads/API**) Add batch GQL mutation for reordering chapter downloads (`reorderChapterDownloads`)
 - (**Logs**) Add IP location logging
+- (**Cache/API**) Add a way to clear cache & cookies
+- (**API**) Add platform information to `aboutServer` query
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
+- (**GraphQL**) Updated GraphiQL GraphQL Playground
+- (**Downloads**) Skip LocalSource downloading
+- (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
+- (**Webview**) Don't throw an exception when disabling CEF
 
 ### Fixed
+- (**Cloudflare/flaresolverr**) Treat a bypass as successful when a `cf_clearance` cookie is returned, so non-CloudFlare source errors are correctly passed through to the extensions.
+- (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data
 - (**Tracker**) Fix Shikimori
 - (**Chapter**) Clear history and reading progress when marking chapters as unread
 - (**Extension**) Fix losing installed extension in case the update fails
 - (**Source/API**) Fix graphql browse mutation (`fetchSourceManga`) with filters including nested group changes
+- (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
+- (**OPDS**) Fix OPDS search charset
+- (**Downloads/API**) Fix graphql download queue items position field of unmodified items after a reorder
+- (**Downloads/API**) Fix sending updates for dequeued downloads
+- (**Download/API**) Fix subscription returning stale chapter data in some cases
+- (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
+- (**WebView**) Fix authentication with subpath option
+- (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
+- (**Migration/Extension**) Fix `extensionRepos` setting not being migrated to `extensionStores`
 
 ## [v2.3.2243] - 2026-07-13
 

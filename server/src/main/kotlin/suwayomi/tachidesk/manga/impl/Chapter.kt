@@ -245,39 +245,42 @@ object Chapter {
             }
 
             if (chaptersToInsert.isNotEmpty()) {
-                ChapterTable
-                    .batchInsert(chaptersToInsert) { chapter ->
-                        this[ChapterTable.url] = chapter.url
-                        this[ChapterTable.name] = chapter.name
-                        this[ChapterTable.date_upload] = chapter.uploadDate
-                        this[ChapterTable.chapter_number] = chapter.chapterNumber
-                        this[ChapterTable.scanlator] = chapter.scanlator
-                        this[ChapterTable.sourceOrder] = chapter.index
-                        this[ChapterTable.fetchedAt] = chapter.fetchedAt
-                        this[ChapterTable.manga] = chapter.mangaId
-                        this[ChapterTable.realUrl] = chapter.realUrl
-                        this[ChapterTable.memo] = chapter.memo
-                        this[ChapterTable.isRead] = false
-                        this[ChapterTable.isBookmarked] = false
-                        this[ChapterTable.isDownloaded] = false
-                        this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
-                        this[ChapterTable.version] = chapter.version
-                        this[ChapterTable.pageCount] = -1
+                val insertedChapters =
+                    ChapterTable
+                        .batchInsert(chaptersToInsert) { chapter ->
+                            this[ChapterTable.url] = chapter.url
+                            this[ChapterTable.name] = chapter.name
+                            this[ChapterTable.date_upload] = chapter.uploadDate
+                            this[ChapterTable.chapter_number] = chapter.chapterNumber
+                            this[ChapterTable.scanlator] = chapter.scanlator
+                            this[ChapterTable.sourceOrder] = chapter.index
+                            this[ChapterTable.fetchedAt] = chapter.fetchedAt
+                            this[ChapterTable.manga] = chapter.mangaId
+                            this[ChapterTable.realUrl] = chapter.realUrl
+                            this[ChapterTable.memo] = chapter.memo
+                            this[ChapterTable.isRead] = false
+                            this[ChapterTable.isBookmarked] = false
+                            this[ChapterTable.isDownloaded] = false
+                            this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
+                            this[ChapterTable.version] = chapter.version
+                            this[ChapterTable.pageCount] = -1
 
-                        // is recognized chapter number
-                        if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
-                            this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
-                            this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
+                            // is recognized chapter number
+                            if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
+                                this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
+                                this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
 
-                            // Try to use the fetch date of the original entry to not pollute 'Updates' tab
-                            deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
-                                this[ChapterTable.fetchedAt] = it
+                                // Try to use the fetch date of the original entry to not pollute 'Updates' tab
+                                deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
+                                    this[ChapterTable.fetchedAt] = it
+                                }
                             }
-                        }
-                    }.forEach { insertedChapterIds.add(it[ChapterTable.id].value) }
+                        }.map { ChapterTable.toDataClass(it) }
+
+                insertedChapters.forEach { insertedChapterIds.add(it.id) }
 
                 val chaptersToPreserveDownload =
-                    chaptersToInsert.filter { chapter ->
+                    insertedChapters.filter { chapter ->
                         val deletedChapter =
                             deletedDownloadedChapterByChapterNumber[chapter.chapterNumber] ?: return@filter false
 
@@ -288,23 +291,17 @@ object Chapter {
                         isPreservable
                     }
 
-                val insertedChapters =
-                    ChapterTable.selectAll().where { ChapterTable.id inList insertedChapterIds }.map(
-                        ChapterTable::toDataClass,
-                    )
-
                 if (chaptersToPreserveDownload.isNotEmpty()) {
-                    BatchUpdateStatement(ChapterTable).apply {
-                        chaptersToPreserveDownload
-                            .filter { chapterToPreserve ->
-                                insertedChapters.any { it.id == chapterToPreserve.id }
-                            }.forEach {
+                    BatchUpdateStatement(ChapterTable)
+                        .apply {
+                            chaptersToPreserveDownload.forEach {
                                 addBatch(EntityID(it.id, ChapterTable))
 
                                 this[ChapterTable.isDownloaded] = true
                                 this[ChapterTable.pageCount] = deletedDownloadedChapterByChapterNumber[it.chapterNumber]!!.pageCount
                             }
-                    }
+                        }.toExecutable()
+                        .execute(this@suspendTransaction)
                 }
             }
 

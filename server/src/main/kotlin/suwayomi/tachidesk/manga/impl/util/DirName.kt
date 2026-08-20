@@ -21,11 +21,10 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.util.SafePath
-import java.io.File
-import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.io.path.Path
+import kotlin.io.path.moveTo
+import kotlin.io.path.notExists
 
 private val applicationDirs: ApplicationDirs by injectLazy()
 
@@ -104,6 +103,12 @@ suspend fun getChapterDownloadPath(
 
 suspend fun getChapterCbzPath(
     mangaId: Int,
+    title: String,
+    scanlator: String?,
+): String = getChapterDownloadPath(mangaId, title, scanlator) + ".cbz"
+
+suspend fun getChapterCbzPath(
+    mangaId: Int,
     chapterId: Int,
 ): String = getChapterDownloadPath(mangaId, chapterId) + ".cbz"
 
@@ -122,21 +127,17 @@ private fun updateDir(
     currentDir: String,
     newDir: String,
 ): Boolean {
-    val currentDirFile = File(currentDir)
-    val newDirFile = File(newDir)
+    val currentDirPath = Path(currentDir)
+    val newDirPath = Path(newDir)
 
-    if (!currentDirFile.exists()) {
+    if (currentDirPath.notExists()) {
         return true
     }
 
     return try {
-        Files.move(currentDirFile.toPath(), newDirFile.toPath())
+        currentDirPath.moveTo(newDirPath)
 
-        if (currentDirFile.exists()) {
-            return false
-        }
-
-        if (!newDirFile.exists()) {
+        if (newDirPath.notExists()) {
             return false
         }
 
@@ -169,17 +170,25 @@ suspend fun updateChapterDownloadDir(
     oldChapter: ChapterDataClass,
     newChapter: ChapterDataClass,
 ): Boolean {
-    require(oldChapter.id == newChapter.id) { "Chapters must have the same id" }
-    require(oldChapter.mangaId == newChapter.mangaId) { "Chapters must be from the same manga" }
+    if (oldChapter.mangaId != newChapter.mangaId) {
+        return false
+    }
 
     return mutexByManga.getOrPut(oldChapter.mangaId) { Mutex() }.withLock {
         val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
         val newDownloadDir = getChapterDownloadPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
+        val currentDownloadCbz = getChapterCbzPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
+        val newDownloadCbz = getChapterCbzPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
 
         val currentCacheDir = getChapterCachePath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
         val newCacheDir = getChapterCachePath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
 
-        withIOContext { updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir) }
+        withIOContext {
+            val dirRename = updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
+            val cbzRename = updateDownloadDir(currentDownloadCbz, newDownloadCbz, currentCacheDir, newCacheDir)
+
+            dirRename && cbzRename
+        }
     }
 }
 

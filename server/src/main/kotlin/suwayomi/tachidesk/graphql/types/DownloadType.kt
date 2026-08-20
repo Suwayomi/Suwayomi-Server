@@ -11,20 +11,30 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
-import suwayomi.tachidesk.graphql.types.DownloadState.FINISHED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.model.Status
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.util.concurrent.CompletableFuture
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownloadState
+
+data class ChapterDownloadReorder(
+    val chapterId: Int,
+    val to: Int,
+)
 
 data class DownloadStatus(
     val state: DownloaderState,
@@ -35,7 +45,7 @@ data class DownloadStatus(
             Status.Stopped -> DownloaderState.STOPPED
             Status.Started -> DownloaderState.STARTED
         },
-        downloadStatus.queue.map { DownloadType(it) },
+        downloadStatus.queue.mapIndexed { index, item -> DownloadType(item, index) },
     )
 }
 
@@ -56,7 +66,7 @@ data class DownloadUpdates(
             Status.Started -> DownloaderState.STARTED
         },
         downloadUpdates.updates.map { DownloadUpdate(it) },
-        downloadUpdates.initial?.map { DownloadType(it) },
+        downloadUpdates.initial?.mapIndexed { index, item -> DownloadType(item, index) },
         omittedUpdates,
     )
 }
@@ -71,7 +81,7 @@ class DownloadType(
     val tries: Int,
     val position: Int,
 ) : Node {
-    constructor(downloadChapter: DownloadQueueItem) : this(
+    constructor(downloadChapter: DownloadQueueItem, position: Int) : this(
         downloadChapter.chapterId,
         downloadChapter.mangaId,
         when (downloadChapter.state) {
@@ -82,11 +92,11 @@ class DownloadType(
         },
         downloadChapter.progress,
         downloadChapter.tries,
-        downloadChapter.position,
+        position,
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
-        val clearCache = state == FINISHED
+        val clearCache = state == DownloadState.FINISHED
         if (clearCache) {
             MangaType.clearCacheFor(mangaId, dataFetchingEnvironment)
         }
@@ -95,12 +105,29 @@ class DownloadType(
     }
 
     fun chapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType> {
-        val clearCache = state == FINISHED
+        val clearCache = state == DownloadState.FINISHED
         if (clearCache) {
             ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
         }
 
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId)
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId).thenApply {
+            // We only want to clear the cache for the first DOWNLOADING update once. Doing that above would be more complex
+            // and most likely ineffective due to not having a guarantee to ever get an update for a chapter that can be considered as "download completed".
+            // Doing it here, while creating a potetial duplicated db read, is easier and ensures that we only clear the cache when needed.
+            val isStale = state == DownloadState.DOWNLOADING && it.pageCount == -1
+
+            if (!isStale) {
+                return@thenApply it
+            }
+
+            ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
+
+            return@thenApply transaction {
+                val resultRow = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.firstOrNull() ?: return@transaction it
+
+                ChapterType(resultRow)
+            }
+        }
     }
 }
 
@@ -110,7 +137,7 @@ class DownloadUpdate(
 ) : Node {
     constructor(downloadUpdate: DownloadUpdate) : this(
         downloadUpdate.type,
-        DownloadType(downloadUpdate.downloadQueueItem),
+        DownloadType(downloadUpdate.downloadQueueItem, downloadUpdate.position),
     )
 }
 

@@ -16,7 +16,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
-import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -338,17 +337,12 @@ object CFClearance {
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
                                             postData =
                                                 if (originalRequest.method == "POST") {
-                                                    when (val body = originalRequest.body) {
-                                                        is FormBody -> {
+                                                    originalRequest.body
+                                                        ?.let { body ->
                                                             Buffer()
                                                                 .also { body.writeTo(it) }
                                                                 .readUtf8()
-                                                        }
-
-                                                        else -> {
-                                                            ""
-                                                        }
-                                                    }
+                                                        }.orEmpty()
                                                 } else {
                                                     null
                                                 },
@@ -366,7 +360,10 @@ object CFClearance {
         setUserAgent: (String) -> Unit,
         originalRequest: Request,
     ): Request {
-        if (flareSolverResponse.solution.status in 200..299) {
+        if (flareSolverResponse.solution.cookies.none { it.name in CloudflareInterceptor.COOKIE_NAMES }) {
+            logger.debug { "Cloudflare challenge failed to resolve" }
+            throw CloudflareBypassException()
+        } else {
             setUserAgent(flareSolverResponse.solution.userAgent)
             val cookies =
                 flareSolverResponse.solution.cookies
@@ -406,9 +403,6 @@ object CFClearance {
                 request = originalRequest,
                 userAgent = flareSolverResponse.solution.userAgent,
             )
-        } else {
-            logger.debug { "Cloudflare challenge failed to resolve" }
-            throw CloudflareBypassException()
         }
     }
 

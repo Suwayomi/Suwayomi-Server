@@ -33,6 +33,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.types.ChapterDownloadReorder
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
@@ -251,7 +252,6 @@ object DownloadManager {
                             it.mangaId,
                             chapters[it.chapterId] ?: return@mapNotNull null,
                             mangas[it.mangaId] ?: return@mapNotNull null,
-                            it.position,
                             it.state,
                             it.progress,
                             it.tries,
@@ -287,7 +287,7 @@ object DownloadManager {
                     --downloadersToStop > 0
                 }
             } else {
-                downloaderWatch.emit(Unit)
+                refreshDownloaders()
             }
         })
 
@@ -399,13 +399,21 @@ object DownloadManager {
      * If any of inputs was actually added to queue, starts the queue
      */
     private fun addMultipleToQueue(inputs: List<Pair<MangaDataClass, ChapterDataClass>>) {
+        val size = downloadQueue.size
         val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
         if (addedChapters.isNotEmpty()) {
             start()
-            notifyAllClients(false, addedChapters.map { DownloadUpdate(DownloadUpdateType.QUEUED, it) })
-        }
-        scope.launch {
-            downloaderWatch.emit(Unit)
+            notifyAllClients(
+                false,
+                addedChapters.mapIndexed { index, item ->
+                    DownloadUpdate(
+                        DownloadUpdateType.QUEUED,
+                        item,
+                        size + index,
+                    )
+                },
+            )
+            triggerSaveDownloadQueue()
         }
     }
 
@@ -428,10 +436,8 @@ object DownloadManager {
                     manga.id,
                     manga.sourceId.toLong(),
                     downloadQueue.size,
-                    0,
                 )
             downloadQueue.add(newDownloadChapter)
-            triggerSaveDownloadQueue()
             logger.debug { "Added chapter ${chapter.id} to download queue ($newDownloadChapter)" }
             return newDownloadChapter
         }
@@ -475,7 +481,10 @@ object DownloadManager {
         downloadQueue.removeAll(chapterDownloads)
         triggerSaveDownloadQueue()
 
-        notifyAllClients(false, chapterDownloads.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it) })
+        notifyAllClients(
+            false,
+            chapterDownloads.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it, -1) },
+        )
     }
 
     fun reorder(
@@ -487,41 +496,47 @@ object DownloadManager {
             downloadQueue.find { it.mangaId == mangaId && it.chapterIndex == chapterIndex }
                 ?: return
 
-        reorder(download, to)
+        reorder(listOf(ChapterDownloadReorder(download.chapterId, to)))
     }
 
     fun reorder(
         chapterId: Int,
         to: Int,
     ) {
-        val download =
-            downloadQueue.find { it.chapterId == chapterId }
-                ?: return
-
-        reorder(download, to)
+        reorder(listOf(ChapterDownloadReorder(chapterId, to)))
     }
 
-    private fun reorder(
-        download: DownloadQueueItem,
-        to: Int,
-    ) {
+    fun reorder(reorders: List<ChapterDownloadReorder>) {
+        val updates =
+            reorders.mapNotNull {
+                val download = reorder(it) ?: return@mapNotNull null
+
+                DownloadUpdate(DownloadUpdateType.POSITION, download, it.to)
+            }
+
+        notifyAllClients(false, updates)
+        triggerSaveDownloadQueue()
+    }
+
+    private fun reorder(reorder: ChapterDownloadReorder): DownloadQueueItem? {
+        val (chapterId, to) = reorder
+
         require(to >= 0) { "'to' must be over or equal to 0" }
+
+        val download = downloadQueue.find { it.chapterId == chapterId } ?: return null
 
         logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
 
         downloadQueue -= download
         downloadQueue.add(to, download)
-        download.position = to
-        notifyAllClients(false, listOf(DownloadUpdate(DownloadUpdateType.POSITION, download)))
-        triggerSaveDownloadQueue()
+
+        return download
     }
 
     fun start() {
         logger.debug { "start" }
 
-        scope.launch {
-            downloaderWatch.emit(Unit)
-        }
+        refreshDownloaders()
     }
 
     suspend fun stop() {
@@ -542,7 +557,7 @@ object DownloadManager {
         logger.debug { "clear" }
 
         stop()
-        val removedDownloads = downloadQueue.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it) }
+        val removedDownloads = downloadQueue.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it, -1) }
         downloadQueue.clear()
         triggerSaveDownloadQueue()
         notifyAllClients(false, removedDownloads)

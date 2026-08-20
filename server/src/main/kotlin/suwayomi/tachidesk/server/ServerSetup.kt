@@ -97,6 +97,8 @@ class ApplicationDirs(
         get() = "$downloadsRoot/thumbnails"
     val mangaDownloadsRoot
         get() = "$downloadsRoot/mangas"
+
+    val cacheDir = "$dataRoot/cache"
 }
 
 @Suppress("DEPRECATION")
