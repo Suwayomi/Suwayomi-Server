@@ -54,13 +54,13 @@ class SourceType(
     @GraphQLDeprecated("", ReplaceWith("homeUrl"))
     val baseUrl: String?,
 ) : Node {
-    constructor(row: ResultRow, sourceExtension: ResultRow, source: Source) : this(
+    constructor(row: ResultRow, sourceExtension: ResultRow, source: Source?) : this(
         id = row[SourceTable.id].value,
         name = row[SourceTable.name],
         lang = row[SourceTable.lang],
         contentWarning = ContentWarning.valueOf(row[SourceTable.contentWarning]),
         iconUrl = Extension.proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
-        supportsLatest = source.supportsLatest,
+        supportsLatest = source?.supportsLatest ?: false,
         isConfigurable = source is ConfigurableSource,
         isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
         displayName = source.toString(),
@@ -84,10 +84,7 @@ class SourceType(
 
 @Suppress("ktlint:standard:function-naming")
 suspend fun SourceType(row: ResultRow): SourceType? {
-    val catalogueSource =
-        GetSource
-            .getSourceOrNull(row[SourceTable.id].value)
-            ?: return null
+    val catalogueSource = GetSource.getSourceOrNull(row[SourceTable.id].value, false)
     val sourceExtension =
         if (row.hasValue(ExtensionTable.id)) {
             row

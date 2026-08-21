@@ -63,11 +63,17 @@ object GetSource {
         return sourceCache[sourceId]!!
     }
 
-    suspend fun getSourceOrNull(sourceId: Long): Source? =
+    suspend fun getSourceOrNull(
+        sourceId: Long,
+        logException: Boolean = true,
+    ): Source? =
         try {
             getSource(sourceId)
         } catch (e: Exception) {
-            logger.warn(e) { "getCatalogueSource($sourceId) failed" }
+            if (logException) {
+                logger.warn(e) { "getCatalogueSource($sourceId) failed" }
+            }
+
             null
         }
 
