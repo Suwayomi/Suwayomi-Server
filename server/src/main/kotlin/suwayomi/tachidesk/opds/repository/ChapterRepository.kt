@@ -19,8 +19,10 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.types.ChapterUserType
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.chapter.refreshChapterPageList
@@ -192,6 +194,16 @@ object ChapterRepository {
                 return null
             }
 
+        val chapterUser =
+            transaction {
+                ChapterUserTable
+                    .selectAll()
+                    .where { ChapterUserTable.user eq userId and (ChapterUserTable.chapter eq chapterDataClass.id) }
+                    .firstOrNull()
+                    ?.let {
+                        ChapterUserType(it)
+                    }
+            }
         return OpdsChapterMetadataAcqEntry(
             id = chapterDataClass.id,
             mangaId = chapterDataClass.mangaId,
@@ -199,9 +211,9 @@ object ChapterRepository {
             uploadDate = chapterDataClass.uploadDate,
             chapterNumber = chapterDataClass.chapterNumber,
             scanlator = chapterDataClass.scanlator,
-            read = chapterDataClass.read,
-            lastPageRead = chapterDataClass.lastPageRead,
-            lastReadAt = chapterDataClass.lastReadAt,
+            read = chapterUser?.isRead ?: false,
+            lastPageRead = chapterUser?.lastPageRead ?: 0,
+            lastReadAt = chapterUser?.lastReadAt ?: 0,
             sourceOrder = chapterDataClass.index,
             downloaded = chapterDataClass.downloaded,
             pageCount = chapterDataClass.pageCount,

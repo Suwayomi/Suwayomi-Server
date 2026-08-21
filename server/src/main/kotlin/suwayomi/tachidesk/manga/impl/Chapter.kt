@@ -36,6 +36,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -219,10 +220,9 @@ object Chapter {
         }
 
         val deletedChapterNumbers = TreeSet<Float>()
-        val deletedReadChapterNumbers = TreeSet<Float>()
-        val deletedBookmarkedChapterNumbers = TreeSet<Float>()
         val deletedDownloadedChapterByChapterNumber = mutableMapOf<Float, ChapterDataClass>()
         val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
+        val deletedUserStateByChapterNumber = mutableMapOf<Float, MutableMap<Int, DeletedChapterUserData>>()
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val chapterUrls = uniqueChapters.map { it.url }.toSet()
@@ -230,8 +230,6 @@ object Chapter {
         val chaptersIdsToDelete =
             chaptersInDb.mapNotNull { dbChapter ->
                 if (!chapterUrls.contains(dbChapter.url)) {
-                    if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
-                    if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
                     if (dbChapter.downloaded) deletedDownloadedChapterByChapterNumber[dbChapter.chapterNumber] = dbChapter
                     deletedChapterNumbers.add(dbChapter.chapterNumber)
                     deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
@@ -240,6 +238,34 @@ object Chapter {
                     null
                 }
             }
+
+        if (chaptersIdsToDelete.isNotEmpty()) {
+            val chapterNumberById = chaptersInDb.associate { it.id to it.chapterNumber }
+            val deletedUserStates =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { ChapterUserTable.chapter inList chaptersIdsToDelete }
+                        .map {
+                            Triple(
+                                it[ChapterUserTable.user].value,
+                                it[ChapterUserTable.chapter].value,
+                                DeletedChapterUserData(
+                                    isRead = it[ChapterUserTable.isRead],
+                                    isBookmarked = it[ChapterUserTable.isBookmarked],
+                                    lastPageRead = it[ChapterUserTable.lastPageRead],
+                                    lastReadAt = it[ChapterUserTable.lastReadAt],
+                                    version = it[ChapterUserTable.version],
+                                ),
+                            )
+                        }
+                }
+            deletedUserStates.forEach { (userId, chapterId, userData) ->
+                val chapterNumber = chapterNumberById[chapterId] ?: return@forEach
+                val userStates = deletedUserStateByChapterNumber.getOrPut(chapterNumber) { mutableMapOf() }
+                userStates[userId] = userData
+            }
+        }
 
         suspendTransaction {
             // we got some clean up due
@@ -268,9 +294,6 @@ object Chapter {
 
                             // is recognized chapter number
                             if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
-                                // todo this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
-                                // todo this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
-
                                 // Try to use the fetch date of the original entry to not pollute 'Updates' tab
                                 deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                     this[ChapterTable.fetchedAt] = it
@@ -279,6 +302,35 @@ object Chapter {
                         }.map { ChapterTable.toDataClass(it) }
 
                 insertedChapters.forEach { insertedChapterIds.add(it.id) }
+
+                // migrate the per-user state of the deleted chapters to the re-inserted chapters,
+                // matched by recognized chapter number, for all users
+                val migratedUserStates =
+                    insertedChapters
+                        .filter { it.chapterNumber >= 0f && it.chapterNumber in deletedChapterNumbers }
+                        .flatMap { chapter ->
+                            deletedUserStateByChapterNumber[chapter.chapterNumber]
+                                ?.map { (userId, userData) -> Triple(chapter.id, userId, userData) }
+                                .orEmpty()
+                        }
+
+                if (migratedUserStates.isNotEmpty()) {
+                    ChapterUserTable.batchInsert(migratedUserStates) { (chapterId, userId, userData) ->
+                        this[ChapterUserTable.chapter] = EntityID(chapterId, ChapterTable)
+                        this[ChapterUserTable.user] = EntityID(userId, UserAccountTable)
+                        this[ChapterUserTable.isRead] = userData.isRead
+                        this[ChapterUserTable.isBookmarked] = userData.isBookmarked
+                        this[ChapterUserTable.lastPageRead] = userData.lastPageRead
+                        this[ChapterUserTable.lastReadAt] = userData.lastReadAt
+                        // bump the version for non-default state so syncyomi picks up the migrated state
+                        val hasState =
+                            userData.isRead ||
+                                userData.isBookmarked ||
+                                userData.lastPageRead > 0 ||
+                                userData.lastReadAt > 0
+                        this[ChapterUserTable.version] = if (hasState) userData.version + 1 else 0
+                    }
+                }
 
                 val chaptersToPreserveDownload =
                     insertedChapters.filter { chapter ->
@@ -343,14 +395,15 @@ object Chapter {
             }
         }
 
-        val inLibrary =
+        val inLibraryUserIds =
             transaction {
                 MangaUserTable
-                    .select(MangaUserTable.id)
+                    .select(MangaUserTable.user)
                     .where { MangaUserTable.manga eq mangaEntry[MangaTable.id] and (MangaUserTable.inLibrary eq true) }
-                    .any()
+                    .map { it[MangaUserTable.user].value }
+                    .toList()
             }
-        if (inLibrary) {
+        if (inLibraryUserIds.isNotEmpty()) {
             // We have to query the inserted chapters to get the up-to-date data. I.e. "last_modified_at" is not returned by the insert statement, due to being set by a DB trigger
             val insertedChapters =
                 transaction {
@@ -358,19 +411,20 @@ object Chapter {
                         ChapterTable::toDataClass,
                     )
                 }
-            downloadNewChapters(
-                1,
-                mangaEntry[MangaTable.id].value,
-                currentLatestChapterNumber,
-                numberOfCurrentChapters,
-                insertedChapters,
-            )
+            inLibraryUserIds.forEach { userId ->
+                downloadNewChapters(
+                    userId,
+                    mangaEntry[MangaTable.id].value,
+                    currentLatestChapterNumber,
+                    numberOfCurrentChapters,
+                    insertedChapters,
+                )
+            }
         }
 
         return uniqueChapters
     }
 
-    // todo user accounts
     private fun downloadNewChapters(
         userId: Int,
         mangaId: Int,
@@ -530,6 +584,15 @@ object Chapter {
 
         return chapterId
     }
+
+    /** per-user state of a deleted chapter, migrated to re-inserted chapters with the same recognized chapter number */
+    private data class DeletedChapterUserData(
+        val isRead: Boolean,
+        val isBookmarked: Boolean,
+        val lastPageRead: Int,
+        val lastReadAt: Long,
+        val version: Long,
+    )
 
     @Serializable
     data class ChapterChange(
