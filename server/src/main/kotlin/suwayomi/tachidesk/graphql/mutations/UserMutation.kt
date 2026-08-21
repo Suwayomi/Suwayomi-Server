@@ -44,7 +44,7 @@ class UserMutation {
             throw IllegalArgumentException("Cannot login while already logged-in")
         }
 
-        if (!serverConfig.multiUser.value) { // todo: user accounts
+        if (!serverConfig.multiUser.value) {
             val isValid =
                 input.username == serverConfig.authUsername.value &&
                     input.password == serverConfig.authPassword.value

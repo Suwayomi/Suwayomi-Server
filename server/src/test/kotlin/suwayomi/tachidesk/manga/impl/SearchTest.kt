@@ -63,7 +63,6 @@ class SearchTest : ApplicationTest() {
     fun searchWorks() {
         val searchResults =
             runBlocking {
-                // todo user accounts
                 sourceSearch(sourceId, "all the mangas", 1)
             }
 

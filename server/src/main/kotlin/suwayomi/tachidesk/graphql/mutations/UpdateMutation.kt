@@ -73,7 +73,7 @@ class UpdateMutation {
             userId,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
-                categories = null, // todo filter by user's categories
+                categories = null,
             ),
         )
 
@@ -108,7 +108,7 @@ class UpdateMutation {
             userId,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
-                categories = input.categories, // todo filter by user's categories
+                categories = input.categories,
             ),
         )
 

@@ -15,11 +15,13 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MangaMetaType
@@ -79,25 +81,14 @@ class MangaMutation {
         patch: UpdateMangaPatch,
     ) {
         transaction {
-            val currentMangaUserItems =
-                MangaUserTable
-                    .select(MangaUserTable.manga)
-                    .where { MangaUserTable.manga inList ids }
-                    .map { it[MangaUserTable.manga].value }
-            if (currentMangaUserItems.size < ids.size) {
-                MangaUserTable.batchInsert(ids - currentMangaUserItems.toSet()) {
-                    this[MangaUserTable.user] = userId
-                    this[MangaUserTable.manga] = it
-                }
-            }
-
             if (patch.inLibrary != null) {
                 val now = Instant.now().epochSecond
-                // todo user suport
-                MangaUserTable.update({ MangaUserTable.manga inList ids }) { update ->
+                MangaUserTable.batchUpsert(ids, MangaUserTable.user, MangaUserTable.manga) { mangaId ->
+                    this[MangaUserTable.manga] = mangaId
+                    this[MangaUserTable.user] = userId
                     patch.inLibrary.also {
-                        update[inLibrary] = it
-                        if (it) update[inLibraryAt] = now
+                        this[MangaUserTable.inLibrary] = it
+                        if (it) this[MangaUserTable.inLibraryAt] = now
                     }
                 }
             }

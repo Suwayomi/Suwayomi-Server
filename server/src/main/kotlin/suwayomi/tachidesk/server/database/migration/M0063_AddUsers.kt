@@ -351,24 +351,24 @@ class M0063_AddUsers : Migration() {
             """.trimIndent()
     }
 
-    object UserAccountTable : IntIdTable() {
+    private object UserAccountTable : IntIdTable() {
         val username = varchar("username", 64)
         val password = varchar("password", 90)
     }
 
-    object UserPermissionsTable : Table() {
+    private object UserPermissionsTable : Table() {
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val permission = varchar("permission", 128)
     }
 
-    object UserRolesTable : Table() {
+    private object UserRolesTable : Table() {
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val role = varchar("role", 24)
     }
 
-    object MangaTable : IntIdTable()
+    private object MangaTable : IntIdTable()
 
-    object MangaUserTable : IntIdTable() {
+    private object MangaUserTable : IntIdTable() {
         val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val inLibrary = bool("in_library").default(false)
@@ -378,9 +378,9 @@ class M0063_AddUsers : Migration() {
         val lastModifiedAt = long("last_modified_at").default(0)
     }
 
-    object ChapterTable : IntIdTable()
+    private object ChapterTable : IntIdTable()
 
-    object ChapterUserTable : IntIdTable() {
+    private object ChapterUserTable : IntIdTable() {
         val chapter = reference("chapter", ChapterTable, ReferenceOption.CASCADE)
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 
