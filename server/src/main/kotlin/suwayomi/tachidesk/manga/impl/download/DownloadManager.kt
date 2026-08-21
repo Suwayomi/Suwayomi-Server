@@ -30,9 +30,11 @@ import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.ChapterDownloadReorder
 import suwayomi.tachidesk.manga.impl.download.model.DownloadChapter
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
@@ -47,6 +49,7 @@ import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
@@ -359,6 +362,50 @@ object DownloadManager {
         val chapterIds: List<Int>?,
     )
 
+    /**
+     * Marks the given chapters as download-requested for [userId] and returns the chapter ids
+     * that don't have a shared download on disk yet.
+     */
+    fun enqueue(
+        userId: Int,
+        chapterIds: List<Int>,
+    ): List<Int> {
+        if (chapterIds.isEmpty()) return emptyList()
+
+        val chapterIds =
+            transaction {
+                ChapterUserTable.batchUpsert(chapterIds, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
+                    this[ChapterUserTable.user] = userId
+                    this[ChapterUserTable.chapter] = chapterId
+                    this[ChapterUserTable.isDownloadRequested] = true
+                }
+
+                val chapterIdsToEnqueue =
+                    ChapterTable
+                        .select(ChapterTable.id)
+                        .where { (ChapterTable.id inList chapterIds) and (ChapterTable.isDownloaded eq false) }
+                        .map { it[ChapterTable.id].value }
+                        .toSet()
+
+                // the shared download already exists, so it counts as downloaded for the user right away
+                val chapterIdsAlreadyDownloaded = chapterIds.filter { it !in chapterIdsToEnqueue }
+                if (chapterIdsAlreadyDownloaded.isNotEmpty()) {
+                    ChapterUserTable.update({
+                        (ChapterUserTable.user eq userId) and
+                            (ChapterUserTable.chapter inList chapterIdsAlreadyDownloaded)
+                    }) {
+                        it[ChapterUserTable.isDownloaded] = true
+                    }
+                }
+
+                chapterIdsToEnqueue.toList()
+            }
+
+        enqueue(EnqueueInput(chapterIds))
+
+        return chapterIds
+    }
+
     fun enqueue(input: EnqueueInput) {
         if (input.chapterIds.isNullOrEmpty()) return
 
@@ -372,7 +419,6 @@ object DownloadManager {
                     .toList()
             }
 
-        // todo User accounts
         val mangas =
             transaction {
                 chapters
@@ -381,7 +427,6 @@ object DownloadManager {
                     .associateBy { it.id }
             }
 
-        // todo User accounts
         val inputPairs =
             transaction {
                 chapters.map {

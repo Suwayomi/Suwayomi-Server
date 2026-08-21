@@ -433,8 +433,8 @@ object MangaController {
             behaviorOf = { ctx, mangaId, chapterIndex ->
                 ctx.future {
                     future {
-                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                        Chapter.deleteChapter(mangaId, chapterIndex)
+                        val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        Chapter.deleteChapter(userId, mangaId, chapterIndex)
 
                         ctx.status(200)
                     }

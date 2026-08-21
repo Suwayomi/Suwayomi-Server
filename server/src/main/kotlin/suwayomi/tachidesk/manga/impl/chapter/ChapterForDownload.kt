@@ -113,6 +113,10 @@ suspend fun refreshChapterPageList(
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
                 it[isDownloaded] = false
             }
+            ChapterUserTable.update({ ChapterUserTable.chapter eq chapterId }) {
+                it[isDownloaded] = false
+                it[isDownloadRequested] = false
+            }
 
             PageTable.deleteWhere { PageTable.chapter eq chapterId }
             PageTable.batchInsert(pageList) { page ->

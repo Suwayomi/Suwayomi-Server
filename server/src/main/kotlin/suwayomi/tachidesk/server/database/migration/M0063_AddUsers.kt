@@ -323,6 +323,15 @@ class M0063_AddUsers : Migration() {
                 IS_SYNCING = (SELECT IS_SYNCING FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER),
                 LAST_MODIFIED_AT = (SELECT LAST_MODIFIED_AT FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER);
 
+            -- Step 5b: Add the per-user download status and request intent to CHAPTERUSER (the shared file state stays in CHAPTER)
+            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS IS_DOWNLOADED BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS IS_DOWNLOAD_REQUESTED BOOLEAN NOT NULL DEFAULT FALSE;
+
+            -- Carry over the existing (single user) download state as the admin's status and request intent
+            UPDATE $chapterUserTable
+            SET IS_DOWNLOADED = (SELECT IS_DOWNLOADED FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER),
+                IS_DOWNLOAD_REQUESTED = (SELECT IS_DOWNLOADED FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER);
+
             -- Step 6: Remove the syncyomi columns from the MANGA and CHAPTER tables
             ALTER TABLE $mangaTable DROP COLUMN VERSION;
             ALTER TABLE $mangaTable DROP COLUMN IS_SYNCING;
@@ -388,6 +397,8 @@ class M0063_AddUsers : Migration() {
         val isBookmarked = bool("bookmark").default(false)
         val lastPageRead = integer("last_page_read").default(0)
         val lastReadAt = long("last_read_at").default(0)
+        val isDownloaded = bool("is_downloaded").default(false)
+        val isDownloadRequested = bool("is_download_requested").default(false)
         val version = long("version").default(0)
         val isSyncing = bool("is_syncing").default(false)
         val lastModifiedAt = long("last_modified_at").default(0)

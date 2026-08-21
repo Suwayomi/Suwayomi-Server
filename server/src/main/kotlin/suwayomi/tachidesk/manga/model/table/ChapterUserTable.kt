@@ -22,6 +22,9 @@ object ChapterUserTable : IntIdTable() {
     val lastPageRead = integer("last_page_read").default(0)
     val lastReadAt = long("last_read_at").default(0)
 
+    val isDownloaded = bool("is_downloaded").default(false)
+    val isDownloadRequested = bool("is_download_requested").default(false)
+
     // syncyomi
     val version = long("version").default(0)
     val isSyncing = bool("is_syncing").default(false)

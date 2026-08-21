@@ -10,6 +10,8 @@ class ChapterUserType(
     val isBookmarked: Boolean,
     val lastPageRead: Int,
     val lastReadAt: Long,
+    val isDownloaded: Boolean,
+    val isDownloadRequested: Boolean,
     val chapterId: Int,
 ) : Node {
     constructor(row: ResultRow) : this(
@@ -17,6 +19,8 @@ class ChapterUserType(
         row[ChapterUserTable.isBookmarked],
         row[ChapterUserTable.lastPageRead],
         row[ChapterUserTable.lastReadAt],
+        row[ChapterUserTable.isDownloaded],
+        row[ChapterUserTable.isDownloadRequested],
         row[ChapterUserTable.chapter].value,
     )
 }

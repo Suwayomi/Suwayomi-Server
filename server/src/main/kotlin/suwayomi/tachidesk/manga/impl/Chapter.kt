@@ -26,8 +26,10 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -256,6 +258,8 @@ object Chapter {
                                     lastPageRead = it[ChapterUserTable.lastPageRead],
                                     lastReadAt = it[ChapterUserTable.lastReadAt],
                                     version = it[ChapterUserTable.version],
+                                    isDownloaded = it[ChapterUserTable.isDownloaded],
+                                    isDownloadRequested = it[ChapterUserTable.isDownloadRequested],
                                 ),
                             )
                         }
@@ -303,6 +307,19 @@ object Chapter {
 
                 insertedChapters.forEach { insertedChapterIds.add(it.id) }
 
+                val chaptersToPreserveDownload =
+                    insertedChapters.filter { chapter ->
+                        val deletedChapter =
+                            deletedDownloadedChapterByChapterNumber[chapter.chapterNumber] ?: return@filter false
+
+                        // For a new (unrecognized) chapter, we have to handle the existing downloads as obsolete in case the scanlator changed because we can't assume that the pages are still the same
+                        val isSameScanlator = chapter.scanlator == deletedChapter.scanlator
+                        val isPreservable = isSameScanlator && updateChapterDownloadDir(deletedChapter, chapter)
+
+                        isPreservable
+                    }
+                val preservedDownloadChapterIds = chaptersToPreserveDownload.map { it.id }.toSet()
+
                 // migrate the per-user state of the deleted chapters to the re-inserted chapters,
                 // matched by recognized chapter number, for all users
                 val migratedUserStates =
@@ -322,27 +339,15 @@ object Chapter {
                         this[ChapterUserTable.isBookmarked] = userData.isBookmarked
                         this[ChapterUserTable.lastPageRead] = userData.lastPageRead
                         this[ChapterUserTable.lastReadAt] = userData.lastReadAt
-                        // bump the version for non-default state so syncyomi picks up the migrated state
-                        val hasState =
-                            userData.isRead ||
-                                userData.isBookmarked ||
-                                userData.lastPageRead > 0 ||
-                                userData.lastReadAt > 0
-                        this[ChapterUserTable.version] = if (hasState) userData.version + 1 else 0
+                        // migrate the per-user download state only if the shared download file was preserved,
+                        // otherwise the download is gone for all users
+                        val downloadPreserved = chapterId in preservedDownloadChapterIds
+                        this[ChapterUserTable.isDownloadRequested] = downloadPreserved && userData.isDownloadRequested
+                        this[ChapterUserTable.isDownloaded] = downloadPreserved && userData.isDownloaded
+
+                        this[ChapterUserTable.version] = userData.version
                     }
                 }
-
-                val chaptersToPreserveDownload =
-                    insertedChapters.filter { chapter ->
-                        val deletedChapter =
-                            deletedDownloadedChapterByChapterNumber[chapter.chapterNumber] ?: return@filter false
-
-                        // For a new (unrecognized) chapter, we have to handle the existing downloads as obsolete in case the scanlator changed because we can't assume that the pages are still the same
-                        val isSameScanlator = chapter.scanlator == deletedChapter.scanlator
-                        val isPreservable = isSameScanlator && updateChapterDownloadDir(deletedChapter, chapter)
-
-                        isPreservable
-                    }
 
                 if (chaptersToPreserveDownload.isNotEmpty()) {
                     BatchUpdateStatement(ChapterTable)
@@ -359,6 +364,7 @@ object Chapter {
             }
 
             if (chaptersToUpdate.isNotEmpty()) {
+                val downloadInvalidatedChapterIds = mutableListOf<Int>()
                 BatchUpdateStatement(ChapterTable)
                     .apply {
                         chaptersToUpdate.forEach {
@@ -384,10 +390,19 @@ object Chapter {
                             if (!isDownloadPreservable) {
                                 this[ChapterTable.isDownloaded] = false
                                 this[ChapterTable.pageCount] = -1
+                                downloadInvalidatedChapterIds.add(it.id)
                             }
                         }
                     }.toExecutable()
                     .execute(this@suspendTransaction)
+
+                // the shared download is gone, so clear the per-user download state as well
+                if (downloadInvalidatedChapterIds.isNotEmpty()) {
+                    ChapterUserTable.update({ ChapterUserTable.chapter inList downloadInvalidatedChapterIds }) {
+                        it[ChapterUserTable.isDownloaded] = false
+                        it[ChapterUserTable.isDownloadRequested] = false
+                    }
+                }
             }
 
             MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id].value }) {
@@ -481,7 +496,7 @@ object Chapter {
 
         log.info { "download ${chapterIdsToDownload.size} new chapter(s)..." }
 
-        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
+        DownloadManager.enqueue(userId, chapterIdsToDownload)
     }
 
     private fun getNewChapterIdsToDownload(
@@ -592,6 +607,8 @@ object Chapter {
         val lastPageRead: Int,
         val lastReadAt: Long,
         val version: Long,
+        val isDownloaded: Boolean,
+        val isDownloadRequested: Boolean,
     )
 
     @Serializable
@@ -626,7 +643,7 @@ object Chapter {
 
         // Handle deleting separately
         if (delete == true) {
-            deleteChapters(input, mangaId)
+            deleteChapters(userId, input, mangaId)
         }
 
         // return early if there are no other changes
@@ -831,6 +848,7 @@ object Chapter {
     }
 
     suspend fun deleteChapter(
+        userId: Int,
         mangaId: Int,
         chapterIndex: Int,
     ) {
@@ -842,56 +860,82 @@ object Chapter {
                     .first()[ChapterTable.id]
                     .value
 
-            ChapterDownloadHelper.delete(mangaId, chapterId)
-
-            ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
-                it[isDownloaded] = false
-            }
+            deleteDownloadedChapters(userId, listOf(chapterId))
         }
     }
 
     private suspend fun deleteChapters(
+        userId: Int,
         input: MangaChapterBatchEditInput,
         mangaId: Int? = null,
     ) {
-        if (input.chapterIds != null) {
-            deleteChapters(input.chapterIds)
-        } else if (input.chapterIndexes != null && mangaId != null) {
-            suspendTransaction {
-                val chapterIds =
-                    ChapterTable
-                        .select(ChapterTable.manga, ChapterTable.id)
-                        .where {
-                            (ChapterTable.sourceOrder inList input.chapterIndexes) and
-                                (ChapterTable.manga eq mangaId)
-                        }.map { row ->
-                            val chapterId = row[ChapterTable.id].value
-                            ChapterDownloadHelper.delete(mangaId, chapterId)
-
-                            chapterId
-                        }
-
-                ChapterTable.update({ ChapterTable.id inList chapterIds }) {
-                    it[isDownloaded] = false
+        val chapterIds =
+            input.chapterIds
+                ?: if (input.chapterIndexes != null && mangaId != null) {
+                    transaction {
+                        ChapterTable
+                            .select(ChapterTable.id)
+                            .where {
+                                (ChapterTable.sourceOrder inList input.chapterIndexes) and
+                                    (ChapterTable.manga eq mangaId)
+                            }.map { it[ChapterTable.id].value }
+                    }
+                } else {
+                    return
                 }
-            }
-        }
+
+        deleteDownloadedChapters(userId, chapterIds)
     }
 
-    suspend fun deleteChapters(chapterIds: List<Int>) {
-        suspendTransaction {
-            ChapterTable
-                .select(ChapterTable.manga, ChapterTable.id)
-                .where { ChapterTable.id inList chapterIds }
-                .forEach { row ->
-                    val chapterMangaId = row[ChapterTable.manga].value
-                    val chapterId = row[ChapterTable.id].value
-                    ChapterDownloadHelper.delete(chapterMangaId, chapterId)
+    /**
+     * Clears the download request of [userId] for the given chapters and removes the
+     * shared download only if no user has requested it anymore.
+     */
+    suspend fun deleteDownloadedChapters(
+        userId: Int,
+        chapterIds: List<Int>,
+    ) {
+        if (chapterIds.isEmpty()) return
+
+        val chapterIdsWithoutRequest =
+            suspendTransaction {
+                // Clear the caller's download request and status
+                ChapterUserTable.update({ (ChapterUserTable.user eq userId) and (ChapterUserTable.chapter inList chapterIds) }) {
+                    it[ChapterUserTable.isDownloadRequested] = false
+                    it[ChapterUserTable.isDownloaded] = false
                 }
 
-            ChapterTable.update({ ChapterTable.id inList chapterIds }) {
-                it[isDownloaded] = false
+                // Only remove the shared download if no user has requested it anymore
+                val notRequestedByAnyUserQuery =
+                    notExists(
+                        ChapterUserTable.select(ChapterUserTable.id).where {
+                            (ChapterUserTable.chapter eq ChapterTable.id) and (ChapterUserTable.isDownloadRequested eq true)
+                        },
+                    )
+                val deletedChapters =
+                    ChapterTable
+                        .select(ChapterTable.manga, ChapterTable.id)
+                        .where { (ChapterTable.id inList chapterIds) and notRequestedByAnyUserQuery }
+                        .map { row -> Pair(row[ChapterTable.manga].value, row[ChapterTable.id].value) }
+
+                if (deletedChapters.isEmpty()) {
+                    emptyList()
+                } else {
+                    deletedChapters.forEach { (mangaId, chapterId) ->
+                        ChapterDownloadHelper.delete(mangaId, chapterId)
+                    }
+
+                    ChapterTable.update({ ChapterTable.id inList deletedChapters.map { it.second } }) {
+                        it[ChapterTable.isDownloaded] = false
+                    }
+
+                    deletedChapters.map { it.second }
+                }
             }
+
+        // Stop any in-progress shared download that no user wants anymore
+        if (chapterIdsWithoutRequest.isNotEmpty()) {
+            DownloadManager.dequeue(EnqueueInput(chapterIdsWithoutRequest))
         }
     }
 

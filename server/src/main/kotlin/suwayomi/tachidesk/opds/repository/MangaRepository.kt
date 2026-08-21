@@ -92,7 +92,7 @@ fun Query.applyOpdsMangaFilter(
                 "downloaded" -> {
                     andWhere {
                         MangaTable.id inSubQuery
-                            ChapterTable.select(ChapterTable.manga).where { ChapterTable.isDownloaded eq true }
+                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isDownloaded eq true }
                     }
                 }
 
@@ -427,7 +427,7 @@ object MangaRepository {
                     .copy()
                     .andWhere {
                         MangaTable.id inSubQuery
-                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterTable.isDownloaded eq true }
+                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isDownloaded eq true }
                     }.count()
             val ongoingCount = baseQuery.copy().andWhere { MangaTable.status eq MangaStatus.ONGOING.value }.count()
             val completedCount = baseQuery.copy().andWhere { MangaTable.status eq MangaStatus.COMPLETED.value }.count()

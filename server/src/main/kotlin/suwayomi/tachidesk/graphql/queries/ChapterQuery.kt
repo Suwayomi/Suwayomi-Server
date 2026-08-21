@@ -150,7 +150,7 @@ class ChapterQuery {
             opAnd.eq(sourceOrder, ChapterTable.sourceOrder)
             opAnd.eq(realUrl, ChapterTable.realUrl)
             opAnd.eq(fetchedAt, ChapterTable.fetchedAt)
-            opAnd.eq(isDownloaded, ChapterTable.isDownloaded)
+            opAnd.eq(isDownloaded, ChapterUserTable.isDownloaded)
             opAnd.eq(pageCount, ChapterTable.pageCount)
 
             return opAnd.op
@@ -195,7 +195,7 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.sourceOrder, sourceOrder),
                 andFilterWithCompareString(ChapterTable.realUrl, realUrl),
                 andFilterWithCompare(ChapterTable.fetchedAt, fetchedAt),
-                andFilterWithCompare(ChapterTable.isDownloaded, isDownloaded),
+                andFilterWithCompare(ChapterUserTable.isDownloaded, isDownloaded),
                 andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
 

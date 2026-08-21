@@ -142,6 +142,10 @@ object ChapterRepository {
                                         ChapterTable.update({ ChapterTable.id eq entry.id }) {
                                             it[ChapterTable.isDownloaded] = false
                                         }
+                                        ChapterUserTable.update({ ChapterUserTable.chapter eq entry.id }) {
+                                            it[ChapterUserTable.isDownloaded] = false
+                                            it[isDownloadRequested] = false
+                                        }
                                     }
                                     isDownloaded = false
                                 }
@@ -215,11 +219,11 @@ object ChapterRepository {
             lastPageRead = chapterUser?.lastPageRead ?: 0,
             lastReadAt = chapterUser?.lastReadAt ?: 0,
             sourceOrder = chapterDataClass.index,
-            downloaded = chapterDataClass.downloaded,
+            downloaded = chapterUser?.isDownloaded ?: false,
             pageCount = chapterDataClass.pageCount,
             url = chapterDataClass.realUrl,
             cbzFileSize =
-                if (chapterDataClass.downloaded) {
+                if (chapterUser?.isDownloaded == true) {
                     withContext(Dispatchers.IO) {
                         runCatching { ChapterDownloadHelper.getChapterArchiveSize(mangaId, chapterDataClass.id) }.getOrNull()
                     }

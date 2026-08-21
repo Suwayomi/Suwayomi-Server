@@ -133,8 +133,9 @@ object CategoryManga {
         val downloadedCount =
             wrapAsExpression<Long>(
                 ChapterTable
+                    .getWithUserData(userId)
                     .select(ChapterTable.id.count())
-                    .where { (ChapterTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id) },
+                    .where { (ChapterUserTable.isDownloaded eq true) and (ChapterTable.manga eq MangaTable.id) },
             )
 
         val chapterCount = ChapterTable.id.count().alias("chapter_count")

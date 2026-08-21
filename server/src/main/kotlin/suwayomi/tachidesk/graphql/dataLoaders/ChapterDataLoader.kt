@@ -101,7 +101,7 @@ class ChapterFlagCountForMangaDataLoader : KotlinDataLoader<Int, MangaChapterSta
 
                     val downloadCount =
                         Case()
-                            .When(ChapterTable.isDownloaded eq true, intLiteral(1))
+                            .When(ChapterUserTable.isDownloaded eq true, intLiteral(1))
                             .Else(intLiteral(0))
                             .sum()
 

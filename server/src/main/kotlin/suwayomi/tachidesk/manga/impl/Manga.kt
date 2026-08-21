@@ -271,8 +271,9 @@ object Manga {
 
             val downloadCount =
                 ChapterTable
+                    .getWithUserData(userId)
                     .selectAll()
-                    .where { (ChapterTable.manga eq mangaId) and (ChapterTable.isDownloaded eq true) }
+                    .where { (ChapterTable.manga eq mangaId) and (ChapterUserTable.isDownloaded eq true) }
                     .count()
 
             val chapterCount =

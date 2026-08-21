@@ -38,7 +38,6 @@ class ChapterType(
     val sourceOrder: Int,
     val realUrl: String?,
     val fetchedAt: Long,
-    val isDownloaded: Boolean,
     val pageCount: Int,
     @get:GraphQLIgnore
     val lastReadAt: Long? = null,
@@ -68,8 +67,8 @@ class ChapterType(
         row[ChapterTable.sourceOrder],
         row[ChapterTable.realUrl],
         row[ChapterTable.fetchedAt],
-        row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount],
+        // do not use for regular queries.
         row.getOrNull(ChapterUserTable.lastReadAt),
     )
 
@@ -84,7 +83,7 @@ class ChapterType(
         dataClass.index,
         dataClass.realUrl,
         dataClass.fetchedAt,
-        dataClass.downloaded,
+        // do not use for regular queries.
         dataClass.pageCount,
     )
 
@@ -119,6 +118,12 @@ class ChapterType(
     fun lastReadAt(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Long> =
         user(dataFetchingEnvironment).thenApply {
             it?.lastReadAt ?: 0
+        }
+
+    @GraphQLDeprecated("Use user.isDownloaded instead")
+    fun isDownloaded(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.isDownloaded == true
         }
 }
 
