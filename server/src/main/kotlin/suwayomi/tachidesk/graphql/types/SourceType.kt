@@ -51,7 +51,6 @@ class SourceType(
     val isNsfw: Boolean,
     val displayName: String,
     val homeUrl: String?,
-    @GraphQLDeprecated("", ReplaceWith("homeUrl"))
     val baseUrl: String?,
 ) : Node {
     constructor(row: ResultRow, sourceExtension: ResultRow, source: Source?) : this(
