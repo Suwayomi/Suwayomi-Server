@@ -44,22 +44,6 @@ class UserMutation {
             throw IllegalArgumentException("Cannot login while already logged-in")
         }
 
-        if (!serverConfig.multiUser.value) {
-            val isValid =
-                input.username == serverConfig.authUsername.value &&
-                    input.password == serverConfig.authPassword.value
-            if (isValid) {
-                val jwt = Jwt.generateJwt(1)
-                return LoginPayload(
-                    clientMutationId = input.clientMutationId,
-                    accessToken = jwt.accessToken,
-                    refreshToken = jwt.refreshToken,
-                )
-            } else {
-                throw Exception("Incorrect username or password.")
-            }
-        }
-
         val user =
             transaction {
                 UserAccountTable

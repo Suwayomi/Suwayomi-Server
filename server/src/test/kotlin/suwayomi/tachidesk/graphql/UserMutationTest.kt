@@ -9,7 +9,6 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.test.GraphQLTest
 import kotlin.test.Test
@@ -27,7 +26,6 @@ class UserMutationTest : GraphQLTest() {
         username: String,
         password: String,
     ) {
-        serverConfig.multiUser.value = true
         transaction {
             UserAccountTable.update({ UserAccountTable.id eq 1 }) {
                 it[UserAccountTable.username] = username
@@ -174,7 +172,6 @@ class UserMutationTest : GraphQLTest() {
 
     @AfterEach
     internal fun tearDown() {
-        serverConfig.multiUser.value = false
         transaction {
             // restore the admin row to its seeded credentials
             UserAccountTable.update({ UserAccountTable.id eq 1 }) {

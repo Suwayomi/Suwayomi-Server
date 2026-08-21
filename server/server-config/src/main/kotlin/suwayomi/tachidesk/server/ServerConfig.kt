@@ -1139,13 +1139,6 @@ class ServerConfig(
         description = "List of extension store index URLs",
     )
 
-    val multiUser: MutableStateFlow<Boolean> by BooleanSetting(
-        protoNumber = 98,
-        defaultValue = false,
-        group = SettingGroup.AUTH,
-        privacySafe = true
-    )
-
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/
