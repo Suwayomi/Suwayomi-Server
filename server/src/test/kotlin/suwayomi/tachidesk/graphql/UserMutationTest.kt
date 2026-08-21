@@ -5,7 +5,9 @@ import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
+import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.user.UserType
@@ -17,10 +19,26 @@ import kotlin.test.assertTrue
 class UserMutationTest : GraphQLTest() {
     private val visitor: UserType = UserType.Visitor
 
+    /**
+     * Set the admin user (id 1) credentials in the database and enable multi-user mode so that
+     * `login` verifies against [UserAccountTable] with Bcrypt instead of the serverConfig values.
+     */
+    private fun setAdminCredentials(
+        username: String,
+        password: String,
+    ) {
+        serverConfig.multiUser.value = true
+        transaction {
+            UserAccountTable.update({ UserAccountTable.id eq 1 }) {
+                it[UserAccountTable.username] = username
+                it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
+            }
+        }
+    }
+
     @Test
     fun loginWithBasicAuth() {
-        serverConfig.authUsername.value = "testuser"
-        serverConfig.authPassword.value = "testpass"
+        setAdminCredentials("testuser", "testpass")
 
         val response =
             graphql(
@@ -43,8 +61,7 @@ class UserMutationTest : GraphQLTest() {
 
     @Test
     fun loginFailsWithWrongCredentials() {
-        serverConfig.authUsername.value = "testuser"
-        serverConfig.authPassword.value = "testpass"
+        setAdminCredentials("testuser", "testpass")
 
         val response =
             graphql(
@@ -122,8 +139,7 @@ class UserMutationTest : GraphQLTest() {
 
     @Test
     fun refreshToken() {
-        serverConfig.authUsername.value = "testuser"
-        serverConfig.authPassword.value = "testpass"
+        setAdminCredentials("testuser", "testpass")
 
         val loginResponse =
             graphql(
@@ -158,10 +174,14 @@ class UserMutationTest : GraphQLTest() {
 
     @AfterEach
     internal fun tearDown() {
-        serverConfig.authUsername.value = ""
-        serverConfig.authPassword.value = ""
+        serverConfig.multiUser.value = false
         transaction {
-            UserAccountTable.deleteWhere { UserAccountTable.username neq "admin" }
+            // restore the admin row to its seeded credentials
+            UserAccountTable.update({ UserAccountTable.id eq 1 }) {
+                it[UserAccountTable.username] = "admin"
+                it[UserAccountTable.password] = Bcrypt.encryptPassword("password")
+            }
+            UserAccountTable.deleteWhere { UserAccountTable.id neq 1 }
         }
     }
 }
