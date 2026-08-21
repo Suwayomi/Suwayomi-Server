@@ -35,6 +35,7 @@ class TestUpdater : IUpdater {
     }
 
     override fun addCategoriesToUpdateQueue(
+        userId: Int,
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,

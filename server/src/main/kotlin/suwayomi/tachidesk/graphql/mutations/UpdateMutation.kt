@@ -35,6 +35,7 @@ class UpdateMutation {
         input: UpdateLibraryInput,
     ): CompletableFuture<UpdateLibraryPayload?> {
         updater.addCategoriesToUpdateQueue(
+            userId,
             Category.getCategoryList(userId).filter { input.categories?.contains(it.id) ?: true },
             clear = true,
             forceAll = !input.categories.isNullOrEmpty(),

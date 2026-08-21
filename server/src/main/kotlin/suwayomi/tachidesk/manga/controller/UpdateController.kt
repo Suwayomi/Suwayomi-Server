@@ -75,6 +75,7 @@ object UpdateController {
                 if (categoryId == null) {
                     logger.info { "Adding Library to Update Queue" }
                     updater.addCategoriesToUpdateQueue(
+                        userId,
                         Category.getCategoryList(userId),
                         clear = true,
                         forceAll = false,
@@ -83,6 +84,7 @@ object UpdateController {
                     val category = Category.getCategoryById(userId, categoryId)
                     if (category != null) {
                         updater.addCategoriesToUpdateQueue(
+                            userId,
                             listOf(category),
                             clear = true,
                             forceAll = true,

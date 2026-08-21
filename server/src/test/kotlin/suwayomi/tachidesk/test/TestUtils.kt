@@ -13,12 +13,10 @@ import io.github.oshai.kotlinlogging.DelegatingKLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
-import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
-import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.Logger
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
@@ -73,16 +71,17 @@ fun createChapters(
 ) {
     val list = listOf((0 until amount)).flatten().map { it + start }
     transaction {
-        ChapterTable
-            .batchInsert(list) {
-                this[ChapterTable.url] = "$it"
-                this[ChapterTable.name] = "$it"
-                this[ChapterTable.sourceOrder] = it
-                this[ChapterTable.manga] = mangaId
-                this[ChapterTable.memo] = JsonObject.EMPTY
-            }
+        val newChapters =
+            ChapterTable
+                .batchInsert(list) {
+                    this[ChapterTable.url] = "$it"
+                    this[ChapterTable.name] = "$it"
+                    this[ChapterTable.sourceOrder] = it
+                    this[ChapterTable.manga] = mangaId
+                    this[ChapterTable.memo] = JsonObject.EMPTY
+                }
 
-        val chapters = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }.map { it[ChapterTable.id].value }
+        val chapters = newChapters.map { it[ChapterTable.id].value }
         ChapterUserTable.batchInsert(chapters) {
             this[ChapterUserTable.chapter] = it
             this[ChapterUserTable.user] = 1
