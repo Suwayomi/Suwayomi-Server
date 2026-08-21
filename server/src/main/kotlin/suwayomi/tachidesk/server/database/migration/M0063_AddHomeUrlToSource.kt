@@ -10,10 +10,10 @@ package suwayomi.tachidesk.server.database.migration
 import de.neonew.exposed.migrations.helpers.AddColumnMigration
 
 @Suppress("ClassName", "unused")
-class M0063_AddBaseUrlToSource :
+class M0063_AddHomeUrlToSource :
     AddColumnMigration(
         "source",
-        "base_url",
+        "home_url",
         "VARCHAR(2048)",
         "NULL",
     )

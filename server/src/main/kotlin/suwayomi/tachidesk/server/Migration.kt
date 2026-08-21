@@ -12,7 +12,6 @@ import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
-import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -98,7 +97,7 @@ private fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
     )
 }
 
-private suspend fun fillNewSourceBaseUrlColumn() {
+private suspend fun fillNewSourceHomeUrlColumn() {
     suspendTransaction {
         val sourceIds =
             SourceTable
@@ -111,7 +110,7 @@ private suspend fun fillNewSourceBaseUrlColumn() {
         val updates =
             sourceIds.mapNotNull { id ->
                 when (val source = GetSource.getSourceOrNull(id)) {
-                    is HttpSource -> id to source.baseUrl
+                    is HttpSource -> id to source.getHomeUrl()
                     else -> null
                 }
             }
@@ -119,10 +118,10 @@ private suspend fun fillNewSourceBaseUrlColumn() {
         if (updates.isNotEmpty()) {
             BatchUpdateStatement(SourceTable)
                 .apply {
-                    updates.forEach { (sourceId, baseUrl) ->
+                    updates.forEach { (sourceId, homeUrl) ->
                         addBatch(EntityID(sourceId, SourceTable))
 
-                        this[SourceTable.baseUrl] = baseUrl
+                        this[SourceTable.homeUrl] = homeUrl
                     }
                 }.toExecutable()
                 .execute(this@suspendTransaction)
@@ -151,8 +150,8 @@ private val PRE_DB_STARTUP_MIGRATIONS =
 
 private val POST_DB_MIGRATIONS =
     listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>(
-        "FillNewSourceBaseUrlColumn" to {
-            fillNewSourceBaseUrlColumn()
+        "FillNewSourceHomeUrlColumn" to {
+            fillNewSourceHomeUrlColumn()
         },
     )
 

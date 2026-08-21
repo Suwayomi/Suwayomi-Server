@@ -51,6 +51,7 @@ class SourceType(
     val isNsfw: Boolean,
     val displayName: String,
     val homeUrl: String?,
+    @GraphQLDeprecated("", ReplaceWith("homeUrl"))
     val baseUrl: String?,
 ) : Node {
     constructor(row: ResultRow, sourceExtension: ResultRow, source: Source?) : this(
@@ -63,8 +64,8 @@ class SourceType(
         isConfigurable = source is ConfigurableSource,
         isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
         displayName = source.toString(),
-        homeUrl = runCatching { (source as? HttpSource)?.getHomeUrl() }.getOrNull(),
-        baseUrl = row[SourceTable.baseUrl],
+        homeUrl = row[SourceTable.homeUrl],
+        baseUrl = runCatching { (source as? HttpSource)?.baseUrl }.getOrNull(),
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =

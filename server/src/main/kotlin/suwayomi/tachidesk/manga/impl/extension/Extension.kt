@@ -581,7 +581,7 @@ object Extension {
                 this[SourceTable.lang] = it.lang
                 this[SourceTable.extension] = extensionId
                 this[SourceTable.contentWarning] = contentWarning
-                this[SourceTable.baseUrl] = it.baseUrl
+                this[SourceTable.homeUrl] = it.homeUrl
             }
 
             if (sourceIdsToUpdate.isNotEmpty()) {
@@ -596,7 +596,7 @@ object Extension {
                             this[SourceTable.lang] = httpSource.lang
                             this[SourceTable.extension] = extensionId
                             this[SourceTable.contentWarning] = contentWarning
-                            this[SourceTable.baseUrl] = httpSource.baseUrl
+                            this[SourceTable.homeUrl] = httpSource.homeUrl
                         }
                     }.toExecutable()
                     .execute(this@dbTransaction)
