@@ -50,6 +50,7 @@ class UpdateChapterUserVersionTrigger : TriggerAdapter() {
 
             val chapterId = newRow.getInt("chapter")
             val userId = newRow.getInt("user_id")
+            // language=h2
             conn
                 .prepareStatement(
                     "UPDATE MANGAUSER SET version = version + 1 " +
@@ -105,6 +106,7 @@ class UpdateMangaBumpUserVersionsTrigger : TriggerAdapter() {
 
         if (hasChanged) {
             val mangaId = newRow.getInt("id")
+            // language=h2
             conn
                 .prepareStatement(
                     "UPDATE MANGAUSER SET version = version + 1, last_modified_at = ? " +
@@ -128,6 +130,7 @@ class InsertMangaCategoryUpdateVersionTrigger : TriggerAdapter() {
         val mangaId = newRow.getInt("manga")
         val userId = newRow.getInt("user_id")
 
+        // language=h2
         conn
             .prepareStatement(
                 "UPDATE MANGAUSER SET version = version + 1 WHERE manga = ? AND user_id = ? AND NOT is_syncing",
