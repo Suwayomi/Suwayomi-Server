@@ -15,4 +15,5 @@ object SourceTable : IdTable<Long>() {
     val lang = varchar("lang", 32)
     val extension = reference("extension", ExtensionTable)
     val contentWarning = integer("content_warning").default(0)
+    val baseUrl = varchar("base_url", 2048).nullable()
 }

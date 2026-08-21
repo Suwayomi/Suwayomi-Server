@@ -65,7 +65,7 @@ class SourceType(
         isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
         displayName = source.toString(),
         homeUrl = runCatching { (source as? HttpSource)?.getHomeUrl() }.getOrNull(),
-        baseUrl = runCatching { (source as? HttpSource)?.baseUrl }.getOrNull(),
+        baseUrl = row[SourceTable.baseUrl],
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
