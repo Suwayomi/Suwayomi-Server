@@ -25,6 +25,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.Source.preferenceScreenMap
 import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
@@ -35,6 +36,8 @@ import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.database.dbSuspendTransaction
+import suwayomi.tachidesk.server.database.dbTransaction
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
@@ -136,7 +139,7 @@ object Source {
 
     private val jsonMapper: JsonMapper by injectLazy()
 
-    fun setSourcePreference(
+    suspend fun setSourcePreference(
         sourceId: Long,
         position: Int,
         value: String,
@@ -148,18 +151,26 @@ object Source {
                 else -> throw RuntimeException("Unsupported type conversion")
             }
         },
-    ) {
+    ) = dbSuspendTransaction {
         val screen = preferenceScreenMap[sourceId]!!
         val pref = screen.preferences[position]
 
         if (!pref.isEnabled) {
-            return
+            return@dbSuspendTransaction
         }
 
         val newValue = getValue(pref)
 
         pref.saveNewValue(newValue)
         pref.callChangeListener(newValue)
+
+        val source = getSourceOrNull(sourceId)
+
+        if (source is HttpSource) {
+            SourceTable.update({ SourceTable.id eq sourceId }) {
+                it[SourceTable.homeUrl] = source.getHomeUrl()
+            }
+        }
 
         // must reload the source because a preference was changed
         unregisterSource(sourceId)
