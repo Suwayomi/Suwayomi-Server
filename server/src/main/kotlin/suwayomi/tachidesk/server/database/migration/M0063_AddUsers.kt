@@ -135,7 +135,7 @@ class M0063_AddUsers : Migration() {
 
             -- Recreate the syncyomi triggers on the user specific tables
             CREATE OR REPLACE FUNCTION update_manga_user_version()
-            RETURNS trigger AS \$\$
+            RETURNS trigger AS $$
             BEGIN
                 IF NOT NEW.is_syncing
                    AND ROW(NEW.in_library, NEW.in_library_at)
@@ -147,7 +147,7 @@ class M0063_AddUsers : Migration() {
 
                 RETURN NEW;
             END;
-            \$\$ LANGUAGE plpgsql;
+            $$ LANGUAGE plpgsql;
 
             CREATE TRIGGER update_manga_user_version
             BEFORE UPDATE ON $mangaUserTable
@@ -155,7 +155,7 @@ class M0063_AddUsers : Migration() {
             EXECUTE FUNCTION update_manga_user_version();
 
             CREATE OR REPLACE FUNCTION update_chapter_user_version()
-            RETURNS trigger AS \$\$
+            RETURNS trigger AS $$
             BEGIN
                 IF NOT NEW.is_syncing
                    AND ROW(NEW.read, NEW.bookmark, NEW.last_page_read)
@@ -172,7 +172,7 @@ class M0063_AddUsers : Migration() {
 
                 RETURN NEW;
             END;
-            \$\$ LANGUAGE plpgsql;
+            $$ LANGUAGE plpgsql;
 
             CREATE TRIGGER update_chapter_user_version
             BEFORE UPDATE ON $chapterUserTable
@@ -180,12 +180,12 @@ class M0063_AddUsers : Migration() {
             EXECUTE FUNCTION update_chapter_user_version();
 
             CREATE OR REPLACE FUNCTION update_manga_user_last_modified_at()
-            RETURNS trigger AS \$\$
+            RETURNS trigger AS $$
             BEGIN
                 NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
                 RETURN NEW;
             END;
-            \$\$ LANGUAGE plpgsql;
+            $$ LANGUAGE plpgsql;
 
             CREATE TRIGGER update_manga_user_last_modified_at
             BEFORE UPDATE OR INSERT ON $mangaUserTable
@@ -193,12 +193,12 @@ class M0063_AddUsers : Migration() {
             EXECUTE FUNCTION update_manga_user_last_modified_at();
 
             CREATE OR REPLACE FUNCTION update_chapter_user_last_modified_at()
-            RETURNS trigger AS \$\$
+            RETURNS trigger AS $$
             BEGIN
                 NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
                 RETURN NEW;
             END;
-            \$\$ LANGUAGE plpgsql;
+            $$ LANGUAGE plpgsql;
 
             CREATE TRIGGER update_chapter_user_last_modified_at
             BEFORE UPDATE OR INSERT ON $chapterUserTable
@@ -206,7 +206,7 @@ class M0063_AddUsers : Migration() {
             EXECUTE FUNCTION update_chapter_user_last_modified_at();
 
             CREATE OR REPLACE FUNCTION update_manga_bump_user_versions()
-            RETURNS trigger AS \$\$
+            RETURNS trigger AS $$
             BEGIN
                 IF ROW(NEW.url, NEW.description) IS DISTINCT FROM ROW(OLD.url, OLD.description)
                 THEN
@@ -219,7 +219,7 @@ class M0063_AddUsers : Migration() {
 
                 RETURN NEW;
             END;
-            \$\$ LANGUAGE plpgsql;
+            $$ LANGUAGE plpgsql;
 
             CREATE TRIGGER update_manga_bump_user_versions
             AFTER UPDATE ON $mangaTable
@@ -227,7 +227,7 @@ class M0063_AddUsers : Migration() {
             EXECUTE FUNCTION update_manga_bump_user_versions();
 
             CREATE OR REPLACE FUNCTION insert_manga_category_update_version()
-            RETURNS trigger AS \$\$
+            RETURNS trigger AS $$
             BEGIN
                 UPDATE $mangaUserTable SET version = version + 1
                 WHERE manga = NEW.manga
@@ -236,7 +236,7 @@ class M0063_AddUsers : Migration() {
 
                 RETURN NEW;
             END;
-            \$\$ LANGUAGE plpgsql;
+            $$ LANGUAGE plpgsql;
 
             CREATE TRIGGER insert_manga_category_update_version
             AFTER INSERT ON $categoryMangaTable
