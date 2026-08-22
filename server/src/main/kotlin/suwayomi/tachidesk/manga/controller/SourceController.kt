@@ -157,9 +157,13 @@ object SourceController {
                 body<SourcePreferenceChange>()
             },
             behaviorOf = { ctx, sourceId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
-                ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
+                ctx.future {
+                    future {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
+                        ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)

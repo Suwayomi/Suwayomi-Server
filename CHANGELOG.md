@@ -15,10 +15,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
-- (**GraphQL**) Updated GraphiQL GraphQL Playground
+- (**GraphQL**) Update GraphiQL GraphQL Playground
 - (**Downloads**) Skip LocalSource downloading
 - (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
 - (**Webview**) Don't throw an exception when disabling CEF
+- (**Source/API**) Sources of uninstalled extensions can now be queried. This is opt-in for now for the `sources` query
 
 ### Fixed
 - (**Cloudflare/flaresolverr**) Treat a bypass as successful when a `cf_clearance` cookie is returned, so non-CloudFlare source errors are correctly passed through to the extensions.
@@ -35,6 +36,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Fix authentication with subpath option
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
 - (**Migration/Extension**) Fix `extensionRepos` setting not being migrated to `extensionStores`
+
+### Deprecated
+- (**Source/API**) The `sources` query will return sources of uninstalled extensions by default in the future
+- (**Extension/API**) Rename `ExtensionType` field `source` to `sources` 
 
 ## [v2.3.2243] - 2026-07-13
 

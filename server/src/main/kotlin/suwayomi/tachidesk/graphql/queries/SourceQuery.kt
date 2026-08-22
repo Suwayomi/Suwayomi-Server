@@ -16,7 +16,9 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -43,6 +45,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
@@ -99,6 +102,7 @@ class SourceQuery {
         @GraphQLDeprecated("replace with contentWarning == ContentRating.MIXED", ReplaceWith("contentWarning"))
         val isNsfw: Boolean? = null,
         val contentWarning: ContentWarning? = null,
+        val isInstalled: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -113,6 +117,7 @@ class SourceQuery {
                 }
             }
             opAnd.andWhere(contentWarning) { SourceTable.contentWarning eq it.ordinal }
+            opAnd.eq(isInstalled, ExtensionTable.isInstalled)
 
             return opAnd.op
         }
@@ -125,6 +130,7 @@ class SourceQuery {
         @GraphQLDeprecated("replace with contentWarning", ReplaceWith("contentWarning"))
         val isNsfw: BooleanFilter? = null,
         val contentWarning: ContentWarningFilter? = null,
+        val isInstalled: BooleanFilter? = null,
         override val and: List<SourceFilter>? = null,
         override val or: List<SourceFilter>? = null,
         override val not: SourceFilter? = null,
@@ -136,6 +142,12 @@ class SourceQuery {
                 andFilterWithCompareString(SourceTable.lang, lang),
                 andFilterWithCompareEnum(SourceTable.contentWarning, contentWarning),
             )
+
+        fun isFilteringForExtension(): Boolean =
+            this.isInstalled != null ||
+                this.or?.any { it.isFilteringForExtension() } != null ||
+                this.and?.any { it.isFilteringForExtension() } != null ||
+                this.not?.isFilteringForExtension() != null
     }
 
     @RequireAuth
@@ -162,9 +174,28 @@ class SourceQuery {
         future {
             val (queryResults, resultsAsType) =
                 suspendTransaction {
-                    val res = SourceTable.selectAll()
+                    // TODO - Breaking change - Keep returning only installed sources for now by default
+                    val isFilteringForIsInstalled = condition?.isInstalled != null || filter?.isInstalled != null
+                    val finalCondition =
+                        if (isFilteringForIsInstalled) {
+                            condition
+                        } else {
+                            condition?.copy(isInstalled = true)
+                        }
 
-                    res.applyOps(condition, filter)
+                    val res =
+                        if (condition?.isInstalled != null || filter?.isFilteringForExtension() == true) {
+                            val extensionIdsQuery =
+                                ExtensionTable
+                                    .leftJoin(SourceTable)
+                                    .select(ExtensionTable.id)
+                                    .withDistinct()
+                                    .applyOps(finalCondition, filter)
+
+                            SourceTable.selectAll().where { SourceTable.extension inSubQuery extensionIdsQuery }
+                        } else {
+                            SourceTable.selectAll().applyOps(finalCondition, filter)
+                        }
 
                     val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
                     val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })

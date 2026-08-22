@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.local.LocalSource
+import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.bean.Icon
@@ -44,13 +45,14 @@ import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_NSFW
 import suwayomi.tachidesk.manga.impl.util.PackageTools.METADATA_SOURCE_CLASS
 import suwayomi.tachidesk.manga.impl.util.PackageTools.dex2jar
 import suwayomi.tachidesk.manga.impl.util.PackageTools.getPackageInfo
-import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.impl.util.ResourceArscIconParser
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionSource
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -528,24 +530,50 @@ object Extension {
                 it[this.classFQName] = className
             }
 
-            val extensionId =
+            updateExtensionSourcesDatabase(
+                pkgName,
+                httpSources.map {
+                    ExtensionSource(
+                        id = it.id,
+                        name = it.name,
+                        lang = it.lang,
+                        homeUrl = runCatching { (it as HttpSource).getHomeUrl() }.getOrDefault(""),
+                        message = null,
+                        contentWarning = ContentWarning.valueOf(contentWarning),
+                    )
+                },
+            )
+        }
+    }
+
+    fun updateExtensionSourcesDatabase(
+        pkgName: String,
+        sources: List<ExtensionSource>,
+    ) {
+        dbTransaction {
+            val resultRow =
                 ExtensionTable
                     .select(
                         ExtensionTable.id,
+                        ExtensionTable.contentWarning,
                     ).where { ExtensionTable.pkgName eq pkgName }
-                    .first()[ExtensionTable.id]
-                    .value
+                    .first()
 
-            val dbSourceIds =
+            val extensionId = resultRow[ExtensionTable.id].value
+            val contentWarning = resultRow[ExtensionTable.contentWarning]
+
+            val homeUrlBySourceId =
                 SourceTable
                     .select(
                         SourceTable.id,
+                        SourceTable.homeUrl,
                     ).where { SourceTable.extension eq extensionId }
-                    .map { it[SourceTable.id].value }
-            val httpSourceIds = httpSources.map { it.id }.toSet()
+                    .associate { it[SourceTable.id].value to it[SourceTable.homeUrl] }
+            val dbSourceIds = homeUrlBySourceId.keys
+            val httpSourceIds = sources.map { it.id }.toSet()
 
             val (sourceIdsToUpdate, sourceIdsToDelete) = dbSourceIds.partition { it in httpSourceIds }
-            val sourcesToInsert = httpSources.filterNot { sourceIdsToUpdate.contains(it.id) }
+            val sourcesToInsert = sources.filterNot { sourceIdsToUpdate.contains(it.id) }
 
             SourceTable.deleteWhere { SourceTable.id inList sourceIdsToDelete }
 
@@ -555,6 +583,7 @@ object Extension {
                 this[SourceTable.lang] = it.lang
                 this[SourceTable.extension] = extensionId
                 this[SourceTable.contentWarning] = contentWarning
+                if (it.homeUrl.isNotEmpty()) this[SourceTable.homeUrl] = it.homeUrl
             }
 
             if (sourceIdsToUpdate.isNotEmpty()) {
@@ -563,12 +592,17 @@ object Extension {
                         sourceIdsToUpdate.forEach { sourceId ->
                             addBatch(EntityID(sourceId, SourceTable))
 
-                            val httpSource = httpSources.find { it.id == sourceId }!!
+                            val httpSource = sources.find { it.id == sourceId }!!
 
                             this[SourceTable.name] = httpSource.name
                             this[SourceTable.lang] = httpSource.lang
                             this[SourceTable.extension] = extensionId
                             this[SourceTable.contentWarning] = contentWarning
+                            if (httpSource.homeUrl.isNotEmpty()) {
+                                this[SourceTable.homeUrl] = httpSource.homeUrl
+                            } else {
+                                this[SourceTable.homeUrl] = homeUrlBySourceId[sourceId]
+                            }
                         }
                     }.toExecutable()
                     .execute(this@dbTransaction)

@@ -70,7 +70,11 @@ class ExtensionType(
         isObsolete = row[ExtensionTable.isObsolete],
     )
 
+    @GraphQLDeprecated("Renamed to \"sources\"", ReplaceWith("sources"))
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> =
+        dataFetchingEnvironment.getValueFromDataLoader<String, SourceNodeList>("SourcesForExtensionDataLoader", pkgName)
+
+    fun sources(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<String, SourceNodeList>("SourcesForExtensionDataLoader", pkgName)
 
     fun extensionStore(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionStoreType?> =

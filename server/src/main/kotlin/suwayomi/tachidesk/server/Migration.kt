@@ -2,8 +2,20 @@ package suwayomi.tachidesk.server
 
 import android.app.Application
 import android.content.Context
+import eu.kanade.tachiyomi.source.local.LocalSource
+import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.database.H2Migration
 import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
@@ -77,7 +89,7 @@ private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
     }
 }
 
-fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
+private fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
     H2Migration.migrate(
         applicationDirs.dataRoot,
         "1.4.200",
@@ -85,8 +97,45 @@ fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
     )
 }
 
-private val MIGRATIONS =
-    listOf<Pair<String, (ApplicationDirs) -> Unit>>(
+private suspend fun fillNewSourceHomeUrlColumn() {
+    suspendTransaction {
+        val sourceIds =
+            SourceTable
+                .leftJoin(ExtensionTable)
+                .select(SourceTable.id)
+                .where {
+                    (SourceTable.id neq LocalSource.ID) and (ExtensionTable.apkName neq null)
+                }.map { it[SourceTable.id].value }
+
+        val updates =
+            sourceIds.mapNotNull { id ->
+                when (val source = GetSource.getSourceOrNull(id)) {
+                    is HttpSource -> id to source.getHomeUrl()
+                    else -> null
+                }
+            }
+
+        if (updates.isNotEmpty()) {
+            BatchUpdateStatement(SourceTable)
+                .apply {
+                    updates.forEach { (sourceId, homeUrl) ->
+                        addBatch(EntityID(sourceId, SourceTable))
+
+                        this[SourceTable.homeUrl] = homeUrl
+                    }
+                }.toExecutable()
+                .execute(this@suspendTransaction)
+        }
+    }
+}
+
+private enum class MigrationType {
+    PRE_DB_STARTUP,
+    POST_DB_STARTUP,
+}
+
+private val PRE_DB_STARTUP_MIGRATIONS =
+    listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>(
         "InitialMigration" to { applicationDirs ->
             migrateMangaDownloadDir(applicationDirs)
             migratePreferencesToNewXmlFileBasedStorage()
@@ -99,26 +148,44 @@ private val MIGRATIONS =
         },
     )
 
-fun runMigrations(applicationDirs: ApplicationDirs) {
-    val logger = KotlinLogging.logger("Migration")
+private val POST_DB_MIGRATIONS =
+    listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>(
+        "FillNewSourceHomeUrlColumn" to {
+            fillNewSourceHomeUrlColumn()
+        },
+    )
+
+private val MIGRATIONS =
+    mapOf<Any, List<Pair<String, suspend (ApplicationDirs) -> Unit>>>(
+        MigrationType.PRE_DB_STARTUP to PRE_DB_STARTUP_MIGRATIONS,
+        MigrationType.POST_DB_STARTUP to POST_DB_MIGRATIONS,
+    )
+
+private val migrationPreferences =
+    Injekt
+        .get<Application>()
+        .getSharedPreferences(
+            "migrations",
+            Context.MODE_PRIVATE,
+        )
+
+private val version by lazy { migrationPreferences.getInt("version", 0) }
+
+private suspend fun runMigrations(
+    type: MigrationType,
+    startIndex: Int,
+    applicationDirs: ApplicationDirs,
+) {
+    val logger = KotlinLogging.logger("Migration(type= ${type.name})")
     try {
-        val migrationPreferences =
-            Injekt
-                .get<Application>()
-                .getSharedPreferences(
-                    "migrations",
-                    Context.MODE_PRIVATE,
-                )
-        val version = migrationPreferences.getInt("version", 0)
+        val migrations = MIGRATIONS[type].orEmpty()
 
-        logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
-
-        MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
-            val migrationVersion = index + 1
+        migrations.forEachIndexed { index, (migrationName, migrationFunction) ->
+            val migrationVersion = startIndex + index + 1
 
             val isMigrationRequired = version < migrationVersion
             if (!isMigrationRequired) {
-                logger.info { "Skipping migration version $migrationVersion: $migrationName" }
+                logger.debug { "Skipping migration version $migrationVersion: $migrationName" }
                 return@forEachIndexed
             }
 
@@ -132,4 +199,21 @@ fun runMigrations(applicationDirs: ApplicationDirs) {
         logger.error(e) { "Failed to run migrations" }
         shutdownApp(ExitCode.MigrationsRunFailure)
     }
+}
+
+suspend fun runMigrations(
+    applicationDirs: ApplicationDirs,
+    dbStartup: () -> Unit,
+) {
+    val logger = KotlinLogging.logger("Migration")
+
+    logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.flatMap { it.value }.size}" }
+
+    runMigrations(MigrationType.PRE_DB_STARTUP, 0, applicationDirs)
+
+    dbStartup()
+
+    runMigrations(MigrationType.POST_DB_STARTUP, PRE_DB_STARTUP_MIGRATIONS.size, applicationDirs)
+
+    logger.info { "Migrations finished successfully" }
 }
