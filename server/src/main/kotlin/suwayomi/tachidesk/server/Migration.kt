@@ -136,7 +136,7 @@ private suspend fun runMigrations(
 
             val isMigrationRequired = version < migrationVersion
             if (!isMigrationRequired) {
-                logger.info { "Skipping migration version $migrationVersion: $migrationName" }
+                logger.debug { "Skipping migration version $migrationVersion: $migrationName" }
                 return@forEachIndexed
             }
 
