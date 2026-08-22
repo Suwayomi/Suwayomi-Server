@@ -7,6 +7,7 @@ import nl.adaptivity.xmlutil.serialization.XML
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -26,7 +27,6 @@ fun getComicInfo(
     manga: ResultRow,
     chapter: ResultRow,
     chapterUrl: String,
-    categories: List<String>?,
 ): ComicInfo {
     val dateUpload = chapter[ChapterTable.date_upload]
     val localDate =
@@ -53,7 +53,7 @@ fun getComicInfo(
             ComicInfo.PublishingStatusTachiyomi(
                 ComicInfoPublishingStatus.toComicInfoValue(manga[MangaTable.status].toLong()),
             ),
-        categories = categories?.let { ComicInfo.CategoriesTachiyomi(it.joinToString()) },
+        categories = null, // Removed due to user accounts
         inker = null,
         colorist = null,
         letterer = null,
@@ -74,19 +74,7 @@ fun createComicInfoFile(
     chapter: ResultRow,
 ) {
     val chapterUrl = chapter[ChapterTable.realUrl].orEmpty()
-    val categories =
-        transaction {
-            CategoryMangaTable
-                .innerJoin(CategoryTable)
-                .selectAll()
-                .where {
-                    CategoryMangaTable.manga eq manga[MangaTable.id]
-                }.orderBy(CategoryTable.order to SortOrder.ASC)
-                .map {
-                    it[CategoryTable.name]
-                }
-        }.takeUnless { it.isEmpty() }
-    val comicInfo = getComicInfo(manga, chapter, chapterUrl, categories)
+    val comicInfo = getComicInfo(manga, chapter, chapterUrl)
     // Remove the old file
     (dir / COMIC_INFO_FILE).deleteIfExists()
     (dir / COMIC_INFO_FILE).outputStream().use {

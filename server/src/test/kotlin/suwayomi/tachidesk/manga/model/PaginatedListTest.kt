@@ -7,12 +7,12 @@ package suwayomi.tachidesk.manga.model
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.model.dataclass.PAGINATION_FACTOR
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
 import suwayomi.tachidesk.test.ApplicationTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class PaginatedListTest : ApplicationTest() {
     @Test

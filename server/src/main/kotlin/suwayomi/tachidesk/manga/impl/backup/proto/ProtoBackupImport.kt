@@ -34,8 +34,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
-import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import java.io.InputStream
 import java.util.Date
 import java.util.Timer
@@ -112,6 +112,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
     @OptIn(DelicateCoroutinesApi::class)
     fun restore(
+        userId: Int,
         sourceStream: InputStream,
         flags: BackupFlags,
         isSync: Boolean = false,
@@ -123,13 +124,14 @@ object ProtoBackupImport : ProtoBackupBase() {
         updateRestoreState(restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
-            restoreLegacy(sourceStream, restoreId, flags, isSync)
+            restoreLegacy(userId, sourceStream, restoreId, flags, isSync)
         }
 
         return restoreId
     }
 
     suspend fun restoreLegacy(
+        userId: Int,
         sourceStream: InputStream,
         restoreId: String = "legacy",
         flags: BackupFlags = BackupFlags.DEFAULT,
@@ -138,7 +140,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         backupMutex.withLock {
             try {
                 logger.info { "restore($restoreId): restoring..." }
-                performRestore(restoreId, sourceStream, flags, isSync)
+                performRestore(userId, restoreId, sourceStream, flags, isSync)
             } catch (e: Exception) {
                 logger.error(e) { "restore($restoreId): failed due to" }
 
@@ -156,6 +158,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         }
 
     private fun performRestore(
+        userId: Int,
         id: String,
         sourceStream: InputStream,
         flags: BackupFlags,
@@ -170,7 +173,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 .use { it.readByteArray() }
         val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
 
-        val validationResult = validate(backup)
+        val validationResult = validate(userId, backup)
 
         val restoreCategories = if (flags.includeCategories) 1 else 0
         val restoreMeta = if (flags.includeClientData) 1 else 0
@@ -190,7 +193,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         val categoryMapping =
             if (flags.includeCategories) {
                 updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
-                BackupCategoryHandler.restore(backup.backupCategories)
+                BackupCategoryHandler.restore(userId, backup.backupCategories)
             } else {
                 emptyMap()
             }
@@ -198,9 +201,9 @@ object ProtoBackupImport : ProtoBackupBase() {
         if (flags.includeClientData) {
             updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreSettings + restoreCategories + restoreMeta, restoreAmount))
 
-            BackupGlobalMetaHandler.restore(backup.meta)
+            BackupGlobalMetaHandler.restore(userId, backup.meta)
 
-            BackupSourceHandler.restore(backup.backupSources)
+            BackupSourceHandler.restore(userId, backup.backupSources)
         }
 
         // Store source mapping for error messages
@@ -221,6 +224,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                 )
 
                 BackupMangaHandler.restore(
+                    userId,
                     backupManga = manga,
                     categoryMapping = categoryMapping,
                     sourceMapping = sourceMapping,
@@ -244,14 +248,12 @@ object ProtoBackupImport : ProtoBackupBase() {
             """.trimIndent()
         }
 
-        if (isSync) {
-            transaction {
-                MangaTable.update({ MangaTable.isSyncing eq true }) {
-                    it[isSyncing] = false
-                }
-                ChapterTable.update({ ChapterTable.isSyncing eq true }) {
-                    it[isSyncing] = false
-                }
+        transaction {
+            MangaUserTable.update({ MangaUserTable.isSyncing eq true }) {
+                it[isSyncing] = false
+            }
+            ChapterUserTable.update({ ChapterUserTable.isSyncing eq true }) {
+                it[isSyncing] = false
             }
         }
 

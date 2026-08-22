@@ -98,7 +98,10 @@ object ProtoBackupExport : ProtoBackupBase() {
     private fun createAutomatedBackup() {
         logger.info { "Creating automated backup..." }
 
-        createBackup(BackupFlags.fromServerConfig()).use { input ->
+        createBackup(
+            1, // todo figure out how to make a global backup with all user data
+            BackupFlags.fromServerConfig(),
+        ).use { input ->
             val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
             automatedBackupDir.mkdirs()
 
@@ -146,16 +149,19 @@ object ProtoBackupExport : ProtoBackupBase() {
         }
     }
 
-    fun createBackup(flags: BackupFlags): InputStream {
+    fun createBackup(
+        userId: Int,
+        flags: BackupFlags,
+    ): InputStream {
         // Create root object
         val backup: Backup =
             transaction {
-                val backupMangas = BackupMangaHandler.backup(flags)
+                val backupMangas = BackupMangaHandler.backup(userId, flags)
                 Backup(
                     backupMangas,
-                    BackupCategoryHandler.backup(flags),
-                    BackupSourceHandler.backup(backupMangas, flags),
-                    BackupGlobalMetaHandler.backup(flags),
+                    BackupCategoryHandler.backup(userId, flags),
+                    BackupSourceHandler.backup(userId, backupMangas, flags),
+                    BackupGlobalMetaHandler.backup(userId, flags),
                     BackupSettingsHandler.backup(flags),
                 )
             }

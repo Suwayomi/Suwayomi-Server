@@ -107,6 +107,7 @@ dependencies {
 
     implementation(libs.cronUtils)
 
+    implementation(libs.bcrypt)
     implementation(libs.jwt)
 
     compileOnly(libs.kte)

@@ -2,12 +2,26 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.impl.util.Jwt
+import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.user.Permissions
 import suwayomi.tachidesk.server.user.UserType
+import suwayomi.tachidesk.server.user.requirePermissions
+import suwayomi.tachidesk.server.user.requireUser
 
 class UserMutation {
     data class LoginInput(
@@ -29,11 +43,16 @@ class UserMutation {
         if (dataFetchingEnvironment.getAttribute(Attribute.TachideskUser) !is UserType.Visitor) {
             throw IllegalArgumentException("Cannot login while already logged-in")
         }
-        val isValid =
-            input.username == serverConfig.authUsername.value &&
-                input.password == serverConfig.authPassword.value
-        if (isValid) {
-            val jwt = Jwt.generateJwt()
+
+        val user =
+            transaction {
+                UserAccountTable
+                    .selectAll()
+                    .where { UserAccountTable.username.lowerCase() eq input.username.lowercase() }
+                    .firstOrNull()
+            }
+        if (user != null && Bcrypt.verify(user[UserAccountTable.password], input.password)) {
+            val jwt = Jwt.generateJwt(user[UserAccountTable.id].value)
             return LoginPayload(
                 clientMutationId = input.clientMutationId,
                 accessToken = jwt.accessToken,
@@ -60,6 +79,71 @@ class UserMutation {
         return RefreshTokenPayload(
             clientMutationId = input.clientMutationId,
             accessToken = accessToken,
+        )
+    }
+
+    data class RegisterInput(
+        val clientMutationId: String? = null,
+        val username: String,
+        val password: String,
+    )
+
+    data class RegisterPayload(
+        val clientMutationId: String?,
+    )
+
+    fun register(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        input: RegisterInput,
+    ): RegisterPayload {
+        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requirePermissions(Permissions.CREATE_USER)
+
+        val (clientMutationId, username, password) = input
+        transaction {
+            val userExists =
+                UserAccountTable
+                    .selectAll()
+                    .where { UserAccountTable.username.lowerCase() eq username.lowercase() }
+                    .isNotEmpty()
+            if (userExists) {
+                throw Exception("Username already exists")
+            } else {
+                UserAccountTable.insert {
+                    it[UserAccountTable.username] = username
+                    it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
+                }
+            }
+        }
+
+        return RegisterPayload(
+            clientMutationId = clientMutationId,
+        )
+    }
+
+    data class SetPasswordInput(
+        val clientMutationId: String? = null,
+        val password: String,
+    )
+
+    data class SetPasswordPayload(
+        val clientMutationId: String?,
+    )
+
+    @RequireAuth
+    fun setPassword(
+        @GraphQLIgnore
+        userId: Int,
+        input: SetPasswordInput,
+    ): SetPasswordPayload {
+        val (clientMutationId, password) = input
+        transaction {
+            UserAccountTable.update({ UserAccountTable.id eq userId }) {
+                it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
+            }
+        }
+
+        return SetPasswordPayload(
+            clientMutationId = clientMutationId,
         )
     }
 }

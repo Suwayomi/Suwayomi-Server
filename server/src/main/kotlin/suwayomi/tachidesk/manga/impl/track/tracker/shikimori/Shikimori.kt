@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.shikimori
 
+import io.github.reactivecircus.cache4k.Cache
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
@@ -9,6 +10,8 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.shikimori.dto.SMOAuth
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.hours
 
 class Shikimori(
     id: Int,
@@ -29,17 +32,37 @@ class Shikimori(
 
     private val json: Json by injectLazy()
 
-    private val interceptor by lazy { ShikimoriInterceptor(this) }
+    private val interceptors = ConcurrentHashMap<Int, ShikimoriInterceptor>()
+    private val apis =
+        Cache
+            .Builder<Int, ShikimoriApi>()
+            .expireAfterAccess(1.hours)
+            .build()
 
-    private val api by lazy { ShikimoriApi(id, client, interceptor) }
+    fun interceptor(userId: Int): ShikimoriInterceptor =
+        interceptors.getOrPut(userId) {
+            ShikimoriInterceptor(userId, this)
+        }
 
-    override fun getScoreList(): List<String> = SCORE_LIST
+    suspend fun api(userId: Int): ShikimoriApi =
+        apis.get(userId) {
+            ShikimoriApi(id, client, interceptor(userId))
+        }
 
-    override fun displayScore(track: Track): String = track.score.toInt().toString()
+    override fun getScoreList(userId: Int): List<String> = SCORE_LIST
 
-    private suspend fun add(track: Track): Track = api.addLibManga(track, getUsername())
+    override fun displayScore(
+        userId: Int,
+        track: Track,
+    ): String = track.score.toInt().toString()
+
+    private suspend fun add(
+        userId: Int,
+        track: Track,
+    ): Track = api(userId).addLibManga(track, getUsername(userId))
 
     override suspend fun update(
+        userId: Int,
         track: Track,
         didReadChapter: Boolean,
     ): Track {
@@ -53,18 +76,22 @@ class Shikimori(
             }
         }
 
-        return api.updateLibManga(track, getUsername())
+        return api(userId).updateLibManga(track, getUsername(userId))
     }
 
-    override suspend fun delete(track: Track) {
-        api.deleteLibManga(track)
+    override suspend fun delete(
+        userId: Int,
+        track: Track,
+    ) {
+        api(userId).deleteLibManga(track)
     }
 
     override suspend fun bind(
+        userId: Int,
         track: Track,
         hasReadChapters: Boolean,
     ): Track {
-        val remoteTrack = api.findLibManga(track, getUsername())
+        val remoteTrack = api(userId).findLibManga(track, getUsername(userId))
         return if (remoteTrack != null) {
             track.copyPersonalFrom(remoteTrack)
             track.library_id = remoteTrack.library_id
@@ -74,19 +101,25 @@ class Shikimori(
                 track.status = if (!isRereading && hasReadChapters) READING else track.status
             }
 
-            update(track)
+            update(userId, track)
         } else {
             // Set default fields if it's not found in the list
             track.status = if (hasReadChapters) READING else PLAN_TO_READ
             track.score = 0.0
-            add(track)
+            add(userId, track)
         }
     }
 
-    override suspend fun search(query: String): List<TrackSearch> = api.search(query)
+    override suspend fun search(
+        userId: Int,
+        query: String,
+    ): List<TrackSearch> = api(userId).search(query)
 
-    override suspend fun refresh(track: Track): Track {
-        api.findLibManga(track, getUsername())?.let { remoteTrack ->
+    override suspend fun refresh(
+        userId: Int,
+        track: Track,
+    ): Track {
+        api(userId).findLibManga(track, getUsername(userId))?.let { remoteTrack ->
             track.library_id = remoteTrack.library_id
             track.copyPersonalFrom(remoteTrack)
             track.total_chapters = remoteTrack.total_chapters
@@ -117,37 +150,47 @@ class Shikimori(
 
     override fun authUrl(): String = ShikimoriApi.authUrl().toString()
 
-    override suspend fun authCallback(url: String) {
+    override suspend fun authCallback(
+        userId: Int,
+        url: String,
+    ) {
         val token = url.extractToken("code") ?: throw IOException("cannot find token")
-        login(token)
+        login(userId, token)
     }
 
     override suspend fun loginImpl(
+        userId: Int,
         username: String,
         password: String,
-    ) = login(password)
+    ) = login(userId, password)
 
-    suspend fun login(code: String) {
-        val oauth = api.accessToken(code)
-        interceptor.newAuth(oauth)
-        val user = api.getCurrentUser()
-        saveCredentials(user.toString(), oauth.accessToken)
+    suspend fun login(
+        userId: Int,
+        code: String,
+    ) {
+        val oauth = api(userId).accessToken(code)
+        interceptor(userId).newAuth(oauth)
+        val user = api(userId).getCurrentUser()
+        saveCredentials(userId, user.toString(), oauth.accessToken)
     }
 
-    fun saveToken(oauth: SMOAuth?) {
-        trackPreferences.setTrackToken(this, json.encodeToString(oauth))
+    fun saveToken(
+        userId: Int,
+        oauth: SMOAuth?,
+    ) {
+        trackPreferences.setTrackToken(userId, this, json.encodeToString(oauth))
     }
 
-    fun restoreToken(): SMOAuth? =
+    fun restoreToken(userId: Int): SMOAuth? =
         try {
-            trackPreferences.getTrackToken(this)?.let { json.decodeFromString<SMOAuth>(it) }
+            trackPreferences.getTrackToken(userId, this)?.let { json.decodeFromString<SMOAuth>(it) }
         } catch (e: Exception) {
             null
         }
 
-    override fun logout() {
-        super.logout()
-        trackPreferences.setTrackToken(this, null)
-        interceptor.newAuth(null)
+    override suspend fun logout(userId: Int) {
+        super.logout(userId)
+        trackPreferences.setTrackToken(userId, this, null)
+        interceptor(userId).newAuth(null)
     }
 }

@@ -4,8 +4,11 @@ import dev.icerock.moko.resources.StringResource
 import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.alias
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.countDistinct
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.innerJoin
+import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.i18n.MR
@@ -15,7 +18,9 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsCategoryNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsGenreNavEntry
@@ -136,8 +141,11 @@ object NavigationRepository {
         transaction {
             val query =
                 SourceTable
-                    .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                    .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
+                    .leftJoin(
+                        ExtensionTable,
+                        onColumn = { SourceTable.extension },
+                        otherColumn = { ExtensionTable.id },
+                    ).select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .where { ExtensionTable.isInstalled eq true }
                     .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
@@ -159,6 +167,7 @@ object NavigationRepository {
         }
 
     fun getLibrarySources(
+        userId: Int,
         pageNum: Int? = null,
         activeFilters: OpdsMangaFilter = OpdsMangaFilter(),
     ): Pair<List<OpdsSourceNavEntry>, Long> =
@@ -167,19 +176,34 @@ object NavigationRepository {
 
             var baseJoin =
                 SourceTable
-                    .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
-                    .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
+                    .innerJoin(
+                        MangaTable.getWithUserData(userId),
+                        { SourceTable.id },
+                        { MangaTable.sourceReference },
+                    ).leftJoin(
+                        ExtensionTable,
+                        onColumn = { SourceTable.extension },
+                        otherColumn = { ExtensionTable.id },
+                    )
 
             if (activeFilters.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                baseJoin =
+                    baseJoin.leftJoin(
+                        CategoryMangaTable,
+                        { MangaTable.id },
+                        { CategoryMangaTable.manga },
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    )
             }
 
             val query =
                 baseJoin
                     .select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName, mangaCount)
-                    .where { MangaTable.inLibrary eq true }
+                    .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "source_id")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "source_id")
 
             query
                 .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
@@ -208,8 +232,11 @@ object NavigationRepository {
     fun getSourceDetails(sourceId: Long): Pair<String, String?>? =
         transaction {
             SourceTable
-                .join(ExtensionTable, JoinType.LEFT, onColumn = SourceTable.extension, otherColumn = ExtensionTable.id)
-                .select(SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
+                .leftJoin(
+                    ExtensionTable,
+                    onColumn = { SourceTable.extension },
+                    otherColumn = { ExtensionTable.id },
+                ).select(SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                 .where { SourceTable.id eq sourceId }
                 .firstOrNull()
                 ?.let {
@@ -220,6 +247,7 @@ object NavigationRepository {
         }
 
     fun getCategories(
+        userId: Int,
         pageNum: Int? = null,
         activeFilters: OpdsMangaFilter = OpdsMangaFilter(),
     ): Pair<List<OpdsCategoryNavEntry>, Long> =
@@ -228,13 +256,25 @@ object NavigationRepository {
 
             val query =
                 CategoryTable
-                    .join(CategoryMangaTable, JoinType.INNER, CategoryTable.id, CategoryMangaTable.category)
-                    .join(MangaTable, JoinType.INNER, CategoryMangaTable.manga, MangaTable.id)
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
-                    .select(CategoryTable.id, CategoryTable.name, mangaCount)
-                    .where { MangaTable.inLibrary eq true }
+                    .innerJoin(
+                        CategoryMangaTable,
+                        { CategoryTable.id },
+                        { CategoryMangaTable.category },
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    ).innerJoin(
+                        MangaTable.getWithUserData(userId),
+                        { CategoryMangaTable.manga },
+                        { MangaTable.id },
+                    ).innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    ).select(CategoryTable.id, CategoryTable.name, mangaCount)
+                    .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "category_id")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "category_id")
 
             query
                 .groupBy(CategoryTable.id, CategoryTable.name)
@@ -260,6 +300,7 @@ object NavigationRepository {
         }
 
     fun getGenres(
+        userId: Int,
         locale: Locale,
         pageNum: Int? = null,
         activeFilters: OpdsMangaFilter = OpdsMangaFilter(),
@@ -267,17 +308,30 @@ object NavigationRepository {
         transaction {
             var baseJoin =
                 MangaTable
-                    .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                    .getWithUserData(userId)
+                    .innerJoin(
+                        SourceTable,
+                        { MangaTable.sourceReference },
+                        { SourceTable.id },
+                    )
             if (activeFilters.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                baseJoin =
+                    baseJoin.leftJoin(
+                        CategoryMangaTable,
+                        { MangaTable.id },
+                        { CategoryMangaTable.manga },
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    )
             }
 
             val query =
                 baseJoin
                     .select(MangaTable.genre)
-                    .where { MangaTable.inLibrary eq true }
+                    .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "genre")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "genre")
 
             val allGenres =
                 query
@@ -310,6 +364,7 @@ object NavigationRepository {
         }
 
     fun getStatuses(
+        userId: Int,
         locale: Locale,
         pageNum: Int? = null,
         activeFilters: OpdsMangaFilter = OpdsMangaFilter(),
@@ -331,17 +386,30 @@ object NavigationRepository {
 
                 var baseJoin =
                     MangaTable
-                        .join(SourceTable, JoinType.INNER, MangaTable.sourceReference, SourceTable.id)
+                        .getWithUserData(userId)
+                        .innerJoin(
+                            SourceTable,
+                            { MangaTable.sourceReference },
+                            { SourceTable.id },
+                        )
                 if (activeFilters.categoryId != null) {
-                    baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                    baseJoin =
+                        baseJoin.leftJoin(
+                            CategoryMangaTable,
+                            { MangaTable.id },
+                            { CategoryMangaTable.manga },
+                            additionalConstraint = {
+                                CategoryMangaTable.user eq userId
+                            },
+                        )
                 }
 
                 val query =
                     baseJoin
                         .select(MangaTable.status, countExpr)
-                        .where { MangaTable.inLibrary eq true }
+                        .where { MangaUserTable.inLibrary eq true }
 
-                query.applyOpdsMangaFilter(activeFilters, excludeField = "status_id")
+                query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "status_id")
 
                 query
                     .groupBy(MangaTable.status)
@@ -374,6 +442,7 @@ object NavigationRepository {
     }
 
     fun getContentLanguages(
+        userId: Int,
         locale: Locale,
         pageNum: Int? = null,
         activeFilters: OpdsMangaFilter = OpdsMangaFilter(),
@@ -383,17 +452,29 @@ object NavigationRepository {
 
             var baseJoin =
                 SourceTable
-                    .join(MangaTable, JoinType.INNER, SourceTable.id, MangaTable.sourceReference)
+                    .innerJoin(
+                        MangaTable.getWithUserData(userId),
+                        { SourceTable.id },
+                        { MangaTable.sourceReference },
+                    )
             if (activeFilters.categoryId != null) {
-                baseJoin = baseJoin.join(CategoryMangaTable, JoinType.LEFT, MangaTable.id, CategoryMangaTable.manga)
+                baseJoin =
+                    baseJoin.leftJoin(
+                        CategoryMangaTable,
+                        { MangaTable.id },
+                        { CategoryMangaTable.manga },
+                        additionalConstraint = {
+                            CategoryMangaTable.user eq userId
+                        },
+                    )
             }
 
             val query =
                 baseJoin
                     .select(SourceTable.lang, mangaCount)
-                    .where { MangaTable.inLibrary eq true }
+                    .where { MangaUserTable.inLibrary eq true }
 
-            query.applyOpdsMangaFilter(activeFilters, excludeField = "lang_code")
+            query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "lang_code")
 
             query
                 .groupBy(SourceTable.lang)

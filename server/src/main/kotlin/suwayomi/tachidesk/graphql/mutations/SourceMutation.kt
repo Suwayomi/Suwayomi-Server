@@ -7,6 +7,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -48,10 +49,14 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMeta(input: SetSourceMetaInput): SetSourceMetaPayload? {
+    fun setSourceMeta(
+        @GraphQLIgnore
+        userId: Int,
+        input: SetSourceMetaInput,
+    ): SetSourceMetaPayload? {
         val (clientMutationId, meta) = input
 
-        Source.modifyMeta(meta.sourceId, meta.key, meta.value)
+        Source.modifyMeta(userId, meta.sourceId, meta.key, meta.value)
 
         return SetSourceMetaPayload(clientMutationId, meta)
     }
@@ -69,7 +74,11 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMeta(input: DeleteSourceMetaInput): CompletableFuture<DeleteSourceMetaPayload?> {
+    fun deleteSourceMeta(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteSourceMetaInput,
+    ): CompletableFuture<DeleteSourceMetaPayload?> {
         val (clientMutationId, sourceId, key) = input
 
         return future {
@@ -78,10 +87,17 @@ class SourceMutation {
                     val meta =
                         SourceMetaTable
                             .selectAll()
-                            .where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
-                            .firstOrNull()
+                            .where {
+                                (SourceMetaTable.user eq userId) and
+                                    (SourceMetaTable.ref eq sourceId) and
+                                    (SourceMetaTable.key eq key)
+                            }.firstOrNull()
 
-                    SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                    SourceMetaTable.deleteWhere {
+                        (SourceMetaTable.user eq userId) and
+                            (SourceMetaTable.ref eq sourceId) and
+                            (SourceMetaTable.key eq key)
+                    }
 
                     val source =
                         SourceTable
@@ -118,7 +134,11 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMetas(input: SetSourceMetasInput): CompletableFuture<SetSourceMetasPayload?> {
+    fun setSourceMetas(
+        @GraphQLIgnore
+        userId: Int,
+        input: SetSourceMetasInput,
+    ): CompletableFuture<SetSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
         return future {
@@ -130,7 +150,7 @@ class SourceMutation {
                     }.groupBy({ it.first }, { it.second })
                     .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
 
-            Source.modifySourceMetas(metaBySourceId)
+            Source.modifySourceMetas(userId, metaBySourceId)
 
             val allSourceIds = metaBySourceId.keys
             val allMetaKeys = metaBySourceId.values.flatMap { it.keys }.distinct()
@@ -140,8 +160,10 @@ class SourceMutation {
                     val updatedMetas =
                         SourceMetaTable
                             .selectAll()
-                            .where { (SourceMetaTable.ref inList allSourceIds) and (SourceMetaTable.key inList allMetaKeys) }
-                            .map { SourceMetaType(it) }
+                            .where {
+                                (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList allSourceIds) and
+                                    (SourceMetaTable.key inList allMetaKeys)
+                            }.map { SourceMetaType(it) }
 
                     val sources =
                         SourceTable
@@ -175,7 +197,11 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMetas(input: DeleteSourceMetasInput): CompletableFuture<DeleteSourceMetasPayload?> {
+    fun deleteSourceMetas(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteSourceMetasInput,
+    ): CompletableFuture<DeleteSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
         return future {
@@ -207,7 +233,8 @@ class SourceMutation {
                                 keyCondition ?: prefixCondition!!
                             }
 
-                        val condition = (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
+                        val condition =
+                            (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
 
                         deletedMetas +=
                             SourceMetaTable

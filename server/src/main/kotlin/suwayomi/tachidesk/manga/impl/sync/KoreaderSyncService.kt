@@ -25,7 +25,9 @@ import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.Platform
 import uy.kohesive.injekt.Injekt
@@ -36,14 +38,15 @@ import java.util.UUID
 import kotlin.math.abs
 
 object KoreaderSyncService {
-    private val preferences = Injekt.get<Application>().getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+    // todo: User accounts
+    private val logger = KotlinLogging.logger {}
 
+    private val preferences = Injekt.get<Application>().getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
     private const val SERVER_ADDRESS_KEY = "server_address"
     private const val USERNAME_KEY = "username"
     private const val USERKEY_KEY = "user_key"
-    private const val DEVICE_ID_KEY = "client_id"
 
-    private val logger = KotlinLogging.logger {}
+    private const val DEVICE_ID_KEY = "client_id"
     private val network: NetworkHelper by injectLazy()
     private val json: Json by injectLazy()
     private val jsonMapper: JsonMapper by injectLazy()
@@ -339,7 +342,10 @@ object KoreaderSyncService {
         }
     }
 
-    suspend fun pushProgress(chapterId: Int) {
+    suspend fun pushProgress(
+        userId: Int,
+        chapterId: Int,
+    ) {
         val forwardStrategy = serverConfig.koreaderSyncStrategyForward.value
         val backwardStrategy = serverConfig.koreaderSyncStrategyBackward.value
 
@@ -362,12 +368,13 @@ object KoreaderSyncService {
         val chapterInfo =
             transaction {
                 ChapterTable
-                    .select(ChapterTable.lastPageRead, ChapterTable.pageCount)
+                    .getWithUserData(userId)
+                    .select(ChapterUserTable.lastPageRead, ChapterTable.pageCount)
                     .where { ChapterTable.id eq chapterId }
                     .firstOrNull()
                     ?.let {
                         object {
-                            val lastPageRead = it[ChapterTable.lastPageRead]
+                            val lastPageRead = it[ChapterUserTable.lastPageRead]
                             val pageCount = it[ChapterTable.pageCount]
                         }
                     }
@@ -413,7 +420,10 @@ object KoreaderSyncService {
         }
     }
 
-    suspend fun checkAndPullProgress(chapterId: Int): SyncResult? {
+    suspend fun checkAndPullProgress(
+        userId: Int,
+        chapterId: Int,
+    ): SyncResult? {
         val forwardStrategy = serverConfig.koreaderSyncStrategyForward.value
         val backwardStrategy = serverConfig.koreaderSyncStrategyBackward.value
 
@@ -456,13 +466,14 @@ object KoreaderSyncService {
                     val localProgress =
                         transaction {
                             ChapterTable
-                                .select(ChapterTable.lastReadAt, ChapterTable.lastPageRead, ChapterTable.pageCount)
+                                .getWithUserData(userId)
+                                .select(ChapterUserTable.lastReadAt, ChapterUserTable.lastPageRead, ChapterTable.pageCount)
                                 .where { ChapterTable.id eq chapterId }
                                 .firstOrNull()
                                 ?.let {
                                     object {
-                                        val lastReadAt = it[ChapterTable.lastReadAt]
-                                        val lastPageRead = it[ChapterTable.lastPageRead]
+                                        val lastReadAt = it[ChapterUserTable.lastReadAt]
+                                        val lastPageRead = it[ChapterUserTable.lastPageRead]
                                         val pageCount = it[ChapterTable.pageCount]
                                     }
                                 }

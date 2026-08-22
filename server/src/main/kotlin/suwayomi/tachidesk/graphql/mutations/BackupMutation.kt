@@ -3,11 +3,13 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import io.javalin.http.UploadedFile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.PartialBackupFlags
 import suwayomi.tachidesk.graphql.types.toStatus
@@ -33,12 +35,17 @@ class BackupMutation {
     )
 
     @RequireAuth
-    fun restoreBackup(input: RestoreBackupInput): CompletableFuture<RestoreBackupPayload> {
+    fun restoreBackup(
+        @GraphQLIgnore
+        userId: Int,
+        input: RestoreBackupInput,
+    ): CompletableFuture<RestoreBackupPayload> {
         val (clientMutationId, backup, flags) = input
 
         return future {
             val restoreId =
                 ProtoBackupImport.restore(
+                    userId,
                     backup.content(),
                     BackupFlags.fromPartial(flags),
                 )
@@ -76,11 +83,16 @@ class BackupMutation {
     )
 
     @RequireAuth
-    fun createBackup(input: CreateBackupInput? = null): CreateBackupPayload {
+    fun createBackup(
+        @GraphQLIgnore
+        userId: Int,
+        input: CreateBackupInput? = null,
+    ): CreateBackupPayload {
         val filename = Backup.getFilename()
 
         val backup =
             ProtoBackupExport.createBackup(
+                userId,
                 if (input?.flags != null) {
                     BackupFlags.fromPartial(input.flags)
                 } else {

@@ -7,7 +7,13 @@ import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import io.github.oshai.kotlinlogging.KotlinLogging
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.global.model.table.UserPermissionsTable
+import suwayomi.tachidesk.global.model.table.UserRolesTable
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.user.Permissions
 import suwayomi.tachidesk.server.user.UserType
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -32,7 +38,7 @@ object Jwt {
 
     @OptIn(ExperimentalEncodingApi::class)
     fun generateSecret(): String {
-        val byteString = preferenceStore.getString(PREF_KEY, "")
+        val byteString = preferenceStore.getString(PREF_KEY, "").orEmpty()
         val decodedKeyBytes =
             try {
                 Base64.Default.decode(byteString)
@@ -64,9 +70,9 @@ object Jwt {
         val refreshToken: String,
     )
 
-    fun generateJwt(): JwtTokens {
-        val accessToken = createAccessToken()
-        val refreshToken = createRefreshToken()
+    fun generateJwt(userId: Int): JwtTokens {
+        val accessToken = createAccessToken(userId)
+        val refreshToken = createRefreshToken(userId)
 
         return JwtTokens(
             accessToken = accessToken,
@@ -82,7 +88,7 @@ object Jwt {
         require(jwt.audience.single() == AUDIENCE) {
             "Token intended for different audience ${jwt.audience}"
         }
-        return createAccessToken()
+        return createAccessToken(jwt.subject.toInt())
     }
 
     fun verifyJwt(jwt: String): UserType {
@@ -96,30 +102,67 @@ object Jwt {
                 "Token intended for different audience ${decodedJWT.audience}"
             }
 
-            return UserType.Admin(1)
+            val user = decodedJWT.subject.toInt()
+            val roles: List<String> = decodedJWT.getClaim("roles").asList(String::class.java)
+            val permissions: List<String> = decodedJWT.getClaim("permissions").asList(String::class.java)
+
+            return if (roles.any { it.equals("admin", ignoreCase = true) }) {
+                UserType.Admin(user)
+            } else {
+                UserType.User(
+                    id = user,
+                    permissions =
+                        permissions.mapNotNull { permission ->
+                            Permissions.entries.find { it.name == permission }
+                        },
+                )
+            }
         } catch (e: JWTVerificationException) {
             logger.warn(e) { "Received invalid token" }
             return UserType.Visitor
         }
     }
 
-    private fun createAccessToken(): String {
+    private fun createAccessToken(userId: Int): String {
         val jwt =
             JWT
                 .create()
                 .withIssuer(ISSUER)
                 .withAudience(AUDIENCE)
+                .withSubject(userId.toString())
                 .withClaim("token_type", "access")
                 .withExpiresAt(Instant.now().plusSeconds(accessTokenExpiry.inWholeSeconds))
+
+        val roles =
+            transaction {
+                UserRolesTable
+                    .selectAll()
+                    .where { UserRolesTable.user eq userId }
+                    .toList()
+                    .map { it[UserRolesTable.role] }
+            }
+        val permissions =
+            transaction {
+                UserPermissionsTable
+                    .selectAll()
+                    .where { UserPermissionsTable.user eq userId }
+                    .toList()
+                    .map { it[UserPermissionsTable.permission] }
+            }
+
+        jwt.withClaim("roles", roles)
+
+        jwt.withClaim("permissions", permissions)
 
         return jwt.sign(algorithm)
     }
 
-    private fun createRefreshToken(): String =
+    private fun createRefreshToken(userId: Int): String =
         JWT
             .create()
             .withIssuer(ISSUER)
             .withAudience(AUDIENCE)
+            .withSubject(userId.toString())
             .withClaim("token_type", "refresh")
             .withExpiresAt(Instant.now().plusSeconds(refreshTokenExpiry.inWholeSeconds))
             .sign(algorithm)

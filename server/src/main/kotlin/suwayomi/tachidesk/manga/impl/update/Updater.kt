@@ -28,7 +28,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.impl.sync.SyncManager
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Manga
@@ -144,7 +147,17 @@ class Updater : IUpdater {
                     lastAutomatedUpdate,
                 )})"
             }
-            addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
+
+            val userIds =
+                transaction {
+                    UserAccountTable.selectAll().map { it[UserAccountTable.id].value }
+                }
+
+            reset()
+
+            userIds.forEach { userId ->
+                addCategoriesToUpdateQueue(userId, Category.getCategoryList(userId), clear = false, forceAll = false)
+            }
         } catch (e: Exception) {
             logger.error(e) { "autoUpdateTask: failed due to" }
         }
@@ -333,6 +346,7 @@ class Updater : IUpdater {
     }
 
     override fun addCategoriesToUpdateQueue(
+        userId: Int,
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,
@@ -367,9 +381,9 @@ class Updater : IUpdater {
 
             val categoriesToUpdateMangas =
                 categoriesToUpdate
-                    .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+                    .flatMap { CategoryManga.getCategoryMangaList(userId, it.id) }
                     .distinctBy { it.id }
-            val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
+            val mangasToCategoriesMap = CategoryManga.getMangasCategories(userId, categoriesToUpdateMangas.map { it.id })
             val mangasToUpdate =
                 categoriesToUpdateMangas
                     .asSequence()
@@ -400,8 +414,13 @@ class Updater : IUpdater {
                     }.toList()
             val skippedMangas = categoriesToUpdateMangas.subtract(mangasToUpdate.toSet()).toList()
 
-            this@Updater.updateStatusCategories = updateStatusCategories
-            this@Updater.updateStatusSkippedMangas = skippedMangas
+            if (clear == true) {
+                this@Updater.updateStatusCategories = updateStatusCategories
+                this@Updater.updateStatusSkippedMangas = skippedMangas
+            } else {
+                this@Updater.updateStatusCategories = mergeCategoryStatusMaps(this@Updater.updateStatusCategories, updateStatusCategories)
+                this@Updater.updateStatusSkippedMangas = (this@Updater.updateStatusSkippedMangas + skippedMangas).distinctBy { it.id }
+            }
 
             if (mangasToUpdate.isEmpty()) {
                 // In case no manga gets updated and no update job was running before, the client would never receive an info
@@ -460,5 +479,16 @@ class Updater : IUpdater {
 
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
+    }
+
+    private fun mergeCategoryStatusMaps(
+        existing: Map<CategoryUpdateStatus, List<CategoryDataClass>>,
+        new: Map<CategoryUpdateStatus, List<CategoryDataClass>>,
+    ): Map<CategoryUpdateStatus, List<CategoryDataClass>> {
+        val merged = existing.toMutableMap()
+        new.forEach { (status, categories) ->
+            merged[status] = (merged[status].orEmpty() + categories).distinctBy { it.id }
+        }
+        return merged
     }
 }

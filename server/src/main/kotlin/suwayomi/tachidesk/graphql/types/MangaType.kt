@@ -7,6 +7,8 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import graphql.schema.DataFetchingEnvironment
@@ -23,6 +25,7 @@ import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -39,12 +42,12 @@ class MangaType(
     val description: String?,
     val genre: List<String>,
     val status: MangaStatus,
-    val inLibrary: Boolean,
-    val inLibraryAt: Long,
     val updateStrategy: UpdateStrategy,
     val realUrl: String?,
     var lastFetchedAt: Long?, // todo
     var chaptersLastFetchedAt: Long?, // todo
+    @get:GraphQLIgnore
+    val inLibraryAt: Long? = null,
 ) : Node {
     companion object {
         fun clearCacheFor(
@@ -97,12 +100,11 @@ class MangaType(
         row[MangaTable.description],
         row[MangaTable.genre].toGenreList(),
         MangaStatus.valueOf(row[MangaTable.status]),
-        row[MangaTable.inLibrary],
-        row[MangaTable.inLibraryAt],
         UpdateStrategy.valueOf(row[MangaTable.updateStrategy]),
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
         row[MangaTable.chaptersLastFetchedAt],
+        row.getOrNull(MangaUserTable.inLibraryAt),
     )
 
     constructor(dataClass: MangaDataClass) : this(
@@ -118,8 +120,6 @@ class MangaType(
         dataClass.description,
         dataClass.genre,
         MangaStatus.valueOf(dataClass.status),
-        dataClass.inLibrary,
-        dataClass.inLibraryAt,
         dataClass.updateStrategy,
         dataClass.realUrl,
         dataClass.lastFetchedAt,
@@ -187,6 +187,21 @@ class MangaType(
 
     fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForMangaIdDataLoader", id)
+
+    fun user(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaUserType?> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaUserType?>("MangaUserForMangaDataLoader", id)
+
+    @GraphQLDeprecated("Use user.inLibrary instead")
+    fun inLibrary(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.inLibrary == true
+        }
+
+    @GraphQLDeprecated("Use user.inLibraryAt instead")
+    fun inLibraryAt(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Long> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.inLibraryAt ?: 0L
+        }
 }
 
 data class MangaNodeList(

@@ -199,7 +199,7 @@ object OpdsEntryBuilder {
         var effectiveLastReadAt = chapter.lastReadAt
 
         if (skipMetadataFeed) {
-            val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+            val syncResult = KoreaderSyncService.checkAndPullProgress(1, chapter.id)
 
             // If sync strategy dictates an update (e.g. KEEP_REMOTE), use remote data.
             // If sync strategy is PROMPT (isConflict=true), we ignore it here (effectively KEEP_LOCAL/DISABLED)
@@ -319,13 +319,14 @@ object OpdsEntryBuilder {
      * second is an optional entry representing the remote progress in case of a conflict.
      */
     suspend fun createChapterMetadataEntries(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         chapter: OpdsChapterMetadataAcqEntry,
         manga: OpdsMangaDetails,
     ): Pair<OpdsEntryXml, OpdsEntryXml?> {
         // Check remote progress before building the entry
-        val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+        val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
 
         // Exists a conflict if the sync service reports a conflict and the page numbers differ.
         val hasConflict = syncResult?.isConflict == true && syncResult.pageRead != chapter.lastPageRead
@@ -645,6 +646,7 @@ object OpdsEntryBuilder {
      * and cross-filtering by source, category, status, language, and genre.
      */
     fun addLibraryFacets(
+        userId: Int,
         feedBuilder: FeedBuilderInternal,
         baseUrl: String,
         locale: Locale,
@@ -655,7 +657,7 @@ object OpdsEntryBuilder {
 
         val sortGroup = MR.strings.opds_facetgroup_sort_order.localized(locale)
         val filterGroup = MR.strings.opds_facetgroup_filter_content.localized(locale)
-        val filterCounts = MangaRepository.getLibraryFilterCounts(activeFilters)
+        val filterCounts = MangaRepository.getLibraryFilterCounts(userId, activeFilters)
 
         val buildUrl = { newFilters: OpdsMangaFilter, newSort: String, newFilter: String ->
             val crossFilterParams = newFilters.toCrossFilterQueryParameters()
@@ -760,7 +762,7 @@ object OpdsEntryBuilder {
 
         // --- Cross-Filter Facets ---
         if (activeFilters.primaryFilter != PrimaryFilterType.SOURCE) {
-            val sources = NavigationRepository.getLibrarySources(pageNum = null, activeFilters = activeFilters).first
+            val sources = NavigationRepository.getLibrarySources(userId, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("source_id"), currentSort, currentFilter),
@@ -781,7 +783,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.CATEGORY) {
-            val categories = NavigationRepository.getCategories(pageNum = null, activeFilters = activeFilters).first
+            val categories = NavigationRepository.getCategories(userId, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("category_id"), currentSort, currentFilter),
@@ -802,7 +804,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.STATUS) {
-            val statuses = NavigationRepository.getStatuses(locale, pageNum = null, activeFilters = activeFilters).first
+            val statuses = NavigationRepository.getStatuses(userId, locale, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("status_id"), currentSort, currentFilter),
@@ -823,7 +825,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.LANGUAGE) {
-            val languages = NavigationRepository.getContentLanguages(locale, pageNum = null, activeFilters = activeFilters).first
+            val languages = NavigationRepository.getContentLanguages(userId, locale, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("lang_code"), currentSort, currentFilter),
@@ -844,7 +846,7 @@ object OpdsEntryBuilder {
             }
         }
         if (activeFilters.primaryFilter != PrimaryFilterType.GENRE) {
-            val genres = NavigationRepository.getGenres(locale, pageNum = null, activeFilters = activeFilters).first
+            val genres = NavigationRepository.getGenres(userId, locale, pageNum = null, activeFilters = activeFilters).first
             addFacet(
                 feedBuilder,
                 buildUrl(activeFilters.without("genre"), currentSort, currentFilter),

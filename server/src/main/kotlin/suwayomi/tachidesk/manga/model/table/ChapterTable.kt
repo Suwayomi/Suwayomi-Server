@@ -21,10 +21,6 @@ object ChapterTable : IntIdTable() {
     val chapter_number = float("chapter_number").default(-1f)
     val scanlator = truncatingVarchar("scanlator", 256).nullable()
 
-    val isRead = bool("read").default(false)
-    val isBookmarked = bool("bookmark").default(false)
-    val lastPageRead = integer("last_page_read").default(0)
-    val lastReadAt = long("last_read_at").default(0)
     val fetchedAt = long("fetched_at").default(0)
 
     val sourceOrder = integer("source_order")
@@ -40,10 +36,6 @@ object ChapterTable : IntIdTable() {
 
     val koreaderHash = varchar("koreader_hash", 32).nullable()
 
-    val lastModifiedAt = long("last_modified_at").default(0)
-    val version = long("version").default(0)
-    val isSyncing = bool("is_syncing").default(false)
-
     val memo = jsonObject("memo")
 }
 
@@ -56,16 +48,10 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         chapterNumber = chapterEntry[chapter_number],
         scanlator = chapterEntry[scanlator],
         mangaId = chapterEntry[manga].value,
-        read = chapterEntry[isRead],
-        bookmarked = chapterEntry[isBookmarked],
-        lastPageRead = chapterEntry[lastPageRead],
-        lastReadAt = chapterEntry[lastReadAt],
         index = chapterEntry[sourceOrder],
         fetchedAt = chapterEntry[fetchedAt],
         realUrl = chapterEntry[realUrl],
         downloaded = chapterEntry[isDownloaded],
         pageCount = chapterEntry[pageCount],
-        lastModifiedAt = chapterEntry[lastModifiedAt],
-        version = chapterEntry[version],
         memo = chapterEntry[memo],
     )

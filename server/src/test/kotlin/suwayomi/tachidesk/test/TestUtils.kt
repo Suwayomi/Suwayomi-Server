@@ -15,12 +15,15 @@ import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.Logger
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 
 fun setLoggingEnabled(enabled: Boolean = true) {
     val logger = ((KotlinLogging.logger(Logger.ROOT_LOGGER_NAME) as DelegatingKLogger<*>).underlyingLogger as ch.qos.logback.classic.Logger)
@@ -36,13 +39,20 @@ const val BASE_PATH = "build/tmp/TestDesk"
 
 fun createLibraryManga(_title: String): Int =
     transaction {
-        MangaTable
-            .insertAndGetId {
-                it[title] = _title
-                it[url] = _title
-                it[sourceReference] = 1
-                it[inLibrary] = true
-            }.value
+        val mangaId =
+            MangaTable
+                .insertAndGetId {
+                    it[title] = _title
+                    it[url] = _title
+                    it[sourceReference] = 1
+                }.value
+
+        MangaUserTable.insert {
+            it[MangaUserTable.manga] = mangaId
+            it[MangaUserTable.user] = 1
+            it[MangaUserTable.inLibrary] = true
+        }
+        mangaId
     }
 
 fun createSMangas(count: Int): List<SManga> =
@@ -61,15 +71,22 @@ fun createChapters(
 ) {
     val list = listOf((0 until amount)).flatten().map { it + start }
     transaction {
-        ChapterTable
-            .batchInsert(list) {
-                this[ChapterTable.url] = "$it"
-                this[ChapterTable.name] = "$it"
-                this[ChapterTable.sourceOrder] = it
-                this[ChapterTable.isRead] = read
-                this[ChapterTable.manga] = mangaId
-                this[ChapterTable.memo] = JsonObject.EMPTY
-            }
+        val newChapters =
+            ChapterTable
+                .batchInsert(list) {
+                    this[ChapterTable.url] = "$it"
+                    this[ChapterTable.name] = "$it"
+                    this[ChapterTable.sourceOrder] = it
+                    this[ChapterTable.manga] = mangaId
+                    this[ChapterTable.memo] = JsonObject.EMPTY
+                }
+
+        val chapters = newChapters.map { it[ChapterTable.id].value }
+        ChapterUserTable.batchInsert(chapters) {
+            this[ChapterUserTable.chapter] = it
+            this[ChapterUserTable.user] = 1
+            this[ChapterUserTable.isRead] = read
+        }
     }
 }
 

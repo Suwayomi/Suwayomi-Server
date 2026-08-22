@@ -26,8 +26,10 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -35,9 +37,12 @@ import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
+import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.manga.impl.util.updateChapterDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
@@ -45,8 +50,11 @@ import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.serverConfig
 import java.time.Instant
@@ -214,10 +222,9 @@ object Chapter {
         }
 
         val deletedChapterNumbers = TreeSet<Float>()
-        val deletedReadChapterNumbers = TreeSet<Float>()
-        val deletedBookmarkedChapterNumbers = TreeSet<Float>()
         val deletedDownloadedChapterByChapterNumber = mutableMapOf<Float, ChapterDataClass>()
         val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
+        val deletedUserStateByChapterNumber = mutableMapOf<Float, MutableMap<Int, DeletedChapterUserData>>()
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val chapterUrls = uniqueChapters.map { it.url }.toSet()
@@ -225,8 +232,6 @@ object Chapter {
         val chaptersIdsToDelete =
             chaptersInDb.mapNotNull { dbChapter ->
                 if (!chapterUrls.contains(dbChapter.url)) {
-                    if (dbChapter.read) deletedReadChapterNumbers.add(dbChapter.chapterNumber)
-                    if (dbChapter.bookmarked) deletedBookmarkedChapterNumbers.add(dbChapter.chapterNumber)
                     if (dbChapter.downloaded) deletedDownloadedChapterByChapterNumber[dbChapter.chapterNumber] = dbChapter
                     deletedChapterNumbers.add(dbChapter.chapterNumber)
                     deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
@@ -235,6 +240,36 @@ object Chapter {
                     null
                 }
             }
+
+        if (chaptersIdsToDelete.isNotEmpty()) {
+            val chapterNumberById = chaptersInDb.associate { it.id to it.chapterNumber }
+            val deletedUserStates =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { ChapterUserTable.chapter inList chaptersIdsToDelete }
+                        .map {
+                            Triple(
+                                it[ChapterUserTable.user].value,
+                                it[ChapterUserTable.chapter].value,
+                                DeletedChapterUserData(
+                                    isRead = it[ChapterUserTable.isRead],
+                                    isBookmarked = it[ChapterUserTable.isBookmarked],
+                                    lastPageRead = it[ChapterUserTable.lastPageRead],
+                                    lastReadAt = it[ChapterUserTable.lastReadAt],
+                                    version = it[ChapterUserTable.version],
+                                    isDownloaded = it[ChapterUserTable.isDownloaded],
+                                    isDownloadRequested = it[ChapterUserTable.isDownloadRequested],
+                                ),
+                            )
+                        }
+                }
+            deletedUserStates.forEach { (userId, chapterId, userData) ->
+                val chapterNumber = chapterNumberById[chapterId] ?: return@forEach
+                val userStates = deletedUserStateByChapterNumber.getOrPut(chapterNumber) { mutableMapOf() }
+                userStates[userId] = userData
+            }
+        }
 
         suspendTransaction {
             // we got some clean up due
@@ -258,18 +293,11 @@ object Chapter {
                             this[ChapterTable.manga] = chapter.mangaId
                             this[ChapterTable.realUrl] = chapter.realUrl
                             this[ChapterTable.memo] = chapter.memo
-                            this[ChapterTable.isRead] = false
-                            this[ChapterTable.isBookmarked] = false
                             this[ChapterTable.isDownloaded] = false
-                            this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
-                            this[ChapterTable.version] = chapter.version
                             this[ChapterTable.pageCount] = -1
 
                             // is recognized chapter number
                             if (chapter.chapterNumber >= 0f && chapter.chapterNumber in deletedChapterNumbers) {
-                                this[ChapterTable.isRead] = chapter.chapterNumber in deletedReadChapterNumbers
-                                this[ChapterTable.isBookmarked] = chapter.chapterNumber in deletedBookmarkedChapterNumbers
-
                                 // Try to use the fetch date of the original entry to not pollute 'Updates' tab
                                 deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                     this[ChapterTable.fetchedAt] = it
@@ -290,6 +318,36 @@ object Chapter {
 
                         isPreservable
                     }
+                val preservedDownloadChapterIds = chaptersToPreserveDownload.map { it.id }.toSet()
+
+                // migrate the per-user state of the deleted chapters to the re-inserted chapters,
+                // matched by recognized chapter number, for all users
+                val migratedUserStates =
+                    insertedChapters
+                        .filter { it.chapterNumber >= 0f && it.chapterNumber in deletedChapterNumbers }
+                        .flatMap { chapter ->
+                            deletedUserStateByChapterNumber[chapter.chapterNumber]
+                                ?.map { (userId, userData) -> Triple(chapter.id, userId, userData) }
+                                .orEmpty()
+                        }
+
+                if (migratedUserStates.isNotEmpty()) {
+                    ChapterUserTable.batchInsert(migratedUserStates) { (chapterId, userId, userData) ->
+                        this[ChapterUserTable.chapter] = EntityID(chapterId, ChapterTable)
+                        this[ChapterUserTable.user] = EntityID(userId, UserAccountTable)
+                        this[ChapterUserTable.isRead] = userData.isRead
+                        this[ChapterUserTable.isBookmarked] = userData.isBookmarked
+                        this[ChapterUserTable.lastPageRead] = userData.lastPageRead
+                        this[ChapterUserTable.lastReadAt] = userData.lastReadAt
+                        // migrate the per-user download state only if the shared download file was preserved,
+                        // otherwise the download is gone for all users
+                        val downloadPreserved = chapterId in preservedDownloadChapterIds
+                        this[ChapterUserTable.isDownloadRequested] = downloadPreserved && userData.isDownloadRequested
+                        this[ChapterUserTable.isDownloaded] = downloadPreserved && userData.isDownloaded
+
+                        this[ChapterUserTable.version] = userData.version
+                    }
+                }
 
                 if (chaptersToPreserveDownload.isNotEmpty()) {
                     BatchUpdateStatement(ChapterTable)
@@ -306,6 +364,7 @@ object Chapter {
             }
 
             if (chaptersToUpdate.isNotEmpty()) {
+                val downloadInvalidatedChapterIds = mutableListOf<Int>()
                 BatchUpdateStatement(ChapterTable)
                     .apply {
                         chaptersToUpdate.forEach {
@@ -319,8 +378,6 @@ object Chapter {
                             this[ChapterTable.scanlator] = it.scanlator
                             this[ChapterTable.sourceOrder] = it.index
                             this[ChapterTable.realUrl] = it.realUrl
-                            this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
-                            this[ChapterTable.version] = it.version
                             this[ChapterTable.memo] = it.memo
                             this[ChapterTable.isDownloaded] = currentChapter.downloaded
                             this[ChapterTable.pageCount] = currentChapter.pageCount
@@ -333,10 +390,19 @@ object Chapter {
                             if (!isDownloadPreservable) {
                                 this[ChapterTable.isDownloaded] = false
                                 this[ChapterTable.pageCount] = -1
+                                downloadInvalidatedChapterIds.add(it.id)
                             }
                         }
                     }.toExecutable()
                     .execute(this@suspendTransaction)
+
+                // the shared download is gone, so clear the per-user download state as well
+                if (downloadInvalidatedChapterIds.isNotEmpty()) {
+                    ChapterUserTable.update({ ChapterUserTable.chapter inList downloadInvalidatedChapterIds }) {
+                        it[ChapterUserTable.isDownloaded] = false
+                        it[ChapterUserTable.isDownloadRequested] = false
+                    }
+                }
             }
 
             MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id].value }) {
@@ -344,7 +410,15 @@ object Chapter {
             }
         }
 
-        if (mangaEntry[MangaTable.inLibrary]) {
+        val inLibraryUserIds =
+            transaction {
+                MangaUserTable
+                    .select(MangaUserTable.user)
+                    .where { MangaUserTable.manga eq mangaEntry[MangaTable.id] and (MangaUserTable.inLibrary eq true) }
+                    .map { it[MangaUserTable.user].value }
+                    .toList()
+            }
+        if (inLibraryUserIds.isNotEmpty()) {
             // We have to query the inserted chapters to get the up-to-date data. I.e. "last_modified_at" is not returned by the insert statement, due to being set by a DB trigger
             val insertedChapters =
                 transaction {
@@ -352,18 +426,22 @@ object Chapter {
                         ChapterTable::toDataClass,
                     )
                 }
-            downloadNewChapters(
-                mangaEntry[MangaTable.id].value,
-                currentLatestChapterNumber,
-                numberOfCurrentChapters,
-                insertedChapters,
-            )
+            inLibraryUserIds.forEach { userId ->
+                downloadNewChapters(
+                    userId,
+                    mangaEntry[MangaTable.id].value,
+                    currentLatestChapterNumber,
+                    numberOfCurrentChapters,
+                    insertedChapters,
+                )
+            }
         }
 
         return uniqueChapters
     }
 
     private fun downloadNewChapters(
+        userId: Int,
         mangaId: Int,
         prevLatestChapterNumber: Float,
         prevNumberOfChapters: Int,
@@ -397,11 +475,11 @@ object Chapter {
             return
         }
 
-        if (!Manga.isInIncludedDownloadCategory(log, mangaId)) {
+        if (!Manga.isInIncludedDownloadCategory(userId, log, mangaId)) {
             return
         }
 
-        val unreadChapters = Manga.getUnreadChapters(mangaId).subtract(newChapters.toSet())
+        val unreadChapters = Manga.getUnreadChapters(userId, mangaId).subtract(newChapters.toSet())
 
         val skipDueToUnreadChapters = serverConfig.excludeEntryWithUnreadChapters.value && unreadChapters.isNotEmpty()
         if (skipDueToUnreadChapters) {
@@ -418,7 +496,7 @@ object Chapter {
 
         log.info { "download ${chapterIdsToDownload.size} new chapter(s)..." }
 
-        DownloadManager.enqueue(EnqueueInput(chapterIdsToDownload))
+        DownloadManager.enqueue(userId, chapterIdsToDownload)
     }
 
     private fun getNewChapterIdsToDownload(
@@ -453,6 +531,7 @@ object Chapter {
     }
 
     fun modifyChapter(
+        userId: Int,
         mangaId: Int,
         chapterIndex: Int,
         isRead: Boolean?,
@@ -465,41 +544,72 @@ object Chapter {
                 val chapter =
                     ChapterTable
                         .selectAll()
-                        .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
-                        .first()
+                        .where {
+                            (ChapterTable.manga eq mangaId) and
+                                (ChapterTable.sourceOrder eq chapterIndex)
+                        }.first()
 
                 val chapterIdValue = chapter[ChapterTable.id].value
 
                 if (listOf(isRead, isBookmarked, lastPageRead).any { it != null }) {
-                    ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) { update ->
-                        isRead?.also {
-                            update[ChapterTable.isRead] = it
+                    ChapterUserTable.upsert(ChapterUserTable.user, ChapterUserTable.chapter) {
+                        it[ChapterUserTable.chapter] = chapterIdValue
+                        it[ChapterUserTable.user] = userId
+                        isRead?.also { isRead ->
+                            it[ChapterUserTable.isRead] = isRead
                         }
-                        isBookmarked?.also {
-                            update[ChapterTable.isBookmarked] = it
+                        isBookmarked?.also { isBookmarked ->
+                            it[ChapterUserTable.isBookmarked] = isBookmarked
                         }
-                        lastPageRead?.also {
-                            update[ChapterTable.lastPageRead] = it
-                            update[lastReadAt] = Instant.now().epochSecond
+                        lastPageRead?.also { lastPageRead ->
+                            it[ChapterUserTable.lastPageRead] = lastPageRead
+                            it[ChapterUserTable.lastReadAt] = Instant.now().epochSecond
                         }
                     }
                 }
 
+                // todo user accounts optimize
                 markPrevRead?.let {
-                    ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }) {
-                        it[ChapterTable.isRead] = markPrevRead
+                    val chapters =
+                        ChapterTable
+                            .selectAll()
+                            .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }
+                            .map { it[ChapterTable.id].value }
+                    val existingUserData =
+                        ChapterUserTable.selectAll().where {
+                            ChapterUserTable.user eq userId and (ChapterUserTable.chapter inList chapters)
+                        }
+                    ChapterUserTable.update({ ChapterUserTable.id inList existingUserData.map { it[ChapterUserTable.id].value } }) {
+                        it[ChapterUserTable.isRead] = markPrevRead
+                    }
+                    ChapterUserTable.batchInsert(
+                        chapters - existingUserData.map { it[ChapterUserTable.chapter].value }.toSet(),
+                    ) {
+                        this[ChapterUserTable.user] = userId
+                        this[ChapterUserTable.chapter] = it
+                        this[ChapterUserTable.isRead] = markPrevRead
                     }
                 }
-
                 chapterIdValue
             }
 
         if (isRead == true || markPrevRead == true) {
-            Track.asyncTrackChapter(setOf(mangaId))
+            Track.asyncTrackChapter(userId, setOf(mangaId))
         }
 
         return chapterId
     }
+
+    /** per-user state of a deleted chapter, migrated to re-inserted chapters with the same recognized chapter number */
+    private data class DeletedChapterUserData(
+        val isRead: Boolean,
+        val isBookmarked: Boolean,
+        val lastPageRead: Int,
+        val lastReadAt: Long,
+        val version: Long,
+        val isDownloaded: Boolean,
+        val isDownloadRequested: Boolean,
+    )
 
     @Serializable
     data class ChapterChange(
@@ -523,6 +633,7 @@ object Chapter {
     )
 
     suspend fun modifyChapters(
+        userId: Int,
         input: MangaChapterBatchEditInput,
         mangaId: Int? = null,
     ) {
@@ -532,7 +643,7 @@ object Chapter {
 
         // Handle deleting separately
         if (delete == true) {
-            deleteChapters(input, mangaId)
+            deleteChapters(userId, input, mangaId)
         }
 
         // return early if there are no other changes
@@ -574,16 +685,38 @@ object Chapter {
 
         transaction {
             val now = Instant.now().epochSecond
-            ChapterTable.update({ condition }) { update ->
+            val chapters = ChapterTable.selectAll().where { condition }.map { it[ChapterTable.id].value }
+            // todo user accounts optimize
+            val existingUserData =
+                ChapterUserTable.selectAll().where {
+                    ChapterUserTable.user eq userId and (ChapterUserTable.chapter inList chapters)
+                }
+            ChapterUserTable.update({ ChapterUserTable.id inList existingUserData.map { it[ChapterUserTable.id].value } }) { update ->
                 isRead?.also {
-                    update[ChapterTable.isRead] = it
+                    update[ChapterUserTable.isRead] = it
                 }
                 isBookmarked?.also {
-                    update[ChapterTable.isBookmarked] = it
+                    update[ChapterUserTable.isBookmarked] = it
                 }
                 lastPageRead?.also {
-                    update[ChapterTable.lastPageRead] = it
-                    update[lastReadAt] = now
+                    update[ChapterUserTable.lastPageRead] = it
+                    update[ChapterUserTable.lastReadAt] = now
+                }
+            }
+            ChapterUserTable.batchInsert(
+                chapters - existingUserData.map { it[ChapterUserTable.chapter].value }.toSet(),
+            ) {
+                this[ChapterUserTable.user] = userId
+                this[ChapterUserTable.chapter] = it
+                isRead?.also {
+                    this[ChapterUserTable.isRead] = it
+                }
+                isBookmarked?.also {
+                    this[ChapterUserTable.isBookmarked] = it
+                }
+                lastPageRead?.also {
+                    this[ChapterUserTable.lastPageRead] = it
+                    this[ChapterUserTable.lastReadAt] = now
                 }
             }
         }
@@ -597,29 +730,36 @@ object Chapter {
                         .map { it[ChapterTable.manga].value }
                         .toSet()
                 }
-            Track.asyncTrackChapter(mangaIds)
+            Track.asyncTrackChapter(userId, mangaIds)
         }
     }
 
-    fun getChaptersMetaMaps(chapterIds: List<Int>): Map<Int, Map<String, String>> =
+    fun getChaptersMetaMaps(
+        userId: Int,
+        chapterIds: List<Int>,
+    ): Map<Int, Map<String, String>> =
         transaction {
             ChapterMetaTable
                 .selectAll()
-                .where { ChapterMetaTable.ref inList chapterIds }
+                .where { ChapterMetaTable.ref inList chapterIds and (ChapterMetaTable.user eq userId) }
                 .groupBy { it[ChapterMetaTable.ref].value }
                 .mapValues { it.value.associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] } }
                 .withDefault { emptyMap() }
         }
 
-    fun getChapterMetaMap(chapter: Int): Map<String, String> =
+    fun getChapterMetaMap(
+        userId: Int,
+        chapter: Int,
+    ): Map<String, String> =
         transaction {
             ChapterMetaTable
                 .selectAll()
-                .where { ChapterMetaTable.ref eq chapter }
+                .where { ChapterMetaTable.user eq userId and (ChapterMetaTable.ref eq chapter) }
                 .associate { it[ChapterMetaTable.key] to it[ChapterMetaTable.value] }
         }
 
     fun modifyChapterMeta(
+        userId: Int,
         mangaId: Int,
         chapterIndex: Int,
         key: String,
@@ -629,22 +769,28 @@ object Chapter {
             val chapterId =
                 ChapterTable
                     .selectAll()
-                    .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
-                    .first()[ChapterTable.id]
+                    .where {
+                        (ChapterTable.manga eq mangaId) and
+                            (ChapterTable.sourceOrder eq chapterIndex)
+                    }.first()[ChapterTable.id]
                     .value
-            modifyChapterMeta(chapterId, key, value)
+            modifyChapterMeta(userId, chapterId, key, value)
         }
     }
 
     fun modifyChapterMeta(
+        userId: Int,
         chapterId: Int,
         key: String,
         value: String,
     ) {
-        modifyChaptersMetas(mapOf(chapterId to mapOf(key to value)))
+        modifyChaptersMetas(userId, mapOf(chapterId to mapOf(key to value)))
     }
 
-    fun modifyChaptersMetas(metaByChapterId: Map<Int, Map<String, String>>) {
+    fun modifyChaptersMetas(
+        userId: Int,
+        metaByChapterId: Map<Int, Map<String, String>>,
+    ) {
         transaction {
             val chapterIds = metaByChapterId.keys
             val metaKeys = metaByChapterId.flatMap { it.value.keys }
@@ -652,8 +798,10 @@ object Chapter {
             val dbMetaByChapterId =
                 ChapterMetaTable
                     .selectAll()
-                    .where { (ChapterMetaTable.ref inList chapterIds) and (ChapterMetaTable.key inList metaKeys) }
-                    .groupBy { it[ChapterMetaTable.ref].value }
+                    .where {
+                        (ChapterMetaTable.ref inList chapterIds) and (ChapterMetaTable.key inList metaKeys) and
+                            (ChapterMetaTable.user eq userId)
+                    }.groupBy { it[ChapterMetaTable.ref].value }
 
             val existingMetaByMetaId =
                 chapterIds.flatMap { chapterId ->
@@ -693,12 +841,14 @@ object Chapter {
                     this[ChapterMetaTable.ref] = EntityID(chapterId, ChapterTable)
                     this[ChapterMetaTable.key] = entry.key
                     this[ChapterMetaTable.value] = entry.value
+                    this[ChapterMetaTable.user] = userId
                 }
             }
         }
     }
 
     suspend fun deleteChapter(
+        userId: Int,
         mangaId: Int,
         chapterIndex: Int,
     ) {
@@ -710,65 +860,94 @@ object Chapter {
                     .first()[ChapterTable.id]
                     .value
 
-            ChapterDownloadHelper.delete(mangaId, chapterId)
-
-            ChapterTable.update({ (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }) {
-                it[isDownloaded] = false
-            }
+            deleteDownloadedChapters(userId, listOf(chapterId))
         }
     }
 
     private suspend fun deleteChapters(
+        userId: Int,
         input: MangaChapterBatchEditInput,
         mangaId: Int? = null,
     ) {
-        if (input.chapterIds != null) {
-            deleteChapters(input.chapterIds)
-        } else if (input.chapterIndexes != null && mangaId != null) {
+        val chapterIds =
+            input.chapterIds
+                ?: if (input.chapterIndexes != null && mangaId != null) {
+                    transaction {
+                        ChapterTable
+                            .select(ChapterTable.id)
+                            .where {
+                                (ChapterTable.sourceOrder inList input.chapterIndexes) and
+                                    (ChapterTable.manga eq mangaId)
+                            }.map { it[ChapterTable.id].value }
+                    }
+                } else {
+                    return
+                }
+
+        deleteDownloadedChapters(userId, chapterIds)
+    }
+
+    /**
+     * Clears the download request of [userId] for the given chapters and removes the
+     * shared download only if no user has requested it anymore.
+     */
+    suspend fun deleteDownloadedChapters(
+        userId: Int,
+        chapterIds: List<Int>,
+    ) {
+        if (chapterIds.isEmpty()) return
+
+        val chapterIdsWithoutRequest =
             suspendTransaction {
-                val chapterIds =
+                // Clear the caller's download request and status
+                ChapterUserTable.update({ (ChapterUserTable.user eq userId) and (ChapterUserTable.chapter inList chapterIds) }) {
+                    it[ChapterUserTable.isDownloadRequested] = false
+                    it[ChapterUserTable.isDownloaded] = false
+                }
+
+                // Only remove the shared download if no user has requested it anymore
+                val notRequestedByAnyUserQuery =
+                    notExists(
+                        ChapterUserTable.select(ChapterUserTable.id).where {
+                            (ChapterUserTable.chapter eq ChapterTable.id) and (ChapterUserTable.isDownloadRequested eq true)
+                        },
+                    )
+                val deletedChapters =
                     ChapterTable
                         .select(ChapterTable.manga, ChapterTable.id)
-                        .where {
-                            (ChapterTable.sourceOrder inList input.chapterIndexes) and
-                                (ChapterTable.manga eq mangaId)
-                        }.map { row ->
-                            val chapterId = row[ChapterTable.id].value
-                            ChapterDownloadHelper.delete(mangaId, chapterId)
+                        .where { (ChapterTable.id inList chapterIds) and notRequestedByAnyUserQuery }
+                        .map { row -> Pair(row[ChapterTable.manga].value, row[ChapterTable.id].value) }
 
-                            chapterId
-                        }
+                if (deletedChapters.isEmpty()) {
+                    emptyList()
+                } else {
+                    deletedChapters.forEach { (mangaId, chapterId) ->
+                        ChapterDownloadHelper.delete(mangaId, chapterId)
+                    }
 
-                ChapterTable.update({ ChapterTable.id inList chapterIds }) {
-                    it[isDownloaded] = false
+                    ChapterTable.update({ ChapterTable.id inList deletedChapters.map { it.second } }) {
+                        it[ChapterTable.isDownloaded] = false
+                    }
+
+                    deletedChapters.map { it.second }
                 }
             }
+
+        // Stop any in-progress shared download that no user wants anymore
+        if (chapterIdsWithoutRequest.isNotEmpty()) {
+            DownloadManager.dequeue(EnqueueInput(chapterIdsWithoutRequest))
         }
     }
 
-    suspend fun deleteChapters(chapterIds: List<Int>) {
-        suspendTransaction {
-            ChapterTable
-                .select(ChapterTable.manga, ChapterTable.id)
-                .where { ChapterTable.id inList chapterIds }
-                .forEach { row ->
-                    val chapterMangaId = row[ChapterTable.manga].value
-                    val chapterId = row[ChapterTable.id].value
-                    ChapterDownloadHelper.delete(chapterMangaId, chapterId)
-                }
-
-            ChapterTable.update({ ChapterTable.id inList chapterIds }) {
-                it[isDownloaded] = false
-            }
-        }
-    }
-
-    fun getRecentChapters(pageNum: Int): PaginatedList<MangaChapterDataClass> =
+    fun getRecentChapters(
+        userId: Int,
+        pageNum: Int,
+    ): PaginatedList<MangaChapterDataClass> =
         paginatedFrom(pageNum) {
             transaction {
-                (ChapterTable innerJoin MangaTable)
+                (ChapterTable innerJoin MangaTable.getWithUserData(userId))
                     .selectAll()
-                    .where { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
+                    .where { (MangaUserTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaUserTable.inLibraryAt) }
                     .orderBy(ChapterTable.fetchedAt to SortOrder.DESC)
                     .map {
                         MangaChapterDataClass(
@@ -780,6 +959,7 @@ object Chapter {
         }
 
     fun updateChapterProgress(
+        userId: Int,
         mangaId: Int,
         chapterIndex: Int,
         pageNo: Int,
@@ -799,6 +979,7 @@ object Chapter {
         val isRead = chapterData.pageCount.takeIf { it == oneIndexedPageNo }?.let { true }
 
         modifyChapter(
+            userId,
             mangaId,
             chapterIndex,
             isRead = isRead,

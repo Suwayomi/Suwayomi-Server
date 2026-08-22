@@ -11,6 +11,7 @@ interface IUpdater {
     fun deleteLastAutomatedUpdateTimestamp()
 
     fun addCategoriesToUpdateQueue(
+        userId: Int,
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,

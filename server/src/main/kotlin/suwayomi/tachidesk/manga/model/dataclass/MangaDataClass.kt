@@ -29,7 +29,9 @@ data class MangaDataClass(
     val description: String? = null,
     val genre: List<String> = emptyList(),
     val status: String = MangaStatus.UNKNOWN.name,
+    @Deprecated("Grab data elsewhere")
     val inLibrary: Boolean = false,
+    @Deprecated("Grab data elsewhere")
     val inLibraryAt: Long = 0,
     val source: SourceDataClass? = null,
     val realUrl: String? = null,
@@ -51,11 +53,6 @@ data class MangaDataClass(
     val memo: JsonObject = JsonObject.EMPTY,
 ) {
     override fun toString(): String = "\"$title\" (id= $id) (sourceId= $sourceId)"
-
-    @Deprecated("Remove with V1 Api")
-    val meta: Map<String, String> by lazy {
-        getMangaMetaMap(id)
-    }
 }
 
 data class PagedMangaListDataClass(

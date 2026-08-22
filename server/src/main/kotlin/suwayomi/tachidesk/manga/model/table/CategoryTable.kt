@@ -7,8 +7,10 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 
@@ -23,6 +25,7 @@ object CategoryTable : IntIdTable() {
     val uid = long("uid").default(0)
     val lastModifiedAt = long("last_modified_at").default(0)
     val isSyncing = bool("is_syncing").default(false)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 }
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) =

@@ -22,17 +22,21 @@ import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.database.dbTransaction
 
 object BackupCategoryHandler {
-    fun backup(flags: BackupFlags): List<BackupCategory> =
+    fun backup(
+        userId: Int,
+        flags: BackupFlags,
+    ): List<BackupCategory> =
         dbTransaction {
             val categories =
                 CategoryTable
                     .selectAll()
+                    .where { CategoryTable.user eq userId }
                     .orderBy(CategoryTable.order to SortOrder.ASC)
                     .map { CategoryTable.toDataClass(it) }
 
             val categoryToMeta =
                 if (flags.includeClientData) {
-                    Category.getCategoriesMetaMaps(categories.map { it.id })
+                    Category.getCategoriesMetaMaps(userId, categories.map { it.id })
                 } else {
                     emptyMap()
                 }
@@ -51,8 +55,11 @@ object BackupCategoryHandler {
             }
         }
 
-    fun restore(backupCategories: List<BackupCategory>): Map<Int, Int> {
-        val dbCategories = Category.getCategoryList()
+    fun restore(
+        userId: Int,
+        backupCategories: List<BackupCategory>,
+    ): Map<Int, Int> {
+        val dbCategories = Category.getCategoryList(userId)
         val dbCategoriesByName = dbCategories.associateBy { it.name }
         val dbCategoriesByUid = dbCategories.associateBy { it.uid }
 
@@ -93,6 +100,7 @@ object BackupCategoryHandler {
                                 it[version] = backupCategory.version
                                 it[uid] = backupCategory.uid
                                 it[lastModifiedAt] = backupCategory.lastModifiedAt
+                                it[user] = userId
                             }.value
                     }
             }
@@ -110,7 +118,7 @@ object BackupCategoryHandler {
                     categoryId to backupCategory.meta
                 }
 
-        modifyCategoriesMetas(metaEntryByCategoryId)
+        modifyCategoriesMetas(userId, metaEntryByCategoryId)
 
         return backupCategories.withIndex().associate { (index, backupCategory) ->
             backupCategory.order to categoryIds[index]
