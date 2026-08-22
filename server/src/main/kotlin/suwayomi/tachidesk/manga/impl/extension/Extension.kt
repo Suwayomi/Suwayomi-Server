@@ -537,7 +537,7 @@ object Extension {
                         id = it.id,
                         name = it.name,
                         lang = it.lang,
-                        homeUrl = (it as HttpSource).baseUrl,
+                        homeUrl = runCatching { (it as HttpSource).getHomeUrl() }.getOrDefault(""),
                         message = null,
                         contentWarning = ContentWarning.valueOf(contentWarning),
                     )
@@ -562,12 +562,14 @@ object Extension {
             val extensionId = resultRow[ExtensionTable.id].value
             val contentWarning = resultRow[ExtensionTable.contentWarning]
 
-            val dbSourceIds =
+            val homeUrlBySourceId =
                 SourceTable
                     .select(
                         SourceTable.id,
+                        SourceTable.homeUrl,
                     ).where { SourceTable.extension eq extensionId }
-                    .map { it[SourceTable.id].value }
+                    .associate { it[SourceTable.id].value to it[SourceTable.homeUrl] }
+            val dbSourceIds = homeUrlBySourceId.keys
             val httpSourceIds = sources.map { it.id }.toSet()
 
             val (sourceIdsToUpdate, sourceIdsToDelete) = dbSourceIds.partition { it in httpSourceIds }
@@ -581,7 +583,7 @@ object Extension {
                 this[SourceTable.lang] = it.lang
                 this[SourceTable.extension] = extensionId
                 this[SourceTable.contentWarning] = contentWarning
-                this[SourceTable.homeUrl] = it.homeUrl
+                if (it.homeUrl.isNotEmpty()) this[SourceTable.homeUrl] = it.homeUrl
             }
 
             if (sourceIdsToUpdate.isNotEmpty()) {
@@ -596,7 +598,11 @@ object Extension {
                             this[SourceTable.lang] = httpSource.lang
                             this[SourceTable.extension] = extensionId
                             this[SourceTable.contentWarning] = contentWarning
-                            this[SourceTable.homeUrl] = httpSource.homeUrl
+                            if (httpSource.homeUrl.isNotEmpty()) {
+                                this[SourceTable.homeUrl] = httpSource.homeUrl
+                            } else {
+                                this[SourceTable.homeUrl] = homeUrlBySourceId[sourceId]
+                            }
                         }
                     }.toExecutable()
                     .execute(this@dbTransaction)
