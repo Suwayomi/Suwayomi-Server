@@ -144,7 +144,7 @@ private suspend fun runMigrations(
 
             migrationFunction(applicationDirs)
 
-            migrationPreferences.edit().putInt("version", migrationVersion).apply()
+            migrationPreferences.edit().putInt("version", migrationVersion).commit()
         }
     } catch (e: Exception) {
         logger.error(e) { "Failed to run migrations" }
