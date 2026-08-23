@@ -3,7 +3,9 @@ package suwayomi.tachidesk.graphql.types
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import com.expediagroup.graphql.server.extensions.getValuesFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.manga.impl.update.CategoryUpdateJob
 import suwayomi.tachidesk.manga.impl.update.CategoryUpdateStatus
 import suwayomi.tachidesk.manga.impl.update.JobStatus
@@ -81,10 +83,11 @@ class UpdateStatusType(
             }
         }
 
-        return dataFetchingEnvironment.getValueFromDataLoader<List<Int>, MangaNodeList>(
-            "MangaForIdsDataLoader",
-            mangaIds,
-        )
+        return dataFetchingEnvironment
+            .getValuesFromDataLoader<Int, MangaType>(
+                "MangaDataLoader",
+                mangaIds,
+            ).thenApply { it.toNodeList() }
     }
 }
 
