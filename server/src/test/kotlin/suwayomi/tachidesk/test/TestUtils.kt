@@ -37,7 +37,10 @@ fun setLoggingEnabled(enabled: Boolean = true) {
 
 const val BASE_PATH = "build/tmp/TestDesk"
 
-fun createLibraryManga(_title: String): Int =
+fun createLibraryManga(
+    _title: String,
+    userId: Int = 1,
+): Int =
     transaction {
         val mangaId =
             MangaTable
@@ -49,7 +52,7 @@ fun createLibraryManga(_title: String): Int =
 
         MangaUserTable.insert {
             it[MangaUserTable.manga] = mangaId
-            it[MangaUserTable.user] = 1
+            it[MangaUserTable.user] = userId
             it[MangaUserTable.inLibrary] = true
         }
         mangaId

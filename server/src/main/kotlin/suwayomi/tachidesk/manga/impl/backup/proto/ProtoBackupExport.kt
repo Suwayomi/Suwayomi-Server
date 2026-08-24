@@ -19,7 +19,9 @@ import okio.Buffer
 import okio.Sink
 import okio.buffer
 import okio.gzip
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
@@ -96,23 +98,36 @@ object ProtoBackupExport : ProtoBackupBase() {
         backupSchedulerJobId = HAScheduler.scheduleCron(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
     }
 
-    private fun createAutomatedBackup() {
+    internal fun createAutomatedBackup() {
         logger.info { "Creating automated backup..." }
 
-        createBackup(
-            1, // todo figure out how to make a global backup with all user data
-            BackupFlags.fromServerConfig(),
-        ).use { input ->
-            val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
-            automatedBackupDir.mkdirs()
+        val userIds =
+            transaction {
+                UserAccountTable.selectAll().map { it[UserAccountTable.id].value }
+            }
+        if (userIds.isEmpty()) {
+            logger.warn { "No users found; skipping automated backup" }
+            return
+        }
 
-            val backupFile = File(applicationDirs.automatedBackupRoot, Backup.getFilename(AUTO_BACKUP_FILENAME))
+        val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
+        automatedBackupDir.mkdirs()
 
-            backupFile.outputStream().use { output -> input.copyTo(output) }
+        userIds.forEach { userId ->
+            try {
+                createBackup(userId, BackupFlags.fromServerConfig()).use { input ->
+                    val backupFile = File(automatedBackupDir, Backup.getFilename("$AUTO_BACKUP_FILENAME.user$userId"))
+
+                    backupFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                logger.info { "Automated backup for user $userId complete" }
+            } catch (e: Exception) {
+                logger.error(e) { "Automated backup for user $userId failed" }
+            }
         }
     }
 
-    private fun cleanupAutomatedBackups() {
+    internal fun cleanupAutomatedBackups() {
         logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL.value})" }
 
         val isCleanupDisabled = serverConfig.backupTTL.value == 0
