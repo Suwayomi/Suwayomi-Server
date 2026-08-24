@@ -251,6 +251,7 @@ tasks {
 
     runKtlintCheckOverMainSourceSet {
         mustRunAfter(generateJte)
+        mustRunAfter(":server:server-config-generate:generateSettings")
     }
 
     compileKotlin {
