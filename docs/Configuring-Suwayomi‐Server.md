@@ -188,6 +188,7 @@ server.autoBackupIncludeTracking = true
 server.autoBackupIncludeHistory = true
 server.autoBackupIncludeClientData = true
 server.autoBackupIncludeServerSettings = true
+server.autoBackupIncludeUserSettings = true
 ```
 - `server.backupPath = ""` the path where backups will be stored, if the value is empty, the default directory `backups` inside [the data directory](https://github.com/Suwayomi/Suwayomi-Server/wiki/The-Data-Directory) will be used. If you are on Windows the slashes `\` needs to be doubled(`\\`) or replaced with `/`
 - `server.backupTime = "00:00"` sets the time of day at which the automated backup should be triggered.
@@ -200,6 +201,7 @@ server.autoBackupIncludeServerSettings = true
 - `server.autoBackupIncludeHistory` whether to include manga reading history in automatic backups
 - `server.autoBackupIncludeClientData` whether to include client data in automatic backups
 - `server.autoBackupIncludeServerSettings` whether to include server settings in automatic backups
+- `server.autoBackupIncludeUserSettings` whether to include user settings in automatic backups
 
 ### Local Source
 ```
