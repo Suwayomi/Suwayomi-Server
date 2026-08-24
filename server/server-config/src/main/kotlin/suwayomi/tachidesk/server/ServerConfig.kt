@@ -69,14 +69,9 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
-/**
- * Shared deprecation metadata for settings that are now per-user. The global value remains functional and acts as a
- * fallback for users without an explicit override. [SettingsRegistry.SettingDeprecated.replaceWith] is null so no
- * config migration is performed.
- */
 val userSettingDeprecated = SettingsRegistry.SettingDeprecated(
     replaceWith = null,
-    message = "Now per-user - global value acts as fallback for users without an override",
+    message = "Now per-user",
 )
 
 private val application: Application by injectLazy()
@@ -238,7 +233,7 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 17,
         group = SettingGroup.DOWNLOADER,
@@ -247,7 +242,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 18,
         group = SettingGroup.DOWNLOADER,
@@ -273,7 +268,7 @@ class ServerConfig(
         setMigrated = { autoDownloadNewChaptersLimit.value = it },
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by DisableableIntSetting(
         protoNumber = 20,
         group = SettingGroup.DOWNLOADER,
@@ -284,7 +279,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 21,
         group = SettingGroup.DOWNLOADER,
@@ -341,7 +336,7 @@ class ServerConfig(
                 "Library update/downloads are grouped by source and all manga of a source are updated/downloaded synchronously",
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val excludeUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 24,
         group = SettingGroup.LIBRARY_UPDATES,
@@ -350,7 +345,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val excludeNotStarted: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 25,
         group = SettingGroup.LIBRARY_UPDATES,
@@ -359,7 +354,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val excludeCompleted: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 26,
         group = SettingGroup.LIBRARY_UPDATES,
@@ -377,7 +372,7 @@ class ServerConfig(
         description = "Time in hours",
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val updateMangas: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 28,
         group = SettingGroup.LIBRARY_UPDATES,
@@ -578,7 +573,7 @@ class ServerConfig(
         defaultValue = false,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 49,
         group = SettingGroup.OPDS,
@@ -588,7 +583,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsItemsPerPage: MutableStateFlow<Int> by IntSetting(
         protoNumber = 50,
         group = SettingGroup.OPDS,
@@ -599,7 +594,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 51,
         group = SettingGroup.OPDS,
@@ -608,7 +603,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 52,
         group = SettingGroup.OPDS,
@@ -617,7 +612,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 53,
         group = SettingGroup.OPDS,
@@ -626,7 +621,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 54,
         group = SettingGroup.OPDS,
@@ -635,7 +630,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsChapterSortOrder: MutableStateFlow<SortOrder> by EnumSetting(
         protoNumber = 55,
         group = SettingGroup.OPDS,
@@ -826,7 +821,7 @@ class ServerConfig(
         ),
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by EnumSetting(
         protoNumber = 63,
         group = SettingGroup.KOREADER_SYNC,
@@ -911,7 +906,7 @@ class ServerConfig(
         },
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by DoubleSetting(
         protoNumber = 65,
         group = SettingGroup.KOREADER_SYNC,
@@ -981,7 +976,7 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
         protoNumber = 73,
         group = SettingGroup.KOREADER_SYNC,
@@ -993,7 +988,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val koreaderSyncStrategyBackward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
         protoNumber = 74,
         group = SettingGroup.KOREADER_SYNC,
@@ -1065,7 +1060,7 @@ class ServerConfig(
         defaultValue = BackupFlags.DEFAULT.includeServerSettings,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsCbzMimetype: MutableStateFlow<CbzMediaType> by EnumSetting(
         protoNumber = 83,
         group = SettingGroup.OPDS,
@@ -1078,7 +1073,7 @@ class ServerConfig(
         deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val serveConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
         protoNumber = 84,
         key = "serveConversions",
@@ -1102,70 +1097,88 @@ class ServerConfig(
         description = "Enable the WebView via CEF (Chromium)"
     )
 
+    @Deprecated("Now per-user")
     val syncYomiEnabled: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 87,
         defaultValue = false,
         group = SettingGroup.SYNCYOMI,
-        privacySafe = true
+        privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncYomiHost: MutableStateFlow<String> by StringSetting(
         protoNumber = 88,
         defaultValue = "",
         group = SettingGroup.SYNCYOMI,
         privacySafe = false,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncYomiApiKey: MutableStateFlow<String> by StringSetting(
         protoNumber = 89,
         defaultValue = "",
         group = SettingGroup.SYNCYOMI,
         privacySafe = false,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncDataManga: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 90,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncDataChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 91,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncDataTracking: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 92,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncDataHistory: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 93,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncDataCategories: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 94,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user")
     val syncInterval: MutableStateFlow<Duration> by DurationSetting(
         protoNumber = 95,
         defaultValue = 0.seconds,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    @Deprecated("Now per-user - global value acts as fallback")
+    @Deprecated("Now per-user")
     val opdsSkipChapterMetadataFeed: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 96,
         group = SettingGroup.OPDS,

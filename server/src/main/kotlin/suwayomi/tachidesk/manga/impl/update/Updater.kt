@@ -376,7 +376,7 @@ class Updater : IUpdater {
         automatedUpdate: Boolean,
     ) {
         scope.launch {
-            SyncManager.ensureSync()
+            SyncManager.ensureSync(userId)
 
             saveLastUpdateTimestamp()
 

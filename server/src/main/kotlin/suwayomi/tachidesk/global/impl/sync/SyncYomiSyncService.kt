@@ -22,7 +22,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
@@ -57,22 +58,23 @@ object SyncYomiSyncService {
     }
 
     suspend fun doSync(
+        userId: Int,
         syncData: SyncData,
         startDate: Instant,
         setSyncState: (SyncManager.SyncState) -> Unit,
     ): Backup? {
-        reportSyncEvent(SyncEventStatus.SYNC_STARTED)
+        reportSyncEvent(userId, SyncEventStatus.SYNC_STARTED)
         setSyncState(SyncManager.SyncState.Downloading(startDate))
 
         return try {
-            val (remoteData, etag) = pullSyncData()
+            val (remoteData, etag) = pullSyncData(userId)
 
             val finalSyncData =
                 if (remoteData != null) {
                     require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
                     logger.debug { "Try update remote data with ETag($etag)" }
                     setSyncState(SyncManager.SyncState.Merging(startDate))
-                    mergeSyncData(syncData, remoteData)
+                    mergeSyncData(userId, syncData, remoteData)
                 } else {
                     // init or overwrite remote data
                     logger.debug { "Try overwrite remote data with ETag($etag)" }
@@ -83,32 +85,32 @@ object SyncYomiSyncService {
                 setSyncState(SyncManager.SyncState.Uploading(startDate))
             }
 
-            val success = pushSyncData(finalSyncData, etag)
+            val success = pushSyncData(userId, finalSyncData, etag)
             if (success) {
-                reportSyncEvent(SyncEventStatus.SYNC_SUCCESS)
+                reportSyncEvent(userId, SyncEventStatus.SYNC_SUCCESS)
             } else {
-                reportSyncEvent(SyncEventStatus.SYNC_FAILED, "Failed to push sync data")
+                reportSyncEvent(userId, SyncEventStatus.SYNC_FAILED, "Failed to push sync data")
             }
 
             finalSyncData.backup
         } catch (e: Exception) {
             if (e is CancellationException) {
-                reportSyncEvent(SyncEventStatus.SYNC_CANCELLED, e.message)
+                reportSyncEvent(userId, SyncEventStatus.SYNC_CANCELLED, e.message)
                 throw e
             }
             logger.error { "Error syncing: ${e.message}" }
-            reportSyncEvent(SyncEventStatus.SYNC_ERROR, e.message)
+            reportSyncEvent(userId, SyncEventStatus.SYNC_ERROR, e.message)
             throw e
         }
     }
 
-    private suspend fun pullSyncData(): Pair<SyncData?, String> {
-        val host = serverConfig.syncYomiHost.value
-        val apiKey = serverConfig.syncYomiApiKey.value
+    private suspend fun pullSyncData(userId: Int): Pair<SyncData?, String> {
+        val host = userSettings.value(userId, userConfig.syncYomiHost)
+        val apiKey = userSettings.value(userId, userConfig.syncYomiApiKey)
         val downloadUrl = "$host/api/sync/content"
 
         val headersBuilder = Headers.Builder().add("X-API-Token", apiKey)
-        val lastETag = syncPreferences.getString("last_sync_etag", "") ?: ""
+        val lastETag = syncPreferences.getString("last_sync_etag_$userId", "") ?: ""
         if (lastETag != "") {
             headersBuilder.add("If-None-Match", lastETag)
         }
@@ -159,13 +161,14 @@ object SyncYomiSyncService {
     }
 
     private suspend fun pushSyncData(
+        userId: Int,
         syncData: SyncData,
         eTag: String,
     ): Boolean {
         val backup = syncData.backup ?: return true
 
-        val host = serverConfig.syncYomiHost.value
-        val apiKey = serverConfig.syncYomiApiKey.value
+        val host = userSettings.value(userId, userConfig.syncYomiHost)
+        val apiKey = userSettings.value(userId, userConfig.syncYomiApiKey)
         val uploadUrl = "$host/api/sync/content"
 
         val headersBuilder = Headers.Builder().add("X-API-Token", apiKey)
@@ -205,9 +208,9 @@ object SyncYomiSyncService {
                     ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
             syncPreferences
                 .edit()
-                .putString("last_sync_etag", newETag)
+                .putString("last_sync_etag_$userId", newETag)
                 .apply()
-            logger.debug { "SyncYomi sync completed" }
+            logger.debug { "SyncYomi sync completed for user $userId" }
             true
         } else if (response.code == HttpStatus.PRECONDITION_FAILED.code) {
             // other clients updated remote data, will try next time
@@ -221,12 +224,13 @@ object SyncYomiSyncService {
     }
 
     private suspend fun reportSyncEvent(
+        userId: Int,
         event: SyncEventStatus,
         message: String? = null,
     ) {
         try {
-            val host = serverConfig.syncYomiHost.value
-            val apiKey = serverConfig.syncYomiApiKey.value
+            val host = userSettings.value(userId, userConfig.syncYomiHost)
+            val apiKey = userSettings.value(userId, userConfig.syncYomiApiKey)
             val url = "$host/api/sync/event"
 
             val headers = Headers.Builder().add("X-API-Token", apiKey).build()
@@ -259,14 +263,16 @@ object SyncYomiSyncService {
     }
 
     fun mergeSyncData(
+        userId: Int,
         localSyncData: SyncData,
         remoteSyncData: SyncData,
     ): SyncData {
         val mergedCategoriesList =
-            mergeCategoriesLists(localSyncData.backup?.backupCategories, remoteSyncData.backup?.backupCategories)
+            mergeCategoriesLists(userId, localSyncData.backup?.backupCategories, remoteSyncData.backup?.backupCategories)
 
         val mergedMangaList =
             mergeMangaLists(
+                userId,
                 localSyncData.backup?.backupManga,
                 remoteSyncData.backup?.backupManga,
                 localSyncData.backup?.backupCategories ?: emptyList(),
@@ -295,6 +301,7 @@ object SyncYomiSyncService {
     }
 
     private fun mergeMangaLists(
+        userId: Int,
         localMangaList: List<BackupManga>?,
         remoteMangaList: List<BackupManga>?,
         localCategories: List<BackupCategory>,
@@ -329,7 +336,8 @@ object SyncYomiSyncService {
                     },
             )
 
-        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp", 0).milliseconds.inWholeSeconds
+        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp_$userId", 0).milliseconds.inWholeSeconds
+        val syncingChapters = userSettings.value(userId, userConfig.syncDataChapters)
 
         val mergedList =
             (localMangaMap.keys + remoteMangaMap.keys).distinct().mapNotNull { compositeKey ->
@@ -367,7 +375,7 @@ object SyncYomiSyncService {
                                             local.chapters,
                                             remote.chapters,
                                             lastSyncTime,
-                                            serverConfig.syncDataChapters.value,
+                                            syncingChapters,
                                         ),
                                 ),
                                 localCategoriesMapByOrder,
@@ -381,7 +389,7 @@ object SyncYomiSyncService {
                                             local.chapters,
                                             remote.chapters,
                                             lastSyncTime,
-                                            serverConfig.syncDataChapters.value,
+                                            syncingChapters,
                                         ),
                                 ),
                                 remoteCategoriesMapByOrder,
@@ -485,6 +493,7 @@ object SyncYomiSyncService {
     }
 
     private fun mergeCategoriesLists(
+        userId: Int,
         localCategoriesList: List<BackupCategory>?,
         remoteCategoriesList: List<BackupCategory>?,
     ): List<BackupCategory> {
@@ -496,7 +505,7 @@ object SyncYomiSyncService {
         val localMapByUid = localCategoriesList.filter { it.uid != 0L }.associateBy { it.uid }
         val localMapByName = localCategoriesList.associateBy { it.name }
 
-        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp", 0)
+        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp_$userId", 0)
 
         remoteCategoriesList.forEach { remote ->
             var localMatch: BackupCategory? = null

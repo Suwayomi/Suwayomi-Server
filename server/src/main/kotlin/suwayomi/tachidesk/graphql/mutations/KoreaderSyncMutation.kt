@@ -29,9 +29,13 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun connectKoSyncAccount(input: ConnectKoSyncAccountInput): CompletableFuture<KoSyncConnectPayload> =
+    fun connectKoSyncAccount(
+        @GraphQLIgnore
+        userId: Int,
+        input: ConnectKoSyncAccountInput,
+    ): CompletableFuture<KoSyncConnectPayload> =
         future {
-            val (message, status) = KoreaderSyncService.connect(input.serverAddress, input.username, input.password)
+            val (message, status) = KoreaderSyncService.connect(userId, input.serverAddress, input.username, input.password)
 
             KoSyncConnectPayload(
                 clientMutationId = input.clientMutationId,
@@ -45,9 +49,13 @@ class KoreaderSyncMutation {
     )
 
     @RequireAuth
-    fun logoutKoSyncAccount(input: LogoutKoSyncAccountInput): CompletableFuture<LogoutKoSyncAccountPayload> =
+    fun logoutKoSyncAccount(
+        @GraphQLIgnore
+        userId: Int,
+        input: LogoutKoSyncAccountInput,
+    ): CompletableFuture<LogoutKoSyncAccountPayload> =
         future {
-            KoreaderSyncService.logout()
+            KoreaderSyncService.logout(userId)
             LogoutKoSyncAccountPayload(
                 clientMutationId = input.clientMutationId,
                 status = KoSyncStatusPayload(isLoggedIn = false, serverAddress = null, username = null),

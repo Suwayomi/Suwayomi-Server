@@ -6,9 +6,6 @@ import io.github.config4k.readers.SelectReader
 import io.github.config4k.toConfig
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -16,7 +13,6 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.global.model.table.UserSettingsTable
-import suwayomi.tachidesk.server.mutableConfigValueScope
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -48,34 +44,11 @@ object UserSettings {
         cache.getOrPut(cacheKey(userId, setting.key)) {
             val e = Entry<T>()
             val stored = readStored(userId, setting.key)
-            val global = setting.globalFlow().value
+            val default = setting.defaultValue
             e.hasOverride = stored != null
-            e.flow = MutableStateFlow(if (stored != null) decode(stored, setting) else global)
-            if (!e.hasOverride) {
-                subscribeToGlobal(setting, e)
-            }
+            e.flow = MutableStateFlow(if (stored != null) decode(stored, setting) else default)
             e
         } as Entry<T>
-
-    /**
-     * Subscribe [e] to the global flow so a global change propagates while the entry has no override.
-     * Any previous subscription for this entry is cancelled, so at most one subscription exists per entry.
-     */
-    private fun <T : Any> subscribeToGlobal(
-        setting: UserSetting<T>,
-        e: Entry<T>,
-    ) {
-        e.globalSubscription?.cancel()
-        e.globalSubscription =
-            setting
-                .globalFlow()
-                .drop(1)
-                .onEach { globalValue ->
-                    if (!e.hasOverride) {
-                        e.flow.value = globalValue
-                    }
-                }.launchIn(mutableConfigValueScope)
-    }
 
     fun <T : Any> flow(
         userId: Int,
@@ -134,14 +107,14 @@ object UserSettings {
             }
         }
 
-        syncCacheToGlobal(userId, setting)
+        syncCacheToDefault(userId, setting)
     }
 
     /**
-     * Re-sync a cached entry to the current global value (no override). Does not touch the database — callers that
+     * Re-sync a cached entry to the default value (no override). Does not touch the database — callers that
      * removed the override row must do so themselves.
      */
-    private fun syncCacheToGlobal(
+    private fun syncCacheToDefault(
         userId: Int,
         setting: UserSetting<*>,
     ) {
@@ -151,8 +124,7 @@ object UserSettings {
             @Suppress("UNCHECKED_CAST")
             val typedSetting = setting as UserSetting<Any>
             e.hasOverride = false
-            e.flow.value = typedSetting.globalFlow().value
-            subscribeToGlobal(typedSetting, e)
+            e.flow.value = typedSetting.defaultValue
         }
     }
 
@@ -167,7 +139,7 @@ object UserSettings {
             .forEach { key ->
                 val settingKey = key.substringAfter(":")
                 val setting = UserSettingsRegistry.get(settingKey) ?: return@forEach
-                syncCacheToGlobal(userId, setting)
+                syncCacheToDefault(userId, setting)
             }
     }
 
@@ -223,7 +195,7 @@ object UserSettings {
                 } else {
                     // Parse under an `internal` root because config readers reject the empty path
                     @Suppress("UNCHECKED_CAST")
-                    val config = ConfigFactory.parseString("internal $raw")
+                    val config = ConfigFactory.parseString("internal=$raw")
                     val reader = SelectReader.getReader(ClassContainer(setting.type, setting.typeArguments))
                     return reader(config, "internal") as T
                 }

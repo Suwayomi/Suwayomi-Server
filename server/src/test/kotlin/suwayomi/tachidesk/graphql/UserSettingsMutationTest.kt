@@ -23,12 +23,9 @@ import kotlin.test.assertEquals
  * caller's own per-user settings.
  */
 class UserSettingsMutationTest : GraphQLTest() {
-    private var originalOpdsItemsPerPage: Int = 0
-
     @AfterEach
     fun tearDown() {
         userSettings.resetAll(1)
-        serverConfig.opdsItemsPerPage.value = originalOpdsItemsPerPage
     }
 
     private fun userSettingsQuery(settings: String) =
@@ -44,7 +41,6 @@ class UserSettingsMutationTest : GraphQLTest() {
 
     @Test
     fun userSettingsQueryReturnsCallerValues() {
-        originalOpdsItemsPerPage = serverConfig.opdsItemsPerPage.value
         userSettings.set(1, userConfig.opdsItemsPerPage, 250)
 
         val response =
@@ -59,18 +55,17 @@ class UserSettingsMutationTest : GraphQLTest() {
         response.assertNoErrors()
         assertEquals(250, response.dataPath("userSettings", "opdsItemsPerPage"))
         assertEquals(
-            serverConfig.excludeUnreadChapters.value,
+            userConfig.excludeUnreadChapters.defaultValue,
             response.dataPath("userSettings", "excludeUnreadChapters"),
         )
         assertEquals(
-            serverConfig.autoDownloadNewChaptersLimit.value,
+            userConfig.autoDownloadNewChaptersLimit.defaultValue,
             response.dataPath("userSettings", "autoDownloadNewChaptersLimit"),
         )
     }
 
     @Test
     fun setUserSettingsUpdatesCallerOnly() {
-        originalOpdsItemsPerPage = serverConfig.opdsItemsPerPage.value
         val user2Id = createTestUser("usettings_gql_user2")
         val user2 = UserType.User(user2Id, emptyList())
 
@@ -95,7 +90,7 @@ class UserSettingsMutationTest : GraphQLTest() {
         adminQuery.assertNoErrors()
         assertEquals(250, adminQuery.dataPath("userSettings", "opdsItemsPerPage"))
 
-        // User 2 is unaffected and still falls back to the global value
+        // User 2 is unaffected and still falls back to the drfault value
         val user2Query =
             graphql(
                 """
@@ -109,15 +104,13 @@ class UserSettingsMutationTest : GraphQLTest() {
             )
         user2Query.assertNoErrors()
         assertEquals(
-            serverConfig.opdsItemsPerPage.value,
+            userConfig.opdsItemsPerPage.defaultValue,
             user2Query.dataPath("userSettings", "opdsItemsPerPage"),
         )
     }
 
     @Test
     fun setUserSettingsRejectsInvalidValue() {
-        originalOpdsItemsPerPage = serverConfig.opdsItemsPerPage.value
-
         val response =
             graphql(
                 """
@@ -136,10 +129,8 @@ class UserSettingsMutationTest : GraphQLTest() {
     }
 
     @Test
-    fun resetUserSettingsReSyncsToGlobal() {
-        originalOpdsItemsPerPage = serverConfig.opdsItemsPerPage.value
+    fun resetUserSettingsReSyncsToDefault() {
         userSettings.set(1, userConfig.opdsItemsPerPage, 250)
-        serverConfig.opdsItemsPerPage.value = 300
 
         val response =
             graphql(
@@ -156,13 +147,14 @@ class UserSettingsMutationTest : GraphQLTest() {
             )
 
         response.assertNoErrors()
-        assertEquals(300, response.dataPath("resetUserSettings", "userSettings", "opdsItemsPerPage"))
+        assertEquals(
+            userConfig.opdsItemsPerPage.defaultValue,
+            response.dataPath("resetUserSettings", "userSettings", "opdsItemsPerPage"),
+        )
     }
 
     @Test
     fun visitorCannotAccessUserSettings() {
-        originalOpdsItemsPerPage = serverConfig.opdsItemsPerPage.value
-
         val response =
             graphql(
                 """
@@ -180,8 +172,6 @@ class UserSettingsMutationTest : GraphQLTest() {
 
     @Test
     fun serveConversionsViaGraphQL() {
-        originalOpdsItemsPerPage = serverConfig.opdsItemsPerPage.value
-
         val conversionInput =
             mapOf(
                 "mimeType" to "image/webp",

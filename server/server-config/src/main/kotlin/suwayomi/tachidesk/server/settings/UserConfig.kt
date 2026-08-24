@@ -12,10 +12,10 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadC
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.server.serverConfig
 import kotlin.reflect.KClass
-import org.jetbrains.exposed.v1.core.SortOrder
-import kotlin.reflect.full.starProjectedType
-import kotlin.reflect.jvm.jvmErasure
 import kotlin.reflect.typeOf
+import kotlin.time.Duration
+import org.jetbrains.exposed.v1.core.SortOrder
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Descriptor for a per-user setting.
@@ -35,7 +35,7 @@ class UserSetting<T : Any>(
     val protoNumber: Int,
     val group: SettingGroup,
     val type: KClass<*>,
-    val globalFlow: () -> MutableStateFlow<T>,
+    val defaultValue: T,
     val validator: ((T) -> String?)? = null,
     val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     val internalType: String? = null,
@@ -68,7 +68,7 @@ private inline fun <reified T : Any> userSetting(
     key: String,
     protoNumber: Int,
     group: SettingGroup,
-    noinline globalFlow: () -> MutableStateFlow<T>,
+    defaultValue: T,
     noinline validator: ((T) -> String?)? = null,
     typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     internalType: String? = null,
@@ -78,8 +78,8 @@ private inline fun <reified T : Any> userSetting(
         key = key,
         protoNumber = protoNumber,
         group = group,
+        defaultValue = defaultValue,
         type = T::class,
-        globalFlow = globalFlow,
         validator = validator,
         typeInfo = typeInfo,
         internalType = internalType,
@@ -100,28 +100,28 @@ class UserConfig {
         key = "excludeUnreadChapters",
         protoNumber = 1,
         group = SettingGroup.LIBRARY_UPDATES,
-        globalFlow = { serverConfig.excludeUnreadChapters },
+        defaultValue = true,
     )
 
     val excludeNotStarted: UserSetting<Boolean> = userSetting(
         key = "excludeNotStarted",
         protoNumber = 2,
         group = SettingGroup.LIBRARY_UPDATES,
-        globalFlow = { serverConfig.excludeNotStarted },
+        defaultValue = true,
     )
 
     val excludeCompleted: UserSetting<Boolean> = userSetting(
         key = "excludeCompleted",
         protoNumber = 3,
         group = SettingGroup.LIBRARY_UPDATES,
-        globalFlow = { serverConfig.excludeCompleted },
+        defaultValue = true,
     )
 
     val updateMangas: UserSetting<Boolean> = userSetting(
         key = "updateMangas",
         protoNumber = 4,
         group = SettingGroup.LIBRARY_UPDATES,
-        globalFlow = { serverConfig.updateMangas },
+        defaultValue = false,
     )
 
     // Auto-download
@@ -129,21 +129,21 @@ class UserConfig {
         key = "autoDownloadNewChapters",
         protoNumber = 5,
         group = SettingGroup.DOWNLOADER,
-        globalFlow = { serverConfig.autoDownloadNewChapters },
+        defaultValue = false,
     )
 
     val excludeEntryWithUnreadChapters: UserSetting<Boolean> = userSetting(
         key = "excludeEntryWithUnreadChapters",
         protoNumber = 6,
         group = SettingGroup.DOWNLOADER,
-        globalFlow = { serverConfig.excludeEntryWithUnreadChapters },
+        defaultValue = true,
     )
 
     val autoDownloadNewChaptersLimit: UserSetting<Int> = userSetting(
         key = "autoDownloadNewChaptersLimit",
         protoNumber = 7,
         group = SettingGroup.DOWNLOADER,
-        globalFlow = { serverConfig.autoDownloadNewChaptersLimit },
+        defaultValue = 0,
         validator = { value ->
             if (value < 0) "Value must be at least 0" else null
         },
@@ -153,7 +153,7 @@ class UserConfig {
         key = "autoDownloadIgnoreReUploads",
         protoNumber = 8,
         group = SettingGroup.DOWNLOADER,
-        globalFlow = { serverConfig.autoDownloadIgnoreReUploads },
+        defaultValue = false,
     )
 
     // OPDS
@@ -161,7 +161,7 @@ class UserConfig {
         key = "opdsItemsPerPage",
         protoNumber = 9,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsItemsPerPage },
+        defaultValue = 100,
         validator = { value ->
             when {
                 value < 10 -> "Value must be at least 10"
@@ -175,21 +175,21 @@ class UserConfig {
         key = "opdsShowOnlyUnreadChapters",
         protoNumber = 10,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsShowOnlyUnreadChapters },
+        defaultValue = false,
     )
 
     val opdsShowOnlyDownloadedChapters: UserSetting<Boolean> = userSetting(
         key = "opdsShowOnlyDownloadedChapters",
         protoNumber = 11,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsShowOnlyDownloadedChapters },
+        defaultValue = false,
     )
 
     val opdsChapterSortOrder: UserSetting<SortOrder> = userSetting(
         key = "opdsChapterSortOrder",
         protoNumber = 12,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsChapterSortOrder },
+        defaultValue = SortOrder.DESC,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.v1.core.SortOrder")),
     )
 
@@ -197,28 +197,28 @@ class UserConfig {
         key = "opdsMarkAsReadOnDownload",
         protoNumber = 13,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsMarkAsReadOnDownload },
+        defaultValue = false,
     )
 
     val opdsEnablePageReadProgress: UserSetting<Boolean> = userSetting(
         key = "opdsEnablePageReadProgress",
         protoNumber = 14,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsEnablePageReadProgress },
+        defaultValue = true,
     )
 
     val opdsUseBinaryFileSizes: UserSetting<Boolean> = userSetting(
         key = "opdsUseBinaryFileSizes",
         protoNumber = 15,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsUseBinaryFileSizes },
+        defaultValue = false,
     )
 
     val opdsCbzMimetype: UserSetting<CbzMediaType> = userSetting(
         key = "opdsCbzMimetype",
         protoNumber = 16,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsCbzMimetype },
+        defaultValue = CbzMediaType.MODERN,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
     )
 
@@ -226,7 +226,7 @@ class UserConfig {
         key = "opdsSkipChapterMetadataFeed",
         protoNumber = 17,
         group = SettingGroup.OPDS,
-        globalFlow = { serverConfig.opdsSkipChapterMetadataFeed },
+        defaultValue = false,
     )
 
     // KOReader sync behavior
@@ -234,7 +234,7 @@ class UserConfig {
         key = "koreaderSyncChecksumMethod",
         protoNumber = 18,
         group = SettingGroup.KOREADER_SYNC,
-        globalFlow = { serverConfig.koreaderSyncChecksumMethod },
+        defaultValue = KoreaderSyncChecksumMethod.BINARY,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
     )
 
@@ -242,7 +242,7 @@ class UserConfig {
         key = "koreaderSyncStrategyForward",
         protoNumber = 19,
         group = SettingGroup.KOREADER_SYNC,
-        globalFlow = { serverConfig.koreaderSyncStrategyForward },
+        defaultValue = KoreaderSyncConflictStrategy.PROMPT,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
     )
 
@@ -250,7 +250,7 @@ class UserConfig {
         key = "koreaderSyncStrategyBackward",
         protoNumber = 20,
         group = SettingGroup.KOREADER_SYNC,
-        globalFlow = { serverConfig.koreaderSyncStrategyBackward },
+        defaultValue = KoreaderSyncConflictStrategy.DISABLED,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
     )
 
@@ -258,7 +258,7 @@ class UserConfig {
         key = "koreaderSyncPercentageTolerance",
         protoNumber = 21,
         group = SettingGroup.KOREADER_SYNC,
-        globalFlow = { serverConfig.koreaderSyncPercentageTolerance },
+        defaultValue = 0.000000000000001,
         validator = { value ->
             when {
                 value < 0.000000000000001 -> "Value must be at least 0.000000000000001"
@@ -273,7 +273,7 @@ class UserConfig {
         key = "serveConversions",
         protoNumber = 22,
         group = SettingGroup.DOWNLOADER,
-        globalFlow = { serverConfig.serveConversions },
+        defaultValue = emptyMap(),
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<SettingsDownloadConversionType>",
@@ -357,6 +357,71 @@ class UserConfig {
                 },
             ),
         internalType = "Map<String, DownloadConversion>",
+    )
+
+    // SyncYomi (per-user sync account). The global value acts as fallback for users without an override.
+    val syncYomiEnabled: UserSetting<Boolean> = userSetting(
+        key = "syncYomiEnabled",
+        protoNumber = 23,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = false,
+    )
+
+    val syncInterval: UserSetting<Duration> = userSetting(
+        key = "syncInterval",
+        protoNumber = 24,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = 0.seconds,
+        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("kotlin.time.Duration")),
+    )
+
+    val syncYomiHost: UserSetting<String> = userSetting(
+        key = "syncYomiHost",
+        protoNumber = 25,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = "",
+    )
+
+    val syncYomiApiKey: UserSetting<String> = userSetting(
+        key = "syncYomiApiKey",
+        protoNumber = 26,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = "",
+    )
+
+    val syncDataManga: UserSetting<Boolean> = userSetting(
+        key = "syncDataManga",
+        protoNumber = 27,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = true,
+    )
+
+    val syncDataChapters: UserSetting<Boolean> = userSetting(
+        key = "syncDataChapters",
+        protoNumber = 28,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = true,
+    )
+
+    val syncDataTracking: UserSetting<Boolean> = userSetting(
+        key = "syncDataTracking",
+        protoNumber = 29,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = true,
+    )
+
+    val syncDataHistory: UserSetting<Boolean> = userSetting(
+        key = "syncDataHistory",
+        protoNumber = 30,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = true,
+    )
+
+    val syncDataCategories: UserSetting<Boolean> = userSetting(
+        key = "syncDataCategories",
+        protoNumber = 31,
+        group = SettingGroup.SYNCYOMI,
+        defaultValue = true,
     )
 }
 

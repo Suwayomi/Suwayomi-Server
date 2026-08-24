@@ -23,6 +23,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.types.StartSyncResult
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Library.handleMangaThumbnail
@@ -43,11 +44,15 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
+import suwayomi.tachidesk.server.subscribeTo
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlin.time.measureTime
@@ -57,110 +62,164 @@ data class SyncData(
     val backup: Backup? = null,
 )
 
-// todo user accounts
+/**
+ * Manages per-user SyncYomi syncing.
+ *
+ * Each user has their own sync account (host/api key), data flags, interval, sync state, and scheduled task. The
+ * per-user config is read from [userSettings] (falling back to the global [serverConfig] value when the user has no
+ * override).
+ */
 object SyncManager {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
 
-    private var currentTaskId: String? = null
-    private val syncMutex = Mutex()
+    // Per-user scheduled sync tasks: userId -> (taskId, interval)
+    private val scheduledSyncTasks = ConcurrentHashMap<Int, Pair<String, Duration>>()
 
-    private val _lastSyncState: MutableStateFlow<SyncState?> = MutableStateFlow(null)
-    val lastSyncState: StateFlow<SyncState?> = _lastSyncState.asStateFlow()
+    // Per-user sync state
+    private val syncStates = ConcurrentHashMap<Int, MutableStateFlow<SyncState?>>()
 
-    @OptIn(DelicateCoroutinesApi::class)
-    fun scheduleSyncTask() {
-        serverConfig.subscribeTo(
-            combine(
-                serverConfig.syncYomiEnabled,
-                serverConfig.syncInterval,
-            ) { enabled, interval -> Pair(enabled, interval) },
-            { (enabled, interval) ->
-                currentTaskId?.let { HAScheduler.deschedule(it) }
+    // Per-user sync mutexes (so concurrent syncs for different users are not serialized against each other)
+    private val syncMutexes = ConcurrentHashMap<Int, Mutex>()
 
-                currentTaskId =
-                    if (enabled && interval > 0.seconds) {
-                        val lastSyncDate =
-                            syncPreferences
-                                .getLong("last_scheduled_sync", 0L)
-                                .takeIf { it != 0L }
-                                ?.let { Instant.fromEpochMilliseconds(it) }
+    // Users whose sync config has been subscribed to (avoids duplicate subscriptions)
+    private val subscribedUsers = ConcurrentHashMap.newKeySet<Int>()
 
-                        if (lastSyncDate == null) {
-                            syncPreferences
-                                .edit()
-                                .putLong("last_scheduled_sync", Clock.System.now().toEpochMilliseconds())
-                                .apply()
-                        }
+    private val NEW_USER_CHECK_INTERVAL = 60.seconds
 
-                        val delay =
-                            if (lastSyncDate != null) {
-                                ((interval) - (Clock.System.now() - lastSyncDate)).coerceAtLeast(0.seconds)
-                            } else {
-                                interval
-                            }
+    /**
+     * The per-user sync state. Returns a [StateFlow] that is `null` until the user has (started) syncing.
+     */
+    fun lastSyncState(userId: Int): StateFlow<SyncState?> =
+        syncStates
+            .getOrPut(userId) { MutableStateFlow(null) }
+            .asStateFlow()
 
-                        HAScheduler.schedule(
-                            {
-                                startSync(periodic = true)
-
-                                syncPreferences
-                                    .edit()
-                                    .putLong("last_scheduled_sync", Clock.System.now().toEpochMilliseconds())
-                                    .apply()
-                            },
-                            interval = interval.inWholeMilliseconds,
-                            delay = delay.inWholeMilliseconds,
-                            name = "sync",
-                        )
-                    } else {
-                        syncPreferences
-                            .edit()
-                            .remove("last_scheduled_sync")
-                            .apply()
-                        null
-                    }
-            },
-            ignoreInitialValue = false,
-        )
+    private fun setLastSyncState(
+        userId: Int,
+        state: SyncState?,
+    ) {
+        syncStates.getOrPut(userId) { MutableStateFlow(null) }.value = state
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun startSync(periodic: Boolean = false): StartSyncResult {
-        if (!serverConfig.syncYomiEnabled.value) {
+    fun scheduleSyncTask() {
+        // Subscribe to the sync config of all existing users
+        val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value } }
+        userIds.forEach { userId -> subscribeToUserSyncConfig(userId) }
+
+        // Periodically pick up newly created users (and clean up deleted ones)
+        HAScheduler.schedule(
+            { checkForNewUsers() },
+            interval = NEW_USER_CHECK_INTERVAL.inWholeMilliseconds,
+            delay = NEW_USER_CHECK_INTERVAL.inWholeMilliseconds,
+            name = "sync-new-user-check",
+        )
+    }
+
+    private fun checkForNewUsers() {
+        val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value }.toSet() }
+
+        userIds.forEach { userId -> subscribeToUserSyncConfig(userId) }
+
+        // Clean up users that no longer exist
+        subscribedUsers
+            .toList()
+            .filter { userId -> userId !in userIds }
+            .forEach { userId ->
+                scheduledSyncTasks.remove(userId)?.let { HAScheduler.deschedule(it.first) }
+            }
+    }
+
+    /**
+     * Idempotently subscribe to a user's (enabled, interval) config so their scheduled sync task is kept in sync.
+     */
+    private fun subscribeToUserSyncConfig(userId: Int) {
+        if (!subscribedUsers.add(userId)) {
+            return
+        }
+
+        val enabledFlow = userSettings.flow(userId, userConfig.syncYomiEnabled)
+        val intervalFlow = userSettings.flow(userId, userConfig.syncInterval)
+
+        subscribeTo(
+            combine(enabledFlow, intervalFlow) { enabled, interval -> Pair(enabled, interval) },
+            ignoreInitialValue = false,
+        ) { (enabled, interval) ->
+            rescheduleUserSync(userId, enabled, interval)
+        }
+    }
+
+    private fun rescheduleUserSync(
+        userId: Int,
+        enabled: Boolean,
+        interval: Duration,
+    ) {
+        val shouldSchedule = enabled && interval > 0.seconds
+        val existing = scheduledSyncTasks[userId]
+
+        if (shouldSchedule) {
+            if (existing == null || existing.second != interval) {
+                existing?.let { HAScheduler.deschedule(it.first) }
+
+                val taskId =
+                    HAScheduler.schedule(
+                        { startSync(userId, periodic = true) },
+                        interval = interval.inWholeMilliseconds,
+                        delay = interval.inWholeMilliseconds,
+                        name = "sync-user-$userId",
+                    )
+                scheduledSyncTasks[userId] = taskId to interval
+            }
+        } else {
+            existing?.let {
+                HAScheduler.deschedule(it.first)
+                scheduledSyncTasks.remove(userId)
+            }
+        }
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    fun startSync(
+        userId: Int,
+        periodic: Boolean = false,
+    ): StartSyncResult {
+        if (!userSettings.value(userId, userConfig.syncYomiEnabled)) {
             return StartSyncResult.SYNC_DISABLED
         }
 
-        if (!syncMutex.tryLock()) {
+        val userMutex = syncMutexes.getOrPut(userId) { Mutex() }
+        if (!userMutex.tryLock()) {
             return StartSyncResult.SYNC_IN_PROGRESS
         }
 
         GlobalScope.launch {
             try {
-                syncData(1, periodic)
+                syncData(userId, periodic)
             } finally {
-                syncMutex.unlock()
+                userMutex.unlock()
             }
         }
 
         return StartSyncResult.SUCCESS
     }
 
-    suspend fun ensureSync() {
-        if (!serverConfig.syncYomiEnabled.value) {
+    suspend fun ensureSync(userId: Int) {
+        if (!userSettings.value(userId, userConfig.syncYomiEnabled)) {
             return
         }
 
-        if (syncMutex.tryLock()) {
-            // there is no ongoing sync, so start one
+        val userMutex = syncMutexes.getOrPut(userId) { Mutex() }
+        if (userMutex.tryLock()) {
+            // there is no ongoing sync for this user, so start one
             try {
-                syncData(1)
+                syncData(userId)
             } finally {
-                syncMutex.unlock()
+                userMutex.unlock()
             }
         } else {
             // wait for the ongoing sync to finish
-            syncMutex.withLock {}
+            userMutex.withLock {}
         }
     }
 
@@ -169,14 +228,14 @@ object SyncManager {
         periodic: Boolean = false,
     ) {
         val startInstant = Clock.System.now()
-        _lastSyncState.value = SyncState.Started(startInstant)
+        setLastSyncState(userId, SyncState.Started(startInstant))
 
         try {
             logger.info {
                 if (periodic) {
-                    "Starting periodic sync"
+                    "Starting periodic sync for user $userId"
                 } else {
-                    "Starting manual sync"
+                    "Starting manual sync for user $userId"
                 }
             }
 
@@ -194,17 +253,17 @@ object SyncManager {
 
             val backupFlags =
                 BackupFlags(
-                    includeManga = serverConfig.syncDataManga.value,
-                    includeCategories = serverConfig.syncDataCategories.value,
-                    includeChapters = serverConfig.syncDataChapters.value,
-                    includeTracking = serverConfig.syncDataTracking.value,
-                    includeHistory = serverConfig.syncDataHistory.value,
+                    includeManga = userSettings.value(userId, userConfig.syncDataManga),
+                    includeCategories = userSettings.value(userId, userConfig.syncDataCategories),
+                    includeChapters = userSettings.value(userId, userConfig.syncDataChapters),
+                    includeTracking = userSettings.value(userId, userConfig.syncDataTracking),
+                    includeHistory = userSettings.value(userId, userConfig.syncDataHistory),
                     includeClientData = false,
                     includeServerSettings = false,
                     includeUserSettings = false,
                 )
 
-            _lastSyncState.value = SyncState.CreatingBackup(startInstant)
+            setLastSyncState(userId, SyncState.CreatingBackup(startInstant))
             val backupMangas = BackupMangaHandler.backup(userId, backupFlags)
             val backup =
                 Backup(
@@ -222,27 +281,27 @@ object SyncManager {
                 )
 
             val remoteBackup =
-                SyncYomiSyncService.doSync(syncData, startInstant) {
-                    _lastSyncState.value = it
+                SyncYomiSyncService.doSync(userId, syncData, startInstant) {
+                    setLastSyncState(userId, it)
                 }
 
             if (remoteBackup == null) {
                 logger.debug { "Skip restore due to network issues" }
-                finishWithError(startInstant, "Network error", periodic)
+                finishWithError(userId, startInstant, "Network error", periodic)
                 return
             }
 
             if (remoteBackup === syncData.backup) {
                 // nothing changed
                 logger.debug { "Skip restore due to remote was overwrite from local" }
-                finishWithSuccess(startInstant, periodic)
+                finishWithSuccess(userId, startInstant, periodic)
                 return
             }
 
             // Stop the sync early if the remote backup is null or empty
             if (remoteBackup.backupManga.isEmpty() && remoteBackup.backupCategories.isEmpty() && remoteBackup.backupSources.isEmpty()) {
                 logger.error { "No data found on remote server." }
-                finishWithError(startInstant, "No data found on remote server.", periodic)
+                finishWithError(userId, startInstant, "No data found on remote server.", periodic)
                 return
             }
 
@@ -250,14 +309,14 @@ object SyncManager {
                 transaction {
                     MangaUserTable
                         .selectAll()
-                        .where { MangaUserTable.user eq 1 and (MangaUserTable.inLibrary eq true) }
+                        .where { MangaUserTable.user eq userId and (MangaUserTable.inLibrary eq true) }
                         .empty()
                 }
 
             // Check if it's first sync based on lastSyncTimestamp
-            if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
+            if (syncPreferences.getLong("last_sync_timestamp_$userId", 0) == 0L && !isLibraryEmpty) {
                 // It's first sync no need to restore data. (just update remote data)
-                finishWithSuccess(startInstant, periodic)
+                finishWithSuccess(userId, startInstant, periodic)
                 return
             }
 
@@ -277,11 +336,11 @@ object SyncManager {
 
             if (!hasMangaChanges && !hasCategoryChanges && !hasSourceChanges) {
                 // update the sync timestamp
-                finishWithSuccess(startInstant, periodic)
+                finishWithSuccess(userId, startInstant, periodic)
                 return
             }
 
-            if (serverConfig.syncDataCategories.value) {
+            if (userSettings.value(userId, userConfig.syncDataCategories)) {
                 val mergedUids = newSyncData.backupCategories.map { it.uid }.toSet()
                 val mergedNames = newSyncData.backupCategories.map { it.name }.toSet()
                 val localCategories = Category.getCategoryList(userId).filterNot { it.default } // Exclude system category
@@ -306,7 +365,7 @@ object SyncManager {
                     flags = backupFlags,
                     isSync = true,
                 )
-            _lastSyncState.value = SyncState.Restoring(startInstant, restoreId)
+            setLastSyncState(userId, SyncState.Restoring(startInstant, restoreId))
 
             ProtoBackupImport.notifyFlow.first {
                 val restoreState = ProtoBackupImport.getRestoreState(restoreId)
@@ -316,44 +375,46 @@ object SyncManager {
             }
 
             // update the sync timestamp
-            finishWithSuccess(startInstant, periodic)
+            finishWithSuccess(userId, startInstant, periodic)
         } catch (e: Throwable) {
             logger.error { "Error syncing: ${e.message}" }
-            finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
+            finishWithError(userId, startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
         }
     }
 
     private fun finishWithSuccess(
+        userId: Int,
         startInstant: Instant,
         periodic: Boolean,
     ) {
         syncPreferences
             .edit()
-            .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
+            .putLong("last_sync_timestamp_$userId", Clock.System.now().toEpochMilliseconds())
             .apply()
-        _lastSyncState.value = SyncState.Success(startInstant)
+        setLastSyncState(userId, SyncState.Success(startInstant))
 
         logger.info {
             if (periodic) {
-                "Periodic sync completed successfully"
+                "Periodic sync for user $userId completed successfully"
             } else {
-                "Manual sync completed successfully"
+                "Manual sync for user $userId completed successfully"
             }
         }
     }
 
     private fun finishWithError(
+        userId: Int,
         startInstant: Instant,
         message: String,
         periodic: Boolean,
     ) {
-        _lastSyncState.value = SyncState.Error(startInstant, message)
+        setLastSyncState(userId, SyncState.Error(startInstant, message))
 
         logger.info {
             if (periodic) {
-                "Periodic sync failed: $message"
+                "Periodic sync for user $userId failed: $message"
             } else {
-                "Manual sync failed: $message"
+                "Manual sync for user $userId failed: $message"
             }
         }
     }

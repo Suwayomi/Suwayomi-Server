@@ -29,6 +29,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadC
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupUserSettings
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.UserSettingsRegistry
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.test.ApplicationTest
@@ -90,9 +91,9 @@ class BackupUserSettingsTest : ApplicationTest() {
 
         // Settings without an override are exported as the current global (effective) value, so restoring on a
         // server with different globals preserves the user's experience
-        assertEquals(serverConfig.opdsChapterSortOrder.value, backup.opdsChapterSortOrder)
-        assertEquals(serverConfig.koreaderSyncPercentageTolerance.value, backup.koreaderSyncPercentageTolerance)
-        assertEquals(serverConfig.autoDownloadNewChaptersLimit.value, backup.autoDownloadNewChaptersLimit)
+        assertEquals(userConfig.opdsChapterSortOrder.defaultValue, backup.opdsChapterSortOrder)
+        assertEquals(userConfig.koreaderSyncPercentageTolerance.defaultValue, backup.koreaderSyncPercentageTolerance)
+        assertEquals(userConfig.autoDownloadNewChaptersLimit.defaultValue, backup.autoDownloadNewChaptersLimit)
     }
 
     @Test
@@ -108,7 +109,7 @@ class BackupUserSettingsTest : ApplicationTest() {
         assertEquals(250, userSettings.value(userB, userConfig.opdsItemsPerPage))
         assertEquals(true, userSettings.value(userB, userConfig.excludeUnreadChapters))
         assertEquals(
-            serverConfig.opdsChapterSortOrder.value,
+            userConfig.opdsChapterSortOrder.defaultValue,
             userSettings.value(userB, userConfig.opdsChapterSortOrder),
         )
 
@@ -123,8 +124,9 @@ class BackupUserSettingsTest : ApplicationTest() {
                     .select(UserSettingsTable.value)
                     .where { UserSettingsTable.user eq userB }
                     .count()
+                    .toInt()
             }
-        assertEquals(22, rows)
+        assertEquals(UserSettingsRegistry.getAll().size, rows)
     }
 
     @Test
@@ -149,7 +151,7 @@ class BackupUserSettingsTest : ApplicationTest() {
 
         // Settings absent from the legacy backup stay on the global fallback
         assertEquals(
-            serverConfig.opdsChapterSortOrder.value,
+            userConfig.opdsChapterSortOrder.defaultValue,
             userSettings.value(userC, userConfig.opdsChapterSortOrder),
         )
     }
@@ -163,7 +165,7 @@ class BackupUserSettingsTest : ApplicationTest() {
 
         // The legacy global value must not be applied when includeServerSettings is off
         assertEquals(
-            serverConfig.opdsItemsPerPage.value,
+            userConfig.opdsItemsPerPage.defaultValue,
             userSettings.value(userC, userConfig.opdsItemsPerPage),
         )
 

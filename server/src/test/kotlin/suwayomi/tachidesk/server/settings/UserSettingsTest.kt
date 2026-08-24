@@ -21,7 +21,6 @@ import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.global.model.table.UserSettingsTable
 import suwayomi.tachidesk.graphql.types.DownloadConversion
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.test.ApplicationTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,22 +29,15 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Tests for the [UserSettings] per-user override store: global fallback, overrides, reset, per-user isolation,
- * global-change propagation and the stored-value serialization round-trip.
+ * Tests for the [UserSettings] per-user override store: default fallback, overrides, reset, per-user isolation,
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class UserSettingsTest : ApplicationTest() {
     private var userId: Int = 0
     private var userId2: Int = 0
 
-    private var originalOpdsItemsPerPage: Int = 0
-    private var originalExcludeUnreadChapters: Boolean = false
-
     @BeforeEach
     fun setUp() {
-        originalOpdsItemsPerPage = serverConfig.opdsItemsPerPage.value
-        originalExcludeUnreadChapters = serverConfig.excludeUnreadChapters.value
-
         userId = createUser("usettings_a")
         userId2 = createUser("usettings_b")
     }
@@ -54,8 +46,6 @@ class UserSettingsTest : ApplicationTest() {
     fun tearDown() {
         userSettings.resetAll(userId)
         userSettings.resetAll(userId2)
-        serverConfig.opdsItemsPerPage.value = originalOpdsItemsPerPage
-        serverConfig.excludeUnreadChapters.value = originalExcludeUnreadChapters
         transaction {
             UserAccountTable.deleteWhere { (UserAccountTable.id eq userId) or (UserAccountTable.id eq userId2) }
         }
@@ -70,25 +60,14 @@ class UserSettingsTest : ApplicationTest() {
                 }.value
         }
 
-    private fun waitFor(
-        timeoutMs: Long = 5_000,
-        condition: () -> Boolean,
-    ) {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (!condition() && System.currentTimeMillis() < deadline) {
-            Thread.sleep(50)
-        }
-        assertTrue(condition(), "condition was not met within ${timeoutMs}ms")
-    }
-
     @Test
-    fun valueFallsBackToGlobal() {
+    fun valueFallsBackToDefault() {
         assertEquals(
-            serverConfig.opdsItemsPerPage.value,
+            userConfig.opdsItemsPerPage.defaultValue,
             userSettings.value(userId, userConfig.opdsItemsPerPage),
         )
         assertEquals(
-            serverConfig.excludeUnreadChapters.value,
+            userConfig.excludeUnreadChapters.defaultValue,
             userSettings.value(userId, userConfig.excludeUnreadChapters),
         )
     }
@@ -116,43 +95,21 @@ class UserSettingsTest : ApplicationTest() {
 
         assertEquals(250, userSettings.value(userId, userConfig.opdsItemsPerPage))
         assertEquals(
-            serverConfig.opdsItemsPerPage.value,
+            userConfig.opdsItemsPerPage.defaultValue,
             userSettings.value(userId2, userConfig.opdsItemsPerPage),
         )
     }
 
     @Test
-    fun globalChangePropagatesWithoutOverride() {
-        // Ensure the entry exists (subscribed to the global flow) before the global changes
-        userSettings.value(userId, userConfig.opdsItemsPerPage)
-
-        // Let the subscription coroutine attach to the flow; a StateFlow does not replay missed emissions
-        Thread.sleep(200)
-
-        serverConfig.opdsItemsPerPage.value = 300
-
-        waitFor { userSettings.value(userId, userConfig.opdsItemsPerPage) == 300 }
-    }
-
-    @Test
-    fun overrideStaysPinnedWhenGlobalChanges() {
+    fun resetReSyncsToDefault() {
         userSettings.set(userId, userConfig.opdsItemsPerPage, 250)
-
-        serverConfig.opdsItemsPerPage.value = 300
-        // Give propagation a chance to run; the override must hold regardless
-        Thread.sleep(200)
-
-        assertEquals(250, userSettings.value(userId, userConfig.opdsItemsPerPage))
-    }
-
-    @Test
-    fun resetReSyncsToGlobal() {
-        userSettings.set(userId, userConfig.opdsItemsPerPage, 250)
-        serverConfig.opdsItemsPerPage.value = 300
 
         userSettings.reset(userId, userConfig.opdsItemsPerPage)
 
-        assertEquals(300, userSettings.value(userId, userConfig.opdsItemsPerPage))
+        assertEquals(
+            userConfig.opdsItemsPerPage.defaultValue,
+            userSettings.value(userId, userConfig.opdsItemsPerPage),
+        )
 
         val rows =
             transaction {
@@ -172,11 +129,11 @@ class UserSettingsTest : ApplicationTest() {
         userSettings.resetAll(userId)
 
         assertEquals(
-            serverConfig.opdsItemsPerPage.value,
+            userConfig.opdsItemsPerPage.defaultValue,
             userSettings.value(userId, userConfig.opdsItemsPerPage),
         )
         assertEquals(
-            serverConfig.excludeUnreadChapters.value,
+            userConfig.excludeUnreadChapters.defaultValue,
             userSettings.value(userId, userConfig.excludeUnreadChapters),
         )
 
@@ -198,7 +155,7 @@ class UserSettingsTest : ApplicationTest() {
 
         // The invalid value must not have been stored
         assertEquals(
-            serverConfig.opdsItemsPerPage.value,
+            userConfig.opdsItemsPerPage.defaultValue,
             userSettings.value(userId, userConfig.opdsItemsPerPage),
         )
     }

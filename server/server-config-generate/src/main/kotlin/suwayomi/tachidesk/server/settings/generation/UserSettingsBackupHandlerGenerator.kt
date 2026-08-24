@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.server.settings.generation
 
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.settings.UserSetting
 import java.io.File
 
@@ -83,8 +84,16 @@ object UserSettingsBackupHandlerGenerator {
 
         settings.forEach { setting ->
             val needsConversion = setting.typeInfo?.restoreLegacy != null
+            // Only fall back to the legacy global (serverSettings) value when a global equivalent exists. Settings
+            // without a global equivalent (e.g. per-user connection accounts) have no legacy value to import.
+            val legacyFallback =
+                if (SettingsRegistry.get(setting.key) != null) {
+                    " ?: if (flags.includeServerSettings) legacyServerSettings?.${setting.key} else null"
+                } else {
+                    ""
+                }
             appendLine(
-                "(userSettingsBackup?.${setting.key} ?: if (flags.includeServerSettings) legacyServerSettings?.${setting.key} else null)?.let {".addIndentation(
+                "(userSettingsBackup?.${setting.key}$legacyFallback)?.let {".addIndentation(
                     contentIndentation,
                 ),
             )
