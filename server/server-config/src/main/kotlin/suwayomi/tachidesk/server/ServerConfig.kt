@@ -69,6 +69,16 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
+/**
+ * Shared deprecation metadata for settings that are now per-user. The global value remains functional and acts as a
+ * fallback for users without an explicit override. [SettingsRegistry.SettingDeprecated.replaceWith] is null so no
+ * config migration is performed.
+ */
+val userSettingDeprecated = SettingsRegistry.SettingDeprecated(
+    replaceWith = null,
+    message = "Now per-user - global value acts as fallback for users without an override",
+)
+
 private val application: Application by injectLazy()
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -228,19 +238,23 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val autoDownloadNewChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 17,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 18,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
         defaultValue = true,
         description = "Exclude entries with unread chapters from auto-download",
+        deprecated = userSettingDeprecated,
     )
 
     @Deprecated("Will get removed", replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"))
@@ -259,6 +273,7 @@ class ServerConfig(
         setMigrated = { autoDownloadNewChaptersLimit.value = it },
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by DisableableIntSetting(
         protoNumber = 20,
         group = SettingGroup.DOWNLOADER,
@@ -266,14 +281,17 @@ class ServerConfig(
         defaultValue = 0,
         min = 0,
         description = "Maximum number of new chapters to auto-download",
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 21,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
         defaultValue = false,
         description = "Ignore re-uploaded chapters from auto-download",
+        deprecated = userSettingDeprecated,
     )
 
     @Deprecated("Will get removed", replaceWith = ReplaceWith("extensionStores"))
@@ -323,25 +341,31 @@ class ServerConfig(
                 "Library update/downloads are grouped by source and all manga of a source are updated/downloaded synchronously",
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val excludeUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 24,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val excludeNotStarted: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 25,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val excludeCompleted: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 26,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
     val globalUpdateInterval: MutableStateFlow<Double> by DisableableDoubleSetting(
@@ -353,12 +377,14 @@ class ServerConfig(
         description = "Time in hours",
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val updateMangas: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 28,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = false,
         description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
+        deprecated = userSettingDeprecated,
     )
 
     @Deprecated("Will get removed", replaceWith = ReplaceWith("authMode"))
@@ -552,14 +578,17 @@ class ServerConfig(
         defaultValue = false,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 49,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
         description = "Display file size in binary (KiB, MiB, GiB) instead of decimal (KB, MB, GB)",
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsItemsPerPage: MutableStateFlow<Int> by IntSetting(
         protoNumber = 50,
         group = SettingGroup.OPDS,
@@ -567,36 +596,46 @@ class ServerConfig(
         defaultValue = 100,
         min = 10,
         max = 5000,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 51,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 52,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 53,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 54,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsChapterSortOrder: MutableStateFlow<SortOrder> by EnumSetting(
         protoNumber = 55,
         group = SettingGroup.OPDS,
@@ -604,6 +643,7 @@ class ServerConfig(
         defaultValue = SortOrder.DESC,
         enumClass = SortOrder::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.v1.core.SortOrder")),
+        deprecated = userSettingDeprecated,
     )
 
     val authMode: MutableStateFlow<AuthMode> by EnumSetting(
@@ -616,11 +656,16 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    fun createDownloadConversionsMap(protoNumber: Int, key: String) = MapSetting<String, DownloadConversion>(
+    fun createDownloadConversionsMap(
+        protoNumber: Int,
+        key: String,
+        deprecated: SettingsRegistry.SettingDeprecated? = null,
+    ) = MapSetting<String, DownloadConversion>(
         protoNumber = protoNumber,
         group = SettingGroup.DOWNLOADER,
         privacySafe = false,
         defaultValue = emptyMap(),
+        deprecated = deprecated,
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<SettingsDownloadConversionType>",
@@ -781,6 +826,7 @@ class ServerConfig(
         ),
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by EnumSetting(
         protoNumber = 63,
         group = SettingGroup.KOREADER_SYNC,
@@ -788,6 +834,7 @@ class ServerConfig(
         defaultValue = KoreaderSyncChecksumMethod.BINARY,
         enumClass = KoreaderSyncChecksumMethod::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
+        deprecated = userSettingDeprecated,
     )
 
     @Suppress("DEPRECATION")
@@ -864,6 +911,7 @@ class ServerConfig(
         },
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by DoubleSetting(
         protoNumber = 65,
         group = SettingGroup.KOREADER_SYNC,
@@ -872,6 +920,7 @@ class ServerConfig(
         min = 0.000000000000001,
         max = 1.0,
         description = "Absolute tolerance for progress comparison",
+        deprecated = userSettingDeprecated,
     )
 
     val jwtTokenExpiry: MutableStateFlow<Duration> by DurationSetting(
@@ -932,6 +981,7 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
         protoNumber = 73,
         group = SettingGroup.KOREADER_SYNC,
@@ -940,8 +990,10 @@ class ServerConfig(
         enumClass = KoreaderSyncConflictStrategy::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
         description = "Strategy to apply when remote progress is newer than local.",
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val koreaderSyncStrategyBackward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
         protoNumber = 74,
         group = SettingGroup.KOREADER_SYNC,
@@ -950,6 +1002,7 @@ class ServerConfig(
         enumClass = KoreaderSyncConflictStrategy::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
         description = "Strategy to apply when remote progress is older than local.",
+        deprecated = userSettingDeprecated,
     )
 
     val webUISubpath: MutableStateFlow<String> by StringSetting(
@@ -1012,6 +1065,7 @@ class ServerConfig(
         defaultValue = BackupFlags.DEFAULT.includeServerSettings,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsCbzMimetype: MutableStateFlow<CbzMediaType> by EnumSetting(
         protoNumber = 83,
         group = SettingGroup.OPDS,
@@ -1021,11 +1075,14 @@ class ServerConfig(
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
         excludeFromBackup = true,
         description = "Controls the MimeType that Suwayomi sends in OPDS entries for CBZ archives. Also affects global CBZ download. Modern follows recent IANA standard (2017), while LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives) might be more compatible with older clients.",
+        deprecated = userSettingDeprecated,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val serveConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
         protoNumber = 84,
-        key = "serveConversions"
+        key = "serveConversions",
+        deprecated = userSettingDeprecated,
     )
 
     val useHikariConnectionPool: MutableStateFlow<Boolean> by BooleanSetting(
@@ -1108,12 +1165,14 @@ class ServerConfig(
         privacySafe = true,
     )
 
+    @Deprecated("Now per-user - global value acts as fallback")
     val opdsSkipChapterMetadataFeed: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 96,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
-        description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader. KoSync strategies are applied, but PROMPT conflicts are ignored (treating local progress as priority)."
+        description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader. KoSync strategies are applied, but PROMPT conflicts are ignored (treating local progress as priority).",
+        deprecated = userSettingDeprecated,
     )
 
     val extensionStores: MutableStateFlow<List<String>> by ListSetting<String>(
@@ -1137,6 +1196,13 @@ class ServerConfig(
                 specificType = "List<String>",
             ),
         description = "List of extension store index URLs",
+    )
+
+    val autoBackupIncludeUserSettings: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 98,
+        group = SettingGroup.BACKUP,
+        privacySafe = true,
+        defaultValue = BackupFlags.DEFAULT.includeUserSettings,
     )
 
     /** ****************************************************************** **/

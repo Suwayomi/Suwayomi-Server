@@ -201,6 +201,7 @@ object SyncManager {
                     includeHistory = serverConfig.syncDataHistory.value,
                     includeClientData = false,
                     includeServerSettings = false,
+                    includeUserSettings = false,
                 )
 
             _lastSyncState.value = SyncState.CreatingBackup(startInstant)
@@ -211,6 +212,7 @@ object SyncManager {
                     BackupCategoryHandler.backup(userId, backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
                     BackupSourceHandler.backup(userId, backupMangas, backupFlags),
                     emptyMap(),
+                    null,
                     null,
                 )
 

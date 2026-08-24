@@ -31,12 +31,12 @@ import suwayomi.tachidesk.opds.dto.OpdsSourceNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsStatusNavEntry
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import java.util.Locale
 
 object NavigationRepository {
-    private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value
+    private fun opdsItemsPerPage(userId: Int): Int = userSettings.value(userId, userConfig.opdsItemsPerPage)
 
     private val rootSectionDetails: Map<String, Triple<String, StringResource, StringResource>> =
         mapOf(
@@ -137,8 +137,12 @@ object NavigationRepository {
             )
         }
 
-    fun getExploreSources(pageNum: Int): Pair<List<OpdsSourceNavEntry>, Long> =
+    fun getExploreSources(
+        userId: Int,
+        pageNum: Int,
+    ): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
+            val perPage = opdsItemsPerPage(userId)
             val query =
                 SourceTable
                     .leftJoin(
@@ -153,8 +157,8 @@ object NavigationRepository {
             val totalCount = query.count()
             val sources =
                 query
-                    .limit(opdsItemsPerPageBounded)
-                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .limit(perPage)
+                    .offset(((pageNum - 1) * perPage).toLong())
                     .map {
                         OpdsSourceNavEntry(
                             id = it[SourceTable.id].value,
@@ -213,8 +217,8 @@ object NavigationRepository {
 
             if (pageNum != null) {
                 query
-                    .limit(opdsItemsPerPageBounded)
-                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .limit(opdsItemsPerPage(userId))
+                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
             }
 
             val sources =
@@ -284,8 +288,8 @@ object NavigationRepository {
 
             if (pageNum != null) {
                 query
-                    .limit(opdsItemsPerPageBounded)
-                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .limit(opdsItemsPerPage(userId))
+                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
             }
 
             val categories =
@@ -345,8 +349,8 @@ object NavigationRepository {
 
             val finalGenres =
                 if (pageNum != null) {
-                    val fromIndex = ((pageNum - 1) * opdsItemsPerPageBounded)
-                    val toIndex = minOf(fromIndex + opdsItemsPerPageBounded, distinctGenres.size)
+                    val fromIndex = ((pageNum - 1) * opdsItemsPerPage(userId))
+                    val toIndex = minOf(fromIndex + opdsItemsPerPage(userId), distinctGenres.size)
                     if (fromIndex < distinctGenres.size) distinctGenres.subList(fromIndex, toIndex) else emptyList()
                 } else {
                     distinctGenres
@@ -431,8 +435,8 @@ object NavigationRepository {
 
         val paginatedStatuses =
             if (pageNum != null) {
-                val fromIndex = ((pageNum - 1) * opdsItemsPerPageBounded)
-                val toIndex = minOf(fromIndex + opdsItemsPerPageBounded, allStatuses.size)
+                val fromIndex = ((pageNum - 1) * opdsItemsPerPage(userId))
+                val toIndex = minOf(fromIndex + opdsItemsPerPage(userId), allStatuses.size)
                 if (fromIndex < allStatuses.size) allStatuses.subList(fromIndex, toIndex) else emptyList()
             } else {
                 allStatuses
@@ -484,8 +488,8 @@ object NavigationRepository {
 
             if (pageNum != null) {
                 query
-                    .limit(opdsItemsPerPageBounded)
-                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .limit(opdsItemsPerPage(userId))
+                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
             }
 
             val languages =

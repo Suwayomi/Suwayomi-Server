@@ -285,6 +285,7 @@ object SyncYomiSyncService {
                 backupSources = mergedSourcesList,
                 meta = emptyMap(),
                 serverSettings = null,
+                userSettings = null,
             )
 
         // Create the merged SData object

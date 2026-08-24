@@ -244,7 +244,7 @@ class M0063_AddUsers : Migration() {
             EXECUTE FUNCTION insert_manga_category_update_version();
             """.trimIndent()
 
-        @Language("SQL")
+        // language=h2
         val sql =
             """
             $adminUserInsert
@@ -404,13 +404,23 @@ class M0063_AddUsers : Migration() {
         val lastModifiedAt = long("last_modified_at").default(0)
     }
 
+    private object UserSettingsTable : Table() {
+        val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
+        val key = varchar("key", 256)
+        val value = varchar("value", 16384)
+
+        init {
+            uniqueIndex(user, key)
+        }
+    }
+
     val sql by lazy {
         UserSql().sql
     }
 
     override fun run() {
         with(TransactionManager.current()) {
-            SchemaUtils.create(UserAccountTable, UserRolesTable, UserPermissionsTable, ChapterUserTable, MangaUserTable)
+            SchemaUtils.create(UserAccountTable, UserRolesTable, UserPermissionsTable, ChapterUserTable, MangaUserTable, UserSettingsTable)
             exec(sql)
             currentDialectMetadata.resetCaches()
         }

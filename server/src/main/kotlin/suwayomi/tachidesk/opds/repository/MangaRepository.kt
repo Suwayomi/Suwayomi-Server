@@ -42,7 +42,8 @@ import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.dto.PrimaryFilterType
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 
 /**
  * Applies dynamic filters based on the current user configuration and cross-filters.
@@ -112,8 +113,7 @@ fun Query.applyOpdsMangaFilter(
  * Repository for fetching manga data tailored for OPDS feeds.
  */
 object MangaRepository {
-    private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value
+    private fun opdsItemsPerPage(userId: Int): Int = userSettings.value(userId, userConfig.opdsItemsPerPage)
 
     /**
      * Maps a database [ResultRow] to an [OpdsMangaAcqEntry] data transfer object.
@@ -235,8 +235,8 @@ object MangaRepository {
             val totalCount = query.count()
             val mangas =
                 query
-                    .limit(opdsItemsPerPageBounded)
-                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .limit(opdsItemsPerPage(userId))
+                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
                     .map { it.toOpdsMangaAcqEntry() }
 
             OpdsLibraryFeedResult(mangas, totalCount, specificFilterName)
@@ -325,7 +325,7 @@ object MangaRepository {
             val totalCount = query.count()
             val mangas =
                 query
-                    .limit(opdsItemsPerPageBounded)
+                    .limit(opdsItemsPerPage(userId))
                     .map { it.toOpdsMangaAcqEntry() }
             Pair(mangas, totalCount)
         }

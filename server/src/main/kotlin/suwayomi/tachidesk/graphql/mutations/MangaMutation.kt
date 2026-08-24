@@ -104,7 +104,7 @@ class MangaMutation {
                                 .map { MangaTable.toDataClass(it) }
                         }
 
-                    updater.addMangasToQueue(mangas)
+                    updater.addMangasToQueue(mangas, userId)
                 }
 
                 ids.forEach {

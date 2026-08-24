@@ -11,6 +11,7 @@ data class PartialBackupFlags(
     override val includeHistory: Boolean?,
     override val includeClientData: Boolean?,
     override val includeServerSettings: Boolean?,
+    override val includeUserSettings: Boolean?,
 ) : IBackupFlags
 
 enum class BackupRestoreState {
@@ -21,6 +22,7 @@ enum class BackupRestoreState {
     RESTORING_MANGA,
     RESTORING_META,
     RESTORING_SETTINGS,
+    RESTORING_USER_SETTINGS,
 }
 
 data class BackupRestoreStatus(
@@ -74,6 +76,14 @@ fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus =
         is ProtoBackupImport.BackupRestoreState.RestoringSettings -> {
             BackupRestoreStatus(
                 state = BackupRestoreState.RESTORING_SETTINGS,
+                totalManga = totalManga,
+                mangaProgress = current,
+            )
+        }
+
+        is ProtoBackupImport.BackupRestoreState.RestoringUserSettings -> {
+            BackupRestoreStatus(
+                state = BackupRestoreState.RESTORING_USER_SETTINGS,
                 totalManga = totalManga,
                 mangaProgress = current,
             )

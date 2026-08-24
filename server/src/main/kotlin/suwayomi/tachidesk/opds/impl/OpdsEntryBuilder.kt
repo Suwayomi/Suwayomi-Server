@@ -22,7 +22,8 @@ import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatFileSizeForOpds
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import java.util.Locale
 
 /**
@@ -188,6 +189,7 @@ object OpdsEntryBuilder {
      * @return An [OpdsEntryXml] object for the chapter.
      */
     suspend fun createChapterListEntry(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         chapter: OpdsChapterListAcqEntry,
@@ -199,7 +201,7 @@ object OpdsEntryBuilder {
         var effectiveLastReadAt = chapter.lastReadAt
 
         if (skipMetadataFeed) {
-            val syncResult = KoreaderSyncService.checkAndPullProgress(1, chapter.id)
+            val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
 
             // If sync strategy dictates an update (e.g. KEEP_REMOTE), use remote data.
             // If sync strategy is PROMPT (isConflict=true), we ignore it here (effectively KEEP_LOCAL/DISABLED)
@@ -239,8 +241,11 @@ object OpdsEntryBuilder {
                 links.add(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
-                        "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
-                        serverConfig.opdsCbzMimetype.value.mediaType,
+                        "/api/v1/chapter/${chapter.id}/download?markAsRead=${userSettings.value(
+                            userId,
+                            userConfig.opdsMarkAsReadOnDownload,
+                        )}",
+                        userSettings.value(userId, userConfig.opdsCbzMimetype).mediaType,
                         MR.strings.opds_linktitle_download_cbz.localized(locale),
                         length = chapter.cbzFileSize,
                     ),
@@ -251,7 +256,7 @@ object OpdsEntryBuilder {
             if (chapter.pageCount > 0) {
                 val basePageHref =
                     "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
-                        "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}&opds=true"
+                        "?updateProgress=${userSettings.value(userId, userConfig.opdsEnablePageReadProgress)}&opds=true"
 
                 val titleRes =
                     if (effectiveLastPageRead > 0) {
@@ -335,6 +340,7 @@ object OpdsEntryBuilder {
             // Generate two entries: one for local progress and another for remote.
             val localEntry =
                 buildSingleChapterMetadataEntry(
+                    userId,
                     baseUrl,
                     locale,
                     chapter,
@@ -345,6 +351,7 @@ object OpdsEntryBuilder {
 
             val remoteEntry =
                 buildSingleChapterMetadataEntry(
+                    userId,
                     baseUrl,
                     locale,
                     chapter,
@@ -364,6 +371,7 @@ object OpdsEntryBuilder {
 
             val mainEntry =
                 buildSingleChapterMetadataEntry(
+                    userId,
                     baseUrl,
                     locale,
                     chapter,
@@ -398,6 +406,7 @@ object OpdsEntryBuilder {
      * Helper function to build a single OpdsEntryXml for a chapter.
      */
     private suspend fun buildSingleChapterMetadataEntry(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         chapter: OpdsChapterMetadataAcqEntry,
@@ -450,8 +459,8 @@ object OpdsEntryBuilder {
             links.add(
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
-                    "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
-                    serverConfig.opdsCbzMimetype.value.mediaType,
+                    "/api/v1/chapter/${chapter.id}/download?markAsRead=${userSettings.value(userId, userConfig.opdsMarkAsReadOnDownload)}",
+                    userSettings.value(userId, userConfig.opdsCbzMimetype).mediaType,
                     MR.strings.opds_linktitle_download_cbz.localized(locale),
                     length = cbzFileSize,
                 ),
@@ -460,7 +469,7 @@ object OpdsEntryBuilder {
         if (chapter.pageCount > 0) {
             val basePageHref =
                 "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
-                    "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}&opds=true"
+                    "?updateProgress=${userSettings.value(userId, userConfig.opdsEnablePageReadProgress)}&opds=true"
 
             val title: String =
                 when {
@@ -532,7 +541,7 @@ object OpdsEntryBuilder {
                 ),
             summary = OpdsSummaryXml(value = details),
             link = links,
-            extent = cbzFileSize?.let { formatFileSizeForOpds(it) },
+            extent = cbzFileSize?.let { formatFileSizeForOpds(userId, it) },
             format = if (cbzFileSize != null) "CBZ" else null,
         )
     }

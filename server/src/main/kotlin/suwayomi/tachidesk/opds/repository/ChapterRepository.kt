@@ -37,11 +37,12 @@ import suwayomi.tachidesk.opds.dto.OpdsChapterListAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsChapterMetadataAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsHistoryAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsLibraryUpdateAcqEntry
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 
 object ChapterRepository {
-    private val opdsItemsPerPageBounded: Int
-        get() = serverConfig.opdsItemsPerPage.value
+    private fun opdsItemsPerPage(userId: Int): Int = userSettings.value(userId, userConfig.opdsItemsPerPage)
+
     private val logger = KotlinLogging.logger {}
 
     private fun ResultRow.toOpdsChapterListAcqEntry(): OpdsChapterListAcqEntry =
@@ -78,7 +79,7 @@ object ChapterRepository {
                     "unread" -> conditions.add(ChapterUserTable.isRead eq false)
                     "read" -> conditions.add(ChapterUserTable.isRead eq true)
                 }
-                if (serverConfig.opdsShowOnlyDownloadedChapters.value) {
+                if (userSettings.value(userId, userConfig.opdsShowOnlyDownloadedChapters)) {
                     conditions.add(ChapterTable.isDownloaded eq true)
                 }
 
@@ -95,8 +96,8 @@ object ChapterRepository {
                 val chapters =
                     baseQuery
                         .orderBy(sortColumn to sortOrder)
-                        .limit(opdsItemsPerPageBounded)
-                        .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                        .limit(opdsItemsPerPage(userId))
+                        .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
                         .map { it.toOpdsChapterListAcqEntry() }
 
                 Pair(chapters, totalCount)
@@ -259,8 +260,8 @@ object ChapterRepository {
             val rawItems =
                 query
                     .orderBy(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
-                    .limit(opdsItemsPerPageBounded)
-                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .limit(opdsItemsPerPage(userId))
+                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
                     .toList()
 
             val mangaIds = rawItems.map { it[MangaTable.id].value }.distinct()
@@ -317,8 +318,8 @@ object ChapterRepository {
             val rawItems =
                 query
                     .orderBy(ChapterUserTable.lastReadAt to SortOrder.DESC)
-                    .limit(opdsItemsPerPageBounded)
-                    .offset(((pageNum - 1) * opdsItemsPerPageBounded).toLong())
+                    .limit(opdsItemsPerPage(userId))
+                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
                     .toList()
 
             val mangaIds = rawItems.map { it[MangaTable.id].value }.distinct()

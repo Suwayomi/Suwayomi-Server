@@ -26,6 +26,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandl
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupUserSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
@@ -163,6 +164,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                     BackupSourceHandler.backup(userId, backupMangas, flags),
                     BackupGlobalMetaHandler.backup(userId, flags),
                     BackupSettingsHandler.backup(flags),
+                    BackupUserSettingsHandler.backup(userId),
                 )
             }
 

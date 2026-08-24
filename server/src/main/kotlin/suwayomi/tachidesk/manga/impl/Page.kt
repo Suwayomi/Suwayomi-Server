@@ -28,6 +28,8 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.util.ConversionUtil
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -141,6 +143,7 @@ object Page {
     }
 
     suspend fun getPageImageServe(
+        userId: Int,
         mangaId: Int,
         chapterIndex: Int,
         index: Int,
@@ -152,7 +155,7 @@ object Page {
                 chapterIndex = chapterIndex,
                 index = index,
             )
-        val conversions = serverConfig.serveConversions.value
+        val conversions = userSettings.value(userId, userConfig.serveConversions)
         val defaultConversion = conversions["default"]
         val formatConversion = format?.let { DownloadConversion(target = it) }
         val conversion =

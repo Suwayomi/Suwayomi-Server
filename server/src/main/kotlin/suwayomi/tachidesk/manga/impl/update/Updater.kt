@@ -28,10 +28,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.leftJoin
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.global.model.table.UserSettingsTable
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Manga
@@ -39,7 +44,10 @@ import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.MangaStatus
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -156,7 +164,13 @@ class Updater : IUpdater {
             reset()
 
             userIds.forEach { userId ->
-                addCategoriesToUpdateQueue(userId, Category.getCategoryList(userId), clear = false, forceAll = false)
+                addCategoriesToUpdateQueue(
+                    userId,
+                    Category.getCategoryList(userId),
+                    clear = false,
+                    forceAll = false,
+                    automatedUpdate = true,
+                )
             }
         } catch (e: Exception) {
             logger.error(e) { "autoUpdateTask: failed due to" }
@@ -320,12 +334,21 @@ class Updater : IUpdater {
         tracker[job.manga.id] = job.copy(status = JobStatus.RUNNING)
         updateStatus(mangaUpdates = listOf(tracker[job.manga.id]!!))
 
+        // updateMangas is per-user. For automated global updates (job.userId == null), update the manga info if any
+        // user with this manga has it enabled. For user-triggered updates, the triggering user's setting applies.
+        val updateManga =
+            if (job.userId != null) {
+                userSettings.value(job.userId, userConfig.updateMangas) || !job.manga.initialized
+            } else {
+                anyUserWantsMangaUpdate(job.manga.id) || !job.manga.initialized
+            }
+
         tracker[job.manga.id] =
             try {
                 logger.info { "Updating ${job.manga}" }
                 Manga.updateMangaAndChapters(
                     job.manga.id,
-                    updateManga = serverConfig.updateMangas.value || !job.manga.initialized,
+                    updateManga = updateManga,
                 )
                 job.copy(status = JobStatus.COMPLETE)
             } catch (e: Exception) {
@@ -350,6 +373,7 @@ class Updater : IUpdater {
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,
+        automatedUpdate: Boolean,
     ) {
         scope.launch {
             SyncManager.ensureSync()
@@ -389,19 +413,19 @@ class Updater : IUpdater {
                     .asSequence()
                     .filter { it.updateStrategy == UpdateStrategy.ALWAYS_UPDATE }
                     .filter {
-                        if (serverConfig.excludeUnreadChapters.value) {
+                        if (userSettings.value(userId, userConfig.excludeUnreadChapters)) {
                             (it.unreadCount ?: 0L) == 0L
                         } else {
                             true
                         }
                     }.filter {
-                        if (it.initialized && serverConfig.excludeNotStarted.value) {
+                        if (it.initialized && userSettings.value(userId, userConfig.excludeNotStarted)) {
                             it.lastReadAt != null
                         } else {
                             true
                         }
                     }.filter {
-                        if (serverConfig.excludeCompleted.value) {
+                        if (userSettings.value(userId, userConfig.excludeCompleted)) {
                             it.status != MangaStatus.COMPLETED.name
                         } else {
                             true
@@ -438,7 +462,7 @@ class Updater : IUpdater {
                             ?.map {
                                 CategoryUpdateJob(it, CategoryUpdateStatus.UPDATING)
                             }.orEmpty(),
-                    mangaUpdates = mangasToUpdate.map { UpdateJob(it) },
+                    mangaUpdates = mangasToUpdate.map { UpdateJob(it, userId = if (automatedUpdate) null else userId) },
                     isRunning = true,
                 )
             }
@@ -446,21 +470,28 @@ class Updater : IUpdater {
             addMangasToQueue(
                 mangasToUpdate
                     .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, MangaDataClass::title)),
+                if (automatedUpdate) null else userId,
             )
         }
     }
 
-    override fun addMangasToQueue(mangas: List<MangaDataClass>) {
+    override fun addMangasToQueue(
+        mangas: List<MangaDataClass>,
+        userId: Int?,
+    ) {
         // create all manga update jobs before adding them to the queue so that the client is able to calculate the
         // progress properly right form the start
-        mangas.forEach { tracker[it.id] = UpdateJob(it) }
-        mangas.forEach { addMangaToQueue(it) }
+        mangas.forEach { tracker[it.id] = UpdateJob(it, userId = userId) }
+        mangas.forEach { addMangaToQueue(it, userId) }
     }
 
-    private fun addMangaToQueue(manga: MangaDataClass) {
+    private fun addMangaToQueue(
+        manga: MangaDataClass,
+        userId: Int?,
+    ) {
         val updateChannel = getOrCreateUpdateChannelFor(manga.sourceId)
         scope.launch {
-            updateChannel.send(UpdateJob(manga))
+            updateChannel.send(UpdateJob(manga, userId = userId))
         }
     }
 
@@ -480,6 +511,25 @@ class Updater : IUpdater {
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
     }
+
+    /**
+     * Returns true if any user who has [mangaId] in their library has the per-user `updateMangas` setting enabled
+     */
+    private fun anyUserWantsMangaUpdate(mangaId: Int): Boolean =
+        transaction {
+            MangaUserTable
+                .leftJoin(
+                    UserSettingsTable,
+                    { MangaUserTable.user },
+                    { UserSettingsTable.user },
+                    { UserSettingsTable.key eq "updateMangas" },
+                ).select(MangaUserTable.id)
+                .where {
+                    (MangaUserTable.manga eq mangaId) and
+                        (MangaUserTable.inLibrary eq true) and
+                        (UserSettingsTable.value eq "true")
+                }.count() > 0
+        }
 
     private fun mergeCategoryStatusMaps(
         existing: Map<CategoryUpdateStatus, List<CategoryDataClass>>,

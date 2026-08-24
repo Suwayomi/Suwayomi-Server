@@ -33,6 +33,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandl
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupUserSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -67,6 +68,11 @@ object ProtoBackupImport : ProtoBackupBase() {
         ) : BackupRestoreState()
 
         data class RestoringSettings(
+            val current: Int,
+            val totalManga: Int,
+        ) : BackupRestoreState()
+
+        data class RestoringUserSettings(
             val current: Int,
             val totalManga: Int,
         ) : BackupRestoreState()
@@ -178,7 +184,8 @@ object ProtoBackupImport : ProtoBackupBase() {
         val restoreCategories = if (flags.includeCategories) 1 else 0
         val restoreMeta = if (flags.includeClientData) 1 else 0
         val restoreSettings = if (flags.includeServerSettings) 1 else 0
-        val getRestoreAmount = { size: Int -> size + restoreCategories + restoreMeta + restoreSettings }
+        val restoreUserSettings = if (flags.includeUserSettings) 1 else 0
+        val getRestoreAmount = { size: Int -> size + restoreCategories + restoreMeta + restoreSettings + restoreUserSettings }
         val restoreAmount = getRestoreAmount(if (flags.includeManga) backup.backupManga.size else 0)
 
         if (flags.includeServerSettings) {
@@ -188,6 +195,20 @@ object ProtoBackupImport : ProtoBackupBase() {
             )
 
             BackupSettingsHandler.restore(backup.serverSettings)
+        }
+
+        if (flags.includeUserSettings) {
+            updateRestoreState(
+                id,
+                BackupRestoreState.RestoringUserSettings(restoreSettings, restoreAmount),
+            )
+
+            BackupUserSettingsHandler.restore(
+                userId,
+                backup.userSettings,
+                backup.serverSettings,
+                flags,
+            )
         }
 
         val categoryMapping =

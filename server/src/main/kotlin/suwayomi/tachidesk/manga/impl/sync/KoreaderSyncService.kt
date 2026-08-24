@@ -29,6 +29,8 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.server.util.Platform
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -118,7 +120,10 @@ object KoreaderSyncService {
         return deviceId
     }
 
-    private suspend fun getOrGenerateChapterHash(chapterId: Int): String? {
+    private suspend fun getOrGenerateChapterHash(
+        userId: Int,
+        chapterId: Int,
+    ): String? {
         return suspendTransaction {
             val chapterRow =
                 ChapterTable
@@ -133,7 +138,7 @@ object KoreaderSyncService {
 
             val mangaId = chapterRow[ChapterTable.manga].value
             val isDownloaded = chapterRow[ChapterTable.isDownloaded]
-            val checksumMethod = serverConfig.koreaderSyncChecksumMethod.value
+            val checksumMethod = userSettings.value(userId, userConfig.koreaderSyncChecksumMethod)
 
             val newHash =
                 when (checksumMethod) {
@@ -346,8 +351,8 @@ object KoreaderSyncService {
         userId: Int,
         chapterId: Int,
     ) {
-        val forwardStrategy = serverConfig.koreaderSyncStrategyForward.value
-        val backwardStrategy = serverConfig.koreaderSyncStrategyBackward.value
+        val forwardStrategy = userSettings.value(userId, userConfig.koreaderSyncStrategyForward)
+        val backwardStrategy = userSettings.value(userId, userConfig.koreaderSyncStrategyBackward)
 
         // if both directions keep remote, is in receive-only mode, so don't push.
         if (forwardStrategy == KoreaderSyncConflictStrategy.KEEP_REMOTE &&
@@ -359,7 +364,7 @@ object KoreaderSyncService {
         val (serverAddress, username, userkey) = getCredentials()
         if (serverAddress.isBlank() || username.isBlank() || userkey.isBlank()) return
 
-        val chapterHash = getOrGenerateChapterHash(chapterId)
+        val chapterHash = getOrGenerateChapterHash(userId, chapterId)
         if (chapterHash.isNullOrBlank()) {
             logger.info { "[KOSYNC PUSH] Aborted for chapterId=$chapterId: No hash." }
             return
@@ -424,8 +429,8 @@ object KoreaderSyncService {
         userId: Int,
         chapterId: Int,
     ): SyncResult? {
-        val forwardStrategy = serverConfig.koreaderSyncStrategyForward.value
-        val backwardStrategy = serverConfig.koreaderSyncStrategyBackward.value
+        val forwardStrategy = userSettings.value(userId, userConfig.koreaderSyncStrategyForward)
+        val backwardStrategy = userSettings.value(userId, userConfig.koreaderSyncStrategyBackward)
 
         // Skip remote fetch if both directions disabled OR both keep local (no remote data needed)
         if ((forwardStrategy == KoreaderSyncConflictStrategy.DISABLED && backwardStrategy == KoreaderSyncConflictStrategy.DISABLED) ||
@@ -437,7 +442,7 @@ object KoreaderSyncService {
         val (serverAddress, username, userkey) = getCredentials()
         if (serverAddress.isBlank() || username.isBlank() || userkey.isBlank()) return null
 
-        val chapterHash = getOrGenerateChapterHash(chapterId)
+        val chapterHash = getOrGenerateChapterHash(userId, chapterId)
         if (chapterHash.isNullOrBlank()) {
             logger.debug { "[KOSYNC PULL] Aborted for chapterId=$chapterId: No hash." }
             return null
@@ -494,7 +499,7 @@ object KoreaderSyncService {
                         val percentageDifference = abs(localPercentage - (progressResponse.percentage ?: 0f))
 
                         // Progress is within tolerance, no sync needed
-                        if (percentageDifference < serverConfig.koreaderSyncPercentageTolerance.value) {
+                        if (percentageDifference < userSettings.value(userId, userConfig.koreaderSyncPercentageTolerance)) {
                             return null
                         }
 

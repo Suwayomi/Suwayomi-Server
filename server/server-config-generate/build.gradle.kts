@@ -55,8 +55,11 @@ tasks {
             serverProject.file("build/generated/src/main/resources/server-reference.conf"),
             serverProject.file("build/generated/src/test/resources/server-reference.conf"),
             serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/graphql/types/SettingsType.kt"),
+            serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/graphql/types/UserSettingsType.kt"),
             serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models/BackupServerSettings.kt"),
+            serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models/BackupUserSettings.kt"),
             serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupSettingsHandler.kt"),
+            serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupUserSettingsHandler.kt"),
         )
     }
 }

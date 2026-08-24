@@ -69,9 +69,9 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, lang ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
-                ctx.contentType(OPDS_MIME).result(OpdsFeedBuilder.getRootFeed(BASE_URL, locale))
+                ctx.contentType(OPDS_MIME).result(OpdsFeedBuilder.getRootFeed(userId, BASE_URL, locale))
             },
             withResults = { httpCode(HttpStatus.OK) },
         )
@@ -194,11 +194,11 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getExploreSourcesFeed(BASE_URL, locale, pageNumber ?: 1)
+                        OpdsFeedBuilder.getExploreSourcesFeed(userId, BASE_URL, locale, pageNumber ?: 1)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
