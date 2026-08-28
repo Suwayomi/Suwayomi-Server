@@ -20,6 +20,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import suwayomi.tachidesk.graphql.directives.RequireAuthDirectiveWiring
+import suwayomi.tachidesk.graphql.directives.RequirePermissionsDirectiveWiring
 import suwayomi.tachidesk.graphql.mutations.BackupMutation
 import suwayomi.tachidesk.graphql.mutations.CategoryMutation
 import suwayomi.tachidesk.graphql.mutations.ChapterMutation
@@ -71,7 +72,11 @@ import kotlin.time.Duration
 class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
     override val wiringFactory =
         KotlinDirectiveWiringFactory(
-            manualWiring = mapOf("requireAuth" to RequireAuthDirectiveWiring()),
+            manualWiring =
+                mapOf(
+                    "requireAuth" to RequireAuthDirectiveWiring(),
+                    "requirePermissions" to RequirePermissionsDirectiveWiring(),
+                ),
         )
 
     override fun willGenerateGraphQLType(type: KType): GraphQLType? =

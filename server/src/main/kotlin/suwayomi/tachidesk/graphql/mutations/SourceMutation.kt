@@ -31,10 +31,14 @@ import suwayomi.tachidesk.graphql.types.updateFilterList
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
 class SourceMutation {
@@ -284,10 +288,28 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<FetchSourceMangaPayload?> {
+    fun fetchSourceManga(
+        @GraphQLIgnore
+        permissions: List<Permissions>,
+        input: FetchSourceMangaInput,
+    ): CompletableFuture<FetchSourceMangaPayload?> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
+            val isSourceNsfw =
+                transaction {
+                    SourceTable
+                        .selectAll()
+                        .where { SourceTable.id eq sourceId }
+                        .firstOrNull()
+                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal }
+                        ?: false
+                }
+
+            if (isSourceNsfw && !permissions.hasPermission(Permissions.NSFW)) {
+                throw ForbiddenException()
+            }
+
             val source = GetSource.getSourceOrNull(sourceId)!!
             val mangasPage =
                 when (type) {

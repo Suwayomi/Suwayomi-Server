@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.http.UploadedFile
 import org.jetbrains.exposed.v1.core.eq
@@ -10,6 +11,7 @@ import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.types.ExtensionStoreType
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.impl.extension.Extension
@@ -17,6 +19,9 @@ import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
 class ExtensionMutation {
@@ -79,9 +84,28 @@ class ExtensionMutation {
         }
     }
 
+    private fun checkUpdatePermissions(
+        permissions: List<Permissions>,
+        patch: UpdateExtensionPatch,
+    ) {
+        if (patch.install == true && !permissions.hasPermission(Permissions.INSTALL_EXTENSIONS)) {
+            throw ForbiddenException()
+        }
+
+        if (patch.uninstall == true && !permissions.hasPermission(Permissions.UNINSTALL_EXTENSIONS)) {
+            throw ForbiddenException()
+        }
+    }
+
     @RequireAuth
-    fun updateExtension(input: UpdateExtensionInput): CompletableFuture<UpdateExtensionPayload?> {
+    fun updateExtension(
+        @GraphQLIgnore
+        permissions: List<Permissions>,
+        input: UpdateExtensionInput,
+    ): CompletableFuture<UpdateExtensionPayload?> {
         val (clientMutationId, id, patch) = input
+
+        checkUpdatePermissions(permissions, patch)
 
         return future {
             updateExtensions(listOf(id), patch)
@@ -103,8 +127,14 @@ class ExtensionMutation {
     }
 
     @RequireAuth
-    fun updateExtensions(input: UpdateExtensionsInput): CompletableFuture<UpdateExtensionsPayload?> {
+    fun updateExtensions(
+        @GraphQLIgnore
+        permissions: List<Permissions>,
+        input: UpdateExtensionsInput,
+    ): CompletableFuture<UpdateExtensionsPayload?> {
         val (clientMutationId, ids, patch) = input
+
+        checkUpdatePermissions(permissions, patch)
 
         return future {
             updateExtensions(ids, patch)
@@ -175,6 +205,7 @@ class ExtensionMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(Permissions.INSTALL_UNTRUSTED_EXTENSIONS)
     fun installExternalExtension(input: InstallExternalExtensionInput): CompletableFuture<InstallExternalExtensionPayload?> {
         val (clientMutationId, extensionFile) = input
 

@@ -106,8 +106,8 @@ object Jwt {
             val roles: List<String> = decodedJWT.getClaim("roles").asList(String::class.java)
             val permissions: List<String> = decodedJWT.getClaim("permissions").asList(String::class.java)
 
-            return if (roles.any { it.equals("admin", ignoreCase = true) }) {
-                UserType.Admin(user)
+            return if (roles.any { it.equals(UserType.ADMIN_ROLE, ignoreCase = true) }) {
+                UserType.Admin(user, roles)
             } else {
                 UserType.User(
                     id = user,
@@ -115,6 +115,7 @@ object Jwt {
                         permissions.mapNotNull { permission ->
                             Permissions.entries.find { it.name == permission }
                         },
+                    roles = roles,
                 )
             }
         } catch (e: JWTVerificationException) {

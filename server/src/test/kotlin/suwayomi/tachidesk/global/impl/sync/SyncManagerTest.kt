@@ -38,12 +38,8 @@ class SyncManagerTest : ApplicationTest() {
     private var userId: Int = 0
     private var userId2: Int = 0
 
-    private var originalSyncYomiEnabled: Boolean = false
-
     @BeforeEach
     fun setUp() {
-        originalSyncYomiEnabled = serverConfig.syncYomiEnabled.value
-        serverConfig.syncYomiEnabled.value = false
         userId = createUser("syncmgr_a")
         userId2 = createUser("syncmgr_b")
     }
@@ -52,7 +48,6 @@ class SyncManagerTest : ApplicationTest() {
     fun tearDown() {
         userSettings.resetAll(userId)
         userSettings.resetAll(userId2)
-        serverConfig.syncYomiEnabled.value = originalSyncYomiEnabled
         transaction {
             UserAccountTable.deleteWhere { (UserAccountTable.id eq userId) or (UserAccountTable.id eq userId2) }
         }

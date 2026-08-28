@@ -10,6 +10,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.types.ChapterDownloadReorder
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.DownloadStatus
@@ -20,6 +21,7 @@ import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.Permissions
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -100,6 +102,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(Permissions.DOWNLOAD_CHAPTERS)
     fun enqueueChapterDownloads(
         @GraphQLIgnore
         userId: Int,
@@ -140,6 +143,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(Permissions.DOWNLOAD_CHAPTERS)
     fun enqueueChapterDownload(
         @GraphQLIgnore
         userId: Int,

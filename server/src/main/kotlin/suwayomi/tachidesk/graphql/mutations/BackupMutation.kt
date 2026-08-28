@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
-import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.PartialBackupFlags
 import suwayomi.tachidesk.graphql.types.toStatus
@@ -18,6 +17,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.UserType
+import suwayomi.tachidesk.server.user.hasRole
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -37,17 +38,27 @@ class BackupMutation {
     @RequireAuth
     fun restoreBackup(
         @GraphQLIgnore
+        role: List<String>,
+        @GraphQLIgnore
         userId: Int,
         input: RestoreBackupInput,
     ): CompletableFuture<RestoreBackupPayload> {
         val (clientMutationId, backup, flags) = input
+
+        // only users with the admin role may change server settings by restoring a backup
+        val restoreFlags =
+            if (role.hasRole(UserType.ADMIN_ROLE)) {
+                BackupFlags.fromPartial(flags)
+            } else {
+                BackupFlags.fromPartial(flags).copy(includeServerSettings = false)
+            }
 
         return future {
             val restoreId =
                 ProtoBackupImport.restore(
                     userId,
                     backup.content(),
-                    BackupFlags.fromPartial(flags),
+                    restoreFlags,
                 )
 
             withTimeout(10.seconds) {

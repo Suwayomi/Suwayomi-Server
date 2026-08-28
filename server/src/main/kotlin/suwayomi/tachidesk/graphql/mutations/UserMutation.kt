@@ -6,14 +6,19 @@ import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.global.model.table.UserPermissionsTable
+import suwayomi.tachidesk.global.model.table.UserRolesTable
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
@@ -92,12 +97,8 @@ class UserMutation {
         val clientMutationId: String?,
     )
 
-    fun register(
-        dataFetchingEnvironment: DataFetchingEnvironment,
-        input: RegisterInput,
-    ): RegisterPayload {
-        dataFetchingEnvironment.getAttribute(Attribute.TachideskUser).requirePermissions(Permissions.CREATE_USER)
-
+    @RequirePermissions(Permissions.CREATE_USER)
+    fun register(input: RegisterInput): RegisterPayload {
         val (clientMutationId, username, password) = input
         transaction {
             val userExists =
@@ -108,9 +109,22 @@ class UserMutation {
             if (userExists) {
                 throw Exception("Username already exists")
             } else {
-                UserAccountTable.insert {
-                    it[UserAccountTable.username] = username
-                    it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
+                val userId =
+                    UserAccountTable
+                        .insertAndGetId {
+                            it[UserAccountTable.username] = username
+                            it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
+                        }.value
+
+                // grant the default permissions and a non-admin role
+                UserPermissionsTable.batchInsert(Permissions.defaultPermissions) {
+                    this[UserPermissionsTable.user] = userId
+                    this[UserPermissionsTable.permission] = it.name
+                }
+
+                UserRolesTable.insert {
+                    it[UserRolesTable.user] = userId
+                    it[UserRolesTable.role] = UserType.USER_ROLE
                 }
             }
         }
