@@ -9,7 +9,7 @@ package suwayomi.tachidesk.graphql.directives
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDirective
 import graphql.introspection.Introspection.DirectiveLocation
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
 
 @GraphQLDirective(
     name = "requirePermissions",
@@ -22,5 +22,5 @@ import suwayomi.tachidesk.server.user.Permissions
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class RequirePermissions(
-    vararg val permission: Permissions,
+    vararg val permission: UserPermission,
 )

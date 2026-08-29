@@ -47,7 +47,8 @@ import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
@@ -56,7 +57,15 @@ class SourceQuery {
     fun source(
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Long,
-    ): CompletableFuture<SourceType> = dataFetchingEnvironment.getValueFromDataLoader("SourceDataLoader", id)
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
+    ): CompletableFuture<SourceType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType>("SourceDataLoader", id).thenApply { source ->
+            if (source != null && source.contentWarning >= ContentWarning.MIXED && !permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
+                throw ForbiddenException()
+            }
+            source
+        }
 
     enum class SourceOrderBy(
         override val column: Column<*>,
@@ -145,7 +154,7 @@ class SourceQuery {
     @RequireAuth
     fun sources(
         @GraphQLIgnore
-        permissions: List<Permissions>,
+        permissions: List<UserPermission>,
         condition: SourceCondition? = null,
         filter: SourceFilter? = null,
         @GraphQLDeprecated(
@@ -173,7 +182,7 @@ class SourceQuery {
                     res.applyOps(condition, filter)
 
                     // hide NSFW sources from users without the NSFW permission
-                    if (!permissions.hasPermission(Permissions.NSFW)) {
+                    if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
                         res.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.ordinal }
                     }
 

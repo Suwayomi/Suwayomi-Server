@@ -39,7 +39,8 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.serverConfig
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.createChapters
@@ -47,6 +48,7 @@ import suwayomi.tachidesk.test.createLibraryManga
 import java.io.ByteArrayInputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class PermissionsTest : GraphQLTest() {
@@ -82,7 +84,7 @@ class PermissionsTest : GraphQLTest() {
 
     private fun userWithPermissions(
         userId: Int,
-        vararg permissions: Permissions,
+        vararg permissions: UserPermission,
     ): UserType = UserType.User(id = userId, permissions = permissions.toList())
 
     private fun insertExtension(
@@ -222,7 +224,7 @@ class PermissionsTest : GraphQLTest() {
                     UserPermissionsTable
                         .selectAll()
                         .where { UserPermissionsTable.user eq userId }
-                        .map { Permissions.valueOf(it[UserPermissionsTable.permission]) }
+                        .map { UserPermission.valueOf(it[UserPermissionsTable.permission]) }
                         .toSet()
 
                 val userRoles =
@@ -235,8 +237,8 @@ class PermissionsTest : GraphQLTest() {
                 userPermissions to userRoles
             }
 
-        assertEquals(Permissions.defaultPermissions, permissions, "new users should only get the default reader permission")
-        assertEquals(setOf(UserType.USER_ROLE), roles, "new users should get the non-admin role")
+        assertEquals(UserPermission.defaultPermissions, permissions, "new users should only get the default reader permission")
+        assertEquals(setOf(UserRole.USER.name), roles, "new users should get the non-admin role")
     }
 
     @Test
@@ -265,7 +267,7 @@ class PermissionsTest : GraphQLTest() {
     @Test
     fun updateExtensionsInstallAllowedWithPermission() {
         val userId = createTestUser("extinstall2")
-        val user = userWithPermissions(userId, Permissions.INSTALL_EXTENSIONS)
+        val user = userWithPermissions(userId, UserPermission.INSTALL_EXTENSIONS)
 
         val response =
             graphql(
@@ -288,7 +290,7 @@ class PermissionsTest : GraphQLTest() {
     @Test
     fun updateExtensionsUninstallForbiddenWithoutPermission() {
         val userId = createTestUser("extuninstall1")
-        val user = userWithPermissions(userId, Permissions.INSTALL_EXTENSIONS)
+        val user = userWithPermissions(userId, UserPermission.INSTALL_EXTENSIONS)
 
         val response =
             graphql(
@@ -358,7 +360,7 @@ class PermissionsTest : GraphQLTest() {
     @Test
     fun enqueueChapterDownloadAllowedWithPermission() {
         val userId = createTestUser("dlenqueue2")
-        val user = userWithPermissions(userId, Permissions.DOWNLOAD_CHAPTERS)
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
 
         val mangaId = createLibraryManga("PERM_ENQUEUE_MANGA", userId)
         mangaIdsToClean += mangaId
@@ -454,7 +456,7 @@ class PermissionsTest : GraphQLTest() {
         createNsfwAndSafeSources()
 
         val userId = createTestUser("nsfwfetch2")
-        val user = userWithPermissions(userId, Permissions.NSFW)
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
 
         val response =
             graphql(
@@ -533,7 +535,7 @@ class PermissionsTest : GraphQLTest() {
         createNsfwAndSafeSources()
 
         val userId = createTestUser("nsfwsources2")
-        val user = userWithPermissions(userId, Permissions.NSFW)
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
 
         val response =
             graphql(
@@ -599,7 +601,7 @@ class PermissionsTest : GraphQLTest() {
         createNsfwAndSafeSources()
 
         val userId = createTestUser("nsfwext2")
-        val user = userWithPermissions(userId, Permissions.NSFW)
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
 
         val response =
             graphql(
@@ -628,9 +630,450 @@ class PermissionsTest : GraphQLTest() {
     }
 
     @Test
+    fun settingsForbiddenWithoutPermission() {
+        val userId = createTestUser("settings1")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        val response =
+            graphql(
+                """
+                query {
+                    settings {
+                        authMode
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun setSettingsForbiddenWithoutPermission() {
+        val userId = createTestUser("setsettings1")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: SetSettingsInput!) {
+                    setSettings(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("settings" to mapOf("downloadAsCbz" to originalDownloadAsCbz))),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun resetSettingsForbiddenWithoutPermission() {
+        val userId = createTestUser("resetsettings1")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: ResetSettingsInput!) {
+                    resetSettings(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to emptyMap<String, Any?>()),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun settingsAllowedForAdmin() {
+        val response =
+            graphql(
+                """
+                query {
+                    settings {
+                        authMode
+                    }
+                }
+                """.trimIndent(),
+            )
+
+        response.assertNoErrors()
+        assertNotNull(response.dataPath("settings", "authMode"), "settings.authMode should be present")
+    }
+
+    @Test
+    fun setSettingsAllowedForAdmin() {
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: SetSettingsInput!) {
+                    setSettings(input: ${'$'}input) {
+                        settings {
+                            downloadAsCbz
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("settings" to mapOf("downloadAsCbz" to originalDownloadAsCbz))),
+            )
+
+        response.assertNoErrors()
+        assertEquals(
+            originalDownloadAsCbz,
+            response.dataPath("setSettings", "settings", "downloadAsCbz"),
+        )
+    }
+
+    @Test
+    fun webUIUpdateStatusResetAllowedWithoutPermission() {
+        // WebUI update operations stay open to all authenticated users
+        val userId = createTestUser("webui1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                mutation {
+                    resetWebUIUpdateStatus {
+                        state
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+    }
+
+    @Test
+    fun addExtensionStoreForbiddenWithoutPermission() {
+        val userId = createTestUser("store1")
+        val user = userWithPermissions(userId, UserPermission.INSTALL_EXTENSIONS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: AddExtensionStoreInput!) {
+                    addExtensionStore(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("indexUrl" to "http://127.0.0.1:1/")),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun removeExtensionStoreForbiddenWithoutPermission() {
+        val userId = createTestUser("store2")
+        val user = userWithPermissions(userId, UserPermission.INSTALL_EXTENSIONS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: RemoveExtensionStoreInput!) {
+                    removeExtensionStore(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("indexUrl" to "http://127.0.0.1:1/")),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun removeExtensionStoreAllowedWithPermission() {
+        val userId = createTestUser("store3")
+        val user = userWithPermissions(userId, UserPermission.MANAGE_EXTENSION_STORES)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: RemoveExtensionStoreInput!) {
+                    removeExtensionStore(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("indexUrl" to "http://127.0.0.1:1/")),
+                user = user,
+            )
+
+        response.assertNoErrors()
+    }
+
+    @Test
+    fun addExtensionStorePassesPermissionGateWithPermission() {
+        // with the permission the request gets past the directive and fails in the
+        // resolver instead (offline store fetch)
+        val userId = createTestUser("store4")
+        val user = userWithPermissions(userId, UserPermission.MANAGE_EXTENSION_STORES)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: AddExtensionStoreInput!) {
+                    addExtensionStore(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("indexUrl" to "http://127.0.0.1:1/")),
+                user = user,
+            )
+
+        response.assertHasError()
+        assertEquals(
+            false,
+            response.errors?.any { it.message.contains("Forbidden") },
+            "expected the request to pass the permission gate but got: $response",
+        )
+    }
+
+    @Test
+    fun updateSourcePreferenceForbiddenWithoutPermission() {
+        val userId = createTestUser("srcpref1")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: UpdateSourcePreferenceInput!) {
+                    updateSourcePreference(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("source" to SAFE_SOURCE_ID.toString(), "change" to mapOf("position" to 0))),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun clearCachedImagesForbiddenWithoutPermission() {
+        val userId = createTestUser("cache1")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: ClearCachedImagesInput!) {
+                    clearCachedImages(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to emptyMap<String, Any?>()),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun clearCookiesAndCacheForbiddenWithoutPermission() {
+        val userId = createTestUser("cache2")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        val response =
+            graphql(
+                """
+                mutation {
+                    clearCookiesAndCache {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun clearCachedImagesAllowedWithPermission() {
+        val userId = createTestUser("cache3")
+        val user = userWithPermissions(userId, UserPermission.MANAGE_CACHE)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: ClearCachedImagesInput!) {
+                    clearCachedImages(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to emptyMap<String, Any?>()),
+                user = user,
+            )
+
+        response.assertNoErrors()
+    }
+
+    @Test
+    fun sourceForbiddenForNsfwSourceWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsource1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}id: LongString!) {
+                    source(id: ${'$'}id) {
+                        id
+                    }
+                }
+                """.trimIndent(),
+                mapOf("id" to NSFW_SOURCE_ID.toString()),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun sourceAllowedForNsfwSourceWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsource2")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}id: LongString!) {
+                    source(id: ${'$'}id) {
+                        id
+                        contentWarning
+                    }
+                }
+                """.trimIndent(),
+                mapOf("id" to NSFW_SOURCE_ID.toString()),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(NSFW_SOURCE_ID.toString(), response.dataPath("source", "id"))
+    }
+
+    @Test
+    fun sourceAllowedForSafeSourceWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsource3")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}id: LongString!) {
+                    source(id: ${'$'}id) {
+                        id
+                    }
+                }
+                """.trimIndent(),
+                mapOf("id" to SAFE_SOURCE_ID.toString()),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(SAFE_SOURCE_ID.toString(), response.dataPath("source", "id"))
+    }
+
+    @Test
+    fun extensionForbiddenForNsfwExtensionWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext3")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}pkgName: String!) {
+                    extension(pkgName: ${'$'}pkgName) {
+                        pkgName
+                    }
+                }
+                """.trimIndent(),
+                mapOf("pkgName" to NSFW_EXT_NAME),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun extensionAllowedForNsfwExtensionWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext4")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}pkgName: String!) {
+                    extension(pkgName: ${'$'}pkgName) {
+                        pkgName
+                        contentWarning
+                    }
+                }
+                """.trimIndent(),
+                mapOf("pkgName" to NSFW_EXT_NAME),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(NSFW_EXT_NAME, response.dataPath("extension", "pkgName"))
+    }
+
+    @Test
+    fun extensionAllowedForSafeExtensionWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext5")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}pkgName: String!) {
+                    extension(pkgName: ${'$'}pkgName) {
+                        pkgName
+                    }
+                }
+                """.trimIndent(),
+                mapOf("pkgName" to SAFE_EXT_NAME),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(SAFE_EXT_NAME, response.dataPath("extension", "pkgName"))
+    }
+
+    @Test
     fun restoreBackupDoesNotChangeServerSettingsForNonAdmin() {
         val userId = createTestUser("backuprestore1")
-        val user = userWithPermissions(userId, Permissions.DOWNLOAD_CHAPTERS)
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
 
         val backup = createBackupFile(BackupServerSettings(downloadAsCbz = !originalDownloadAsCbz))
 

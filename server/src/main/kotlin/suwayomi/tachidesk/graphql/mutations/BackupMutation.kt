@@ -17,6 +17,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.hasRole
 import java.util.concurrent.CompletableFuture
@@ -38,7 +39,7 @@ class BackupMutation {
     @RequireAuth
     fun restoreBackup(
         @GraphQLIgnore
-        role: List<String>,
+        role: List<UserRole>,
         @GraphQLIgnore
         userId: Int,
         input: RestoreBackupInput,
@@ -47,7 +48,7 @@ class BackupMutation {
 
         // only users with the admin role may change server settings by restoring a backup
         val restoreFlags =
-            if (role.hasRole(UserType.ADMIN_ROLE)) {
+            if (role.hasRole(UserRole.ADMIN)) {
                 BackupFlags.fromPartial(flags)
             } else {
                 BackupFlags.fromPartial(flags).copy(includeServerSettings = false)

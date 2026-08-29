@@ -19,9 +19,8 @@ import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.DEQUEUED
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
-import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -102,7 +101,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    @RequirePermissions(Permissions.DOWNLOAD_CHAPTERS)
+    @RequirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
     fun enqueueChapterDownloads(
         @GraphQLIgnore
         userId: Int,
@@ -143,7 +142,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    @RequirePermissions(Permissions.DOWNLOAD_CHAPTERS)
+    @RequirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
     fun enqueueChapterDownload(
         @GraphQLIgnore
         userId: Int,

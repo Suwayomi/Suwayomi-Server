@@ -20,7 +20,7 @@ import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.ForbiddenException
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
@@ -85,14 +85,14 @@ class ExtensionMutation {
     }
 
     private fun checkUpdatePermissions(
-        permissions: List<Permissions>,
+        permissions: List<UserPermission>,
         patch: UpdateExtensionPatch,
     ) {
-        if (patch.install == true && !permissions.hasPermission(Permissions.INSTALL_EXTENSIONS)) {
+        if (patch.install == true && !permissions.hasPermission(UserPermission.INSTALL_EXTENSIONS)) {
             throw ForbiddenException()
         }
 
-        if (patch.uninstall == true && !permissions.hasPermission(Permissions.UNINSTALL_EXTENSIONS)) {
+        if (patch.uninstall == true && !permissions.hasPermission(UserPermission.UNINSTALL_EXTENSIONS)) {
             throw ForbiddenException()
         }
     }
@@ -100,7 +100,7 @@ class ExtensionMutation {
     @RequireAuth
     fun updateExtension(
         @GraphQLIgnore
-        permissions: List<Permissions>,
+        permissions: List<UserPermission>,
         input: UpdateExtensionInput,
     ): CompletableFuture<UpdateExtensionPayload?> {
         val (clientMutationId, id, patch) = input
@@ -129,7 +129,7 @@ class ExtensionMutation {
     @RequireAuth
     fun updateExtensions(
         @GraphQLIgnore
-        permissions: List<Permissions>,
+        permissions: List<UserPermission>,
         input: UpdateExtensionsInput,
     ): CompletableFuture<UpdateExtensionsPayload?> {
         val (clientMutationId, ids, patch) = input
@@ -205,7 +205,7 @@ class ExtensionMutation {
     )
 
     @RequireAuth
-    @RequirePermissions(Permissions.INSTALL_UNTRUSTED_EXTENSIONS)
+    @RequirePermissions(UserPermission.INSTALL_EXTERNAL_EXTENSIONS)
     fun installExternalExtension(input: InstallExternalExtensionInput): CompletableFuture<InstallExternalExtensionPayload?> {
         val (clientMutationId, extensionFile) = input
 

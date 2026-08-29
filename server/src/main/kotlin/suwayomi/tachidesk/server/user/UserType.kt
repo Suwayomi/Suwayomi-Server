@@ -10,21 +10,15 @@ import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.serverConfig
 
 sealed class UserType {
-    companion object {
-        const val ADMIN_ROLE = "ADMIN"
-        const val USER_ROLE = "USER"
-        const val VISITOR_ROLE = "VISITOR"
-    }
-
     class Admin(
         val id: Int,
-        val roles: List<String> = listOf(ADMIN_ROLE),
+        val roles: List<UserRole> = listOf(UserRole.ADMIN),
     ) : UserType()
 
     class User(
         val id: Int,
-        val permissions: List<Permissions>,
-        val roles: List<String> = listOf(USER_ROLE),
+        val permissions: List<UserPermission>,
+        val roles: List<UserRole> = listOf(UserRole.USER),
     ) : UserType()
 
     data object Visitor : UserType()
@@ -33,7 +27,7 @@ sealed class UserType {
 /**
  * Returns true if this list of roles contains [role] (case-insensitive).
  */
-fun List<String>.hasRole(role: String): Boolean = any { it.equals(role, ignoreCase = true) }
+fun List<UserRole>.hasRole(role: UserRole): Boolean = any { it == role }
 
 fun UserType.requireUser(): Int =
     when (this) {
@@ -74,11 +68,9 @@ fun getUserFromToken(token: String?): UserType {
     return Jwt.verifyJwt(token)
 }
 
-fun UserType.requirePermissions(vararg permissions: Permissions) {
+fun UserType.requirePermissions(vararg permissions: UserPermission) {
     when (this) {
-        is UserType.Admin -> {
-            Unit
-        }
+        is UserType.Admin -> {}
 
         is UserType.User -> {
             val userPermissions = this.permissions

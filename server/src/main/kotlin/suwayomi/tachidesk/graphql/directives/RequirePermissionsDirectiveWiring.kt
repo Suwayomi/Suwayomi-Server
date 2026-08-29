@@ -13,8 +13,7 @@ import graphql.schema.DataFetcher
 import graphql.schema.GraphQLFieldDefinition
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.user.ForbiddenException
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.requirePermissions
 
 class RequirePermissionsDirectiveWiring : KotlinSchemaDirectiveWiring {
@@ -22,26 +21,16 @@ class RequirePermissionsDirectiveWiring : KotlinSchemaDirectiveWiring {
         val originalDataFetcher = environment.getDataFetcher()
 
         val rawPermissionValue: Any? = environment.directive.getArgument("permission")?.getValue<Any?>()
-        val permissionNames =
+        val permissions =
             when (rawPermissionValue) {
                 null -> emptyList()
-                is Array<*> -> rawPermissionValue.filterIsInstance<String>()
-                is List<*> -> rawPermissionValue.mapNotNull { it as? String }
+                is Array<*> -> rawPermissionValue.filterIsInstance<UserPermission>()
+                is List<*> -> rawPermissionValue.filterIsInstance<UserPermission>()
                 else -> emptyList()
-            }
-
-        val permissions =
-            permissionNames.mapNotNull { name ->
-                Permissions.entries.find { it.name == name }
             }
 
         val authDataFetcher =
             DataFetcher { env ->
-                if (permissions.size != permissionNames.size) {
-                    // an unknown permission name was used in the directive: fail closed
-                    throw ForbiddenException()
-                }
-
                 val user = env.graphQlContext.getAttribute(Attribute.TachideskUser)
                 user.requirePermissions(*permissions.toTypedArray())
 

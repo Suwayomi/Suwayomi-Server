@@ -47,7 +47,8 @@ import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
@@ -56,7 +57,17 @@ class ExtensionQuery {
     fun extension(
         dataFetchingEnvironment: DataFetchingEnvironment,
         pkgName: String,
-    ): CompletableFuture<ExtensionType> = dataFetchingEnvironment.getValueFromDataLoader("ExtensionDataLoader", pkgName)
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
+    ): CompletableFuture<ExtensionType> =
+        dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionType>("ExtensionDataLoader", pkgName).thenApply { extension ->
+            if (extension != null && extension.contentWarning >= ContentWarning.MIXED &&
+                !permissions.hasPermission(UserPermission.ACCESS_NSFW)
+            ) {
+                throw ForbiddenException()
+            }
+            extension
+        }
 
     enum class ExtensionOrderBy(
         override val column: Column<*>,
@@ -197,7 +208,7 @@ class ExtensionQuery {
     @RequireAuth
     fun extensions(
         @GraphQLIgnore
-        permissions: List<Permissions>,
+        permissions: List<UserPermission>,
         condition: ExtensionCondition? = null,
         filter: ExtensionFilter? = null,
         @GraphQLDeprecated(
@@ -226,7 +237,7 @@ class ExtensionQuery {
                 res.applyOps(condition, filter)
 
                 // hide NSFW extensions from users without the NSFW permission
-                if (!permissions.hasPermission(Permissions.NSFW)) {
+                if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
                     res.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
                 }
 

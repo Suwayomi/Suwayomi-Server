@@ -20,6 +20,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
@@ -37,7 +38,7 @@ import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.ForbiddenException
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
@@ -290,7 +291,7 @@ class SourceMutation {
     @RequireAuth
     fun fetchSourceManga(
         @GraphQLIgnore
-        permissions: List<Permissions>,
+        permissions: List<UserPermission>,
         input: FetchSourceMangaInput,
     ): CompletableFuture<FetchSourceMangaPayload?> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
@@ -306,7 +307,7 @@ class SourceMutation {
                         ?: false
                 }
 
-            if (isSourceNsfw && !permissions.hasPermission(Permissions.NSFW)) {
+            if (isSourceNsfw && !permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
                 throw ForbiddenException()
             }
 
@@ -373,6 +374,7 @@ class SourceMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_SOURCE_PREFERENCES)
     fun updateSourcePreference(input: UpdateSourcePreferenceInput): CompletableFuture<UpdateSourcePreferencePayload?> {
         val (clientMutationId, sourceId, change) = input
 

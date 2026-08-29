@@ -13,7 +13,8 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
 import suwayomi.tachidesk.global.model.table.UserRolesTable
 import suwayomi.tachidesk.server.serverConfig
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -103,18 +104,27 @@ object Jwt {
             }
 
             val user = decodedJWT.subject.toInt()
-            val roles: List<String> = decodedJWT.getClaim("roles").asList(String::class.java)
-            val permissions: List<String> = decodedJWT.getClaim("permissions").asList(String::class.java)
+            val roles: List<UserRole> =
+                decodedJWT
+                    .getClaim("roles")
+                    .asList(String::class.java)
+                    .mapNotNull { role ->
+                        UserRole.entries.find { it.name == role }
+                    }
+            val permissions: List<UserPermission> =
+                decodedJWT
+                    .getClaim("permissions")
+                    .asList(String::class.java)
+                    .mapNotNull { permission ->
+                        UserPermission.entries.find { it.name == permission }
+                    }
 
-            return if (roles.any { it.equals(UserType.ADMIN_ROLE, ignoreCase = true) }) {
+            return if (roles.any { it == UserRole.ADMIN }) {
                 UserType.Admin(user, roles)
             } else {
                 UserType.User(
                     id = user,
-                    permissions =
-                        permissions.mapNotNull { permission ->
-                            Permissions.entries.find { it.name == permission }
-                        },
+                    permissions = permissions,
                     roles = roles,
                 )
             }

@@ -1,12 +1,20 @@
 package suwayomi.tachidesk.graphql
 
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
@@ -339,6 +347,67 @@ class CategoryMutationTest : GraphQLTest() {
         assertEquals(2, (response.dataPath("updateMangasCategories", "mangas") as List<*>).size)
     }
 
+    @Test
+    fun updateCategoriesIncludeInDownloadIsPerUser() {
+        val userA = createTestUser("catdl_a")
+        val userB = createTestUser("catdl_b")
+        val userAType = UserType.User(id = userA, permissions = emptyList())
+        val userBType = UserType.User(id = userB, permissions = emptyList())
+
+        val catA = createCategoryAs("Cat A", userAType)
+        val catB = createCategoryAs("Cat B", userBType)
+
+        // user A patches includeInDownload on both categories, including user B's
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: UpdateCategoriesInput!) {
+                    updateCategories(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf(
+                    "input" to mapOf("ids" to listOf(catA, catB), "patch" to mapOf("includeInDownload" to IncludeOrExclude.INCLUDE.name)),
+                ),
+                user = userAType,
+            )
+
+        response.assertNoErrors()
+
+        val (includeA, includeB) =
+            transaction {
+                val a = CategoryTable.selectAll().where { CategoryTable.id eq catA }.first()[CategoryTable.includeInDownload]
+                val b = CategoryTable.selectAll().where { CategoryTable.id eq catB }.first()[CategoryTable.includeInDownload]
+                a to b
+            }
+
+        assertEquals(IncludeOrExclude.INCLUDE.value, includeA, "user A's own category should be updated")
+        assertEquals(IncludeOrExclude.UNSET.value, includeB, "user B's category must not be touched by user A")
+    }
+
+    private fun createCategoryAs(
+        name: String,
+        user: UserType,
+    ): Int {
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: CreateCategoryInput!) {
+                    createCategory(input: ${'$'}input) {
+                        category {
+                            id
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("name" to name)),
+                user = user,
+            )
+        response.assertNoErrors()
+        return response.dataPath("createCategory", "category", "id") as Int
+    }
+
     private fun createCategoryViaMutation(name: String): Int {
         val response =
             graphql(
@@ -367,5 +436,9 @@ class CategoryMutationTest : GraphQLTest() {
             MangaUserTable,
             MangaTable,
         )
+
+        transaction {
+            UserAccountTable.deleteWhere { UserAccountTable.id neq 1 }
+        }
     }
 }

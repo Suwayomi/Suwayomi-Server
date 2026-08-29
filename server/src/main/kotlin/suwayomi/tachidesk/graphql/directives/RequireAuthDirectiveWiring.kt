@@ -14,7 +14,8 @@ import graphql.schema.DataFetchingEnvironmentImpl
 import graphql.schema.GraphQLFieldDefinition
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.requireUser
 
@@ -44,7 +45,7 @@ class RequireAuthDirectiveWiring : KotlinSchemaDirectiveWiring {
                 newArguments[USER_ID_PARAM] = userId
                 newArguments[PERMISSIONS_PARAM] =
                     when (user) {
-                        is UserType.Admin -> Permissions.entries
+                        is UserType.Admin -> UserPermission.entries
                         is UserType.User -> user.permissions
                         UserType.Visitor -> emptyList()
                     }
@@ -52,7 +53,7 @@ class RequireAuthDirectiveWiring : KotlinSchemaDirectiveWiring {
                     when (user) {
                         is UserType.Admin -> user.roles
                         is UserType.User -> user.roles
-                        UserType.Visitor -> listOf(UserType.VISITOR_ROLE)
+                        UserType.Visitor -> listOf(UserRole.VISITOR)
                     }
 
                 val modifiedEnv =

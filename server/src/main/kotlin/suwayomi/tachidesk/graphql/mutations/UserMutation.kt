@@ -7,6 +7,7 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lowerCase
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -22,11 +23,10 @@ import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
-import suwayomi.tachidesk.server.serverConfig
-import suwayomi.tachidesk.server.user.Permissions
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
-import suwayomi.tachidesk.server.user.requirePermissions
-import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.graphql.types.UserType as GqlUserType
 
 class UserMutation {
     data class LoginInput(
@@ -97,7 +97,8 @@ class UserMutation {
         val clientMutationId: String?,
     )
 
-    @RequirePermissions(Permissions.CREATE_USER)
+    @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_USERS)
     fun register(input: RegisterInput): RegisterPayload {
         val (clientMutationId, username, password) = input
         transaction {
@@ -117,20 +118,86 @@ class UserMutation {
                         }.value
 
                 // grant the default permissions and a non-admin role
-                UserPermissionsTable.batchInsert(Permissions.defaultPermissions) {
+                UserPermissionsTable.batchInsert(UserPermission.defaultPermissions) {
                     this[UserPermissionsTable.user] = userId
                     this[UserPermissionsTable.permission] = it.name
                 }
 
                 UserRolesTable.insert {
                     it[UserRolesTable.user] = userId
-                    it[UserRolesTable.role] = UserType.USER_ROLE
+                    it[UserRolesTable.role] = UserRole.USER.name
                 }
             }
         }
 
         return RegisterPayload(
             clientMutationId = clientMutationId,
+        )
+    }
+
+    data class UpdateUserInput(
+        val clientMutationId: String? = null,
+        val userId: Int,
+        val permissions: List<UserPermission>? = null,
+        val role: UserRole? = null,
+    )
+
+    data class UpdateUserPayload(
+        val clientMutationId: String?,
+        val user: GqlUserType,
+    )
+
+    @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_USERS)
+    fun updateUser(input: UpdateUserInput): UpdateUserPayload {
+        val (clientMutationId, userId, permissions, role) = input
+        require(userId != 1) {
+            "The built-in admin user cannot be modified"
+        }
+        role?.let { role ->
+            require(role != UserRole.VISITOR) {
+                "The VISITOR role cannot be granted"
+            }
+        }
+
+        transaction {
+            UserAccountTable
+                .selectAll()
+                .where { UserAccountTable.id eq userId }
+                .firstOrNull()
+                ?: throw IllegalArgumentException("user $userId not found")
+
+            if (permissions != null) {
+                UserPermissionsTable.deleteWhere { UserPermissionsTable.user eq userId }
+
+                UserPermissionsTable.batchInsert(permissions) { permission ->
+                    this[UserPermissionsTable.user] = userId
+                    this[UserPermissionsTable.permission] = permission.name
+                }
+            }
+
+            if (role != null) {
+                UserRolesTable.deleteWhere { UserRolesTable.user eq userId }
+
+                UserRolesTable.insert {
+                    it[UserRolesTable.user] = userId
+                    it[UserRolesTable.role] = role.name
+                }
+            }
+        }
+
+        val user =
+            transaction {
+                UserAccountTable
+                    .selectAll()
+                    .where { UserAccountTable.id eq userId }
+                    .first()
+                    .let { GqlUserType(it) }
+            }
+
+        return UpdateUserPayload(
+            clientMutationId = clientMutationId,
+            user = user,
         )
     }
 

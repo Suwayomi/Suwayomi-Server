@@ -1,22 +1,26 @@
 package suwayomi.tachidesk.server.user
 
-enum class Permissions {
+enum class UserPermission {
     INSTALL_EXTENSIONS,
-    INSTALL_UNTRUSTED_EXTENSIONS,
+    INSTALL_EXTERNAL_EXTENSIONS,
     UNINSTALL_EXTENSIONS,
     DOWNLOAD_CHAPTERS,
-    CREATE_USER,
-    NSFW,
+    ACCESS_NSFW,
+    MANAGE_SETTINGS,
+    MANAGE_USERS,
+    MANAGE_EXTENSION_STORES,
+    MANAGE_SOURCE_PREFERENCES,
+    MANAGE_CACHE,
     ;
 
     companion object {
         val defaultPermissions =
             setOf(
                 INSTALL_EXTENSIONS,
-                INSTALL_UNTRUSTED_EXTENSIONS,
+                INSTALL_EXTERNAL_EXTENSIONS,
                 UNINSTALL_EXTENSIONS,
                 DOWNLOAD_CHAPTERS,
-                NSFW,
+                ACCESS_NSFW,
             )
     }
 }
@@ -24,4 +28,4 @@ enum class Permissions {
 /**
  * Returns true if [permission] is contained in this list of permissions.
  */
-fun List<Permissions>.hasPermission(permission: Permissions): Boolean = permission in this
+fun List<UserPermission>.hasPermission(permission: UserPermission): Boolean = permission in this
