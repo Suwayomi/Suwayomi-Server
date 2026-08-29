@@ -10,11 +10,6 @@ package suwayomi.tachidesk.global.model.table
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.Table
 
-/**
- * Per-user setting overrides. One row per (user, overridden setting). The value is a JSON-encoded string.
- *
- * Settings without a row here fall back to the global [ServerConfig] value.
- */
 object UserSettingsTable : Table() {
     val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val key = varchar("key", 256)

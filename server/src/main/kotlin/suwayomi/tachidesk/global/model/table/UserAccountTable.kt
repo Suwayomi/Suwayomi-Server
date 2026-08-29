@@ -10,7 +10,7 @@ package suwayomi.tachidesk.global.model.table
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 
 /**
- * Users registered in Tachidesk.
+ * Users registered in Suwayomi.
  */
 object UserAccountTable : IntIdTable() {
     val username = varchar("username", 64)

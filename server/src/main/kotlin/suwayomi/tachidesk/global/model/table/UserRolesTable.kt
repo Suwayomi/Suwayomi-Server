@@ -10,9 +10,6 @@ package suwayomi.tachidesk.global.model.table
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.Table
 
-/**
- * Users registered in Tachidesk.
- */
 object UserRolesTable : Table() {
     val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val role = varchar("role", 24)
