@@ -10,6 +10,7 @@ import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -203,7 +204,8 @@ class UserMutation {
 
     data class SetPasswordInput(
         val clientMutationId: String? = null,
-        val password: String,
+        val newPassword: String,
+        val oldPassword: String,
     )
 
     data class SetPasswordPayload(
@@ -216,10 +218,20 @@ class UserMutation {
         userId: Int,
         input: SetPasswordInput,
     ): SetPasswordPayload {
-        val (clientMutationId, password) = input
+        val (clientMutationId, newPassword, oldPassword) = input
         transaction {
+            val currentPassword =
+                UserAccountTable
+                    .select(UserAccountTable.password)
+                    .where { UserAccountTable.id eq userId }
+                    .first()[UserAccountTable.password]
+
+            require(Bcrypt.verify(currentPassword, oldPassword)) {
+                "The old password is incorrect"
+            }
+
             UserAccountTable.update({ UserAccountTable.id eq userId }) {
-                it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
+                it[UserAccountTable.password] = Bcrypt.encryptPassword(newPassword)
             }
         }
 
