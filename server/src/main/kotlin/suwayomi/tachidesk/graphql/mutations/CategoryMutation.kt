@@ -311,7 +311,7 @@ class CategoryMutation {
                 }
             }
             if (patch.includeInDownload != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
                     patch.includeInDownload.also {
                         update[includeInDownload] = it.value
                     }
@@ -353,7 +353,10 @@ class CategoryMutation {
 
         val categories =
             transaction {
-                CategoryTable.selectAll().where { CategoryTable.id inList ids }.map { CategoryType(it) }
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id inList ids and (CategoryTable.user eq userId) }
+                    .map { CategoryType(it) }
             }
 
         return UpdateCategoriesPayload(
@@ -447,7 +450,7 @@ class CategoryMutation {
     ): CreateCategoryPayload? {
         val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
         transaction {
-            require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
+            require(CategoryTable.selectAll().where { CategoryTable.name eq input.name and (CategoryTable.user eq userId) }.isEmpty()) {
                 "'name' must be unique"
             }
         }
@@ -523,7 +526,7 @@ class CategoryMutation {
                 val category =
                     CategoryTable
                         .selectAll()
-                        .where { CategoryTable.id eq categoryId }
+                        .where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
                         .firstOrNull()
 
                 val mangas =
