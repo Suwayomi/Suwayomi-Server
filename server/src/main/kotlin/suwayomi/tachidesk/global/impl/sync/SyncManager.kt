@@ -240,13 +240,25 @@ object SyncManager {
             }
 
             transaction {
-                MangaUserTable.update({ MangaUserTable.isSyncing eq true }) {
+                MangaUserTable.update(
+                    {
+                        MangaUserTable.isSyncing eq true and (MangaUserTable.user eq userId)
+                    },
+                ) {
                     it[isSyncing] = false
                 }
-                ChapterUserTable.update({ ChapterUserTable.isSyncing eq true }) {
+                ChapterUserTable.update(
+                    {
+                        ChapterUserTable.isSyncing eq true and (ChapterUserTable.user eq userId)
+                    },
+                ) {
                     it[isSyncing] = false
                 }
-                CategoryTable.update({ CategoryTable.isSyncing eq true }) {
+                CategoryTable.update(
+                    {
+                        CategoryTable.isSyncing eq true and (CategoryTable.user eq userId)
+                    },
+                ) {
                     it[isSyncing] = false
                 }
             }

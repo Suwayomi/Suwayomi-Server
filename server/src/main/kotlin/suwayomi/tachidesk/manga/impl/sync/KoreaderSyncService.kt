@@ -19,6 +19,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
@@ -132,17 +133,18 @@ object KoreaderSyncService {
         return suspendTransaction {
             val chapterRow =
                 ChapterTable
-                    .select(ChapterTable.koreaderHash, ChapterTable.manga, ChapterTable.isDownloaded)
+                    .getWithUserData(userId)
+                    .select(ChapterUserTable.koreaderHash, ChapterTable.manga, ChapterUserTable.isDownloaded)
                     .where { ChapterTable.id eq chapterId }
                     .firstOrNull() ?: return@suspendTransaction null
 
-            val existingHash = chapterRow[ChapterTable.koreaderHash]
+            val existingHash = chapterRow[ChapterUserTable.koreaderHash]
             if (!existingHash.isNullOrBlank()) {
                 return@suspendTransaction existingHash
             }
 
             val mangaId = chapterRow[ChapterTable.manga].value
-            val isDownloaded = chapterRow[ChapterTable.isDownloaded]
+            val isDownloaded = chapterRow[ChapterUserTable.isDownloaded]
             val checksumMethod = userSettings.value(userId, userConfig.koreaderSyncChecksumMethod)
 
             val newHash =
@@ -192,7 +194,9 @@ object KoreaderSyncService {
                 }
 
             if (newHash != null) {
-                ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                ChapterUserTable.upsert(ChapterUserTable.chapter, ChapterUserTable.user) {
+                    it[user] = userId
+                    it[chapter] = chapterId
                     it[koreaderHash] = newHash
                 }
                 logger.info { "[KOSYNC HASH] Generated and saved new hash for chapterId=$chapterId" }

@@ -34,8 +34,6 @@ object ChapterTable : IntIdTable() {
 
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 
-    val koreaderHash = varchar("koreader_hash", 32).nullable()
-
     val memo = jsonObject("memo")
 }
 

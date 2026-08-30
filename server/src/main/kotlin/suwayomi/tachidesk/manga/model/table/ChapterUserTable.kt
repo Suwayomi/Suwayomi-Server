@@ -25,6 +25,8 @@ object ChapterUserTable : IntIdTable() {
     val isDownloaded = bool("is_downloaded").default(false)
     val isDownloadRequested = bool("is_download_requested").default(false)
 
+    val koreaderHash = varchar("koreader_hash", 32).nullable()
+
     // syncyomi
     val version = long("version").default(0)
     val isSyncing = bool("is_syncing").default(false)

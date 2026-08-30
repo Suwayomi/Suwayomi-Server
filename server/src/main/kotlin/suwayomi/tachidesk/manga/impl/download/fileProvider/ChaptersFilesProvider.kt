@@ -25,6 +25,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
 import java.io.InputStream
@@ -193,8 +194,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             val koreaderHash = KoreaderHelper.hashContents(chapterFile)
             if (koreaderHash != null) {
                 transaction {
-                    ChapterTable.update({ ChapterTable.id eq chapterId }) {
-                        it[ChapterTable.koreaderHash] = koreaderHash
+                    ChapterUserTable.update({ ChapterUserTable.chapter eq chapterId }) {
+                        it[ChapterUserTable.koreaderHash] = koreaderHash
                     }
                 }
             }

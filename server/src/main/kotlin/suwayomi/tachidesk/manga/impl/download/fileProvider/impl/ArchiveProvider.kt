@@ -17,6 +17,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.getMangaDownloadDir
 import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
@@ -95,7 +96,7 @@ class ArchiveProvider(
         val cbzDeleted = cbzFile.delete()
         if (cbzDeleted) {
             transaction {
-                ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                ChapterUserTable.update({ ChapterUserTable.chapter eq chapterId }) {
                     it[koreaderHash] = null
                 }
             }

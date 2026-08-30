@@ -295,53 +295,18 @@ class M0063_AddUsers : Migration() {
             ALTER TABLE $sourceMetaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
 
-            -- Step 4: Backfill the CHAPTERUSER and MANGAUSER tables with existing data
-            INSERT INTO $chapterUserTable (LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, CHAPTER, USER_ID)
-            SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, ID AS CHAPTER, 1 AS USER_ID
+            -- Step 4: Backfill the CHAPTERUSER and MANGAUSER tables with existing data,
+            -- including the syncyomi (VERSION, IS_SYNCING, LAST_MODIFIED_AT) and per-user
+            -- download (IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED) columns.
+            INSERT INTO $chapterUserTable (LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, CHAPTER, USER_ID)
+            SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOADED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS CHAPTER, 1 AS USER_ID
             FROM $chapterTable;
 
-            INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, MANGA, USER_ID)
-            SELECT IN_LIBRARY, IN_LIBRARY_AT, ID AS MANGA, 1 AS USER_ID
+            INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, MANGA, USER_ID)
+            SELECT IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS MANGA, 1 AS USER_ID
             FROM $mangaTable;
 
-            -- Step 5: Move the syncyomi columns (VERSION, IS_SYNCING, LAST_MODIFIED_AT) to the user specific tables
-            ALTER TABLE $mangaUserTable ADD COLUMN IF NOT EXISTS VERSION BIGINT NOT NULL DEFAULT 0;
-            ALTER TABLE $mangaUserTable ADD COLUMN IF NOT EXISTS IS_SYNCING BOOLEAN NOT NULL DEFAULT FALSE;
-            ALTER TABLE $mangaUserTable ADD COLUMN IF NOT EXISTS LAST_MODIFIED_AT BIGINT NOT NULL DEFAULT 0;
-
-            UPDATE $mangaUserTable
-            SET VERSION = (SELECT VERSION FROM $mangaTable WHERE $mangaTable.ID = $mangaUserTable.MANGA),
-                IS_SYNCING = (SELECT IS_SYNCING FROM $mangaTable WHERE $mangaTable.ID = $mangaUserTable.MANGA),
-                LAST_MODIFIED_AT = (SELECT LAST_MODIFIED_AT FROM $mangaTable WHERE $mangaTable.ID = $mangaUserTable.MANGA);
-
-            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS VERSION BIGINT NOT NULL DEFAULT 0;
-            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS IS_SYNCING BOOLEAN NOT NULL DEFAULT FALSE;
-            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS LAST_MODIFIED_AT BIGINT NOT NULL DEFAULT 0;
-
-            UPDATE $chapterUserTable
-            SET VERSION = (SELECT VERSION FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER),
-                IS_SYNCING = (SELECT IS_SYNCING FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER),
-                LAST_MODIFIED_AT = (SELECT LAST_MODIFIED_AT FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER);
-
-            -- Step 5b: Add the per-user download status and request intent to CHAPTERUSER (the shared file state stays in CHAPTER)
-            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS IS_DOWNLOADED BOOLEAN NOT NULL DEFAULT FALSE;
-            ALTER TABLE $chapterUserTable ADD COLUMN IF NOT EXISTS IS_DOWNLOAD_REQUESTED BOOLEAN NOT NULL DEFAULT FALSE;
-
-            -- Carry over the existing (single user) download state as the admin's status and request intent
-            UPDATE $chapterUserTable
-            SET IS_DOWNLOADED = (SELECT IS_DOWNLOADED FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER),
-                IS_DOWNLOAD_REQUESTED = (SELECT IS_DOWNLOADED FROM $chapterTable WHERE $chapterTable.ID = $chapterUserTable.CHAPTER);
-
-            -- Step 6: Remove the syncyomi columns from the MANGA and CHAPTER tables
-            ALTER TABLE $mangaTable DROP COLUMN VERSION;
-            ALTER TABLE $mangaTable DROP COLUMN IS_SYNCING;
-            ALTER TABLE $mangaTable DROP COLUMN LAST_MODIFIED_AT;
-
-            ALTER TABLE $chapterTable DROP COLUMN VERSION;
-            ALTER TABLE $chapterTable DROP COLUMN IS_SYNCING;
-            ALTER TABLE $chapterTable DROP COLUMN LAST_MODIFIED_AT;
-
-            -- Step 7: Remove the extracted columns from the CHAPTER and MANGA tables
+            -- Step 5: Remove the extracted columns from the CHAPTER and MANGA tables
             ALTER TABLE $chapterTable
             DROP COLUMN LAST_READ_AT;
             ALTER TABLE $chapterTable
@@ -350,11 +315,25 @@ class M0063_AddUsers : Migration() {
             DROP COLUMN BOOKMARK;
             ALTER TABLE $chapterTable
             DROP COLUMN READ;
+            ALTER TABLE $chapterTable
+            DROP COLUMN KOREADER_HASH;
+            ALTER TABLE $chapterTable
+            DROP COLUMN VERSION;
+            ALTER TABLE $chapterTable
+            DROP COLUMN IS_SYNCING;
+            ALTER TABLE $chapterTable
+            DROP COLUMN LAST_MODIFIED_AT;
 
             ALTER TABLE $mangaTable
             DROP COLUMN IN_LIBRARY;
             ALTER TABLE $mangaTable
             DROP COLUMN IN_LIBRARY_AT;
+            ALTER TABLE $mangaTable
+            DROP COLUMN VERSION;
+            ALTER TABLE $mangaTable
+            DROP COLUMN IS_SYNCING;
+            ALTER TABLE $mangaTable
+            DROP COLUMN LAST_MODIFIED_AT;
 
             $syncYomiTriggerDdl
             """.trimIndent()
@@ -410,6 +389,7 @@ class M0063_AddUsers : Migration() {
         val lastReadAt = long("last_read_at").default(0)
         val isDownloaded = bool("is_downloaded").default(false)
         val isDownloadRequested = bool("is_download_requested").default(false)
+        val koreaderHash = varchar("koreader_hash", 32).nullable()
         val version = long("version").default(0)
         val isSyncing = bool("is_syncing").default(false)
         val lastModifiedAt = long("last_modified_at").default(0)
