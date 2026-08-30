@@ -8,14 +8,14 @@ import java.util.Date
 
 @Serializable
 data class Backup(
-    @ProtoNumber(1) val backupManga: List<BackupManga>,
+    @ProtoNumber(1) val backupManga: List<BackupManga> = emptyList(),
     @ProtoNumber(2) var backupCategories: List<BackupCategory> = emptyList(),
     // Bump by 100 to specify this is a 0.x value
     // @ProtoNumber(100) var brokenBackupSources: List<BrokenBackupSource> = emptyList(),
     @ProtoNumber(101) var backupSources: List<BackupSource> = emptyList(),
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
-    @ProtoNumber(9001) var serverSettings: BackupServerSettings?,
+    @ProtoNumber(9001) var serverSettings: BackupServerSettings? = null,
 ) {
     fun getSourceMap(): Map<Long, String> =
         backupSources
