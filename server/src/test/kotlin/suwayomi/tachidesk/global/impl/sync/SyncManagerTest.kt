@@ -22,6 +22,7 @@ import suwayomi.tachidesk.graphql.types.StartSyncResult
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.test.ApplicationTest
+import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.test.Test
@@ -29,6 +30,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -147,5 +149,64 @@ class SyncManagerTest : ApplicationTest() {
         assertEquals(0L, syncPreferences.getLong("last_sync_timestamp_$userId", 0L))
         // User B's sync state is untouched
         assertSame(stateB, SyncManager.syncStates.getValue(userId2))
+    }
+
+    @Test
+    fun rescheduleUsesPersistedLastScheduledSyncForInitialDelay() {
+        // User A has sync enabled (30m interval) and last triggered a periodic sync 10m ago
+        userSettings.set(userId, userConfig.syncYomiEnabled, true)
+        userSettings.set(userId, userConfig.syncInterval, 30.minutes)
+        syncPreferences
+            .edit()
+            .putLong("last_scheduled_sync_$userId", (Clock.System.now() - 10.minutes).toEpochMilliseconds())
+            .apply()
+
+        SyncManager.checkForNewUsers()
+        awaitScheduledSyncTask(userId)
+
+        // The initial delay should be the time until the next slot (~20m), not the full interval (30m)
+        val (taskId, interval) = SyncManager.scheduledSyncTasks.getValue(userId)
+        assertEquals(30.minutes, interval)
+        val task = checkNotNull(HAScheduler.deschedule(taskId))
+        val nextExecutionInMs = task.getNextExecutionTime() - System.currentTimeMillis()
+        val expectedMs = 20.minutes.inWholeMilliseconds
+        assertTrue(
+            nextExecutionInMs in (expectedMs - 10_000)..(expectedMs + 10_000),
+            "expected next execution in ~${expectedMs}ms, was ${nextExecutionInMs}ms",
+        )
+
+        // Clean up the (canceled) task and the persisted key
+        SyncManager.scheduledSyncTasks.remove(userId)
+        syncPreferences.edit().remove("last_scheduled_sync_$userId").apply()
+    }
+
+    @Test
+    fun firstScheduleWaitsFullIntervalAndDisablingRemovesLastScheduledSync() {
+        userSettings.set(userId, userConfig.syncYomiEnabled, true)
+        userSettings.set(userId, userConfig.syncInterval, 30.minutes)
+
+        SyncManager.checkForNewUsers()
+        awaitScheduledSyncTask(userId)
+
+        // With no persisted last_scheduled_sync, the key is stamped at schedule time...
+        assertTrue(syncPreferences.contains("last_scheduled_sync_$userId"))
+        // ...and the initial delay is the full interval
+        val (taskId, _) = SyncManager.scheduledSyncTasks.getValue(userId)
+        val task = checkNotNull(HAScheduler.deschedule(taskId))
+        val nextExecutionInMs = task.getNextExecutionTime() - System.currentTimeMillis()
+        val expectedMs = 30.minutes.inWholeMilliseconds
+        assertTrue(
+            nextExecutionInMs in (expectedMs - 10_000)..(expectedMs + 10_000),
+            "expected next execution in ~${expectedMs}ms, was ${nextExecutionInMs}ms",
+        )
+        SyncManager.scheduledSyncTasks.remove(userId)
+
+        // Disabling sync removes the persisted key
+        userSettings.set(userId, userConfig.syncYomiEnabled, false)
+        val deadline = System.currentTimeMillis() + 5_000
+        while (syncPreferences.contains("last_scheduled_sync_$userId") && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50)
+        }
+        assertTrue(!syncPreferences.contains("last_scheduled_sync_$userId"))
     }
 }
