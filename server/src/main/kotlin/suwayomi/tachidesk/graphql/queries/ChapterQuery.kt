@@ -32,6 +32,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.queries.filter.coalesceDefault
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -143,14 +144,14 @@ class ChapterQuery {
             opAnd.eq(chapterNumber, ChapterTable.chapter_number)
             opAnd.eq(scanlator, ChapterTable.scanlator)
             opAnd.eq(mangaId, ChapterTable.manga)
-            opAnd.eq(isRead, ChapterUserTable.isRead)
-            opAnd.eq(isBookmarked, ChapterUserTable.isBookmarked)
-            opAnd.eq(lastPageRead, ChapterUserTable.lastPageRead)
-            opAnd.eq(lastReadAt, ChapterUserTable.lastReadAt)
+            opAnd.eq(isRead, coalesceDefault(ChapterUserTable.isRead, false))
+            opAnd.eq(isBookmarked, coalesceDefault(ChapterUserTable.isBookmarked, false))
+            opAnd.eq(lastPageRead, coalesceDefault(ChapterUserTable.lastPageRead, 0))
+            opAnd.eq(lastReadAt, coalesceDefault(ChapterUserTable.lastReadAt, 0L))
             opAnd.eq(sourceOrder, ChapterTable.sourceOrder)
             opAnd.eq(realUrl, ChapterTable.realUrl)
             opAnd.eq(fetchedAt, ChapterTable.fetchedAt)
-            opAnd.eq(isDownloaded, ChapterUserTable.isDownloaded)
+            opAnd.eq(isDownloaded, coalesceDefault(ChapterUserTable.isDownloaded, false))
             opAnd.eq(pageCount, ChapterTable.pageCount)
 
             return opAnd.op
@@ -188,14 +189,14 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.chapter_number, chapterNumber?.toFloatFilter()),
                 andFilterWithCompareString(ChapterTable.scanlator, scanlator),
                 andFilterWithCompareEntity(ChapterTable.manga, mangaId),
-                andFilterWithCompare(ChapterUserTable.isRead, isRead),
-                andFilterWithCompare(ChapterUserTable.isBookmarked, isBookmarked),
-                andFilterWithCompare(ChapterUserTable.lastPageRead, lastPageRead),
-                andFilterWithCompare(ChapterUserTable.lastReadAt, lastReadAt),
+                andFilterWithCompare(coalesceDefault(ChapterUserTable.isRead, false), isRead),
+                andFilterWithCompare(coalesceDefault(ChapterUserTable.isBookmarked, false), isBookmarked),
+                andFilterWithCompare(coalesceDefault(ChapterUserTable.lastPageRead, 0), lastPageRead),
+                andFilterWithCompare(coalesceDefault(ChapterUserTable.lastReadAt, 0L), lastReadAt),
                 andFilterWithCompare(ChapterTable.sourceOrder, sourceOrder),
                 andFilterWithCompareString(ChapterTable.realUrl, realUrl),
                 andFilterWithCompare(ChapterTable.fetchedAt, fetchedAt),
-                andFilterWithCompare(ChapterUserTable.isDownloaded, isDownloaded),
+                andFilterWithCompare(coalesceDefault(ChapterUserTable.isDownloaded, false), isDownloaded),
                 andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
 

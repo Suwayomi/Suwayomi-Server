@@ -37,6 +37,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.queries.filter.coalesceDefault
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -136,8 +137,8 @@ class MangaQuery {
             opAnd.eq(description, MangaTable.description)
             opAnd.andWhereAll(genre) { MangaTable.genre like "%$it%" }
             opAnd.eq(status?.value, MangaTable.status)
-            opAnd.eq(inLibrary, MangaUserTable.inLibrary)
-            opAnd.eq(inLibraryAt, MangaUserTable.inLibraryAt)
+            opAnd.eq(inLibrary, coalesceDefault(MangaUserTable.inLibrary, false))
+            opAnd.eq(inLibraryAt, coalesceDefault(MangaUserTable.inLibraryAt, 0))
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
@@ -218,8 +219,8 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.description, description),
                 andFilterWithCompareString(MangaTable.genre, genre),
                 andFilterWithCompare(MangaTable.status, status?.asIntFilter()),
-                andFilterWithCompare(MangaUserTable.inLibrary, inLibrary),
-                andFilterWithCompare(MangaUserTable.inLibraryAt, inLibraryAt),
+                andFilterWithCompare(coalesceDefault(MangaUserTable.inLibrary, false), inLibrary),
+                andFilterWithCompare(coalesceDefault(MangaUserTable.inLibraryAt, 0), inLibraryAt),
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),

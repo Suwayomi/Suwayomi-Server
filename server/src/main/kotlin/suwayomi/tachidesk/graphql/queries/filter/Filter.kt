@@ -8,6 +8,7 @@ import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.QueryBuilder
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.coalesce
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
@@ -616,7 +617,7 @@ class OpAnd(
 
     fun <T> eq(
         value: T?,
-        column: Column<T>,
+        column: ExpressionWithColumnType<T>,
     ) = andWhere(value) { column eq it }
 
     fun <T : Comparable<T>> eq(
@@ -627,7 +628,7 @@ class OpAnd(
 
 @Suppress("UNCHECKED_CAST")
 fun <T : Comparable<T>, S : T?> andFilterWithCompare(
-    column: Column<S>,
+    column: ExpressionWithColumnType<S>,
     filter: ComparableScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
@@ -734,3 +735,8 @@ fun <T : Comparable<T>> andFilterWithCompareEntity(
 
     return opAnd.op
 }
+
+fun <T : Any> coalesceDefault(
+    column: Column<T>,
+    default: T,
+): ExpressionWithColumnType<T> = coalesce(column, column.wrap(default))
