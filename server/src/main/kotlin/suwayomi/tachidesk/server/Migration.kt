@@ -5,6 +5,8 @@ import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.server.database.H2Migration
+import suwayomi.tachidesk.server.user.applyUserSettingsBackfillFile
+import suwayomi.tachidesk.server.user.saveUserSettingsBackfillFile
 import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
@@ -102,9 +104,17 @@ private val PRE_DB_STARTUP_MIGRATIONS =
         "MigrateH2DatabaseToV2.4.240" to { applicationDirs ->
             migrateH2DatabaseToV24240(applicationDirs)
         },
+        "SaveUserSettingsBackfillFile" to { applicationDirs ->
+            saveUserSettingsBackfillFile(applicationDirs)
+        },
     )
 
-private val POST_DB_MIGRATIONS = listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>()
+private val POST_DB_MIGRATIONS =
+    listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>(
+        "MigrateUserSettingsToUser1" to { applicationDirs ->
+            applyUserSettingsBackfillFile(applicationDirs)
+        },
+    )
 
 private val MIGRATIONS =
     mapOf<Any, List<Pair<String, suspend (ApplicationDirs) -> Unit>>>(
