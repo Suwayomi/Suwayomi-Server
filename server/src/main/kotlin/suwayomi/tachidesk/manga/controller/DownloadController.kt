@@ -11,7 +11,6 @@ import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
-import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
@@ -110,13 +109,9 @@ object DownloadController {
                     description("Queue single chapter for download")
                 }
             },
-            behaviorOf = { ctx, chapterIndex, mangaId ->
+            behaviorOf = { ctx, _, _ ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.future {
-                    future {
-                        DownloadManager.enqueueWithChapterIndex(mangaId, chapterIndex)
-                    }.thenApply { ctx.status(HttpStatus.OK) }
-                }
+                throw NullPointerException("Removed support for downloads in v1 REST API")
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -131,16 +126,10 @@ object DownloadController {
                     summary("Downloader add multiple chapters")
                     description("Queue multiple chapters for download")
                 }
-                body<EnqueueInput>()
             },
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val inputs = json.decodeFromString<EnqueueInput>(ctx.body())
-                ctx.future {
-                    future {
-                        DownloadManager.enqueue(inputs)
-                    }.thenApply { ctx.status(HttpStatus.OK) }
-                }
+                throw NullPointerException("Removed support for downloads in v1 REST API")
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -155,16 +144,10 @@ object DownloadController {
                     summary("Downloader remove multiple downloads")
                     description("Remove multiple chapters downloads from queue")
                 }
-                body<EnqueueInput>()
             },
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<EnqueueInput>(ctx.body())
-                ctx.future {
-                    future {
-                        DownloadManager.dequeue(input)
-                    }.thenApply { ctx.status(HttpStatus.OK) }
-                }
+                throw NullPointerException("Removed support for downloads in v1 REST API")
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -182,11 +165,9 @@ object DownloadController {
                     description("Delete chapter from download queue")
                 }
             },
-            behaviorOf = { ctx, chapterIndex, mangaId ->
+            behaviorOf = { ctx, _, _ ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                DownloadManager.dequeue(chapterIndex, mangaId)
-
-                ctx.status(200)
+                throw NullPointerException("Removed support for downloads in v1 REST API")
             },
             withResults = {
                 httpCode(HttpStatus.OK)

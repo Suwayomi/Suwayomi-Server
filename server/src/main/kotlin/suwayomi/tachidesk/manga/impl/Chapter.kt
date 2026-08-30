@@ -37,7 +37,6 @@ import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
-import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.util.updateChapterDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -933,7 +932,7 @@ object Chapter {
 
         // Stop any in-progress shared download that no user wants anymore
         if (chapterIdsWithoutRequest.isNotEmpty()) {
-            DownloadManager.dequeue(EnqueueInput(chapterIdsWithoutRequest))
+            DownloadManager.dequeue(chapterIdsWithoutRequest)
         }
     }
 

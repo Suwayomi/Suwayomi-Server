@@ -23,7 +23,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
-import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
@@ -224,7 +223,7 @@ class ChapterTest : ApplicationTest() {
                 assertEquals(false, state[ChapterUserTable.isDownloaded])
             }
 
-            DownloadManager.dequeue(EnqueueInput(chapterIds))
+            DownloadManager.dequeue(1, chapterIds)
         }
 
     @Test
@@ -247,6 +246,76 @@ class ChapterTest : ApplicationTest() {
                 }
             assertTrue(state[ChapterUserTable.isDownloadRequested])
             assertTrue(state[ChapterUserTable.isDownloaded])
+        }
+
+    @Test
+    fun dequeueDownloadClearsCallerIntentForQueuedChapters() =
+        runTest {
+            val mangaId = createLibraryManga("DOWNLOAD_DEQUEUE_TEST")
+            val chapterIds =
+                createChaptersForDownloadTest(mangaId, listOf("1", "2"), downloaded = false)
+
+            DownloadManager.enqueue(1, chapterIds)
+
+            DownloadManager.dequeue(1, chapterIds)
+
+            val userStates =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { (ChapterUserTable.user eq 1) and (ChapterUserTable.chapter inList chapterIds) }
+                        .associate { it[ChapterUserTable.chapter].value to it }
+                }
+            assertEquals(2, userStates.size)
+            chapterIds.forEach { chapterId ->
+                val state = userStates.getValue(chapterId)
+                assertEquals(false, state[ChapterUserTable.isDownloadRequested])
+                assertEquals(false, state[ChapterUserTable.isDownloaded])
+            }
+
+            // the shared queue is empty again
+            assertTrue(DownloadManager.getStatus().queue.isEmpty())
+        }
+
+    @Test
+    fun dequeueDownloadKeepsQueuedChapterWhileOtherUserRequestsIt() =
+        runTest {
+            val mangaId = createLibraryManga("DOWNLOAD_DEQUEUE_SHARED_TEST")
+            val userId2 = createSecondUser()
+            val chapterIds =
+                createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = false)
+
+            DownloadManager.enqueue(1, chapterIds)
+            DownloadManager.enqueue(userId2, chapterIds)
+
+            DownloadManager.dequeue(1, chapterIds)
+
+            val states =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { (ChapterUserTable.chapter inList chapterIds) and (ChapterUserTable.user inList listOf(1, userId2)) }
+                        .associate { it[ChapterUserTable.user].value to it }
+                }
+            // the caller's intent is cleared
+            assertEquals(false, states.getValue(1)[ChapterUserTable.isDownloadRequested])
+            // the other user's intent is untouched
+            assertTrue(states.getValue(userId2)[ChapterUserTable.isDownloadRequested])
+            // the shared queue entry is kept while the other user still requests it
+            assertEquals(1, DownloadManager.getStatus().queue.size)
+
+            DownloadManager.dequeue(userId2, chapterIds)
+
+            val statesAfter =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { (ChapterUserTable.chapter inList chapterIds) and (ChapterUserTable.user inList listOf(1, userId2)) }
+                        .associate { it[ChapterUserTable.user].value to it }
+                }
+            assertEquals(false, statesAfter.getValue(userId2)[ChapterUserTable.isDownloadRequested])
+            // no user requests it anymore, so the chapter is out of the queue
+            assertTrue(DownloadManager.getStatus().queue.isEmpty())
         }
 
     @Test

@@ -26,7 +26,6 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -103,7 +102,7 @@ object DownloadManager {
     fun restoreAndResumeDownloads() {
         scope.launch {
             logger.debug { "restoreAndResumeDownloads: Restore download queue..." }
-            enqueue(EnqueueInput(loadDownloadQueue()))
+            enqueue(loadDownloadQueue())
 
             if (downloadQueue.size > 0) {
                 logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
@@ -341,27 +340,6 @@ object DownloadManager {
             )
         }
 
-    fun enqueueWithChapterIndex(
-        mangaId: Int,
-        chapterIndex: Int,
-    ) {
-        val chapter =
-            transaction {
-                ChapterTable
-                    .select(ChapterTable.id)
-                    .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder eq chapterIndex) }
-                    .first()
-            }
-        enqueue(EnqueueInput(chapterIds = listOf(chapter[ChapterTable.id].value)))
-    }
-
-    @Serializable
-    // Input might have additional formats in the future, such as "All for mangaID" or "Unread for categoryID"
-    // Having this input format is just future-proofing
-    data class EnqueueInput(
-        val chapterIds: List<Int>?,
-    )
-
     /**
      * Marks the given chapters as download-requested for [userId] and returns the chapter ids
      * that don't have a shared download on disk yet.
@@ -401,19 +379,19 @@ object DownloadManager {
                 chapterIdsToEnqueue.toList()
             }
 
-        enqueue(EnqueueInput(chapterIds))
+        enqueue(chapterIds)
 
         return chapterIds
     }
 
-    fun enqueue(input: EnqueueInput) {
-        if (input.chapterIds.isNullOrEmpty()) return
+    fun enqueue(chapterIds: List<Int>) {
+        if (chapterIds.isEmpty()) return
 
         val chapters =
             transaction {
                 (ChapterTable innerJoin MangaTable)
                     .selectAll()
-                    .where { ChapterTable.id inList input.chapterIds }
+                    .where { ChapterTable.id inList chapterIds }
                     .orderBy(ChapterTable.manga)
                     .orderBy(ChapterTable.sourceOrder)
                     .toList()
@@ -503,26 +481,50 @@ object DownloadManager {
         return null
     }
 
-    fun dequeue(input: EnqueueInput) {
-        if (input.chapterIds.isNullOrEmpty()) return
-        dequeue(downloadQueue.filter { it.chapterId in input.chapterIds }.toSet())
-    }
-
+    /**
+     * Clears the download-requested intent of [userId] for the given chapters and removes
+     * them from the shared queue only if no user has requested them anymore.
+     * Returns the chapter ids that were actually removed from the queue.
+     */
     fun dequeue(
-        chapterIndex: Int,
-        mangaId: Int,
-    ) {
-        dequeue(downloadQueue.filter { it.mangaId == mangaId && it.chapterIndex == chapterIndex }.toSet())
+        userId: Int,
+        chapterIds: List<Int>,
+    ): List<Int> {
+        if (chapterIds.isEmpty()) return emptyList()
+
+        val chapterIdsWithoutRequest =
+            transaction {
+                // clear the caller's download request
+                ChapterUserTable.update({
+                    (ChapterUserTable.user eq userId) and (ChapterUserTable.chapter inList chapterIds)
+                }) {
+                    it[ChapterUserTable.isDownloadRequested] = false
+                }
+
+                // keep the shared queue entry while any user still requests the chapter
+                val requestedChapterIds =
+                    ChapterUserTable
+                        .select(ChapterUserTable.chapter)
+                        .where {
+                            (ChapterUserTable.chapter inList chapterIds) and
+                                (ChapterUserTable.isDownloadRequested eq true)
+                        }.map { it[ChapterUserTable.chapter].value }
+                        .toSet()
+
+                chapterIds.filter { it !in requestedChapterIds }
+            }
+
+        if (chapterIdsWithoutRequest.isEmpty()) return emptyList()
+
+        return dequeue(downloadQueue.filter { it.chapterId in chapterIdsWithoutRequest }.toSet())
     }
 
-    fun dequeue(
-        mangaIds: List<Int>,
-        chaptersToIgnore: List<Int> = emptyList(),
-    ) {
-        dequeue(downloadQueue.filter { it.mangaId in mangaIds && it.chapterId !in chaptersToIgnore }.toSet())
+    fun dequeue(chapterIds: List<Int>) {
+        if (chapterIds.isEmpty()) return
+        dequeue(downloadQueue.filter { it.chapterId in chapterIds }.toSet())
     }
 
-    private fun dequeue(chapterDownloads: Set<DownloadQueueItem>) {
+    private fun dequeue(chapterDownloads: Set<DownloadQueueItem>): List<Int> {
         logger.debug { "dequeue ${chapterDownloads.size} chapters [${chapterDownloads.joinToString(separator = ", ") { "$it" }}]" }
 
         downloadQueue.removeAll(chapterDownloads)
@@ -532,6 +534,8 @@ object DownloadManager {
             false,
             chapterDownloads.toList().map { DownloadUpdate(DownloadUpdateType.DEQUEUED, it, -1) },
         )
+
+        return chapterDownloads.map { it.chapterId }
     }
 
     fun reorder(
