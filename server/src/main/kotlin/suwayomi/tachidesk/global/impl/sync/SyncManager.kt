@@ -144,6 +144,7 @@ object SyncManager {
         syncPreferences
             .edit()
             .remove("last_sync_timestamp_$userId")
+            .remove("last_scheduled_sync_$userId")
             .apply()
     }
 
@@ -179,11 +180,39 @@ object SyncManager {
             if (existing == null || existing.second != interval) {
                 existing?.let { HAScheduler.deschedule(it.first) }
 
+                // Compute the initial delay from the last scheduled sync, so the next sync happens at the next slot
+                // instead of waiting a full interval
+                val lastSyncDate =
+                    syncPreferences
+                        .getLong("last_scheduled_sync_$userId", 0L)
+                        .takeIf { it != 0L }
+                        ?.let { Instant.fromEpochMilliseconds(it) }
+
+                if (lastSyncDate == null) {
+                    syncPreferences
+                        .edit()
+                        .putLong("last_scheduled_sync_$userId", Clock.System.now().toEpochMilliseconds())
+                        .apply()
+                }
+
+                val delay =
+                    if (lastSyncDate != null) {
+                        (interval - (Clock.System.now() - lastSyncDate)).coerceAtLeast(0.seconds)
+                    } else {
+                        interval
+                    }
+
                 val taskId =
                     HAScheduler.schedule(
-                        { startSync(userId, periodic = true) },
+                        {
+                            startSync(userId, periodic = true)
+                            syncPreferences
+                                .edit()
+                                .putLong("last_scheduled_sync_$userId", Clock.System.now().toEpochMilliseconds())
+                                .apply()
+                        },
                         interval = interval.inWholeMilliseconds,
-                        delay = interval.inWholeMilliseconds,
+                        delay = delay.inWholeMilliseconds,
                         name = "sync-user-$userId",
                     )
                 scheduledSyncTasks[userId] = taskId to interval
@@ -192,6 +221,12 @@ object SyncManager {
             existing?.let {
                 HAScheduler.deschedule(it.first)
                 scheduledSyncTasks.remove(userId)
+            }
+            if (syncPreferences.contains("last_scheduled_sync_$userId")) {
+                syncPreferences
+                    .edit()
+                    .remove("last_scheduled_sync_$userId")
+                    .apply()
             }
         }
     }
