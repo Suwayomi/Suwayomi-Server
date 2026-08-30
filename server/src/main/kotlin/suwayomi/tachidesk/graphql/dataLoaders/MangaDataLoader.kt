@@ -11,7 +11,6 @@ import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
-import org.dataloader.DataLoaderOptions
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -21,7 +20,6 @@ import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.graphql.cache.CustomCacheMap
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
@@ -115,31 +113,6 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
                 }
             }
         }
-}
-
-class MangaForIdsDataLoader : KotlinDataLoader<List<Int>, MangaNodeList> {
-    override val dataLoaderName = "MangaForIdsDataLoader"
-
-    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<List<Int>, MangaNodeList> =
-        DataLoaderFactory.newDataLoader(
-            { mangaIds ->
-                future {
-                    transaction {
-                        addLogger(Slf4jSqlDebugLogger)
-                        val ids = mangaIds.flatten().distinct()
-                        val manga =
-                            MangaTable
-                                .selectAll()
-                                .where { MangaTable.id inList ids }
-                                .map { MangaType(it) }
-                        mangaIds.map { mangaIds ->
-                            manga.filter { it.id in mangaIds }.toNodeList()
-                        }
-                    }
-                }
-            },
-            DataLoaderOptions.newOptions().setCacheMap(CustomCacheMap<List<Int>, MangaNodeList>()).build(),
-        )
 }
 
 class MangaUserForMangaDataLoader : KotlinDataLoader<Int, MangaUserType> {

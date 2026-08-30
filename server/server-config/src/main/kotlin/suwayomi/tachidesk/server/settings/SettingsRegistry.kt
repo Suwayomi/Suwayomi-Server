@@ -1,6 +1,6 @@
 package suwayomi.tachidesk.server.settings
 
-import com.typesafe.config.ConfigValue
+import com.typesafe.config.ConfigValue as TypeSafeConfigValue
 import com.typesafe.config.parser.ConfigDocument
 import kotlin.reflect.KClass
 
@@ -8,22 +8,35 @@ import kotlin.reflect.KClass
  * Registry to track all settings for automatic updating and validation
  */
 object SettingsRegistry {
-    /**
-     * Requires either [migrateConfigValue] or [migrateConfig] to be set.
-     * If neither is specified, the server will exit on startup due to being misconfigured.
-     */
-    data class SettingDeprecated(
-        val replaceWith: String?,
-        val message: String,
-        /**
-         * For cases which do not require custom config miration logic.
-         */
-        val migrateConfigValue: ((value: ConfigValue) -> Any?)? = null,
-        /**
-         * For cases which require complete control over the config migration.
-         */
-        val migrateConfig: ((value: ConfigValue, config: ConfigDocument) -> ConfigDocument)? = null
-    )
+    sealed interface SettingDeprecated {
+        val message: String
+
+        sealed interface Migrate : SettingDeprecated {
+            val replaceWith: String
+
+            /**
+             * For cases which do not require custom config miration logic.
+             */
+            data class ConfigValue(
+                override val replaceWith: String,
+                override val message: String,
+                val migrateConfigValue: (value: TypeSafeConfigValue) -> Any?,
+            ) : Migrate
+
+            /**
+             * For cases which require complete control over the config migration.
+             */
+            data class Config(
+                override val replaceWith: String,
+                override val message: String,
+                val migrateConfig: (value: TypeSafeConfigValue, config: ConfigDocument) -> ConfigDocument,
+            ) : Migrate
+        }
+
+        data class Remove(
+            override val message: String,
+        ) : SettingDeprecated
+    }
 
     interface ITypeInfo {
         val type: KClass<*>?

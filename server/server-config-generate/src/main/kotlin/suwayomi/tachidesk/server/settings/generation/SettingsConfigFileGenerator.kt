@@ -13,11 +13,8 @@ object SettingsConfigFileGenerator {
         testOutputDir: File,
         settings: Map<String, SettingsRegistry.SettingMetadata>,
     ) {
-        // Config files only include settings that are still read from their own path.
-        // Deprecated settings migrated to a replacement (replaceWith != null) are no
-        // longer read and are excluded; deprecated settings without a replacement keep
-        // their plain delegates and must stay in the config file.
-        val settingsToInclude = settings.filterValues { it.deprecated?.replaceWith == null }
+        // Config files only include up-to-date settings.
+        val settingsToInclude = settings.filterValues { it.deprecated == null }
 
         if (settingsToInclude.isEmpty()) {
             println("Warning: No settings found to write to config files.")

@@ -69,8 +69,7 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
-val userSettingDeprecated = SettingsRegistry.SettingDeprecated(
-    replaceWith = null,
+val userSettingDeprecated = SettingsRegistry.SettingDeprecated.Remove(
     message = "Now per-user",
 )
 
@@ -259,7 +258,7 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = 0,
         deprecated =
-            SettingsRegistry.SettingDeprecated(
+            SettingsRegistry.SettingDeprecated.Migrate.ConfigValue(
                 replaceWith = "autoDownloadNewChaptersLimit",
                 message = "Replaced with autoDownloadNewChaptersLimit",
                 migrateConfigValue = { it.unwrapped() as? Int }
@@ -296,7 +295,7 @@ class ServerConfig(
         privacySafe = false,
         defaultValue = emptyList(),
         deprecated =
-            SettingsRegistry.SettingDeprecated(
+            SettingsRegistry.SettingDeprecated.Migrate.ConfigValue(
                 replaceWith = "extensionStores",
                 message = "Replaced with addExtensionStore and removeExtensionStore mutations",
                 migrateConfigValue = {
@@ -389,7 +388,7 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = false,
         deprecated =
-            SettingsRegistry.SettingDeprecated(
+            SettingsRegistry.SettingDeprecated.Migrate.ConfigValue(
                 replaceWith = "authMode",
                 message = "Removed - prefer authMode",
                 migrateConfigValue = {
@@ -440,8 +439,7 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = false,
         deprecated =
-            SettingsRegistry.SettingDeprecated(
-                replaceWith = null,
+            SettingsRegistry.SettingDeprecated.Remove(
                 message = "Removed - does not do anything",
             ),
     )
@@ -755,7 +753,7 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "https://sync.koreader.rocks/",
-        deprecated = SettingsRegistry.SettingDeprecated(
+        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
             replaceWith = "MOVE TO PREFERENCES",
             message = "Moved to preference store. User is supposed to use a login/logout mutation",
             migrateConfig = { value, config ->
@@ -773,7 +771,7 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "",
-        deprecated = SettingsRegistry.SettingDeprecated(
+        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
             replaceWith = "MOVE TO PREFERENCES",
             message = "Moved to preference store. User is supposed to use a login/logout mutation",
             migrateConfig = { value, config ->
@@ -791,7 +789,7 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "",
-        deprecated = SettingsRegistry.SettingDeprecated(
+        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
             replaceWith = "MOVE TO PREFERENCES",
             message = "Moved to preference store. User is supposed to use a login/logout mutation",
             migrateConfig = { value, config ->
@@ -809,7 +807,7 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "",
-        deprecated = SettingsRegistry.SettingDeprecated(
+        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
             replaceWith = "MOVE TO PREFERENCES",
             message = "Moved to preference store. Is supposed to be random and gets auto generated",
             migrateConfig = { value, config ->
@@ -844,7 +842,7 @@ class ServerConfig(
                 imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy"),
             ),
         deprecated =
-        SettingsRegistry.SettingDeprecated(
+        SettingsRegistry.SettingDeprecated.Migrate.Config(
             replaceWith = "koreaderSyncStrategyForward, koreaderSyncStrategyBackward",
             message = "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward",
             migrateConfig = { value, config ->
@@ -1231,7 +1229,7 @@ class ServerConfig(
         privacySafe = false,
         defaultValue = "",
         deprecated =
-            SettingsRegistry.SettingDeprecated(
+            SettingsRegistry.SettingDeprecated.Migrate.ConfigValue(
                 replaceWith = "authUsername",
                 message = "Removed - prefer authUsername",
                 migrateConfigValue = { it.unwrapped() as? String },
@@ -1247,7 +1245,7 @@ class ServerConfig(
         privacySafe = false,
         defaultValue = "",
         deprecated =
-            SettingsRegistry.SettingDeprecated(
+            SettingsRegistry.SettingDeprecated.Migrate.ConfigValue(
                 replaceWith = "authPassword",
                 message = "Removed - prefer authPassword",
                 migrateConfigValue = { it.unwrapped() as? String },
