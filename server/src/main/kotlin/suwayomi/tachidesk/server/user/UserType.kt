@@ -56,7 +56,7 @@ fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
         }
     }
 
-fun getUserFromToken(token: String?): UserType {
+suspend fun getUserFromToken(token: String?): UserType {
     if (serverConfig.authMode.value != AuthMode.UI_LOGIN) {
         return UserType.Admin(1)
     }
@@ -85,7 +85,7 @@ fun UserType.requirePermissions(vararg permissions: UserPermission) {
     }
 }
 
-fun getUserFromContext(ctx: Context): UserType {
+suspend fun getUserFromContext(ctx: Context): UserType {
     fun cookieValid(): Boolean {
         val username = ctx.sessionAttribute<String>("logged-in") ?: return false
         return username == serverConfig.authUsername.value
@@ -110,7 +110,7 @@ fun getUserFromContext(ctx: Context): UserType {
     }
 }
 
-fun getUserFromWsContext(ctx: WsConnectContext): UserType {
+suspend fun getUserFromWsContext(ctx: WsConnectContext): UserType {
     fun cookieValid(): Boolean {
         val username = ctx.sessionAttribute<String>("logged-in") ?: return false
         return username == serverConfig.authUsername.value

@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.queries
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
@@ -45,8 +46,10 @@ import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
+import suwayomi.tachidesk.graphql.types.UserCodeType
 import suwayomi.tachidesk.graphql.types.UserNodeList
 import suwayomi.tachidesk.graphql.types.UserType
+import suwayomi.tachidesk.server.user.UserCodeService
 import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
 
@@ -57,6 +60,11 @@ class UserQuery {
         dataFetchingEnvironment: DataFetchingEnvironment,
         id: Int,
     ): CompletableFuture<UserType> = dataFetchingEnvironment.getValueFromDataLoader("UserDataLoader", id)
+
+    @GraphQLDescription("Outstanding (unconsumed, unexpired) user codes.")
+    @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_USERS)
+    fun userCodes(forUserId: Int? = null): List<UserCodeType> = UserCodeService.listOutstandingCodes(forUserId).map { UserCodeType(it) }
 
     enum class UserOrderBy(
         override val column: Column<*>,

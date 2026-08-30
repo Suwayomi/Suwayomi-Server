@@ -161,7 +161,7 @@ class ApolloSubscriptionProtocolHandler(
             ) {
                 val payload = operationMessage.payload as? Map<String, Any?>
                 val token = payload?.let { it[Header.AUTHORIZATION] as? String }
-                getUserFromToken(token)
+                runBlocking { getUserFromToken(token) }
             }
 
         saveContext(user, context)

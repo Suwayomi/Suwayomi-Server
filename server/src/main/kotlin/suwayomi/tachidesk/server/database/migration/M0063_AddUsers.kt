@@ -363,6 +363,17 @@ class M0063_AddUsers : Migration() {
     private object UserAccountTable : IntIdTable() {
         val username = varchar("username", 64)
         val password = varchar("password", 90)
+        val sessionVersion = integer("session_version").default(0)
+    }
+
+    private object UserCodeTable : IntIdTable() {
+        val user = reference("user_id", UserAccountTable.id, ReferenceOption.CASCADE).nullable()
+        val type = varchar("type", 32)
+        val codeHash = varchar("code_hash", 90)
+        val createdBy = integer("created_by").references(UserAccountTable.id)
+        val createdAt = long("created_at").default(0)
+        val expiresAt = long("expires_at").default(0)
+        val consumedAt = long("consumed_at").nullable()
     }
 
     private object UserPermissionsTable : Table() {
@@ -420,7 +431,15 @@ class M0063_AddUsers : Migration() {
 
     override fun run() {
         with(TransactionManager.current()) {
-            SchemaUtils.create(UserAccountTable, UserRolesTable, UserPermissionsTable, ChapterUserTable, MangaUserTable, UserSettingsTable)
+            SchemaUtils.create(
+                UserAccountTable,
+                UserRolesTable,
+                UserPermissionsTable,
+                ChapterUserTable,
+                MangaUserTable,
+                UserSettingsTable,
+                UserCodeTable,
+            )
             exec(sql)
             currentDialectMetadata.resetCaches()
         }
