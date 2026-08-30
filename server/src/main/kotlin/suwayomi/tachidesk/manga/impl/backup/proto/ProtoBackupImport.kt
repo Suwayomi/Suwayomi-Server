@@ -114,7 +114,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     fun restore(
         sourceStream: InputStream,
         flags: BackupFlags,
-        isSync: Boolean = false,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ): String {
         val restoreId = System.currentTimeMillis().toString()
 
@@ -123,7 +123,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         updateRestoreState(restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
-            restoreLegacy(sourceStream, restoreId, flags, isSync)
+            restoreLegacy(sourceStream, restoreId, flags, syncMode)
         }
 
         return restoreId
@@ -133,12 +133,12 @@ object ProtoBackupImport : ProtoBackupBase() {
         sourceStream: InputStream,
         restoreId: String = "legacy",
         flags: BackupFlags = BackupFlags.DEFAULT,
-        isSync: Boolean = false,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ): ValidationResult =
         backupMutex.withLock {
             try {
                 logger.info { "restore($restoreId): restoring..." }
-                performRestore(restoreId, sourceStream, flags, isSync)
+                performRestore(restoreId, sourceStream, flags, syncMode)
             } catch (e: Exception) {
                 logger.error(e) { "restore($restoreId): failed due to" }
 
@@ -150,22 +150,36 @@ object ProtoBackupImport : ProtoBackupBase() {
                     emptyList(),
                 )
             } finally {
+                if (syncMode.isSync) {
+                    clearSyncingFlags()
+                }
                 logger.info { "restore($restoreId): finished with state ${getRestoreState(restoreId)?.toStatus()?.state}" }
                 cleanupRestoreState(restoreId)
             }
         }
 
+    private fun clearSyncingFlags() {
+        transaction {
+            MangaTable.update({ MangaTable.isSyncing eq true }) {
+                it[isSyncing] = false
+            }
+            ChapterTable.update({ ChapterTable.isSyncing eq true }) {
+                it[isSyncing] = false
+            }
+        }
+    }
+
     private fun performRestore(
         id: String,
         sourceStream: InputStream,
         flags: BackupFlags,
-        isSync: Boolean,
+        syncMode: SyncRestoreMode,
     ): ValidationResult {
         val backupString =
             sourceStream
                 .source()
                 .run {
-                    if (!isSync) gzip() else this
+                    if (!syncMode.isSync) gzip() else this
                 }.buffer()
                 .use { it.readByteArray() }
         val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
@@ -226,6 +240,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     sourceMapping = sourceMapping,
                     errors = errors,
                     flags = flags,
+                    syncMode = syncMode,
                 )
             }
         }
@@ -242,17 +257,6 @@ object ProtoBackupImport : ProtoBackupBase() {
             - Missing Trackers:
                 ${validationResult.missingTrackers.joinToString("\n                    ")}
             """.trimIndent()
-        }
-
-        if (isSync) {
-            transaction {
-                MangaTable.update({ MangaTable.isSyncing eq true }) {
-                    it[isSyncing] = false
-                }
-                ChapterTable.update({ ChapterTable.isSyncing eq true }) {
-                    it[isSyncing] = false
-                }
-            }
         }
 
         updateRestoreState(id, BackupRestoreState.Success)

@@ -30,6 +30,7 @@ import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.SyncRestoreMode
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
@@ -44,6 +45,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.database.dbTransaction
 import java.util.Date
 import kotlin.math.max
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import suwayomi.tachidesk.manga.impl.track.Track as Tracker
@@ -183,6 +185,7 @@ object BackupMangaHandler {
         sourceMapping: Map<Long, String>,
         errors: MutableList<Pair<Date, String>>,
         flags: BackupFlags,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ) {
         val chapters = backupManga.chapters
         val categories = backupManga.categories
@@ -192,7 +195,7 @@ object BackupMangaHandler {
         val dbCategoryIds = categories.mapNotNull { categoryMapping[it] }
 
         try {
-            restoreMangaData(backupManga, chapters, dbCategoryIds, history, tracking, flags)
+            restoreMangaData(backupManga, chapters, dbCategoryIds, history, tracking, flags, syncMode)
         } catch (e: Exception) {
             val sourceName = sourceMapping[backupManga.source] ?: backupManga.source.toString()
             errors.add(Date() to "${backupManga.title} [$sourceName]: ${e.message}")
@@ -206,6 +209,7 @@ object BackupMangaHandler {
         history: List<BackupHistory>,
         tracks: List<BackupTracking>,
         flags: BackupFlags,
+        syncMode: SyncRestoreMode,
     ) {
         val dbManga =
             transaction {
@@ -215,6 +219,9 @@ object BackupMangaHandler {
                     .firstOrNull()
             }
         val restoreMode = if (dbManga != null) RestoreMode.EXISTING else RestoreMode.NEW
+        // a newer local copy wins the next upload; categories and tracking are part of the manga's version
+        val keepLocalManga =
+            syncMode == SyncRestoreMode.ADOPT && dbManga != null && manga.version < dbManga[MangaTable.version]
 
         val mangaId =
             transaction {
@@ -244,8 +251,11 @@ object BackupMangaHandler {
 
                                 it[lastModifiedAt] = manga.lastModifiedAt
                                 it[version] = manga.version
+                                it[isSyncing] = syncMode.isSync
                                 it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
                             }.value
+                    } else if (keepLocalManga) {
+                        dbManga[MangaTable.id].value
                     } else {
                         val dbMangaId = dbManga[MangaTable.id].value
 
@@ -261,12 +271,19 @@ object BackupMangaHandler {
 
                             it[initialized] = dbManga[initialized] || manga.description != null
 
-                            it[inLibrary] = manga.favorite || dbManga[inLibrary]
+                            it[inLibrary] =
+                                if (syncMode == SyncRestoreMode.ADOPT) manga.favorite else manga.favorite || dbManga[inLibrary]
 
                             it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
 
-                            it[lastModifiedAt] = manga.lastModifiedAt
-                            it[version] = manga.version
+                            if (syncMode == SyncRestoreMode.CONVERGE) {
+                                it[lastModifiedAt] = Clock.System.now().epochSeconds
+                                it[version] = max(manga.version, dbManga[version]) + 1
+                            } else {
+                                it[lastModifiedAt] = manga.lastModifiedAt
+                                it[version] = manga.version
+                            }
+                            it[isSyncing] = syncMode.isSync
                             it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
                         }
 
@@ -282,18 +299,18 @@ object BackupMangaHandler {
 
                 // merge chapter data
                 if (flags.includeChapters || flags.includeHistory) {
-                    restoreMangaChapterData(mangaId, restoreMode, chapters, history, flags)
+                    restoreMangaChapterData(mangaId, restoreMode, chapters, history, flags, syncMode)
                 }
 
                 // update categories
-                if (flags.includeCategories) {
+                if (flags.includeCategories && !keepLocalManga) {
                     restoreMangaCategoryData(mangaId, categoryIds)
                 }
 
                 mangaId
             }
 
-        if (flags.includeTracking) {
+        if (flags.includeTracking && !keepLocalManga) {
             restoreMangaTrackerData(mangaId, tracks)
         }
 
@@ -325,9 +342,16 @@ object BackupMangaHandler {
         chapters: List<BackupChapter>,
         history: List<BackupHistory>,
         flags: BackupFlags,
+        syncMode: SyncRestoreMode,
     ) = dbTransaction {
-        val (chaptersToInsert, chaptersToUpdateToDbChapter) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
+        val (chaptersToInsert, allChaptersToUpdate) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
         val historyByChapter = history.groupBy({ it.url }, { it.lastRead })
+        val chaptersToUpdateToDbChapter =
+            if (syncMode == SyncRestoreMode.ADOPT) {
+                allChaptersToUpdate.filter { (backupChapter, dbChapter) -> backupChapter.version >= dbChapter[ChapterTable.version] }
+            } else {
+                allChaptersToUpdate
+            }
 
         val insertedChapterIds =
             if (flags.includeChapters) {
@@ -359,6 +383,7 @@ object BackupMangaHandler {
 
                         this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
                         this[ChapterTable.version] = chapter.version
+                        this[ChapterTable.isSyncing] = syncMode.isSync
                         this[ChapterTable.memo] = Json.decodeFromString<JsonObject>(chapter.memo.decodeToString())
                     }.map { it[ChapterTable.id].value }
             } else {
@@ -371,16 +396,38 @@ object BackupMangaHandler {
                     chaptersToUpdateToDbChapter.forEach { (backupChapter, dbChapter) ->
                         addBatch(EntityID(dbChapter[ChapterTable.id].value, ChapterTable))
                         if (flags.includeChapters) {
-                            this[ChapterTable.isRead] = backupChapter.read || dbChapter[ChapterTable.isRead]
-                            this[ChapterTable.lastPageRead] =
-                                max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
-                            this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
+                            if (syncMode == SyncRestoreMode.ADOPT) {
+                                this[ChapterTable.isRead] = backupChapter.read
+                                this[ChapterTable.lastPageRead] = backupChapter.lastPageRead.coerceAtLeast(0)
+                                this[ChapterTable.isBookmarked] = backupChapter.bookmark
+                            } else {
+                                this[ChapterTable.isRead] = backupChapter.read || dbChapter[ChapterTable.isRead]
+                                this[ChapterTable.lastPageRead] =
+                                    max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
+                                this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
+                            }
                         }
 
                         if (flags.includeHistory) {
                             this[ChapterTable.lastReadAt] =
                                 (historyByChapter[backupChapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0)
                                     .coerceAtLeast(dbChapter[ChapterTable.lastReadAt])
+                        }
+
+                        when (syncMode) {
+                            SyncRestoreMode.ADOPT -> {
+                                this[ChapterTable.lastModifiedAt] = backupChapter.lastModifiedAt
+                                this[ChapterTable.version] = backupChapter.version
+                                this[ChapterTable.isSyncing] = true
+                            }
+
+                            SyncRestoreMode.CONVERGE -> {
+                                this[ChapterTable.lastModifiedAt] = Clock.System.now().epochSeconds
+                                this[ChapterTable.version] = max(backupChapter.version, dbChapter[ChapterTable.version]) + 1
+                                this[ChapterTable.isSyncing] = true
+                            }
+
+                            SyncRestoreMode.NONE -> {}
                         }
                     }
                 }.toExecutable()
