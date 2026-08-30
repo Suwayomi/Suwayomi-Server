@@ -174,7 +174,14 @@ object SyncYomiSyncService {
 
         setSyncState(SyncManager.SyncState.Downloading(startDate))
         val bytes = response.body.byteStream().use { it.readBytes() }
-        val remote = ProtoBuf.decodeFromByteArray(Backup.serializer(), bytes)
+        val remote =
+            try {
+                ProtoBuf.decodeFromByteArray(Backup.serializer(), bytes)
+            } catch (e: SerializationException) {
+                logger.error(e) { "Bad content responded from server" }
+                reportSyncEvent(SyncEventStatus.SYNC_FAILED, "Bad content responded from server")
+                throw SyncYomiException("Bad content responded from server: ${e.message}")
+            }
         val cursor =
             response.headers["X-Sync-Cursor"]?.toLongOrNull()
                 ?: throw SyncYomiException("Missing X-Sync-Cursor")
