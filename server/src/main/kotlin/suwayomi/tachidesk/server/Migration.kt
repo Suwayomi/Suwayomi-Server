@@ -77,7 +77,7 @@ private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
     }
 }
 
-fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
+private fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
     H2Migration.migrate(
         applicationDirs.dataRoot,
         "1.4.200",
@@ -85,8 +85,13 @@ fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
     )
 }
 
-private val MIGRATIONS =
-    listOf<Pair<String, (ApplicationDirs) -> Unit>>(
+private enum class MigrationType {
+    PRE_DB_STARTUP,
+    POST_DB_STARTUP,
+}
+
+private val PRE_DB_STARTUP_MIGRATIONS =
+    listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>(
         "InitialMigration" to { applicationDirs ->
             migrateMangaDownloadDir(applicationDirs)
             migratePreferencesToNewXmlFileBasedStorage()
@@ -99,26 +104,39 @@ private val MIGRATIONS =
         },
     )
 
-fun runMigrations(applicationDirs: ApplicationDirs) {
-    val logger = KotlinLogging.logger("Migration")
+private val POST_DB_MIGRATIONS = listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>()
+
+private val MIGRATIONS =
+    mapOf<Any, List<Pair<String, suspend (ApplicationDirs) -> Unit>>>(
+        MigrationType.PRE_DB_STARTUP to PRE_DB_STARTUP_MIGRATIONS,
+        MigrationType.POST_DB_STARTUP to POST_DB_MIGRATIONS,
+    )
+
+private val migrationPreferences =
+    Injekt
+        .get<Application>()
+        .getSharedPreferences(
+            "migrations",
+            Context.MODE_PRIVATE,
+        )
+
+private val version by lazy { migrationPreferences.getInt("version", 0) }
+
+private suspend fun runMigrations(
+    type: MigrationType,
+    startIndex: Int,
+    applicationDirs: ApplicationDirs,
+) {
+    val logger = KotlinLogging.logger("Migration(type= ${type.name})")
     try {
-        val migrationPreferences =
-            Injekt
-                .get<Application>()
-                .getSharedPreferences(
-                    "migrations",
-                    Context.MODE_PRIVATE,
-                )
-        val version = migrationPreferences.getInt("version", 0)
+        val migrations = MIGRATIONS[type].orEmpty()
 
-        logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.size}" }
-
-        MIGRATIONS.forEachIndexed { index, (migrationName, migrationFunction) ->
-            val migrationVersion = index + 1
+        migrations.forEachIndexed { index, (migrationName, migrationFunction) ->
+            val migrationVersion = startIndex + index + 1
 
             val isMigrationRequired = version < migrationVersion
             if (!isMigrationRequired) {
-                logger.info { "Skipping migration version $migrationVersion: $migrationName" }
+                logger.debug { "Skipping migration version $migrationVersion: $migrationName" }
                 return@forEachIndexed
             }
 
@@ -126,10 +144,27 @@ fun runMigrations(applicationDirs: ApplicationDirs) {
 
             migrationFunction(applicationDirs)
 
-            migrationPreferences.edit().putInt("version", migrationVersion).apply()
+            migrationPreferences.edit().putInt("version", migrationVersion).commit()
         }
     } catch (e: Exception) {
         logger.error(e) { "Failed to run migrations" }
         shutdownApp(ExitCode.MigrationsRunFailure)
     }
+}
+
+suspend fun runMigrations(
+    applicationDirs: ApplicationDirs,
+    dbStartup: () -> Unit,
+) {
+    val logger = KotlinLogging.logger("Migration")
+
+    logger.info { "Running migrations, previous version $version, target version ${MIGRATIONS.flatMap { it.value }.size}" }
+
+    runMigrations(MigrationType.PRE_DB_STARTUP, 0, applicationDirs)
+
+    dbStartup()
+
+    runMigrations(MigrationType.POST_DB_STARTUP, PRE_DB_STARTUP_MIGRATIONS.size, applicationDirs)
+
+    logger.info { "Migrations finished successfully" }
 }
