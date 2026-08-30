@@ -179,7 +179,7 @@ object ProtoBackupExport : ProtoBackupBase() {
                     BackupSourceHandler.backup(userId, backupMangas, flags),
                     BackupGlobalMetaHandler.backup(userId, flags),
                     BackupSettingsHandler.backup(flags),
-                    BackupUserSettingsHandler.backup(userId),
+                    BackupUserSettingsHandler.backup(flags, userId),
                 )
             }
 

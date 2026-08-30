@@ -82,7 +82,8 @@ class BackupUserSettingsTest : ApplicationTest() {
         userSettings.set(userA, userConfig.opdsItemsPerPage, 250)
         userSettings.set(userA, userConfig.excludeUnreadChapters, true)
 
-        val backup = BackupUserSettingsHandler.backup(userA)
+        val backup = BackupUserSettingsHandler.backup(BackupFlags.DEFAULT, userA)
+        assertNotNull(backup)
 
         // Overrides are exported as-is
         assertEquals(250, backup.opdsItemsPerPage)
@@ -100,7 +101,8 @@ class BackupUserSettingsTest : ApplicationTest() {
         userSettings.set(userA, userConfig.opdsItemsPerPage, 250)
         userSettings.set(userA, userConfig.excludeUnreadChapters, true)
 
-        val backup = BackupUserSettingsHandler.backup(userA)
+        val backup = BackupUserSettingsHandler.backup(BackupFlags.DEFAULT, userA)
+        assertNotNull(backup)
 
         BackupUserSettingsHandler.restore(userB, backup, null, BackupFlags.DEFAULT)
 

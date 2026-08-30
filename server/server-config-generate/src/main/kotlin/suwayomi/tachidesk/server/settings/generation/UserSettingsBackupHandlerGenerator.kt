@@ -64,7 +64,9 @@ object UserSettingsBackupHandlerGenerator {
         val indentation = 4
         val contentIndentation = indentation * 2
 
-        appendLine("fun backup(userId: Int): BackupUserSettings {".addIndentation(indentation))
+        appendLine("fun backup(flags: BackupFlags, userId: Int): BackupUserSettings? {".addIndentation(indentation))
+        appendLine("if (!flags.includeUserSettings) { return null }".addIndentation(contentIndentation))
+        appendLine()
         appendLine("return BackupUserSettings(".addIndentation(contentIndentation))
         writeSettings(groupedSettings, indentation * 3)
         appendLine(")".addIndentation(contentIndentation))
