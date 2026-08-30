@@ -2,7 +2,6 @@ package suwayomi.tachidesk.opds.repository
 
 import eu.kanade.tachiyomi.source.model.MangasPage
 import org.jetbrains.exposed.v1.core.Case
-import org.jetbrains.exposed.v1.core.JoinType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder

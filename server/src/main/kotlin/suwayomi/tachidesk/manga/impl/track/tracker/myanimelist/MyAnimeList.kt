@@ -3,7 +3,6 @@ package suwayomi.tachidesk.manga.impl.track.tracker.myanimelist
 import android.annotation.StringRes
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker

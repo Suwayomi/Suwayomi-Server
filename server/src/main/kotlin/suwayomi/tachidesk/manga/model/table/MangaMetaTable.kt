@@ -10,7 +10,6 @@ package suwayomi.tachidesk.manga.model.table
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 import suwayomi.tachidesk.global.model.table.UserAccountTable
-import suwayomi.tachidesk.manga.model.table.MangaMetaTable.ref
 
 /**
  * Metadata storage for clients, about Manga with id == [ref].

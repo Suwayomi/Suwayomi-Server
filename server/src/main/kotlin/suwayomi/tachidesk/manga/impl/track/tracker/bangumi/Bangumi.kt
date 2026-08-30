@@ -2,7 +2,6 @@ package suwayomi.tachidesk.manga.impl.track.tracker.bangumi
 
 import android.annotation.StringRes
 import io.github.reactivecircus.cache4k.Cache
-import io.github.reactivecircus.cache4k.Cache.Builder.Companion.invoke
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMOAuth

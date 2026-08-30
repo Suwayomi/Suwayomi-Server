@@ -1,6 +1,5 @@
 package suwayomi.tachidesk.opds.util
 
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
 import java.net.URLEncoder

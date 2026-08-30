@@ -18,7 +18,6 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.UserRole
-import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.server.user.hasRole
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds

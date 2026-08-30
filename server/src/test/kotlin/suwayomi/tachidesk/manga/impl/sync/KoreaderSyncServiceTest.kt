@@ -11,7 +11,6 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere

@@ -43,7 +43,6 @@ import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
 import suwayomi.tachidesk.server.settings.DisableableDoubleSetting
 import suwayomi.tachidesk.server.settings.DisableableIntSetting
-import suwayomi.tachidesk.server.settings.DoubleSetting
 import suwayomi.tachidesk.server.settings.DurationSetting
 import suwayomi.tachidesk.server.settings.EnumSetting
 import suwayomi.tachidesk.server.settings.IntSetting

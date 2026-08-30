@@ -3,7 +3,6 @@ package suwayomi.tachidesk.graphql.types
 import org.jetbrains.exposed.v1.core.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
-import suwayomi.tachidesk.manga.model.table.MangaUserTable
 
 class ChapterUserType(
     val isRead: Boolean,

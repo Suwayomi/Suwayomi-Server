@@ -8,7 +8,6 @@ package suwayomi.tachidesk.graphql
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.junit.jupiter.api.AfterEach
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.server.user.UserType

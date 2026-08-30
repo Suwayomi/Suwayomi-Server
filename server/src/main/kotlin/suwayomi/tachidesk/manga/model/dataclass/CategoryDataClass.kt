@@ -1,7 +1,6 @@
 package suwayomi.tachidesk.manga.model.dataclass
 
 import com.fasterxml.jackson.annotation.JsonValue
-import suwayomi.tachidesk.manga.impl.Category
 
 /*
  * Copyright (C) Contributors to the Suwayomi project

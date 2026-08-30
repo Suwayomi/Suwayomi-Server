@@ -28,7 +28,6 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupServerSettings
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionHeaderType
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupUserSettings
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.settings.UserSettingsRegistry
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
