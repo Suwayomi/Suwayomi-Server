@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Logs**) Add IP location logging
 - (**Cache/API**) Add a way to clear cache & cookies
 - (**API**) Add platform information to `aboutServer` query
+- (**SyncYomi**) Support sync protocol v2: the server merges, only changes since the last upload are sent and category deletions are reported explicitly
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
@@ -35,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Fix authentication with subpath option
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
 - (**Migration/Extension**) Fix `extensionRepos` setting not being migrated to `extensionStores`
+- (**SyncYomi/Backup**) Fix restoring a library that originated from another client or was re-encoded by the sync server (`Field 'libraryId' is required ... but it was missing`)
 
 ## [v2.3.2243] - 2026-07-13
 
