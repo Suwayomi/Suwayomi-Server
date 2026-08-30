@@ -27,6 +27,7 @@ import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -565,25 +566,16 @@ object Chapter {
                     }
                 }
 
-                // todo user accounts optimize
-                markPrevRead?.let {
+                markPrevRead?.let { markPrevRead ->
                     val chapters =
                         ChapterTable
-                            .selectAll()
+                            .select(ChapterTable.id)
                             .where { (ChapterTable.manga eq mangaId) and (ChapterTable.sourceOrder less chapterIndex) }
                             .map { it[ChapterTable.id].value }
-                    val existingUserData =
-                        ChapterUserTable.selectAll().where {
-                            ChapterUserTable.user eq userId and (ChapterUserTable.chapter inList chapters)
-                        }
-                    ChapterUserTable.update({ ChapterUserTable.id inList existingUserData.map { it[ChapterUserTable.id].value } }) {
-                        it[ChapterUserTable.isRead] = markPrevRead
-                    }
-                    ChapterUserTable.batchInsert(
-                        chapters - existingUserData.map { it[ChapterUserTable.chapter].value }.toSet(),
-                    ) {
+
+                    ChapterUserTable.batchUpsert(chapters, ChapterUserTable.user, ChapterUserTable.chapter) { chapterId ->
                         this[ChapterUserTable.user] = userId
-                        this[ChapterUserTable.chapter] = it
+                        this[ChapterUserTable.chapter] = chapterId
                         this[ChapterUserTable.isRead] = markPrevRead
                     }
                 }
@@ -682,29 +674,15 @@ object Chapter {
 
         transaction {
             val now = Instant.now().epochSecond
-            val chapters = ChapterTable.selectAll().where { condition }.map { it[ChapterTable.id].value }
-            // todo user accounts optimize
-            val existingUserData =
-                ChapterUserTable.selectAll().where {
-                    ChapterUserTable.user eq userId and (ChapterUserTable.chapter inList chapters)
-                }
-            ChapterUserTable.update({ ChapterUserTable.id inList existingUserData.map { it[ChapterUserTable.id].value } }) { update ->
-                isRead?.also {
-                    update[ChapterUserTable.isRead] = it
-                }
-                isBookmarked?.also {
-                    update[ChapterUserTable.isBookmarked] = it
-                }
-                lastPageRead?.also {
-                    update[ChapterUserTable.lastPageRead] = it
-                    update[ChapterUserTable.lastReadAt] = now
-                }
-            }
-            ChapterUserTable.batchInsert(
-                chapters - existingUserData.map { it[ChapterUserTable.chapter].value }.toSet(),
-            ) {
+            val chapters =
+                ChapterTable
+                    .select(ChapterTable.id)
+                    .where { condition }
+                    .map { it[ChapterTable.id].value }
+
+            ChapterUserTable.batchUpsert(chapters, ChapterUserTable.chapter, ChapterUserTable.user) { chapter ->
                 this[ChapterUserTable.user] = userId
-                this[ChapterUserTable.chapter] = it
+                this[ChapterUserTable.chapter] = chapter
                 isRead?.also {
                     this[ChapterUserTable.isRead] = it
                 }
