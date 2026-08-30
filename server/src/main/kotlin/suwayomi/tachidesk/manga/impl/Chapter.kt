@@ -319,8 +319,6 @@ object Chapter {
                             this[ChapterTable.scanlator] = it.scanlator
                             this[ChapterTable.sourceOrder] = it.index
                             this[ChapterTable.realUrl] = it.realUrl
-                            this[ChapterTable.lastModifiedAt] = it.lastModifiedAt
-                            this[ChapterTable.version] = it.version
                             this[ChapterTable.memo] = it.memo
                             this[ChapterTable.isDownloaded] = currentChapter.downloaded
                             this[ChapterTable.pageCount] = currentChapter.pageCount
