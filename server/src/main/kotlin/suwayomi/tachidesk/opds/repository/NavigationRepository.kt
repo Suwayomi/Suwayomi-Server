@@ -7,10 +7,13 @@ import org.jetbrains.exposed.v1.core.countDistinct
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.leftJoin
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.extension.Extension
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -138,6 +141,7 @@ object NavigationRepository {
     fun getExploreSources(
         userId: Int,
         pageNum: Int,
+        includeNsfw: Boolean,
     ): Pair<List<OpdsSourceNavEntry>, Long> =
         transaction {
             val perPage = opdsItemsPerPage(userId)
@@ -151,6 +155,11 @@ object NavigationRepository {
                     .where { ExtensionTable.isInstalled eq true }
                     .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .orderBy(SourceTable.name to SortOrder.ASC)
+
+            // hide NSFW sources from users without the NSFW permission
+            if (!includeNsfw) {
+                query.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.ordinal }
+            }
 
             val totalCount = query.count()
             val sources =

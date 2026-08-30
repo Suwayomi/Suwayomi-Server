@@ -12,6 +12,8 @@ import suwayomi.tachidesk.opds.impl.OpdsFeedBuilder
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import suwayomi.tachidesk.server.user.requireUserWithBasicFallback
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -194,11 +196,13 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, pageNumber, lang ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                val userId = user.requireUserWithBasicFallback(ctx)
+                val includeNsfw = user.hasPermission(UserPermission.ACCESS_NSFW)
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getExploreSourcesFeed(userId, BASE_URL, locale, pageNumber ?: 1)
+                        OpdsFeedBuilder.getExploreSourcesFeed(userId, BASE_URL, locale, pageNumber ?: 1, includeNsfw)
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }
@@ -385,11 +389,21 @@ object OpdsV1Controller {
                 }
             },
             behaviorOf = { ctx, sourceId, pageNumber, sort, lang ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                val userId = user.requireUserWithBasicFallback(ctx)
+                val includeNsfw = user.hasPermission(UserPermission.ACCESS_NSFW)
                 val locale: Locale = LocalizationHelper.ctxToLocale(ctx, lang)
                 ctx.future {
                     future {
-                        OpdsFeedBuilder.getExploreSourceFeed(userId, BASE_URL, locale, sourceId, pageNumber ?: 1, sort ?: "popular")
+                        OpdsFeedBuilder.getExploreSourceFeed(
+                            userId,
+                            BASE_URL,
+                            locale,
+                            sourceId,
+                            pageNumber ?: 1,
+                            sort ?: "popular",
+                            includeNsfw,
+                        )
                     }.thenApply { xml ->
                         ctx.contentType(OPDS_MIME).result(xml)
                     }

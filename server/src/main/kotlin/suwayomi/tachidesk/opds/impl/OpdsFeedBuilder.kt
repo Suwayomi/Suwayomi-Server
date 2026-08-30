@@ -254,6 +254,7 @@ object OpdsFeedBuilder {
      * @param baseUrl The base URL for constructing links.
      * @param locale The locale for localization.
      * @param pageNum The page number for pagination.
+     * @param includeNsfw Whether the user may see NSFW sources.
      * @return An XML string representing the explore sources feed.
      */
     fun getExploreSourcesFeed(
@@ -261,8 +262,9 @@ object OpdsFeedBuilder {
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
+        includeNsfw: Boolean,
     ): String {
-        val (sourceNavEntries, total) = NavigationRepository.getExploreSources(userId, pageNum)
+        val (sourceNavEntries, total) = NavigationRepository.getExploreSources(userId, pageNum, includeNsfw)
         val builder =
             FeedBuilderInternal(
                 userId = userId,
@@ -348,6 +350,7 @@ object OpdsFeedBuilder {
      * @param sourceId The ID of the source.
      * @param pageNum The page number for pagination.
      * @param sort The sorting parameter ('popular' or 'latest').
+     * @param includeNsfw Whether the user may fetch NSFW sources.
      * @return An XML string representing the source-specific feed.
      */
     suspend fun getExploreSourceFeed(
@@ -357,8 +360,9 @@ object OpdsFeedBuilder {
         sourceId: Long,
         pageNum: Int,
         sort: String,
+        includeNsfw: Boolean,
     ): String {
-        val (mangaEntries, hasNextPage) = MangaRepository.getMangaBySource(userId, sourceId, pageNum, sort)
+        val (mangaEntries, hasNextPage) = MangaRepository.getMangaBySource(userId, sourceId, pageNum, sort, includeNsfw)
         val sourceInfo = NavigationRepository.getSourceDetails(sourceId)
         val sourceName = sourceInfo?.first ?: sourceId.toString()
         val titleRes =

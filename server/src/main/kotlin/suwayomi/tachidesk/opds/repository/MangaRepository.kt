@@ -24,6 +24,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -43,6 +44,7 @@ import suwayomi.tachidesk.opds.dto.PrimaryFilterType
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
+import suwayomi.tachidesk.server.user.ForbiddenException
 
 /**
  * Applies dynamic filters based on the current user configuration and cross-filters.
@@ -246,6 +248,7 @@ object MangaRepository {
      * @param sourceId The ID of the source.
      * @param pageNum The page number for pagination.
      * @param sort The sorting parameter ('popular' or 'latest').
+     * @param includeNsfw Whether the user may fetch NSFW sources.
      * @return A pair containing the list of [OpdsMangaAcqEntry] and a boolean indicating if there's a next page.
      */
     suspend fun getMangaBySource(
@@ -253,7 +256,25 @@ object MangaRepository {
         sourceId: Long,
         pageNum: Int,
         sort: String,
+        includeNsfw: Boolean,
     ): Pair<List<OpdsMangaAcqEntry>, Boolean> {
+        // block fetching NSFW sources for users without the NSFW permission
+        if (!includeNsfw) {
+            val isSourceNsfw =
+                transaction {
+                    SourceTable
+                        .select(SourceTable.contentWarning)
+                        .where { SourceTable.id eq sourceId }
+                        .firstOrNull()
+                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal }
+                        ?: false
+                }
+
+            if (isSourceNsfw) {
+                throw ForbiddenException()
+            }
+        }
+
         val source = GetSource.getSourceOrStub(sourceId)
         val mangasPage: MangasPage =
             if (sort == "latest" && source.supportsLatest) {

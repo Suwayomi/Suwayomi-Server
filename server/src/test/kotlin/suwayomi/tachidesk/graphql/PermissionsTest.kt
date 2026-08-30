@@ -630,6 +630,70 @@ class PermissionsTest : GraphQLTest() {
     }
 
     @Test
+    fun fetchExtensionsHidesNsfwExtensionsWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwfetchext1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                mutation {
+                    fetchExtensions(input: {}) {
+                        extensions {
+                            pkgName
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val pkgNames =
+            (response.dataPath("fetchExtensions", "extensions") as List<*>)
+                .map { (it as Map<*, *>)["pkgName"] as String }
+                .toSet()
+
+        assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
+        assertTrue(NSFW_EXT_NAME !in pkgNames, "NSFW extensions should be hidden from users without the NSFW permission")
+    }
+
+    @Test
+    fun fetchExtensionsShowsNsfwExtensionsWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwfetchext2")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                mutation {
+                    fetchExtensions(input: {}) {
+                        extensions {
+                            pkgName
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val pkgNames =
+            (response.dataPath("fetchExtensions", "extensions") as List<*>)
+                .map { (it as Map<*, *>)["pkgName"] as String }
+                .toSet()
+
+        assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
+        assertTrue(NSFW_EXT_NAME in pkgNames, "NSFW extensions should be visible to users with the NSFW permission")
+    }
+
+    @Test
     fun settingsForbiddenWithoutPermission() {
         val userId = createTestUser("settings1")
         val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)

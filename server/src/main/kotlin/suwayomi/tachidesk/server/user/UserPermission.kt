@@ -29,3 +29,10 @@ enum class UserPermission {
  * Returns true if [permission] is contained in this list of permissions.
  */
 fun List<UserPermission>.hasPermission(permission: UserPermission): Boolean = permission in this
+
+fun UserType.hasPermission(permission: UserPermission): Boolean =
+    when (this) {
+        is UserType.Admin -> true
+        is UserType.User -> permission in permissions
+        UserType.Visitor -> false
+    }
