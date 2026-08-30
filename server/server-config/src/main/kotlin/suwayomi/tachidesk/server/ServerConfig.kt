@@ -14,6 +14,7 @@ import io.github.config4k.toConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,14 +80,14 @@ fun <T> subscribeTo(
     flow: Flow<T>,
     ignoreInitialValue: Boolean = true,
     onChange: suspend (value: T) -> Unit,
-) {
+): Job {
     val actualFlow =
         if (ignoreInitialValue) {
             flow.drop(1)
         } else {
             flow
         }
-    actualFlow.distinctUntilChanged().conflate().onEach { onChange(it) }.launchIn(mutableConfigValueScope)
+    return actualFlow.distinctUntilChanged().conflate().onEach { onChange(it) }.launchIn(mutableConfigValueScope)
 }
 
 // Settings are ordered by "protoNumber".

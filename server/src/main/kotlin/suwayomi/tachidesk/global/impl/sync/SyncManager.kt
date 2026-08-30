@@ -5,6 +5,7 @@ import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -73,17 +74,20 @@ object SyncManager {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
 
-    // Per-user scheduled sync tasks: userId -> (taskId, interval)
-    private val scheduledSyncTasks = ConcurrentHashMap<Int, Pair<String, Duration>>()
+    // userId -> (taskId, interval)
+    val scheduledSyncTasks = ConcurrentHashMap<Int, Pair<String, Duration>>()
 
-    // Per-user sync state
-    private val syncStates = ConcurrentHashMap<Int, MutableStateFlow<SyncState?>>()
+    // userId -> StateFlow<SyncState?>
+    val syncStates = ConcurrentHashMap<Int, MutableStateFlow<SyncState?>>()
 
     // Per-user sync mutexes (so concurrent syncs for different users are not serialized against each other)
     private val syncMutexes = ConcurrentHashMap<Int, Mutex>()
 
-    // Users whose sync config has been subscribed to (avoids duplicate subscriptions)
+    // Users whose sync config has been subscribed to
     private val subscribedUsers = ConcurrentHashMap.newKeySet<Int>()
+
+    // Per-user config subscription jobs
+    private val userConfigSubscriptions = ConcurrentHashMap<Int, Job>()
 
     private val NEW_USER_CHECK_INTERVAL = 60.seconds
 
@@ -102,7 +106,6 @@ object SyncManager {
         syncStates.getOrPut(userId) { MutableStateFlow(null) }.value = state
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun scheduleSyncTask() {
         // Subscribe to the sync config of all existing users
         val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value } }
@@ -117,18 +120,31 @@ object SyncManager {
         )
     }
 
-    private fun checkForNewUsers() {
+    internal fun checkForNewUsers() {
         val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value }.toSet() }
 
         userIds.forEach { userId -> subscribeToUserSyncConfig(userId) }
 
-        // Clean up users that no longer exist
-        subscribedUsers
-            .toList()
+        // Clean up per-user state for users that no longer exist
+        (subscribedUsers + userConfigSubscriptions.keys + scheduledSyncTasks.keys + syncStates.keys + syncMutexes.keys)
             .filter { userId -> userId !in userIds }
-            .forEach { userId ->
-                scheduledSyncTasks.remove(userId)?.let { HAScheduler.deschedule(it.first) }
-            }
+            .toSet()
+            .forEach { userId -> unsubscribeFromUserSyncConfig(userId) }
+    }
+
+    /**
+     * Remove all per-user sync state for a user that no longer exists.
+     */
+    private fun unsubscribeFromUserSyncConfig(userId: Int) {
+        subscribedUsers.remove(userId)
+        userConfigSubscriptions.remove(userId)?.cancel()
+        scheduledSyncTasks.remove(userId)?.let { HAScheduler.deschedule(it.first) }
+        syncStates.remove(userId)
+        syncMutexes.remove(userId)
+        syncPreferences
+            .edit()
+            .remove("last_sync_timestamp_$userId")
+            .apply()
     }
 
     /**
@@ -142,12 +158,13 @@ object SyncManager {
         val enabledFlow = userSettings.flow(userId, userConfig.syncYomiEnabled)
         val intervalFlow = userSettings.flow(userId, userConfig.syncInterval)
 
-        subscribeTo(
-            combine(enabledFlow, intervalFlow) { enabled, interval -> Pair(enabled, interval) },
-            ignoreInitialValue = false,
-        ) { (enabled, interval) ->
-            rescheduleUserSync(userId, enabled, interval)
-        }
+        userConfigSubscriptions[userId] =
+            subscribeTo(
+                combine(enabledFlow, intervalFlow) { enabled, interval -> Pair(enabled, interval) },
+                ignoreInitialValue = false,
+            ) { (enabled, interval) ->
+                rescheduleUserSync(userId, enabled, interval)
+            }
     }
 
     private fun rescheduleUserSync(
