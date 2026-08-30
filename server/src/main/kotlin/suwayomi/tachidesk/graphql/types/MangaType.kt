@@ -11,7 +11,6 @@ import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.ResultRow
-import suwayomi.tachidesk.graphql.cache.CustomCacheMap
 import suwayomi.tachidesk.graphql.dataLoaders.MangaChapterStats
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
@@ -59,14 +58,6 @@ class MangaType(
             dataFetchingEnvironment: DataFetchingEnvironment,
         ) {
             dataFetchingEnvironment.getDataLoader<Int, MangaType>("MangaDataLoader")?.clear(mangaId)
-
-            val mangaForIdsDataLoader =
-                dataFetchingEnvironment.getDataLoader<List<Int>, MangaNodeList>("MangaForIdsDataLoader")
-            @Suppress("UNCHECKED_CAST")
-            (mangaForIdsDataLoader?.cacheMap as? CustomCacheMap<List<Int>, MangaNodeList>?)
-                ?.getKeys()
-                ?.filter { it.contains(mangaId) }
-                ?.forEach { mangaForIdsDataLoader.clear(it) }
 
             dataFetchingEnvironment.getDataLoader<Int, Int>("ChapterFlagCountForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("HasDuplicateChaptersForMangaDataLoader")?.clear(mangaId)
