@@ -4,7 +4,6 @@ import com.typesafe.config.ConfigFactory
 import io.github.config4k.ClassContainer
 import io.github.config4k.readers.SelectReader
 import io.github.config4k.toConfig
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -19,14 +18,11 @@ import java.util.concurrent.ConcurrentHashMap
  * Per-user setting overrides with a global fallback.
  *
  * For each (userId, setting) this keeps a cached [MutableStateFlow] of the effective value (override if present,
- * otherwise the current global value) and a [Entry.hasOverride] flag. Entries without an override follow the global
- * flow, so a global change propagates to users without an override.
+ * otherwise the default value).
  */
 object UserSettings {
     private class Entry<T : Any> {
         lateinit var flow: MutableStateFlow<T>
-        var hasOverride: Boolean = false
-        var globalSubscription: Job? = null
     }
 
     private val cache = ConcurrentHashMap<String, Entry<*>>()
@@ -45,7 +41,6 @@ object UserSettings {
             val e = Entry<T>()
             val stored = readStored(userId, setting.key)
             val default = setting.defaultValue
-            e.hasOverride = stored != null
             e.flow = MutableStateFlow(if (stored != null) decode(stored, setting) else default)
             e
         } as Entry<T>
@@ -91,9 +86,6 @@ object UserSettings {
         }
 
         val e = entry(userId, setting)
-        e.globalSubscription?.cancel()
-        e.globalSubscription = null
-        e.hasOverride = true
         e.flow.value = value
     }
 
@@ -123,7 +115,6 @@ object UserSettings {
         if (e != null) {
             @Suppress("UNCHECKED_CAST")
             val typedSetting = setting as UserSetting<Any>
-            e.hasOverride = false
             e.flow.value = typedSetting.defaultValue
         }
     }
