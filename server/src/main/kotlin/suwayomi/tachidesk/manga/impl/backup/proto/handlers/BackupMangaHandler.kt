@@ -315,7 +315,7 @@ object BackupMangaHandler {
 
                 // update categories
                 if (flags.includeCategories && !keepLocalManga) {
-                    restoreMangaCategoryData(mangaId, categoryIds)
+                    restoreMangaCategoryData(mangaId, categoryIds, syncMode)
                 }
 
                 mangaId
@@ -465,8 +465,12 @@ object BackupMangaHandler {
     private fun restoreMangaCategoryData(
         mangaId: Int,
         categoryIds: List<Int>,
+        syncMode: SyncRestoreMode,
     ) {
-        CategoryManga.removeMangaFromAllCategories(mangaId)
+        // CONVERGE keeps the union so a local-only link survives and wins the next upload
+        if (syncMode != SyncRestoreMode.CONVERGE) {
+            CategoryManga.removeMangaFromAllCategories(mangaId)
+        }
         CategoryManga.addMangaToCategories(mangaId, categoryIds)
     }
 

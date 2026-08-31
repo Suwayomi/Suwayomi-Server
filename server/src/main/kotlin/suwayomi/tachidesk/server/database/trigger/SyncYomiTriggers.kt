@@ -42,15 +42,6 @@ class UpdateChapterAndMangaVersionTrigger : TriggerAdapter() {
         if (!isSyncing && hasChanged) {
             val currentVersion = newRow.getLong("version")
             newRow.updateLong("version", currentVersion + 1)
-
-            val mangaId = newRow.getInt("manga")
-            conn
-                .prepareStatement(
-                    "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
-                ).use {
-                    it.setInt(1, mangaId)
-                    it.executeUpdate()
-                }
         }
     }
 }

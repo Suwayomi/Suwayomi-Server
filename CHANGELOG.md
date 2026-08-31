@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Fix authentication with subpath option
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
 - (**Migration/Extension**) Fix `extensionRepos` setting not being migrated to `extensionStores`
+- (**SyncYomi**) Chapter reads no longer bump the manga version, which let the device that read more chapters silently revert the other device's category/tracking changes
 - (**SyncYomi/Category**) Fix category reorder not syncing after a sync adopted a peer's 0-based category orders (collision with the default category broke the WebUI reorder)
 - (**SyncYomi**) Keep TachiyomiSY's library sort, chapter sort/filter and reading mode flags when Suwayomi's copy wins a sync
 - (**SyncYomi**) Fix local changes never winning a sync on PostgreSQL (version triggers were no-ops), chapter versions being reset on chapter refresh, category removals and tracking changes not being synced, and the whole library being re-uploaded on every sync

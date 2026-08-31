@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.server.database.migration.M0056_SyncYomi
 import suwayomi.tachidesk.server.database.migration.M0063_FixSyncYomiTriggers
+import suwayomi.tachidesk.server.database.migration.M0065_ChapterVersionOnlyBumpsChapter
 import suwayomi.tachidesk.test.ApplicationTest
 import java.util.UUID
 
@@ -38,6 +39,7 @@ class SyncYomiTriggersTest {
             exec("CREATE TABLE trackrecord (id BIGINT PRIMARY KEY, manga_id BIGINT, sync_id INT, status INT)")
             M0056_SyncYomi().run()
             M0063_FixSyncYomiTriggers().run()
+            M0065_ChapterVersionOnlyBumpsChapter().run()
 
             exec("INSERT INTO manga (id, url, title, description, in_library) VALUES (1, '/m', 'Manga', 'd', TRUE)")
             exec("INSERT INTO chapter (id, name, read, bookmark, last_page_read, manga) VALUES (1, 'c1', FALSE, FALSE, 0, 1)")
@@ -59,16 +61,15 @@ class SyncYomiTriggersTest {
     private fun JdbcTransaction.chapter() = row("SELECT version, last_modified_at FROM chapter WHERE id = 1")
 
     @Test
-    fun `marking a chapter read bumps chapter and manga version and stamps both`() {
+    fun `marking a chapter read bumps only the chapter version`() {
         transaction(database) {
             exec("UPDATE chapter SET read = TRUE WHERE id = 1")
 
             val (chapterVersion, chapterStamp) = chapter()
-            val (mangaVersion, mangaStamp) = manga()
             assertEquals(1, chapterVersion)
-            assertEquals(1, mangaVersion)
             assertTrue(chapterStamp > 0)
-            assertTrue(mangaStamp > 0)
+            // chapters merge separately in v2; reads must not decide manga-level merges
+            assertEquals(0L to 0L, manga())
         }
     }
 

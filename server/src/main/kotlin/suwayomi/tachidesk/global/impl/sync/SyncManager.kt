@@ -60,7 +60,7 @@ object SyncManager {
 
     // bump to force one full converging sync after a change to how versions are maintained (M0063)
     private const val PREF_SYNC_SCHEMA = "sync_schema"
-    private const val SYNC_SCHEMA = 1
+    private const val SYNC_SCHEMA = 2
 
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
