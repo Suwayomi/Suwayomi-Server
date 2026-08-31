@@ -113,6 +113,34 @@ object Category {
         }
     }
 
+    /** Move the category to 1-based [position] among the non-default categories, ignoring raw order values. */
+    fun moveCategoryToPosition(
+        categoryId: Int,
+        position: Int,
+    ) {
+        require(position > 0) { "'position' must be > 0" }
+        if (categoryId == DEFAULT_CATEGORY_ID) return
+        transaction {
+            val categories =
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id neq DEFAULT_CATEGORY_ID }
+                    .orderBy(CategoryTable.order to SortOrder.ASC, CategoryTable.id to SortOrder.ASC)
+                    .toMutableList()
+            val from = categories.indexOfFirst { it[CategoryTable.id].value == categoryId }
+            if (from == -1) return@transaction
+            categories.add((position - 1).coerceAtMost(categories.size - 1), categories.removeAt(from))
+            categories.forEachIndexed { index, cat ->
+                if (cat[CategoryTable.order] != index + 1) {
+                    CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
+                        it[CategoryTable.order] = index + 1
+                    }
+                }
+            }
+            normalizeCategories()
+        }
+    }
+
     fun removeCategory(categoryId: Int) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
