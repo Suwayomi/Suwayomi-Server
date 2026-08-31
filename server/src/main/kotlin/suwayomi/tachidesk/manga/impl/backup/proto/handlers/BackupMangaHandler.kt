@@ -77,7 +77,9 @@ object BackupMangaHandler {
                         status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                         thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
                         dateAdded = mangaRow[MangaTable.inLibraryAt].seconds.inWholeMilliseconds,
-                        viewer = 0, // not supported in Tachidesk
+                        viewer = mangaRow[MangaTable.viewer],
+                        viewer_flags = mangaRow[MangaTable.viewerFlags],
+                        chapterFlags = mangaRow[MangaTable.chapterFlags],
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
                         lastModifiedAt = mangaRow[MangaTable.lastModifiedAt],
                         version = mangaRow[MangaTable.version],
@@ -249,6 +251,10 @@ object BackupMangaHandler {
 
                                 it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
 
+                                it[viewer] = manga.viewer
+                                it[viewerFlags] = manga.viewer_flags
+                                it[chapterFlags] = manga.chapterFlags
+
                                 it[lastModifiedAt] = manga.lastModifiedAt
                                 it[version] = manga.version
                                 it[isSyncing] = syncMode.isSync
@@ -275,6 +281,11 @@ object BackupMangaHandler {
                                 if (syncMode == SyncRestoreMode.ADOPT) manga.favorite else manga.favorite || dbManga[inLibrary]
 
                             it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
+
+                            // outside ADOPT a zeroed backup must not wipe stored flags
+                            if (syncMode == SyncRestoreMode.ADOPT || manga.viewer != 0) it[viewer] = manga.viewer
+                            if (syncMode == SyncRestoreMode.ADOPT || manga.viewer_flags != null) it[viewerFlags] = manga.viewer_flags
+                            if (syncMode == SyncRestoreMode.ADOPT || manga.chapterFlags != 0) it[chapterFlags] = manga.chapterFlags
 
                             if (syncMode == SyncRestoreMode.CONVERGE) {
                                 it[lastModifiedAt] = Clock.System.now().epochSeconds

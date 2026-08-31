@@ -204,7 +204,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         val categoryMapping =
             if (flags.includeCategories) {
                 updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
-                BackupCategoryHandler.restore(backup.backupCategories)
+                BackupCategoryHandler.restore(backup.backupCategories, syncMode)
             } else {
                 emptyMap()
             }

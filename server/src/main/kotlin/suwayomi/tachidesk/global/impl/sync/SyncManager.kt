@@ -310,6 +310,10 @@ object SyncManager {
                         MangaTable.update({ MangaTable.id inList mangaIds }) {
                             it[isSyncing] = true
                         }
+                        // normalizeCategories rewrites sort_order; the survivors must not out-version the server
+                        CategoryTable.update {
+                            it[isSyncing] = true
+                        }
                         categoriesToDelete.forEach {
                             Category.removeCategory(it.id)
                         }
