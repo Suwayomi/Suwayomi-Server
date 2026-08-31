@@ -208,6 +208,21 @@ class UserMutationTest : GraphQLTest() {
         return code
     }
 
+    private fun seedExpiredRegistrationCode(): String {
+        val code = UserCodeService.generateCode()
+        val now = System.currentTimeMillis() / 1000
+        transaction {
+            UserCodeTable.insert {
+                it[UserCodeTable.type] = UserCodePurpose.REGISTRATION.name
+                it[UserCodeTable.codeHash] = Bcrypt.encryptPassword(code)
+                it[UserCodeTable.createdBy] = 1
+                it[UserCodeTable.createdAt] = now - 172_800
+                it[UserCodeTable.expiresAt] = now - 86_400
+            }
+        }
+        return code
+    }
+
     @Test
     fun loginWithBasicAuth() {
         setAdminCredentials("testuser", "testpass")
@@ -376,6 +391,15 @@ class UserMutationTest : GraphQLTest() {
         assertTrue(abs(expiresAt - expected) <= 5, "expiresAt should be ~24h from now")
     }
 
+    private fun GraphQLResponse<*>.assertForbidden() {
+        assertHasError()
+        assertEquals(
+            true,
+            errors?.any { it.message.contains("Forbidden") },
+            "Expected a Forbidden error but got: $errors",
+        )
+    }
+
     @Test
     fun userCodeOperationsRequireManageUsers() {
         val regularUser = UserType.User(createTestUser("regularuser"), listOf(UserPermission.DOWNLOAD_CHAPTERS))
@@ -393,7 +417,7 @@ class UserMutationTest : GraphQLTest() {
                 mapOf("input" to mapOf("userId" to targetUser)),
                 user = regularUser,
             )
-        createRecovery.assertHasError()
+        createRecovery.assertForbidden()
 
         val createRegistration =
             graphql(
@@ -407,7 +431,7 @@ class UserMutationTest : GraphQLTest() {
                 mapOf("input" to mapOf<String, Any?>()),
                 user = regularUser,
             )
-        createRegistration.assertHasError()
+        createRegistration.assertForbidden()
 
         val revoke =
             graphql(
@@ -421,7 +445,7 @@ class UserMutationTest : GraphQLTest() {
                 mapOf("input" to mapOf("id" to 1)),
                 user = regularUser,
             )
-        revoke.assertHasError()
+        revoke.assertForbidden()
 
         val list =
             graphql(
@@ -434,7 +458,7 @@ class UserMutationTest : GraphQLTest() {
                 """.trimIndent(),
                 user = regularUser,
             )
-        list.assertHasError()
+        list.assertForbidden()
     }
 
     @Test
@@ -472,6 +496,70 @@ class UserMutationTest : GraphQLTest() {
 
         redeemRecoveryCode(code, "newpass").assertHasError()
     }
+
+    @Test
+    fun registrationCodeRedemptionFailsWhenExpired() {
+        val code = seedExpiredRegistrationCode()
+
+        redeemRegistrationCode(code, "reguser", "regpass").assertHasError()
+
+        // no account was created
+        val exists =
+            transaction {
+                UserAccountTable.selectAll().where { UserAccountTable.username eq "reguser" }.count() > 0
+            }
+        assertEquals(false, exists)
+    }
+
+    @Test
+    fun loginFailsWhenAlreadyLoggedIn() {
+        setAdminCredentials("testuser", "testpass")
+        val loggedInUser = UserType.User(createTestUser("loggeduser"), listOf(UserPermission.DOWNLOAD_CHAPTERS))
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: LoginInput!) {
+                    login(input: ${'$'}input) {
+                        accessToken
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("username" to "testuser", "password" to "testpass")),
+                user = loggedInUser,
+            )
+
+        response.assertHasError()
+        assertEquals(
+            true,
+            response.errors?.any { it.message.contains("already logged-in") },
+            "Expected the already-logged-in guard error but got: $response",
+        )
+    }
+
+    @Test
+    fun staleRefreshTokenFailsThroughGqlMutation() =
+        runTest {
+            val userId = createTestUser("stalerefreshuser")
+            val tokens = Jwt.generateJwt(userId)
+
+            // a password change bumps the session version, revoking the refresh token
+            SessionVersion.bump(userId)
+
+            val response =
+                graphql(
+                    """
+                    mutation(${'$'}input: RefreshTokenInput!) {
+                        refreshToken(input: ${'$'}input) {
+                            accessToken
+                        }
+                    }
+                    """.trimIndent(),
+                    mapOf("input" to mapOf("refreshToken" to tokens.refreshToken)),
+                )
+
+            response.assertHasError()
+        }
 
     @Test
     fun supersededRecoveryCodeFails() {

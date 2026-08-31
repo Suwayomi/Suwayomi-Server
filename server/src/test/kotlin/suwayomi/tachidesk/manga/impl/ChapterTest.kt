@@ -400,6 +400,53 @@ class ChapterTest : ApplicationTest() {
         }
 
     @Test
+    fun deleteDownloadedChaptersRemovesSharedDownloadWhenLastRequestingUserDeletes() =
+        runTest {
+            val mangaId = createLibraryManga("DOWNLOAD_LAST_USER_TEST")
+            val userId2 = createSecondUser()
+            val chapterId =
+                createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = true).single()
+
+            // both users request the shared download
+            DownloadManager.enqueue(1, listOf(chapterId))
+            DownloadManager.enqueue(userId2, listOf(chapterId))
+
+            // the first user deletes; the shared download is kept
+            Chapter.deleteDownloadedChapters(1, listOf(chapterId))
+
+            var downloaded =
+                transaction {
+                    ChapterTable
+                        .select(ChapterTable.isDownloaded)
+                        .where { ChapterTable.id eq chapterId }
+                        .single()[ChapterTable.isDownloaded]
+                }
+            assertTrue(downloaded)
+
+            // the last requesting user deletes; the shared download is removed
+            Chapter.deleteDownloadedChapters(userId2, listOf(chapterId))
+
+            downloaded =
+                transaction {
+                    ChapterTable
+                        .select(ChapterTable.isDownloaded)
+                        .where { ChapterTable.id eq chapterId }
+                        .single()[ChapterTable.isDownloaded]
+                }
+            assertEquals(false, downloaded)
+
+            val states =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { (ChapterUserTable.chapter eq chapterId) and (ChapterUserTable.user inList listOf(1, userId2)) }
+                        .associate { it[ChapterUserTable.user].value to it }
+                }
+            assertEquals(false, states.getValue(1)[ChapterUserTable.isDownloadRequested])
+            assertEquals(false, states.getValue(userId2)[ChapterUserTable.isDownloadRequested])
+        }
+
+    @Test
     fun deleteChapterClearsUserDownloadState() =
         runTest {
             val mangaId = createLibraryManga("DOWNLOAD_DELETE_CHAPTER_TEST")

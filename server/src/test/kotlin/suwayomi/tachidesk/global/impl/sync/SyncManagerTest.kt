@@ -9,6 +9,10 @@ package suwayomi.tachidesk.global.impl.sync
 
 import android.app.Application
 import android.content.Context
+import io.mockk.coEvery
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import kotlinx.coroutines.test.runTest
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -27,6 +31,7 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -90,6 +95,38 @@ class SyncManagerTest : ApplicationTest() {
         assertEquals(StartSyncResult.SYNC_DISABLED, SyncManager.startSync(userId))
         assertEquals(StartSyncResult.SYNC_DISABLED, SyncManager.startSync(userId2))
     }
+
+    @Test
+    fun startSyncForEnabledUserReturnsSuccessAndReachesTerminalState() =
+        runTest {
+            // Mock the network layer so no real HTTP call is made; returning null simulates a
+            // network failure, which drives the sync state machine to its terminal Error state.
+            mockkObject(SyncYomiSyncService)
+
+            coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any()) } returns null
+
+            userSettings.set(userId, userConfig.syncYomiEnabled, true)
+
+            // an enabled user: startSync returns SUCCESS (not SYNC_DISABLED)
+            assertEquals(StartSyncResult.SUCCESS, SyncManager.startSync(userId))
+
+            // wait for the background sync to reach a terminal state
+            val deadline = System.currentTimeMillis() + 5_000
+            while (
+                SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Error &&
+                SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Success &&
+                System.currentTimeMillis() < deadline
+            ) {
+                Thread.sleep(50)
+            }
+
+            // the (mocked) network failure produced a terminal Error state
+            val state = SyncManager.lastSyncState(userId).value
+            assertIs<SyncManager.SyncState.Error>(state)
+            assertEquals("Network error", state.message)
+
+            unmockkObject(SyncYomiSyncService)
+        }
 
     @Test
     fun syncEnabledPerUserIsolation() {

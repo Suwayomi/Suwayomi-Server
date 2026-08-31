@@ -15,5 +15,7 @@ object UserSettingsTable : Table() {
     val key = varchar("key", 256)
     val value = varchar("value", 16384)
 
-    init { uniqueIndex(user, key) }
+    init {
+        uniqueIndex(user, key)
+    }
 }
