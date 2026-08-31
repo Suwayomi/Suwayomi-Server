@@ -21,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Webview**) Don't throw an exception when disabling CEF
 
 ### Fixed
+- (**SyncYomi**) Fix local changes never winning a sync on PostgreSQL (version triggers were no-ops), chapter versions being reset on chapter refresh, category removals and tracking changes never bumping the manga version, and sync restores re-stamping every row as locally modified
+- (**SyncYomi**) Chapter reads no longer bump the manga version, which let the device that read more chapters silently revert the other device's category/tracking changes
 - (**Cloudflare/flaresolverr**) Treat a bypass as successful when a `cf_clearance` cookie is returned, so non-CloudFlare source errors are correctly passed through to the extensions.
 - (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data
 - (**Tracker**) Fix Shikimori

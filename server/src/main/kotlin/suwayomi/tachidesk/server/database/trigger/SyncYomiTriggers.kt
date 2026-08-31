@@ -42,17 +42,20 @@ class UpdateChapterAndMangaVersionTrigger : TriggerAdapter() {
         if (!isSyncing && hasChanged) {
             val currentVersion = newRow.getLong("version")
             newRow.updateLong("version", currentVersion + 1)
-
-            val mangaId = newRow.getInt("manga")
-            conn
-                .prepareStatement(
-                    "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
-                ).use {
-                    it.setInt(1, mangaId)
-                    it.executeUpdate()
-                }
         }
     }
+}
+
+// Sync restores keep the timestamp they write; an update only counts when a synced column changed.
+private fun ResultSet.stampLastModifiedAt(
+    oldRow: ResultSet?,
+    watchedColumns: List<String>,
+) {
+    if (getBoolean("is_syncing")) return
+
+    if (oldRow != null && watchedColumns.all { oldRow.getObject(it) == getObject(it) }) return
+
+    updateLong("last_modified_at", Clock.System.now().epochSeconds)
 }
 
 @Suppress("unused")
@@ -62,7 +65,7 @@ class UpdateMangaLastModifiedAtTrigger : TriggerAdapter() {
         oldRow: ResultSet?,
         newRow: ResultSet,
     ) {
-        newRow.updateLong("last_modified_at", Clock.System.now().epochSeconds)
+        newRow.stampLastModifiedAt(oldRow, listOf("url", "description", "in_library", "version"))
     }
 }
 
@@ -73,7 +76,16 @@ class UpdateChapterLastModifiedAtTrigger : TriggerAdapter() {
         oldRow: ResultSet?,
         newRow: ResultSet,
     ) {
-        newRow.updateLong("last_modified_at", Clock.System.now().epochSeconds)
+        newRow.stampLastModifiedAt(oldRow, listOf("read", "bookmark", "last_page_read", "version"))
+    }
+}
+
+private fun Connection.bumpMangaVersion(mangaId: Int) {
+    prepareStatement(
+        "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
+    ).use {
+        it.setInt(1, mangaId)
+        it.executeUpdate()
     }
 }
 
@@ -84,15 +96,30 @@ class InsertMangaCategoryUpdateVersionTrigger : TriggerAdapter() {
         oldRow: ResultSet?,
         newRow: ResultSet,
     ) {
-        val mangaId = newRow.getInt("manga")
+        conn.bumpMangaVersion(newRow.getInt("manga"))
+    }
+}
 
-        conn
-            .prepareStatement(
-                "UPDATE MANGA SET version = version + 1 WHERE id = ? AND NOT is_syncing",
-            ).use {
-                it.setInt(1, mangaId)
-                it.executeUpdate()
-            }
+@Suppress("unused")
+class DeleteMangaCategoryUpdateVersionTrigger : TriggerAdapter() {
+    override fun fire(
+        conn: Connection,
+        oldRow: ResultSet,
+        newRow: ResultSet?,
+    ) {
+        conn.bumpMangaVersion(oldRow.getInt("manga"))
+    }
+}
+
+@Suppress("unused")
+class TrackRecordUpdateMangaVersionTrigger : TriggerAdapter() {
+    override fun fire(
+        conn: Connection,
+        oldRow: ResultSet?,
+        newRow: ResultSet?,
+    ) {
+        val mangaId = (newRow ?: oldRow)?.getInt("manga_id") ?: return
+        conn.bumpMangaVersion(mangaId)
     }
 }
 
