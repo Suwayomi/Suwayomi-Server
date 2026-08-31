@@ -77,6 +77,10 @@ object BackupCategoryHandler {
                         }
 
                         if (dbCategory != null) {
+                            // a newer local copy (pending reorder/rename) wins the next upload
+                            if (syncMode == SyncRestoreMode.ADOPT && backupCategory.version < dbCategory.version) {
+                                return@map dbCategory.id
+                            }
                             CategoryTable.update({ CategoryTable.id eq dbCategory.id }) {
                                 it[name] = backupCategory.name
                                 it[order] = backupCategory.order

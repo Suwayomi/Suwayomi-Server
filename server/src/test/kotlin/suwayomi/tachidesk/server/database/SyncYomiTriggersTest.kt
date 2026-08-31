@@ -113,6 +113,20 @@ class SyncYomiTriggersTest {
     }
 
     @Test
+    fun `category reorder bumps its version`() {
+        transaction(database) {
+            exec("UPDATE category SET last_modified_at = 0, version = 0")
+            exec("UPDATE category SET sort_order = 5 WHERE id = 1")
+            val (version, stamp) = row("SELECT version, last_modified_at FROM category WHERE id = 1")
+            assertEquals(1, version)
+            assertTrue(stamp > 0)
+
+            exec("UPDATE category SET sort_order = 6, is_syncing = TRUE WHERE id = 1")
+            assertEquals(1, row("SELECT version, last_modified_at FROM category WHERE id = 1").first)
+        }
+    }
+
+    @Test
     fun `nothing bumps while the manga is syncing`() {
         transaction(database) {
             exec("UPDATE manga SET is_syncing = TRUE WHERE id = 1")

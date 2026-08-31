@@ -341,31 +341,8 @@ class CategoryMutation {
             "'order' must not be <= 0"
         }
 
-        transaction {
-            val currentOrder =
-                CategoryTable
-                    .selectAll()
-                    .where { CategoryTable.id eq categoryId }
-                    .first()[CategoryTable.order]
-
-            if (currentOrder != position) {
-                if (position < currentOrder) {
-                    CategoryTable.update({ CategoryTable.order greaterEq position }) {
-                        it[CategoryTable.order] = CategoryTable.order + 1
-                    }
-                } else {
-                    CategoryTable.update({ CategoryTable.order lessEq position }) {
-                        it[CategoryTable.order] = CategoryTable.order - 1
-                    }
-                }
-
-                CategoryTable.update({ CategoryTable.id eq categoryId }) {
-                    it[CategoryTable.order] = position
-                }
-            }
-        }
-
-        Category.normalizeCategories()
+        // position-based: raw sort_order values can collide after a sync adopts a peer's 0-based orders
+        Category.moveCategoryToPosition(categoryId, position)
 
         val categories =
             transaction {

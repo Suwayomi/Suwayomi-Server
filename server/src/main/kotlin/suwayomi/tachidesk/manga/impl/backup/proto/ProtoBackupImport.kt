@@ -34,6 +34,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.InputStream
@@ -164,6 +165,9 @@ object ProtoBackupImport : ProtoBackupBase() {
                 it[isSyncing] = false
             }
             ChapterTable.update({ ChapterTable.isSyncing eq true }) {
+                it[isSyncing] = false
+            }
+            CategoryTable.update({ CategoryTable.isSyncing eq true }) {
                 it[isSyncing] = false
             }
         }

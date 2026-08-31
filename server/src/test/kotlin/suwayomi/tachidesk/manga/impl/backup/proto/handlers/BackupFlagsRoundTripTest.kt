@@ -53,6 +53,25 @@ class BackupFlagsRoundTripTest : ApplicationTest() {
     }
 
     @Test
+    fun `adopt keeps a newer local category`() {
+        BackupCategoryHandler.restore(
+            listOf(BackupCategory(name = "Reading", order = 1, flags = 7, uid = 9, version = 5)),
+            SyncRestoreMode.ADOPT,
+        )
+        val adopted = BackupCategoryHandler.backup(backupFlags).single { it.name == "Reading" }
+
+        // a stale echo with a lower version must not downgrade the local copy
+        BackupCategoryHandler.restore(
+            listOf(BackupCategory(name = "Reading", order = 3, flags = 1, uid = 9, version = 4)),
+            SyncRestoreMode.ADOPT,
+        )
+        val category = BackupCategoryHandler.backup(backupFlags).single { it.name == "Reading" }
+        assertEquals(5, category.version)
+        assertEquals(7, category.flags)
+        assertEquals(adopted.order, category.order)
+    }
+
+    @Test
     fun `manga viewer and chapter flags survive a sync round trip`() {
         val errors = mutableListOf<Pair<Date, String>>()
         val manga =
