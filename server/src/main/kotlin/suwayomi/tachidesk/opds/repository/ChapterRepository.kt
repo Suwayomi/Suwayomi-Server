@@ -57,7 +57,7 @@ object ChapterRepository {
             lastReadAt = this[ChapterUserTable.lastReadAt],
             sourceOrder = this[ChapterTable.sourceOrder],
             pageCount = this[ChapterTable.pageCount],
-            downloaded = this[ChapterTable.isDownloaded],
+            downloaded = this[ChapterUserTable.isDownloaded],
         )
 
     suspend fun getChaptersForManga(
@@ -79,7 +79,7 @@ object ChapterRepository {
                     "read" -> conditions.add(ChapterUserTable.isRead eq true)
                 }
                 if (userSettings.value(userId, userConfig.opdsShowOnlyDownloadedChapters)) {
-                    conditions.add(ChapterTable.isDownloaded eq true)
+                    conditions.add(ChapterUserTable.isDownloaded eq true)
                 }
 
                 val finalCondition = conditions.reduceOrNull { acc, op -> acc and op } ?: Op.TRUE

@@ -14,4 +14,6 @@ object UserSettingsTable : Table() {
     val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val key = varchar("key", 256)
     val value = varchar("value", 16384)
+
+    init { uniqueIndex(user, key) }
 }
