@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Webview**) Don't throw an exception when disabling CEF
 
 ### Fixed
+- (**Backup/SyncYomi**) Fix restoring a library that originated from another client or was re-encoded by the sync server ("Field 'libraryId' is required ... but it was missing")
 - (**Cloudflare/flaresolverr**) Treat a bypass as successful when a `cf_clearance` cookie is returned, so non-CloudFlare source errors are correctly passed through to the extensions.
 - (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data
 - (**Tracker**) Fix Shikimori
