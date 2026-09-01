@@ -341,7 +341,7 @@ class CategoryMutation {
             "'order' must not be <= 0"
         }
 
-        // position-based: raw sort_order values can collide after a sync adopts a peer's 0-based orders
+        // position-based: stored sort_order values can collide (pre-existing adopted 0-based rows; sync skips newer local copies)
         Category.moveCategoryToPosition(categoryId, position)
 
         val categories =
