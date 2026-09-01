@@ -43,10 +43,10 @@ enum class WebUIFlavor(
 
     CUSTOM(
         "Custom",
-        "repoURL",
-        "versionMappingUrl",
-        "latestReleaseInfoURL",
-        "baseFileName",
+        "https://github.com/dodmann/Suwayomi-WebUI",
+        "https://raw.githubusercontent.com/dodmann/Suwayomi-WebUI/master/versionToServerVersionMapping.json",
+        "https://api.github.com/repos/dodmann/Suwayomi-WebUI/releases/latest",
+        "Suwayomi-WebUI",
     ),
     ;
 

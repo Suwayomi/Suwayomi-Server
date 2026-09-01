@@ -46,6 +46,7 @@ import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -66,6 +67,7 @@ object SyncManager {
 
     private var currentTaskId: String? = null
     private val syncMutex = Mutex()
+    private val pendingSync = AtomicBoolean(false)
 
     private val _lastSyncState: MutableStateFlow<SyncState?> = MutableStateFlow(null)
     val lastSyncState: StateFlow<SyncState?> = _lastSyncState.asStateFlow()
@@ -134,12 +136,17 @@ object SyncManager {
         }
 
         if (!syncMutex.tryLock()) {
+            pendingSync.set(true)
             return StartSyncResult.SYNC_IN_PROGRESS
         }
 
         GlobalScope.launch {
             try {
-                syncData(periodic)
+                var isFirstRun = true
+                do {
+                    syncData(if (isFirstRun) periodic else false)
+                    isFirstRun = false
+                } while (pendingSync.getAndSet(false))
             } finally {
                 syncMutex.unlock()
             }
@@ -154,14 +161,15 @@ object SyncManager {
         }
 
         if (syncMutex.tryLock()) {
-            // there is no ongoing sync, so start one
             try {
-                syncData()
+                do {
+                    syncData()
+                } while (pendingSync.getAndSet(false))
             } finally {
                 syncMutex.unlock()
             }
         } else {
-            // wait for the ongoing sync to finish
+            // wait for the ongoing sync (and any pending re-runs) to finish
             syncMutex.withLock {}
         }
     }
