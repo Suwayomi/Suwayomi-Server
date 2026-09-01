@@ -12,7 +12,7 @@ import de.neonew.exposed.migrations.helpers.SQLMigration
 // Tachiyomi sort/display/reader bitmasks, kept opaque so a sync merge won by Suwayomi
 // does not zero them on other clients.
 @Suppress("ClassName", "unused")
-class M0063_AddSyncFlags : SQLMigration() {
+class M0064_AddSyncFlags : SQLMigration() {
     // language=sql
     override val sql: String =
         """
