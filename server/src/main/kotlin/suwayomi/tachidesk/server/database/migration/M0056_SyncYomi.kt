@@ -120,7 +120,7 @@ class M0056_SyncYomi : SQLMigration() {
         RETURNS trigger AS $$
         BEGIN
             IF NEW.uid = 0 THEN
-                NEW.uid := RANDOM(1, 9223372036854775807);
+                NEW.uid := (floor(random() * 9223372036854775806) + 1)::bigint;
             END IF;
 
             IF NEW.last_modified_at = 0 THEN
