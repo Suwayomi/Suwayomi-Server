@@ -9,17 +9,12 @@ package suwayomi.tachidesk.server
 
 import android.os.Looper
 import ch.qos.logback.classic.Level
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigRenderOptions
-import com.typesafe.config.ConfigValue
-import com.typesafe.config.parser.ConfigDocument
 import dorkbox.updates.Updates
 import eu.kanade.tachiyomi.App
 import eu.kanade.tachiyomi.createAppModule
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.local.LocalSource
-import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.json.JavalinJackson3
 import io.javalin.json.JsonMapper
@@ -43,6 +38,7 @@ import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionStoreService
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
@@ -273,6 +269,9 @@ fun applicationSetup() {
     AndroidCompatInitializer().init()
     // start app
     androidCompat.startApp(app)
+
+    // Delete files before any extension-related logic can be executed that causes the jars to get loaded
+    Extension.cleanupExtensionFiles()
 
     // Initialize NetworkHelper early
     Injekt
