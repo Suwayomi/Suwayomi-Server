@@ -32,6 +32,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -211,10 +212,13 @@ object SyncManager {
                 logger.info { "Full converging sync: adopting server versions" }
             }
             val backupMangas = BackupMangaHandler.backup(backupFlags).let { if (full) it else changedSince(it, lastPushedAt()) }
+            val backupCategories =
+                BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
+            toWireCategoryOrders(backupCategories, backupMangas)
             val backup =
                 Backup(
                     backupMangas,
-                    BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
+                    backupCategories,
                     BackupSourceHandler.backup(backupMangas, backupFlags),
                     emptyMap(),
                     null,
@@ -346,6 +350,23 @@ object SyncManager {
         } catch (e: Throwable) {
             logger.error { "Error syncing: ${e.message}" }
             finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
+        }
+    }
+
+    /**
+     * Rebase the payload to the 0-based wire convention (Mihon/SY): categories get their
+     * 0-based rank and manga category refs (order values) are remapped to match. Refs to
+     * unknown orders are dropped so they can't alias whichever category now sits at 0.
+     */
+    internal fun toWireCategoryOrders(
+        categories: List<BackupCategory>,
+        mangas: List<BackupManga>,
+    ) {
+        val sorted = categories.sortedBy { it.order }
+        val rankByOrder = sorted.withIndex().associate { (index, category) -> category.order to index }
+        sorted.forEachIndexed { index, category -> category.order = index }
+        mangas.forEach { manga ->
+            manga.categories = manga.categories.mapNotNull { rankByOrder[it] }
         }
     }
 
