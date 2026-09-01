@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**SyncYomi**) Adopt the server's record versions when restoring a sync response so a manga or chapter that lost a merge once can win later; a one-time full converging sync repairs skewed version counters
 - (**SyncYomi**) Keep TachiyomiSY's library sort, chapter sort/filter and reading mode flags when Suwayomi's copy wins a sync
 - (**SyncYomi/Category**) Fix category reorder not syncing after a sync adopted a peer's 0-based category orders (collision with the default category broke the WebUI reorder)
+- (**SyncYomi/Category**) Use the 0-based Mihon/SY category order convention on the sync wire and store incoming orders as 1-based ranks, so category positions converge between Suwayomi and Tachiyomi forks
 - (**Cloudflare/flaresolverr**) Treat a bypass as successful when a `cf_clearance` cookie is returned, so non-CloudFlare source errors are correctly passed through to the extensions.
 - (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data
 - (**Tracker**) Fix Shikimori
