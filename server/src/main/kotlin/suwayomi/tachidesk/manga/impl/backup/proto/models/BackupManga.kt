@@ -1,16 +1,26 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.models
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import suwayomi.tachidesk.manga.impl.util.lang.JsonObjectEmptyBytes
 
+/**
+ * Every scalar field of the backup models needs a default: proto3 peers (the SyncYomi server
+ * re-encodes backups with proto3 semantics) and other clients (Mihon, TachiyomiSY) omit
+ * zero-valued scalars on the wire, so a required field fails to decode a library that
+ * originated elsewhere with "Field 'x' is required ... but it was missing".
+ *
+ * [EncodeDefault] on the historically required fields keeps emitting their zero values so
+ * that Mihon/TachiyomiSY, whose models still require them, can import Suwayomi backups.
+ */
 @Serializable
 data class BackupManga(
     // in 1.x some of these values have different names
-    @ProtoNumber(1) var source: Long,
+    @ProtoNumber(1) @EncodeDefault var source: Long = 0,
     // url is called key in 1.x
-    @ProtoNumber(2) var url: String,
+    @ProtoNumber(2) @EncodeDefault var url: String = "",
     @ProtoNumber(3) var title: String = "",
     @ProtoNumber(4) var artist: String? = null,
     @ProtoNumber(5) var author: String? = null,
