@@ -12,7 +12,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
@@ -129,23 +131,6 @@ object ExtensionsList {
 
                     val installedExtensionsToUpdate = extensionsInstalled[true].orEmpty()
                     if (installedExtensionsToUpdate.isNotEmpty()) {
-                        // Reset the "hasUpdate" flag to ensure that we have no extensions that are incorrectly marked as updatable
-                        // This can happen if an extension store has some versionCode mismatch that gets fixed without bumping the actual versionCode.
-                        // I.e.
-                        // 1. Extension list update -> causes issue => extensions get incorrectly marked as updatable
-                        // 2. Extension list update -> fixes issue => incorrectly marked extensions get reset
-                        BatchUpdateStatement(ExtensionTable)
-                            .apply {
-                                installedExtensionsToUpdate
-                                    .filter { it.second[ExtensionTable.hasUpdate] }
-                                    .forEach { (_, extension) ->
-                                        addBatch(EntityID(extension[ExtensionTable.id].value, ExtensionTable))
-
-                                        this[ExtensionTable.hasUpdate] = false
-                                    }
-                            }.toExecutable()
-                            .execute(this@transaction)
-
                         BatchUpdateStatement(ExtensionTable)
                             .apply {
                                 installedExtensionsToUpdate.forEach { (foundExtension, extensionRecord) ->
@@ -156,8 +141,13 @@ object ExtensionsList {
                                     this[ExtensionTable.apkUrl] = foundExtension.apkUrl
                                     this[ExtensionTable.jarUrl] = foundExtension.jarUrl
 
+                                    // Reset the "hasUpdate" flag to ensure that we have no extensions that are incorrectly marked as updatable
+                                    // This can happen if an extension store has some versionCode mismatch that gets fixed without bumping the actual versionCode.
+                                    // I.e.
+                                    // 1. Extension list update -> causes issue => extensions get incorrectly marked as updatable
+                                    // 2. Extension list update -> fixes issue => incorrectly marked extensions get reset
+                                    this[ExtensionTable.hasUpdate] = false
                                     // add these because batch updates need matching columns
-                                    this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
                                     this[ExtensionTable.isObsolete] = extensionRecord[ExtensionTable.isObsolete]
 
                                     // a previously removed extension is now available again
