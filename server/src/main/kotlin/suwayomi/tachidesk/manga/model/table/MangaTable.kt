@@ -46,6 +46,11 @@ object MangaTable : IntIdTable() {
 
     val updateStrategy = varchar("update_strategy", 256).default(UpdateStrategy.ALWAYS_UPDATE.name)
 
+    // Tachiyomi reader/chapter-list bitmasks, passthrough for sync
+    val viewer = integer("viewer").default(0)
+    val viewerFlags = integer("viewer_flags").nullable()
+    val chapterFlags = integer("chapter_flags").default(0)
+
     val lastModifiedAt = long("last_modified_at").default(0)
     val version = long("version").default(0)
     val isSyncing = bool("is_syncing").default(false)

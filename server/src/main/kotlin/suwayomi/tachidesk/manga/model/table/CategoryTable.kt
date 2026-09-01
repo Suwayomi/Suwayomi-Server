@@ -19,6 +19,9 @@ object CategoryTable : IntIdTable() {
     val includeInUpdate = integer("include_in_update").default(IncludeOrExclude.UNSET.value)
     val includeInDownload = integer("include_in_download").default(IncludeOrExclude.UNSET.value)
 
+    // Tachiyomi library sort/display bitmask, passthrough for sync
+    val flags = integer("flags").default(0)
+
     val version = long("version").default(0)
     val uid = long("uid").default(0)
     val lastModifiedAt = long("last_modified_at").default(0)

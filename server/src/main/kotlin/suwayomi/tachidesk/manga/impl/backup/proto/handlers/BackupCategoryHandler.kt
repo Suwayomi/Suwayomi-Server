@@ -16,9 +16,9 @@ import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.modifyCategoriesMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.SyncRestoreMode
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.database.dbTransaction
 
 object BackupCategoryHandler {
@@ -28,40 +28,51 @@ object BackupCategoryHandler {
                 CategoryTable
                     .selectAll()
                     .orderBy(CategoryTable.order to SortOrder.ASC)
-                    .map { CategoryTable.toDataClass(it) }
+                    .toList()
 
             val categoryToMeta =
                 if (flags.includeClientData) {
-                    Category.getCategoriesMetaMaps(categories.map { it.id })
+                    Category.getCategoriesMetaMaps(categories.map { it[CategoryTable.id].value })
                 } else {
                     emptyMap()
                 }
 
             categories.map {
                 BackupCategory(
-                    it.name,
-                    it.order,
-                    0, // not supported in Tachidesk
-                    it.version,
-                    it.uid,
-                    it.lastModifiedAt,
+                    it[CategoryTable.name],
+                    it[CategoryTable.order],
+                    it[CategoryTable.flags],
+                    it[CategoryTable.version],
+                    it[CategoryTable.uid],
+                    it[CategoryTable.lastModifiedAt],
                 ).apply {
-                    this.meta = categoryToMeta[it.id] ?: emptyMap()
+                    this.meta = categoryToMeta[it[CategoryTable.id].value] ?: emptyMap()
                 }
             }
         }
 
-    fun restore(backupCategories: List<BackupCategory>): Map<Int, Int> {
+    fun restore(
+        backupCategories: List<BackupCategory>,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+    ): Map<Int, Int> {
         val dbCategories = Category.getCategoryList()
         val dbCategoriesByName = dbCategories.associateBy { it.name }
         val dbCategoriesByUid = dbCategories.associateBy { it.uid }
 
         var nextOrder = dbCategories.maxOfOrNull { it.order }?.plus(1) ?: 0
 
+        // the wire is 0-based (Mihon/SY convention); store 1-based ranks instead of raw orders
+        val ranks = IntArray(backupCategories.size)
+        backupCategories
+            .withIndex()
+            .filter { (_, backupCategory) -> !backupCategory.name.equals(Category.DEFAULT_CATEGORY_NAME, true) }
+            .sortedBy { (_, backupCategory) -> backupCategory.order }
+            .forEachIndexed { rank, (index, _) -> ranks[index] = rank + 1 }
+
         val categoryIds =
             transaction {
                 backupCategories
-                    .map { backupCategory ->
+                    .mapIndexed { index, backupCategory ->
                         var dbCategory =
                             if (backupCategory.uid != 0L) {
                                 dbCategoriesByUid[backupCategory.uid]
@@ -74,18 +85,27 @@ object BackupCategoryHandler {
                         }
 
                         if (dbCategory != null) {
+                            // a newer local copy (pending reorder/rename) wins the next upload
+                            if (syncMode == SyncRestoreMode.ADOPT && backupCategory.version < dbCategory.version) {
+                                return@mapIndexed dbCategory.id
+                            }
                             CategoryTable.update({ CategoryTable.id eq dbCategory.id }) {
                                 it[name] = backupCategory.name
-                                it[order] = backupCategory.order
+                                it[order] = ranks[index]
                                 it[version] = backupCategory.version
                                 it[uid] = if (backupCategory.uid != 0L) backupCategory.uid else dbCategory.uid
                                 it[lastModifiedAt] = backupCategory.lastModifiedAt
+                                // outside ADOPT a zeroed backup must not wipe stored flags
+                                if (syncMode == SyncRestoreMode.ADOPT || backupCategory.flags != 0) {
+                                    it[flags] = backupCategory.flags
+                                }
                                 it[isSyncing] = true
                             }
-                            return@map dbCategory.id
+                            return@mapIndexed dbCategory.id
                         }
 
-                        val currentOrder = nextOrder++
+                        // sync mirrors the server list; a plain restore appends new categories at the end
+                        val currentOrder = if (syncMode.isSync) ranks[index] else nextOrder++
                         CategoryTable
                             .insertAndGetId {
                                 it[name] = backupCategory.name
@@ -93,6 +113,7 @@ object BackupCategoryHandler {
                                 it[version] = backupCategory.version
                                 it[uid] = backupCategory.uid
                                 it[lastModifiedAt] = backupCategory.lastModifiedAt
+                                it[flags] = backupCategory.flags
                             }.value
                     }
             }

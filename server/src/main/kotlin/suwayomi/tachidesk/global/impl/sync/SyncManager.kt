@@ -17,6 +17,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -25,10 +27,12 @@ import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Library.handleMangaThumbnail
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
+import suwayomi.tachidesk.manga.impl.backup.proto.SyncRestoreMode
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -53,6 +57,10 @@ data class SyncData(
 )
 
 object SyncManager {
+    // bump to force one full converging sync after a change to how versions are maintained
+    private const val PREF_SYNC_SCHEMA = "sync_schema"
+    private const val SYNC_SCHEMA = 1
+
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
 
@@ -195,11 +203,19 @@ object SyncManager {
                 )
 
             _lastSyncState.value = SyncState.CreatingBackup(startInstant)
+            val converge = syncPreferences.getInt(PREF_SYNC_SCHEMA, 0) < SYNC_SCHEMA
+            val syncMode = if (converge) SyncRestoreMode.CONVERGE else SyncRestoreMode.ADOPT
+            if (converge) {
+                logger.info { "Full converging sync: adopting server versions" }
+            }
             val backupMangas = BackupMangaHandler.backup(backupFlags)
+            val backupCategories =
+                BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
+            toWireCategoryOrders(backupCategories, backupMangas)
             val backup =
                 Backup(
                     backupMangas,
-                    BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME },
+                    backupCategories,
                     BackupSourceHandler.backup(backupMangas, backupFlags),
                     emptyMap(),
                     null,
@@ -224,6 +240,7 @@ object SyncManager {
             if (remoteBackup === syncData.backup) {
                 // nothing changed
                 logger.debug { "Skip restore due to remote was overwrite from local" }
+                markSyncSchema(converge)
                 finishWithSuccess(startInstant, periodic)
                 return
             }
@@ -250,7 +267,7 @@ object SyncManager {
                 return
             }
 
-            val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup)
+            val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup, restoreAll = converge)
             updateNonFavorites(nonFavorites)
 
             val newSyncData =
@@ -266,6 +283,7 @@ object SyncManager {
 
             if (!hasMangaChanges && !hasCategoryChanges && !hasSourceChanges) {
                 // update the sync timestamp
+                markSyncSchema(converge)
                 finishWithSuccess(startInstant, periodic)
                 return
             }
@@ -280,6 +298,20 @@ object SyncManager {
                     }
                 if (categoriesToDelete.isNotEmpty()) {
                     transaction {
+                        // the cascade delete of the category links and the sort_order renumbering
+                        // must not bump versions
+                        val categoryIds = categoriesToDelete.map { it.id }
+                        val mangaIds =
+                            CategoryMangaTable
+                                .select(CategoryMangaTable.manga)
+                                .where { CategoryMangaTable.category inList categoryIds }
+                                .map { it[CategoryMangaTable.manga].value }
+                        MangaTable.update({ MangaTable.id inList mangaIds }) {
+                            it[isSyncing] = true
+                        }
+                        CategoryTable.update {
+                            it[isSyncing] = true
+                        }
                         categoriesToDelete.forEach {
                             Category.removeCategory(it.id)
                         }
@@ -292,7 +324,7 @@ object SyncManager {
                 ProtoBackupImport.restore(
                     sourceStream = backupStream,
                     flags = backupFlags,
-                    isSync = true,
+                    syncMode = syncMode,
                 )
             _lastSyncState.value = SyncState.Restoring(startInstant, restoreId)
 
@@ -303,11 +335,38 @@ object SyncManager {
                     restoreState == ProtoBackupImport.BackupRestoreState.Failure
             }
 
+            if (ProtoBackupImport.getRestoreState(restoreId) == ProtoBackupImport.BackupRestoreState.Success) {
+                markSyncSchema(converge)
+            }
+
             // update the sync timestamp
             finishWithSuccess(startInstant, periodic)
         } catch (e: Throwable) {
             logger.error { "Error syncing: ${e.message}" }
             finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
+        }
+    }
+
+    /**
+     * Rebase the payload to the 0-based wire convention (Mihon/SY): categories get their
+     * 0-based rank and manga category refs (order values) are remapped to match. Refs to
+     * unknown orders are dropped so they can't alias whichever category now sits at 0.
+     */
+    internal fun toWireCategoryOrders(
+        categories: List<BackupCategory>,
+        mangas: List<BackupManga>,
+    ) {
+        val sorted = categories.sortedBy { it.order }
+        val rankByOrder = sorted.withIndex().associate { (index, category) -> category.order to index }
+        sorted.forEachIndexed { index, category -> category.order = index }
+        mangas.forEach { manga ->
+            manga.categories = manga.categories.mapNotNull { rankByOrder[it] }
+        }
+    }
+
+    private fun markSyncSchema(converge: Boolean) {
+        if (converge) {
+            syncPreferences.edit().putInt(PREF_SYNC_SCHEMA, SYNC_SCHEMA).apply()
         }
     }
 
@@ -401,7 +460,10 @@ object SyncManager {
         return false
     }
 
-    private fun filterFavoritesAndNonFavorites(backup: Backup): Pair<List<BackupManga>, List<BackupManga>> {
+    private fun filterFavoritesAndNonFavorites(
+        backup: Backup,
+        restoreAll: Boolean = false,
+    ): Pair<List<BackupManga>, List<BackupManga>> {
         val favorites = mutableListOf<BackupManga>()
         val nonFavorites = mutableListOf<BackupManga>()
 
@@ -425,7 +487,7 @@ object SyncManager {
                     when {
                         // Checks if the manga is in favorites and needs updating or adding
                         remoteManga.favorite -> {
-                            if (localManga == null || isMangaDifferent(localManga, remoteManga)) {
+                            if (restoreAll || localManga == null || isMangaDifferent(localManga, remoteManga)) {
                                 logger.debug { "Adding to favorites: ${remoteManga.title}" }
                                 favorites.add(remoteManga)
                             } else {
@@ -464,10 +526,13 @@ object SyncManager {
                 }
 
             if (localManga != null) {
-                if (localManga.inLibrary != nonFavorite.favorite) {
+                if (localManga.inLibrary != nonFavorite.favorite && nonFavorite.version >= localManga.version) {
                     transaction {
                         MangaTable.update({ MangaTable.id eq localManga.id }) {
                             it[inLibrary] = nonFavorite.favorite
+                            it[version] = nonFavorite.version
+                            it[lastModifiedAt] = nonFavorite.lastModifiedAt
+                            it[isSyncing] = true
                         }
                     }.apply {
                         handleMangaThumbnail(localManga.id, nonFavorite.favorite)
