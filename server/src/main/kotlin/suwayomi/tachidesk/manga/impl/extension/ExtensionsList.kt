@@ -143,7 +143,8 @@ object ExtensionsList {
 
                                         this[ExtensionTable.hasUpdate] = false
                                     }
-                            }
+                            }.toExecutable()
+                            .execute(this@transaction)
 
                         BatchUpdateStatement(ExtensionTable)
                             .apply {
