@@ -462,6 +462,8 @@ class DisableableDoubleSetting(
 class BooleanSetting(
     protoNumber: Int,
     defaultValue: Boolean,
+    validator: ((Boolean) -> String?)? = null,
+    toValidValue: ((Boolean) -> Boolean)? = null,
     group: SettingGroup,
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
@@ -471,7 +473,8 @@ class BooleanSetting(
 ) : SettingDelegate<Boolean>(
         protoNumber = protoNumber,
         defaultValue = defaultValue,
-        validator = null,
+        validator = validator,
+        toValidValue = toValidValue,
         group = group,
         deprecated = deprecated,
         requiresRestart = requiresRestart,

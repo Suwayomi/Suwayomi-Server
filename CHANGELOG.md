@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Download/API**) Fix subscription returning stale chapter data in some cases
 - (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
 - (**WebView**) Fix authentication with subpath option
+- (**WebView**) Fix `kcef` causing the server startup to fail
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
 - (**Migration/Extension**) Fix `extensionRepos` setting not being migrated to `extensionStores`
 
