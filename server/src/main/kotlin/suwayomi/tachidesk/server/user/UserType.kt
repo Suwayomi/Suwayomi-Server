@@ -24,11 +24,6 @@ sealed class UserType {
     data object Visitor : UserType()
 }
 
-/**
- * Returns true if this list of roles contains [role] (case-insensitive).
- */
-fun List<UserRole>.hasRole(role: UserRole): Boolean = any { it == role }
-
 fun UserType.requireUser(): Int =
     when (this) {
         is UserType.Admin -> id

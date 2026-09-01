@@ -17,8 +17,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.future
-import suwayomi.tachidesk.server.user.UserRole
-import suwayomi.tachidesk.server.user.hasRole
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -38,27 +38,17 @@ class BackupMutation {
     @RequireAuth
     fun restoreBackup(
         @GraphQLIgnore
-        role: List<UserRole>,
-        @GraphQLIgnore
         userId: Int,
         input: RestoreBackupInput,
     ): CompletableFuture<RestoreBackupPayload> {
         val (clientMutationId, backup, flags) = input
-
-        // only users with the admin role may change server settings by restoring a backup
-        val restoreFlags =
-            if (role.hasRole(UserRole.ADMIN)) {
-                BackupFlags.fromPartial(flags)
-            } else {
-                BackupFlags.fromPartial(flags).copy(includeServerSettings = false)
-            }
 
         return future {
             val restoreId =
                 ProtoBackupImport.restore(
                     userId,
                     backup.content(),
-                    restoreFlags,
+                    BackupFlags.fromPartial(flags),
                 )
 
             withTimeout(10.seconds) {
@@ -97,28 +87,37 @@ class BackupMutation {
     fun createBackup(
         @GraphQLIgnore
         userId: Int,
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
         input: CreateBackupInput? = null,
     ): CreateBackupPayload {
         val filename = Backup.getFilename()
 
-        val backup =
-            ProtoBackupExport.createBackup(
-                userId,
-                if (input?.flags != null) {
-                    BackupFlags.fromPartial(input.flags)
-                } else {
-                    BackupFlags(
-                        includeManga = BackupFlags.DEFAULT.includeManga,
-                        includeCategories = input?.includeCategories ?: BackupFlags.DEFAULT.includeCategories,
-                        includeChapters = input?.includeChapters ?: BackupFlags.DEFAULT.includeChapters,
-                        includeTracking = input?.includeTracking ?: BackupFlags.DEFAULT.includeTracking,
-                        includeHistory = input?.includeHistory ?: BackupFlags.DEFAULT.includeHistory,
-                        includeClientData = input?.includeClientData ?: BackupFlags.DEFAULT.includeClientData,
-                        includeServerSettings = input?.includeServerSettings ?: BackupFlags.DEFAULT.includeServerSettings,
-                        includeUserSettings = BackupFlags.DEFAULT.includeUserSettings,
-                    )
-                },
-            )
+        val backupFlags =
+            if (input?.flags != null) {
+                BackupFlags.fromPartial(input.flags)
+            } else {
+                BackupFlags(
+                    includeManga = BackupFlags.DEFAULT.includeManga,
+                    includeCategories = input?.includeCategories ?: BackupFlags.DEFAULT.includeCategories,
+                    includeChapters = input?.includeChapters ?: BackupFlags.DEFAULT.includeChapters,
+                    includeTracking = input?.includeTracking ?: BackupFlags.DEFAULT.includeTracking,
+                    includeHistory = input?.includeHistory ?: BackupFlags.DEFAULT.includeHistory,
+                    includeClientData = input?.includeClientData ?: BackupFlags.DEFAULT.includeClientData,
+                    includeServerSettings = input?.includeServerSettings ?: BackupFlags.DEFAULT.includeServerSettings,
+                    includeUserSettings = BackupFlags.DEFAULT.includeUserSettings,
+                )
+            }
+
+        // users without the MANAGE_SETTINGS permission may not export the global server settings
+        val effectiveFlags =
+            if (permissions.hasPermission(UserPermission.MANAGE_SETTINGS)) {
+                backupFlags
+            } else {
+                backupFlags.copy(includeServerSettings = false)
+            }
+
+        val backup = ProtoBackupExport.createBackup(userId, effectiveFlags)
 
         TemporaryFileStorage.saveFile(filename, backup)
 

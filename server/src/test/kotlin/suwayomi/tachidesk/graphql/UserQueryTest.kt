@@ -14,6 +14,7 @@ import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
 import suwayomi.tachidesk.global.model.table.UserRolesTable
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
@@ -577,20 +578,26 @@ class UserQueryTest : GraphQLTest() {
         revoke.assertNoErrors()
         assertEquals(emptyList<Any?>(), revoke.dataPath("updateUser", "user", "permissions"))
 
-        // the user no longer has access
+        // the user no longer has access to the real values; the query succeeds with a
+        // masked view and the mutation is a no-op for the global config
         val revokedUser = userWithPermissions(userId)
         val settingsRevoked =
             graphql(
                 """
                 query {
                     settings {
-                        authMode
+                        downloadAsCbz
                     }
                 }
                 """.trimIndent(),
                 user = revokedUser,
             )
-        settingsRevoked.assertForbidden()
+        settingsRevoked.assertNoErrors()
+        assertEquals(
+            SettingsRegistry.get("downloadAsCbz")!!.defaultValue,
+            settingsRevoked.dataPath("settings", "downloadAsCbz"),
+            "the revoked user should see the masked default value",
+        )
 
         val setSettingsRevoked =
             graphql(
@@ -604,7 +611,12 @@ class UserQueryTest : GraphQLTest() {
                 mapOf("input" to mapOf("settings" to mapOf("downloadAsCbz" to originalDownloadAsCbz))),
                 user = revokedUser,
             )
-        setSettingsRevoked.assertForbidden()
+        setSettingsRevoked.assertNoErrors()
+        assertEquals(
+            !originalDownloadAsCbz,
+            serverConfig.downloadAsCbz.value,
+            "the global setting must not be changed by the revoked user",
+        )
     }
 
     @AfterEach

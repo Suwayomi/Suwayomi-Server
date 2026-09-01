@@ -81,7 +81,6 @@ object UserSettingsBackupHandlerGenerator {
         appendLine("userId: Int,".addIndentation(contentIndentation))
         appendLine("userSettingsBackup: BackupUserSettings?,".addIndentation(contentIndentation))
         appendLine("legacyServerSettings: BackupServerSettings?,".addIndentation(contentIndentation))
-        appendLine("flags: BackupFlags,".addIndentation(contentIndentation))
         appendLine(") {".addIndentation(indentation))
 
         settings.forEach { setting ->
@@ -90,7 +89,7 @@ object UserSettingsBackupHandlerGenerator {
             // without a global equivalent (e.g. per-user connection accounts) have no legacy value to import.
             val legacyFallback =
                 if (SettingsRegistry.get(setting.key) != null) {
-                    " ?: if (flags.includeServerSettings) legacyServerSettings?.${setting.key} else null"
+                    " ?: legacyServerSettings?.${setting.key}"
                 } else {
                     ""
                 }

@@ -104,6 +104,10 @@ object UserCodeService {
         issuedBy: Int,
     ): IssuedCode =
         transaction {
+            require(userId != 1) {
+                "The built-in admin user cannot use recovery codes"
+            }
+
             val now = now()
 
             UserCodeTable

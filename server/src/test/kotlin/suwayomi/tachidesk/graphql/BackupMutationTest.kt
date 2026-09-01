@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BackupMutationTest : GraphQLTest() {
@@ -77,6 +78,66 @@ class BackupMutationTest : GraphQLTest() {
         val titles = backup.backupManga.map { it.title }.toSet()
         assertTrue(user2MangaTitle in titles, "the caller's own manga should be in the backup")
         assertFalse(adminMangaTitle in titles, "another user's manga should not be in the backup")
+    }
+
+    @Test
+    fun createBackupExcludesServerSettingsForNonManageSettingsUser() {
+        createLibraryManga("Manga to Backup")
+        val userId = createTestUser("backupnopermuser")
+        val user = UserType.User(userId, listOf(UserPermission.DOWNLOAD_CHAPTERS))
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: CreateBackupInput) {
+                    createBackup(input: ${'$'}input) {
+                        url
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf<String, Any?>()),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        val filename = (response.dataPath("createBackup", "url") as String).substringAfterLast('/')
+        val backupPath = TemporaryFileStorage.retrieveFile(filename)
+        val backup = decodeBackup(Files.readAllBytes(backupPath))
+
+        assertNull(
+            backup.serverSettings,
+            "serverSettings must not be included for users without MANAGE_SETTINGS",
+        )
+    }
+
+    @Test
+    fun createBackupIncludesServerSettingsForManageSettingsUser() {
+        createLibraryManga("Manga to Backup")
+        val userId = createTestUser("backuppermuser")
+        val user = UserType.User(userId, listOf(UserPermission.MANAGE_SETTINGS))
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: CreateBackupInput) {
+                    createBackup(input: ${'$'}input) {
+                        url
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf<String, Any?>()),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        val filename = (response.dataPath("createBackup", "url") as String).substringAfterLast('/')
+        val backupPath = TemporaryFileStorage.retrieveFile(filename)
+        val backup = decodeBackup(Files.readAllBytes(backupPath))
+
+        assertNotNull(
+            backup.serverSettings,
+            "serverSettings should be included for users with MANAGE_SETTINGS",
+        )
     }
 
     private fun decodeBackup(bytes: ByteArray): Backup =

@@ -360,6 +360,10 @@ class UserMutation {
         userId: Int,
         input: SetPasswordInput,
     ): SetPasswordPayload {
+        require(userId != 1) {
+            "The built-in admin user's password is managed by the server auth settings"
+        }
+
         val (clientMutationId, newPassword, oldPassword) = input
         transaction {
             val currentPassword =

@@ -23,7 +23,17 @@ import suwayomi.tachidesk.server.serverConfig
 @Suppress("ClassName", "unused")
 class M0063_AddUsers : Migration() {
     class UserSql {
-        private val password = Bcrypt.encryptPassword("password")
+        private val adminUsername =
+            serverConfig.authUsername.value
+                .trim()
+                .ifEmpty { "admin" }
+                .replace("'", "''")
+        private val password =
+            Bcrypt.encryptPassword(
+                serverConfig.authPassword.value
+                    .trim()
+                    .ifEmpty { "password" },
+            )
         val userAccountTable = "USERACCOUNT".toSqlName()
         val userRolesTable = "USERROLES".toSqlName()
         val categoryTable = "CATEGORY".toSqlName()
@@ -45,7 +55,7 @@ class M0063_AddUsers : Migration() {
                     @Language("SQL")
                     """
                     INSERT INTO $userAccountTable(USERNAME, PASSWORD)
-                    SELECT 'admin','$password';
+                    SELECT '$adminUsername','$password';
                     """.trimIndent()
                 }
 
@@ -53,7 +63,7 @@ class M0063_AddUsers : Migration() {
                     @Language("SQL")
                     """
                     INSERT INTO $userAccountTable(ID, USERNAME, PASSWORD)
-                    SELECT 1,'admin','$password';
+                    SELECT 1,'$adminUsername','$password';
                     """.trimIndent()
                 }
             }

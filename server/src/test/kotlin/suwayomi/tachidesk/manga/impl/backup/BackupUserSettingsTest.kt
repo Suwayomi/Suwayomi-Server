@@ -104,7 +104,7 @@ class BackupUserSettingsTest : ApplicationTest() {
         val backup = BackupUserSettingsHandler.backup(BackupFlags.DEFAULT, userA)
         assertNotNull(backup)
 
-        BackupUserSettingsHandler.restore(userB, backup, null, BackupFlags.DEFAULT)
+        BackupUserSettingsHandler.restore(userB, backup, null)
 
         // B receives A's effective values as its own overrides
         assertEquals(250, userSettings.value(userB, userConfig.opdsItemsPerPage))
@@ -140,7 +140,7 @@ class BackupUserSettingsTest : ApplicationTest() {
                 koreaderSyncChecksumMethod = KoreaderSyncChecksumMethod.FILENAME,
             )
 
-        BackupUserSettingsHandler.restore(userC, null, legacy, BackupFlags.DEFAULT)
+        BackupUserSettingsHandler.restore(userC, null, legacy)
 
         // The old global values become the importing user's per-user overrides
         assertEquals(300, userSettings.value(userC, userConfig.opdsItemsPerPage))
@@ -155,29 +155,6 @@ class BackupUserSettingsTest : ApplicationTest() {
             userConfig.opdsChapterSortOrder.defaultValue,
             userSettings.value(userC, userConfig.opdsChapterSortOrder),
         )
-    }
-
-    @Test
-    fun restoreLegacyRespectsIncludeServerSettingsFlag() {
-        val legacy = BackupServerSettings(opdsItemsPerPage = 300)
-        val flags = BackupFlags.DEFAULT.copy(includeServerSettings = false)
-
-        BackupUserSettingsHandler.restore(userC, null, legacy, flags)
-
-        // The legacy global value must not be applied when includeServerSettings is off
-        assertEquals(
-            userConfig.opdsItemsPerPage.defaultValue,
-            userSettings.value(userC, userConfig.opdsItemsPerPage),
-        )
-
-        val rows =
-            transaction {
-                UserSettingsTable
-                    .select(UserSettingsTable.value)
-                    .where { UserSettingsTable.user eq userC }
-                    .count()
-            }
-        assertEquals(0, rows)
     }
 
     @Test

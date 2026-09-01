@@ -37,6 +37,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupUserSettingsHan
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import java.io.InputStream
 import java.util.Date
 import java.util.Timer
@@ -181,14 +183,17 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         val validationResult = validate(userId, backup)
 
+        // only users with the MANAGE_SETTINGS permission can change the global server settings
+        val canManageSettings = hasPermission(userId, UserPermission.MANAGE_SETTINGS)
+
         val restoreCategories = if (flags.includeCategories) 1 else 0
         val restoreMeta = if (flags.includeClientData) 1 else 0
-        val restoreSettings = if (flags.includeServerSettings) 1 else 0
+        val restoreSettings = if (flags.includeServerSettings && canManageSettings) 1 else 0
         val restoreUserSettings = if (flags.includeUserSettings) 1 else 0
         val getRestoreAmount = { size: Int -> size + restoreCategories + restoreMeta + restoreSettings + restoreUserSettings }
         val restoreAmount = getRestoreAmount(if (flags.includeManga) backup.backupManga.size else 0)
 
-        if (flags.includeServerSettings) {
+        if (flags.includeServerSettings && canManageSettings) {
             updateRestoreState(
                 id,
                 BackupRestoreState.RestoringSettings(restoreSettings, restoreAmount),
@@ -207,7 +212,6 @@ object ProtoBackupImport : ProtoBackupBase() {
                 userId,
                 backup.userSettings,
                 backup.serverSettings,
-                flags,
             )
         }
 

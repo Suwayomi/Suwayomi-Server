@@ -39,6 +39,7 @@ import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
@@ -694,29 +695,39 @@ class PermissionsTest : GraphQLTest() {
     }
 
     @Test
-    fun settingsForbiddenWithoutPermission() {
+    fun settingsReturnsMaskedViewWithoutPermission() {
         val userId = createTestUser("settings1")
         val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        // the real value differs from the default, so a leak would be detected
+        serverConfig.downloadAsCbz.value = !originalDownloadAsCbz
 
         val response =
             graphql(
                 """
                 query {
                     settings {
-                        authMode
+                        downloadAsCbz
                     }
                 }
                 """.trimIndent(),
                 user = user,
             )
 
-        response.assertForbidden()
+        response.assertNoErrors()
+        assertEquals(
+            SettingsRegistry.get("downloadAsCbz")!!.defaultValue,
+            response.dataPath("settings", "downloadAsCbz"),
+            "users without MANAGE_SETTINGS should see the default value",
+        )
     }
 
     @Test
-    fun setSettingsForbiddenWithoutPermission() {
+    fun setSettingsDoesNotChangeGlobalSettingsWithoutPermission() {
         val userId = createTestUser("setsettings1")
         val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        serverConfig.downloadAsCbz.value = !originalDownloadAsCbz
 
         val response =
             graphql(
@@ -731,13 +742,20 @@ class PermissionsTest : GraphQLTest() {
                 user = user,
             )
 
-        response.assertForbidden()
+        response.assertNoErrors()
+        assertEquals(
+            !originalDownloadAsCbz,
+            serverConfig.downloadAsCbz.value,
+            "the global setting must not be changed",
+        )
     }
 
     @Test
-    fun resetSettingsForbiddenWithoutPermission() {
+    fun resetSettingsDoesNotChangeGlobalSettingsWithoutPermission() {
         val userId = createTestUser("resetsettings1")
         val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        serverConfig.downloadAsCbz.value = !originalDownloadAsCbz
 
         val response =
             graphql(
@@ -752,7 +770,12 @@ class PermissionsTest : GraphQLTest() {
                 user = user,
             )
 
-        response.assertForbidden()
+        response.assertNoErrors()
+        assertEquals(
+            !originalDownloadAsCbz,
+            serverConfig.downloadAsCbz.value,
+            "the global setting must not be reset",
+        )
     }
 
     @Test

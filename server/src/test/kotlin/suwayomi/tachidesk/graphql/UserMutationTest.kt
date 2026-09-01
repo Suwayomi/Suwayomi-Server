@@ -309,6 +309,26 @@ class UserMutationTest : GraphQLTest() {
 
     @Test
     fun setPassword() {
+        val userId = createTestUser("setpassbasicuser")
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: SetPasswordInput!) {
+                    setPassword(input: ${'$'}input) {
+                        clientMutationId
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("newPassword" to "updatedpass", "oldPassword" to "password")),
+                user = UserType.User(userId, listOf(UserPermission.DOWNLOAD_CHAPTERS)),
+            )
+
+        response.assertNoErrors()
+    }
+
+    @Test
+    fun setPasswordIsRejectedForTheAdminUser() {
         val response =
             graphql(
                 """
@@ -321,7 +341,24 @@ class UserMutationTest : GraphQLTest() {
                 mapOf("input" to mapOf("newPassword" to "updatedpass", "oldPassword" to "password")),
             )
 
-        response.assertNoErrors()
+        response.assertHasError()
+    }
+
+    @Test
+    fun createRecoveryCodeIsRejectedForTheAdminUser() {
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: CreateRecoveryCodeInput!) {
+                    createRecoveryCode(input: ${'$'}input) {
+                        code
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("userId" to 1)),
+            )
+
+        response.assertHasError()
     }
 
     @Test

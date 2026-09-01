@@ -19,7 +19,7 @@ import okio.Buffer
 import okio.Sink
 import okio.buffer
 import okio.gzip
-import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
@@ -72,8 +72,9 @@ object ProtoBackupExport : ProtoBackupBase() {
         val task = {
             try {
                 cleanupAutomatedBackups()
-                createAutomatedBackup()
-                preferences.edit().putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis()).apply()
+                if (createAutomatedBackup()) {
+                    preferences.edit().putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis()).apply()
+                }
             } catch (e: Exception) {
                 logger.error(e) { "scheduleAutomatedBackupTask: failed due to" }
             }
@@ -98,33 +99,41 @@ object ProtoBackupExport : ProtoBackupBase() {
         backupSchedulerJobId = HAScheduler.scheduleCron(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
     }
 
-    internal fun createAutomatedBackup() {
+    /**
+     * Creates one backup file per user. Returns true if at least one backup succeeded.
+     */
+    internal fun createAutomatedBackup(): Boolean {
         logger.info { "Creating automated backup..." }
 
-        val userIds =
+        val users =
             transaction {
-                UserAccountTable.selectAll().map { it[UserAccountTable.id].value }
+                UserAccountTable
+                    .select(UserAccountTable.id, UserAccountTable.username)
+                    .map { it[UserAccountTable.id].value to it[UserAccountTable.username] }
             }
-        if (userIds.isEmpty()) {
+        if (users.isEmpty()) {
             logger.warn { "No users found; skipping automated backup" }
-            return
+            return false
         }
 
         val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
         automatedBackupDir.mkdirs()
 
-        userIds.forEach { userId ->
+        var anySucceeded = false
+        users.forEach { (userId, username) ->
             try {
                 createBackup(userId, BackupFlags.fromServerConfig()).use { input ->
-                    val backupFile = File(automatedBackupDir, Backup.getFilename("$AUTO_BACKUP_FILENAME.user$userId"))
+                    val backupFile = File(automatedBackupDir, Backup.getFilename("$AUTO_BACKUP_FILENAME.$username"))
 
                     backupFile.outputStream().use { output -> input.copyTo(output) }
                 }
                 logger.info { "Automated backup for user $userId complete" }
+                anySucceeded = true
             } catch (e: Exception) {
                 logger.error(e) { "Automated backup for user $userId failed" }
             }
         }
+        return anySucceeded
     }
 
     internal fun cleanupAutomatedBackups() {
