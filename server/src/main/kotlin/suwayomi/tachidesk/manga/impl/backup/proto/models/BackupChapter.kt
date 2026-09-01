@@ -1,15 +1,17 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.models
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import suwayomi.tachidesk.manga.impl.util.lang.JsonObjectEmptyBytes
 
+// Scalars need defaults (proto3 peers omit zero values); see BackupManga.
 @Serializable
 data class BackupChapter(
     // in 1.x some of these values have different names
     // url is called key in 1.x
-    @ProtoNumber(1) var url: String,
-    @ProtoNumber(2) var name: String,
+    @ProtoNumber(1) @EncodeDefault var url: String = "",
+    @ProtoNumber(2) @EncodeDefault var name: String = "",
     @ProtoNumber(3) var scanlator: String? = null,
     @ProtoNumber(4) var read: Boolean = false,
     @ProtoNumber(5) var bookmark: Boolean = false,

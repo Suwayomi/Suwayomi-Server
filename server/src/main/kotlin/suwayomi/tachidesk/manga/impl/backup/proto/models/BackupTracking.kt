@@ -1,14 +1,16 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.models
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 
+// Scalars need defaults (proto3 peers omit zero values); see BackupManga.
 @Serializable
 data class BackupTracking(
     // in 1.x some of these values have different types or names
-    @ProtoNumber(1) var syncId: Int,
+    @ProtoNumber(1) @EncodeDefault var syncId: Int = 0,
     // LibraryId is not null in 1.x
-    @ProtoNumber(2) var libraryId: Long,
+    @ProtoNumber(2) @EncodeDefault var libraryId: Long = 0,
     @Deprecated("Use mediaId instead", level = DeprecationLevel.WARNING)
     @ProtoNumber(3)
     var mediaIdInt: Int = 0,
