@@ -28,14 +28,11 @@ server.jwtRefreshExpiry = "60d"              # refresh token lifetime
 
 ## Default admin account
 
-On first start, migration `M0063` seeds the built-in admin account (user id `1`):
+The built-in admin account (user id `1`) mirrors the server auth settings: its username is `server.authUsername` and its password is `server.authPassword` (both fall back to `admin` / `password` when empty).
 
-| Field | Value |
-|---|---|
-| Username | `admin` |
-| Password | `password` |
+Because of that, the admin's password **cannot be changed with the `setPassword` mutation** (it is rejected for user `1`) and user `1` is **not a valid recovery-code target**. To change the admin credentials, update `server.authUsername` / `server.authPassword` in `server.conf` (or via the `setSettings` API with `MANAGE_SETTINGS`).
 
-**This is a security-sensitive default.** If you run the server on a network other people can reach, change the admin password immediately (via the UI or the `setPassword` mutation, which requires the current password). The built-in admin (user `1`) cannot be modified or demoted through the API — it is fixed as the `ADMIN` role.
+**This is a security-sensitive default.** If you run the server on a network other people can reach, change the admin password immediately. The built-in admin (user `1`) cannot be modified or demoted through the API — it is fixed as the `ADMIN` role.
 
 ## Creating accounts
 
@@ -60,7 +57,7 @@ A user who forgets their password has no way back in on their own (`setPassword`
 - A recovery code is valid for **24 hours**.
 - Only **one active recovery code per user** — issuing a new one consumes the outstanding one.
 - Anyone (even a logged-out visitor) can redeem it with the `redeemRecoveryCode` mutation by providing the code and a new password. This sets the new password, invalidates all of the account's sessions (see below), and returns a JWT so the user is logged in immediately. The admin never learns the new password.
-- User `1` (the built-in admin) is a valid recovery target. If user `1` is the only admin and is locked out, there is no API path back in — an out-of-band database edit is required.
+- User `1` (the built-in admin) is **not** a valid recovery target — its credentials are managed by the server auth settings (see above). If user `1` is the only admin and is locked out, an out-of-band `server.conf` edit + a server restart is required.
 
 All redemption failures (not found, expired, already consumed, revoked) return the same uniform error ("Invalid or expired code") so the API never leaks which state a code is in.
 
@@ -75,7 +72,7 @@ Accounts are granted fine-grained permissions. The `ADMIN` role (user `1`) bypas
 | `UNINSTALL_EXTENSIONS` | Uninstalling extensions |
 | `DOWNLOAD_CHAPTERS` | Enqueueing chapter downloads |
 | `ACCESS_NSFW` | Viewing/fetching NSFW sources and extensions |
-| `MANAGE_SETTINGS` | Reading/writing global server settings |
+| `MANAGE_SETTINGS` | Reading (real values) / writing global server settings; including server settings in backup exports and applying them on backup restore |
 | `MANAGE_USERS` | Registering users, listing users, granting/revoking permissions, setting roles, issuing/redeeming user codes |
 | `MANAGE_EXTENSION_STORES` | Adding/removing extension stores |
 | `MANAGE_SOURCE_PREFERENCES` | Modifying global ConfigurableSource preferences |
@@ -87,6 +84,7 @@ Accounts are granted fine-grained permissions. The `ADMIN` role (user `1`) bypas
 
 ```
 INSTALL_EXTENSIONS
+INSTALL_EXTERNAL_EXTENSIONS
 UNINSTALL_EXTENSIONS
 DOWNLOAD_CHAPTERS
 ACCESS_NSFW
@@ -97,7 +95,7 @@ This means a self-registered user can install **untrusted** `.jar` extensions an
 An admin can change an account's permissions and role with `updateUser` (requires `MANAGE_USERS`):
 
 - `permissions` (non-null) replaces the account's full permission set.
-- `role` (non-null) replaces the account's single role (`USER` or `VISITOR`). The `ADMIN` role cannot be granted, and user `1` cannot be modified.
+- `role` (non-null) replaces the account's single role (`USER` or `ADMIN`). The `VISITOR` role cannot be granted, and user `1` cannot be modified.
 
 Note: permission and role changes take effect at the target account's next access-token refresh (up to `jwtTokenExpiry`), because the claims are embedded in the JWT.
 
@@ -129,7 +127,22 @@ Downloads are shared on disk but tracked per user:
 
 ## Automated backups (one file per user)
 
-Automated backups produce **one backup file per user**, named `org.suwayomi.tachidesk.auto.user<id>_<date>.tachibk`, in the shared automated-backup directory. Each file contains only that user's library and per-user settings. A failure for one user does not stop the others.
+Automated backups produce **one backup file per user**, named `org.suwayomi.tachidesk.auto.<username>_<date>.tachibk`, in the shared automated-backup directory. Each file contains only that user's library and per-user settings. A failure for one user does not stop the others.
+
+## Settings API for users without MANAGE_SETTINGS
+
+Pre-user-account clients still call the global `settings` query and the `setSettings` / `resetSettings` mutations. For users **without** `MANAGE_SETTINGS` these do not return an error; instead they operate on a masked view:
+
+- `settings` returns all settings at their **default values**, except the deprecated settings that were moved to per-user storage — those show the caller's **own** effective user setting, so legacy clients keep working for the options they know.
+- `setSettings` does **not** change the global config. Only the per-user-moved settings take effect, applied to the caller's own user settings.
+- `resetSettings` does **not** reset the global config; it resets the caller's per-user-moved user settings.
+
+Users **with** `MANAGE_SETTINGS` (including the `ADMIN` role) see and write the real global values as before.
+
+## Server settings in backups
+
+- `createBackup` (GraphQL) includes the global server settings in the export **only** for users with `MANAGE_SETTINGS`; for everyone else the `serverSettings` block is omitted so a non-privileged user's backup file cannot leak server settings.
+- Restoring a backup changes the global server settings **only** for users with `MANAGE_SETTINGS`. For everyone else the restore is a no-op for the global config, while the backup's per-user settings (including the legacy mapping of the per-user-moved settings from old backups) still apply to the importing user.
 
 ## Known limitations
 
