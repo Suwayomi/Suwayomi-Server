@@ -109,7 +109,7 @@ dex2jar-tools = { module = "de.femtopedia.dex2jar:dex-tools", version.ref = "dex
 
 # APK
 apk-parser = "net.dongliu:apk-parser:2.6.10"
-apksig = "com.android.tools.build:apksig:9.3.2"
+apksig = "com.android.tools.build:apksig:9.4.0"
 axml = "com.github.Aliucord:axml:ed26565eb0"
 
 # Xml
