@@ -436,6 +436,9 @@ object Extension {
                 null
             }
 
+        val isSameFile = jarFile.toAbsolutePath() == oldJarFile?.toAbsolutePath()
+        check(!isSameFile) { "Extension can't be updated to the same version. Reinstall the extension instead" }
+
         return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) { loadExtensionSources ->
             val apkName = extPackage.getApkName()
 
