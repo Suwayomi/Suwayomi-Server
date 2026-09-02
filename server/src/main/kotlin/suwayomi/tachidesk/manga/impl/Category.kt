@@ -22,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.global.impl.sync.SyncYomiSyncService
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
@@ -144,8 +145,17 @@ object Category {
     fun removeCategory(categoryId: Int) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
+            val uid =
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id eq categoryId }
+                    .firstOrNull()
+                    ?.get(CategoryTable.uid)
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
             normalizeCategories()
+            if (uid != null) {
+                SyncYomiSyncService.rememberDeletedCategory(uid)
+            }
         }
     }
 

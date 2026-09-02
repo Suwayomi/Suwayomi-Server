@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.global.impl.sync.SyncYomiSyncService
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
@@ -457,6 +458,7 @@ class CategoryMutation {
                 CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
 
                 Category.normalizeCategories()
+                category?.let { SyncYomiSyncService.rememberDeletedCategory(it[CategoryTable.uid]) }
 
                 if (category != null) {
                     CategoryType(category)
