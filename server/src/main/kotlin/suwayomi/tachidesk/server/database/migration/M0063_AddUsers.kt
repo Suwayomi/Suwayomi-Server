@@ -350,7 +350,7 @@ class M0063_AddUsers : Migration() {
     }
 
     private object UserAccountTable : IntIdTable() {
-        val username = varchar("username", 64)
+        val username = varchar("username", 64).uniqueIndex()
         val password = varchar("password", 90)
         val sessionVersion = integer("session_version").default(0)
     }

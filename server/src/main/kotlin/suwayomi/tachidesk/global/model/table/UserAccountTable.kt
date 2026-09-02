@@ -13,7 +13,7 @@ import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
  * Users registered in Suwayomi.
  */
 object UserAccountTable : IntIdTable() {
-    val username = varchar("username", 64)
+    val username = varchar("username", 64).uniqueIndex()
     val password = varchar("password", 90)
     val sessionVersion = integer("session_version").default(0)
 }
