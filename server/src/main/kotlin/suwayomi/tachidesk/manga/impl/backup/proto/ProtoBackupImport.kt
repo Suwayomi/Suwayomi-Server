@@ -21,6 +21,7 @@ import kotlinx.coroutines.sync.withLock
 import okio.buffer
 import okio.gzip
 import okio.source
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -35,6 +36,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupUserSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.CategoryTable.isSyncing
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.server.user.UserPermission
@@ -274,10 +277,25 @@ object ProtoBackupImport : ProtoBackupBase() {
         }
 
         transaction {
-            MangaUserTable.update({ MangaUserTable.isSyncing eq true }) {
+            MangaUserTable.update(
+                {
+                    MangaUserTable.isSyncing eq true and (MangaUserTable.user eq userId)
+                },
+            ) {
                 it[isSyncing] = false
             }
-            ChapterUserTable.update({ ChapterUserTable.isSyncing eq true }) {
+            ChapterUserTable.update(
+                {
+                    ChapterUserTable.isSyncing eq true and (ChapterUserTable.user eq userId)
+                },
+            ) {
+                it[isSyncing] = false
+            }
+            CategoryTable.update(
+                {
+                    CategoryTable.isSyncing eq true and (CategoryTable.user eq userId)
+                },
+            ) {
                 it[isSyncing] = false
             }
         }
