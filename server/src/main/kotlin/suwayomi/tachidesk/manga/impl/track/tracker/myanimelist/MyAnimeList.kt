@@ -7,6 +7,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelatedResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALOAuth
 import uy.kohesive.injekt.injectLazy
@@ -130,6 +131,8 @@ class MyAnimeList(
     }
 
     override suspend fun refresh(track: Track): Track = api.findListItem(track) ?: add(track)
+
+    suspend fun getRelated(remoteId: Long): TrackRelatedResult = api.getMangaRelated(remoteId)
 
     override fun authUrl(): String = MyAnimeListApi.authUrl().toString()
 

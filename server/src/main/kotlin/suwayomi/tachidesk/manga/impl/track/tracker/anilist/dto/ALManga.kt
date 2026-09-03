@@ -20,11 +20,13 @@ data class ALManga(
     val totalChapters: Int,
     val averageScore: Int,
     val staff: ALStaff,
+    val alternativeTitles: List<String> = emptyList(),
 ) {
     fun toTrack() =
         TrackSearch.create(TrackerManager.ANILIST).apply {
             remote_id = remoteId
             title = this@ALManga.title
+            alternative_titles = alternativeTitles
             total_chapters = totalChapters
             cover_url = imageUrl
             summary = description?.htmlDecode() ?: ""
