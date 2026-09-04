@@ -77,7 +77,7 @@ class UserQueryTest : GraphQLTest() {
         )
 
     @Test
-    fun userForbiddenWithoutPermission() {
+    fun userCanSeeTheirOwnData() {
         val userId = createTestUser("gqluser1")
         val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
 
@@ -91,6 +91,28 @@ class UserQueryTest : GraphQLTest() {
                 }
                 """.trimIndent(),
                 mapOf("id" to userId),
+                user = user,
+            )
+
+        response.assertNoErrors()
+    }
+
+    @Test
+    fun userCantSeeOthersData() {
+        val userId = createTestUser("gqluser1")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+        val userId2 = createTestUser("gqluser2")
+
+        val response =
+            graphql(
+                """
+                query(${'$'}id: Int!) {
+                    user(id: ${'$'}id) {
+                        id
+                    }
+                }
+                """.trimIndent(),
+                mapOf("id" to userId2),
                 user = user,
             )
 

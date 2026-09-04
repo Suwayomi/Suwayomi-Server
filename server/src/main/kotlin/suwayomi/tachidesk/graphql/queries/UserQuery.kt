@@ -8,6 +8,7 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
@@ -55,11 +56,12 @@ import java.util.concurrent.CompletableFuture
 
 class UserQuery {
     @RequireAuth
-    @RequirePermissions(UserPermission.MANAGE_USERS)
     fun user(
+        @GraphQLIgnore
+        userId: Int,
         dataFetchingEnvironment: DataFetchingEnvironment,
-        id: Int,
-    ): CompletableFuture<UserType> = dataFetchingEnvironment.getValueFromDataLoader("UserDataLoader", id)
+        id: Int?,
+    ): CompletableFuture<UserType> = dataFetchingEnvironment.getValueFromDataLoader("UserDataLoader", id ?: userId)
 
     @GraphQLDescription("Outstanding (unconsumed, unexpired) user codes.")
     @RequireAuth

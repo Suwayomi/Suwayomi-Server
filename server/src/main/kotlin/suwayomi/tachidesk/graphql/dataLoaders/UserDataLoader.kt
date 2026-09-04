@@ -23,9 +23,12 @@ import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.UserType
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.UserRole
+import suwayomi.tachidesk.server.user.hasPermission
 import suwayomi.tachidesk.server.user.requirePermissions
+import suwayomi.tachidesk.server.user.requireUser
 
 class UserDataLoader : KotlinDataLoader<Int, UserType> {
     override val dataLoaderName = "UserDataLoader"
@@ -33,9 +36,13 @@ class UserDataLoader : KotlinDataLoader<Int, UserType> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, UserType> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
-                suspendTransaction {
+                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
+                val canManageUsers = graphQLContext.getAttribute(Attribute.TachideskUser).hasPermission(UserPermission.MANAGE_USERS)
+                if (!canManageUsers && ids.any { it != userId }) {
+                    throw ForbiddenException()
+                }
+                transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    graphQLContext.getAttribute(Attribute.TachideskUser).requirePermissions(UserPermission.MANAGE_USERS)
                     val users =
                         UserAccountTable
                             .selectAll()
@@ -54,9 +61,13 @@ class PermissionsForUserDataLoader : KotlinDataLoader<Int, List<UserPermission>>
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<UserPermission>> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
+                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
+                val canManageUsers = graphQLContext.getAttribute(Attribute.TachideskUser).hasPermission(UserPermission.MANAGE_USERS)
+                if (!canManageUsers && ids.any { it != userId }) {
+                    throw ForbiddenException()
+                }
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    graphQLContext.getAttribute(Attribute.TachideskUser).requirePermissions(UserPermission.MANAGE_USERS)
                     val permissionsByUserId =
                         UserPermissionsTable
                             .selectAll()
@@ -88,9 +99,13 @@ class RolesForUserDataLoader : KotlinDataLoader<Int, List<UserRole>> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<UserRole>> =
         DataLoaderFactory.newDataLoader { ids ->
             future {
+                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
+                val canManageUsers = graphQLContext.getAttribute(Attribute.TachideskUser).hasPermission(UserPermission.MANAGE_USERS)
+                if (!canManageUsers && ids.any { it != userId }) {
+                    throw ForbiddenException()
+                }
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    graphQLContext.getAttribute(Attribute.TachideskUser).requirePermissions(UserPermission.MANAGE_USERS)
                     val rolesByUserId =
                         UserRolesTable
                             .selectAll()
