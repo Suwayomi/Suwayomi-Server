@@ -53,8 +53,7 @@ object SettingsGenerator {
             // Registration failed, but we tried
         }
 
-        // Instantiate a UserConfig to trigger per-user setting registration. The globalFlow lambdas are only stored
-        // (not invoked) here, so no GlobalConfigManager initialization is required.
+        // Instantiate a UserConfig to trigger per-user setting registration.
         try {
             UserConfig()
         } catch (e: Exception) {

@@ -63,13 +63,6 @@ data class SyncData(
     val backup: Backup? = null,
 )
 
-/**
- * Manages per-user SyncYomi syncing.
- *
- * Each user has their own sync account (host/api key), data flags, interval, sync state, and scheduled task. The
- * per-user config is read from [userSettings] (falling back to the global [serverConfig] value when the user has no
- * override).
- */
 object SyncManager {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}

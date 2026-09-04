@@ -18,13 +18,11 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * Descriptor for a per-user setting.
  *
- * A per-user setting mirrors a global [suwayomi.tachidesk.server.ServerConfig] setting but is stored per user with the global value acting as a
- * fallback for users without an explicit override.
- *
  * @param key the setting key (matches the global setting name)
  * @param protoNumber explicit proto field number used in the generated [BackupUserSettings]
  * @param group the setting group
- * @param globalFlow accessor for the global fallback value
+ * @param type the kclass type
+ * @param defaultValue the default value
  * @param validator optional value validator
  * @param typeInfo optional GQL/backup type conversion info (needed for non-primitive types)
  */
@@ -89,11 +87,7 @@ private inline fun <reified T : Any> userSetting(
     return setting
 }
 
-/**
- * Per-user settings. [suwayomi.tachidesk.server.ServerConfig] is used for a global value acting as a fallback.
- */
 class UserConfig {
-    // Library updates
     val excludeUnreadChapters: UserSetting<Boolean> = userSetting(
         key = "excludeUnreadChapters",
         protoNumber = 1,
@@ -122,7 +116,6 @@ class UserConfig {
         defaultValue = false,
     )
 
-    // Auto-download
     val autoDownloadNewChapters: UserSetting<Boolean> = userSetting(
         key = "autoDownloadNewChapters",
         protoNumber = 5,
@@ -154,7 +147,6 @@ class UserConfig {
         defaultValue = false,
     )
 
-    // OPDS
     val opdsItemsPerPage: UserSetting<Int> = userSetting(
         key = "opdsItemsPerPage",
         protoNumber = 9,
@@ -227,7 +219,6 @@ class UserConfig {
         defaultValue = false,
     )
 
-    // KOReader sync behavior
     val koreaderSyncChecksumMethod: UserSetting<KoreaderSyncChecksumMethod> = userSetting(
         key = "koreaderSyncChecksumMethod",
         protoNumber = 18,
@@ -266,7 +257,6 @@ class UserConfig {
         },
     )
 
-    // Download conversions served to clients
     val serveConversions: UserSetting<Map<String, DownloadConversion>> = userSetting(
         key = "serveConversions",
         protoNumber = 22,
@@ -357,7 +347,6 @@ class UserConfig {
         internalType = "Map<String, DownloadConversion>",
     )
 
-    // SyncYomi (per-user sync account). The global value acts as fallback for users without an override.
     val syncYomiEnabled: UserSetting<Boolean> = userSetting(
         key = "syncYomiEnabled",
         protoNumber = 23,

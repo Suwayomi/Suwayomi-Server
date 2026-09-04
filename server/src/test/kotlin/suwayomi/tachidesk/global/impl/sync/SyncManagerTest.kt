@@ -41,8 +41,8 @@ import kotlin.time.Duration.Companion.minutes
 /**
  * Tests for the per-user [SyncManager].
  *
- * Each user has their own sync account and enablement. These tests verify the per-user enablement (with the global
- * value as fallback) and the per-user sync state without exercising the network (the disabled paths return before any
+ * Each user has their own sync account and enablement. These tests verify the per-user enablement
+ * and the per-user sync state without exercising the network (the disabled paths return before any
  * HTTP call).
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

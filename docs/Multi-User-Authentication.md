@@ -137,7 +137,7 @@ Pre-user-account clients still call the global `settings` query and the `setSett
 - `setSettings` does **not** change the global config. Only the per-user-moved settings take effect, applied to the caller's own user settings.
 - `resetSettings` does **not** reset the global config; it resets the caller's per-user-moved user settings.
 
-Users **with** `MANAGE_SETTINGS` (including the `ADMIN` role) see and write the real global values as before.
+Users **with** `MANAGE_SETTINGS` (including the `ADMIN` role) see and write the ServerConfig as before.
 
 ## Server settings in backups
 

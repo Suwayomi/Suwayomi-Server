@@ -15,7 +15,7 @@ import suwayomi.tachidesk.global.model.table.UserSettingsTable
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Per-user setting overrides with a global fallback.
+ * Per-user settings.
  *
  * For each (userId, setting) this keeps a cached [MutableStateFlow] of the effective value (override if present,
  * otherwise the default value).
