@@ -93,7 +93,7 @@ object TrackerPreferences {
         .putString(scoreType(userId, sync.id), scoreType)
         .apply()
 
-    fun autoUpdateTrack(userId: Int) = preferenceStore.getBoolean("pref_auto_update_manga_sync_key", true)
+    fun autoUpdateTrack(userId: Int) = preferenceStore.getBoolean("pref_auto_update_manga_sync_$userId", true)
 
     fun trackUsername(
         userId: Int,

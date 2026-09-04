@@ -289,7 +289,7 @@ object UserCodeService {
     fun revokeCode(id: Int) {
         val now = now()
         if (!claimCode(id, now)) {
-            throw Exception("Invalid or expired code")
+            throw UserCodeRedemptionException()
         }
     }
 
