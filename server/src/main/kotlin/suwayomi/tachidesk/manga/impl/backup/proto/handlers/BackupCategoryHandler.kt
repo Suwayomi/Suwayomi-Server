@@ -59,7 +59,7 @@ object BackupCategoryHandler {
         userId: Int,
         backupCategories: List<BackupCategory>,
     ): Map<Int, Int> {
-        val dbCategories = Category.getCategoryList(userId)
+        val dbCategories = Category.getCategoryList(userId, includeDefault = true)
         val dbCategoriesByName = dbCategories.associateBy { it.name }
         val dbCategoriesByUid = dbCategories.associateBy { it.uid }
 

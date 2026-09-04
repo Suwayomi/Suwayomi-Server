@@ -407,7 +407,7 @@ object SyncManager {
             if (userSettings.value(userId, userConfig.syncDataCategories)) {
                 val mergedUids = newSyncData.backupCategories.map { it.uid }.toSet()
                 val mergedNames = newSyncData.backupCategories.map { it.name }.toSet()
-                val localCategories = Category.getCategoryList(userId).filterNot { it.default } // Exclude system category
+                val localCategories = Category.getCategoryList(userId).filterNot { it.isDefaultCategory } // Exclude system category
                 val categoriesToDelete =
                     localCategories.filter {
                         it.uid !in mergedUids && it.name !in mergedNames

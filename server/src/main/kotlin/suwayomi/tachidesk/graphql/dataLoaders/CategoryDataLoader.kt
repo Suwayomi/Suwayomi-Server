@@ -41,9 +41,8 @@ class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
                         CategoryTable
                             .selectAll()
                             .where { CategoryTable.id inList ids and (CategoryTable.user eq userId) }
-                            .map { CategoryType(it) }
-                            .associateBy { it.id }
-                    ids.map { categories[it] }
+                            .associateBy { it[CategoryTable.id].value }
+                    ids.map { categories[it]?.let { row -> CategoryType(row) } }
                 }
             }
         }

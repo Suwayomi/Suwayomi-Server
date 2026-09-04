@@ -14,8 +14,8 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
-import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -24,28 +24,36 @@ import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createChapters
 import suwayomi.tachidesk.test.createLibraryManga
+import suwayomi.tachidesk.test.ensureDefaultCategory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class CategoryMangaTest : ApplicationTest() {
+    @BeforeEach
+    fun setUp() {
+        // other test classes clear the CATEGORY table without restoring user 1's default row
+        ensureDefaultCategory(1)
+    }
+
     @Test
     fun getCategoryMangaList() {
-        val emptyCats = CategoryManga.getCategoryMangaList(1, DEFAULT_CATEGORY_ID).size
+        val defaultCategoryId = Category.getDefaultCategoryId(1)!!
+        val emptyCats = CategoryManga.getCategoryMangaList(1, defaultCategoryId).size
         assertEquals(0, emptyCats, "Default category should be empty at start")
         val mangaId = createLibraryManga("Psyren")
         createChapters(mangaId, 10, true)
-        assertEquals(1, CategoryManga.getCategoryMangaList(1, DEFAULT_CATEGORY_ID).size, "Default category should have one member")
+        assertEquals(1, CategoryManga.getCategoryMangaList(1, defaultCategoryId).size, "Default category should have one member")
         assertEquals(
             0,
-            CategoryManga.getCategoryMangaList(1, DEFAULT_CATEGORY_ID)[0].unreadCount,
+            CategoryManga.getCategoryMangaList(1, defaultCategoryId)[0].unreadCount,
             "Manga should not have any unread chapters",
         )
         createChapters(mangaId, 10, false, start = 11)
         assertEquals(
             10,
-            CategoryManga.getCategoryMangaList(1, DEFAULT_CATEGORY_ID)[0].unreadCount,
+            CategoryManga.getCategoryMangaList(1, defaultCategoryId)[0].unreadCount,
             "Manga should have unread chapters",
         )
 
@@ -68,7 +76,7 @@ class CategoryMangaTest : ApplicationTest() {
         )
         assertEquals(
             0,
-            CategoryManga.getCategoryMangaList(1, DEFAULT_CATEGORY_ID).size,
+            CategoryManga.getCategoryMangaList(1, defaultCategoryId).size,
             "Manga shouldn't be member of default category after moving",
         )
     }

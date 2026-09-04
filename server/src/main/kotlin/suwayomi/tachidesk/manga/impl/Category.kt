@@ -14,11 +14,11 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
-import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -67,7 +67,7 @@ object Category {
             names.map {
                 // creating a category named Default is illegal
                 if (it.equals(DEFAULT_CATEGORY_NAME, true)) {
-                    DEFAULT_CATEGORY_ID
+                    getDefaultCategoryId(userId)!!
                 } else {
                     newCategoryIdsByName[it] ?: categoryIdToName.entries.find { (_, name) -> name.equals(it, true) }!!.key
                 }
@@ -82,16 +82,20 @@ object Category {
         includeInUpdate: Int?,
         includeInDownload: Int?,
     ) {
+        val defaultCategoryId = getDefaultCategoryId(userId)
+        if (categoryId == defaultCategoryId && includeInDownload == null && includeInUpdate == null) {
+            return
+        }
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }) {
                 if (
-                    categoryId != DEFAULT_CATEGORY_ID &&
+                    categoryId != defaultCategoryId &&
                     name != null &&
                     !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)
                 ) {
                     it[CategoryTable.name] = name
                 }
-                if (categoryId != DEFAULT_CATEGORY_ID && isDefault != null) it[CategoryTable.isDefault] = isDefault
+                if (categoryId != defaultCategoryId && isDefault != null) it[CategoryTable.isDefault] = isDefault
                 if (includeInUpdate != null) it[CategoryTable.includeInUpdate] = includeInUpdate
                 if (includeInDownload != null) it[CategoryTable.includeInDownload] = includeInDownload
             }
@@ -112,7 +116,7 @@ object Category {
                 CategoryTable
                     .selectAll()
                     .where {
-                        CategoryTable.id neq DEFAULT_CATEGORY_ID and (CategoryTable.user eq userId)
+                        CategoryTable.isDefaultCategory eq false and (CategoryTable.user eq userId)
                     }.orderBy(CategoryTable.order to SortOrder.ASC)
                     .toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
@@ -129,7 +133,7 @@ object Category {
         userId: Int,
         categoryId: Int,
     ) {
-        if (categoryId == DEFAULT_CATEGORY_ID) return
+        if (categoryId == getDefaultCategoryId(userId)) return
         transaction {
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
             normalizeCategories(userId)
@@ -143,7 +147,7 @@ object Category {
                 .selectAll()
                 .where { (CategoryTable.user eq userId) }
                 .orderBy(CategoryTable.order to SortOrder.ASC)
-                .sortedWith(compareBy({ it[CategoryTable.id].value != 0 }, { it[CategoryTable.order] }))
+                .sortedWith(compareBy({ !it[CategoryTable.isDefaultCategory] }, { it[CategoryTable.order] }))
                 .forEachIndexed { index, cat ->
                     CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
                         it[CategoryTable.order] = index
@@ -168,20 +172,41 @@ object Category {
                 .not()
         }
 
-    const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
 
-    fun getCategoryList(userId: Int): List<CategoryDataClass> =
+    fun getDefaultCategory(userId: Int): CategoryDataClass? =
+        transaction {
+            CategoryTable
+                .selectAll()
+                .where { CategoryTable.user eq userId and (CategoryTable.isDefaultCategory eq true) }
+                .firstOrNull()
+                ?.let { CategoryTable.toDataClass(it) }
+        }
+
+    fun getDefaultCategoryId(userId: Int): Int? =
+        transaction {
+            CategoryTable
+                .select(CategoryTable.id)
+                .where { CategoryTable.user eq userId and (CategoryTable.isDefaultCategory eq true) }
+                .firstOrNull()
+                ?.get(CategoryTable.id)
+                ?.value
+        }
+
+    fun getCategoryList(
+        userId: Int,
+        includeDefault: Boolean = false,
+    ): List<CategoryDataClass> =
         transaction {
             CategoryTable
                 .selectAll()
                 .where { CategoryTable.user eq userId }
                 .orderBy(CategoryTable.order to SortOrder.ASC)
                 .let {
-                    if (needsDefaultCategory(userId)) {
+                    if (needsDefaultCategory(userId) || includeDefault) {
                         it
                     } else {
-                        it.andWhere { CategoryTable.id neq DEFAULT_CATEGORY_ID }
+                        it.andWhere { CategoryTable.isDefaultCategory eq false }
                     }
                 }.map {
                     CategoryTable.toDataClass(it)
@@ -203,7 +228,7 @@ object Category {
         categoryId: Int,
     ): Int =
         transaction {
-            if (categoryId == DEFAULT_CATEGORY_ID) {
+            if (categoryId == getDefaultCategoryId(userId)) {
                 MangaTable
                     .getWithUserData(userId)
                     .leftJoin(

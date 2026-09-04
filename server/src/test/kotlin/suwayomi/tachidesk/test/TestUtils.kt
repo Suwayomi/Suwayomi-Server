@@ -12,14 +12,19 @@ import eu.kanade.tachiyomi.source.model.SManga
 import io.github.oshai.kotlinlogging.DelegatingKLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteAll
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.slf4j.Logger
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
+import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -97,6 +102,31 @@ fun clearTables(vararg tables: IdTable<*>) {
     transaction {
         for (table in tables) {
             table.deleteAll()
+        }
+    }
+}
+
+/**
+ * Ensures [userId] has their system-managed "Default" category row (the implicit uncategorized
+ * bucket). No-op when the user already has a flagged row.
+ *
+ * Other test classes clear the CATEGORY table without restoring the row, so tests that rely on
+ * the per-user default row invariant use this helper to bring the DB back to a consistent state.
+ */
+fun ensureDefaultCategory(userId: Int) {
+    transaction {
+        val exists =
+            CategoryTable
+                .selectAll()
+                .where { CategoryTable.user eq userId and (CategoryTable.isDefaultCategory eq true) }
+                .any()
+        if (!exists) {
+            CategoryTable.insert {
+                it[CategoryTable.name] = Category.DEFAULT_CATEGORY_NAME
+                it[CategoryTable.isDefault] = true
+                it[CategoryTable.isDefaultCategory] = true
+                it[CategoryTable.user] = userId
+            }
         }
     }
 }

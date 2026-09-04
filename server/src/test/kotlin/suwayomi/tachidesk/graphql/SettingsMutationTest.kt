@@ -1,8 +1,11 @@
 package suwayomi.tachidesk.graphql
 
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.deleteAll
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.global.model.table.UserSettingsTable
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.settings.userConfig
@@ -230,6 +233,7 @@ class SettingsMutationTest : GraphQLTest() {
         serverConfig.maxSourcesInParallel.value = 6
         transaction {
             UserSettingsTable.deleteAll()
+            UserAccountTable.deleteWhere { UserAccountTable.id neq 1 }
         }
     }
 }

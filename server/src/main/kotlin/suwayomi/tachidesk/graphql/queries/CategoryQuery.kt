@@ -14,9 +14,11 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -94,6 +96,7 @@ class CategoryQuery {
         val order: Int? = null,
         val name: String? = null,
         val default: Boolean? = null,
+        val isDefaultCategory: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -101,6 +104,7 @@ class CategoryQuery {
             opAnd.eq(order, CategoryTable.order)
             opAnd.eq(name, CategoryTable.name)
             opAnd.eq(default, CategoryTable.isDefault)
+            opAnd.eq(isDefaultCategory, CategoryTable.isDefaultCategory)
 
             return opAnd.op
         }
@@ -111,6 +115,7 @@ class CategoryQuery {
         val order: IntFilter? = null,
         val name: StringFilter? = null,
         val default: BooleanFilter? = null,
+        val isDefaultCategory: BooleanFilter? = null,
         override val and: List<CategoryFilter>? = null,
         override val or: List<CategoryFilter>? = null,
         override val not: CategoryFilter? = null,
@@ -121,6 +126,7 @@ class CategoryQuery {
                 andFilterWithCompare(CategoryTable.order, order),
                 andFilterWithCompareString(CategoryTable.name, name),
                 andFilterWithCompare(CategoryTable.isDefault, default),
+                andFilterWithCompare(CategoryTable.isDefaultCategory, isDefaultCategory),
             )
     }
 

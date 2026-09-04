@@ -25,6 +25,7 @@ import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MangaUserType
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -62,8 +63,9 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
+                    val defaultCategoryId = Category.getDefaultCategoryId(userId)!!
                     val itemsByRef =
-                        if (ids.contains(0)) {
+                        if (ids.contains(defaultCategoryId)) {
                             MangaTable
                                 .getWithUserData(userId)
                                 .leftJoin(
@@ -76,7 +78,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                                 .andWhere { CategoryMangaTable.manga.isNull() }
                                 .map { MangaType(it) }
                                 .let {
-                                    mapOf(0 to it)
+                                    mapOf(defaultCategoryId to it)
                                 }
                         } else {
                             emptyMap()

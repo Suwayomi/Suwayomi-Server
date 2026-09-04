@@ -14,7 +14,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -46,9 +45,9 @@ object Library {
                     CategoryTable
                         .selectAll()
                         .where {
-                            MangaUserTable.user eq userId and
+                            CategoryTable.user eq userId and
                                 (CategoryTable.isDefault eq true) and
-                                (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                                (CategoryTable.isDefaultCategory eq false)
                         }.toList()
                 val existingCategories = CategoryMangaTable.selectAll().where { CategoryMangaTable.manga eq mangaId }.toList()
 

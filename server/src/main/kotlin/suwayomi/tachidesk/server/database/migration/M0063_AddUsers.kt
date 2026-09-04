@@ -74,6 +74,27 @@ class M0063_AddUsers : Migration() {
                 DatabaseType.POSTGRESQL -> postgresSyncYomiTriggers()
             }
 
+        // Enforces "at most one default category row per user" via a unique index on a generated
+        // column that is NULL for non-default rows (NULLs do not conflict in a unique index).
+        private val categoryDefaultCategoryIndexDdl =
+            when (serverConfig.databaseType.value) {
+                DatabaseType.H2 -> {
+                    @Language("SQL")
+                    """
+                    ALTER TABLE $categoryTable ADD COLUMN default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN USER_ID ELSE NULL END);
+                    CREATE UNIQUE INDEX ux_category_default_per_user ON $categoryTable (default_user_id);
+                    """.trimIndent()
+                }
+
+                DatabaseType.POSTGRESQL -> {
+                    @Language("SQL")
+                    """
+                    ALTER TABLE $categoryTable ADD COLUMN default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN user_id ELSE NULL END) STORED;
+                    CREATE UNIQUE INDEX ux_category_default_per_user ON $categoryTable (default_user_id);
+                    """.trimIndent()
+                }
+            }
+
         // language=h2
         fun h2SyncYomiTriggers(): String =
             """
@@ -274,6 +295,12 @@ class M0063_AddUsers : Migration() {
             -- Add foreign key constraints to reference USER table
             ALTER TABLE $categoryTable ADD CONSTRAINT FK_CATEGORY_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             ALTER TABLE $tractRecordTable ADD CONSTRAINT FK_TRACKRECORD_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
+
+            -- Create default category marker
+            ALTER TABLE $categoryTable ADD COLUMN IS_DEFAULT_CATEGORY BOOLEAN NOT NULL DEFAULT FALSE;
+            UPDATE $categoryTable SET IS_DEFAULT_CATEGORY = TRUE WHERE ID = 0 AND USER_ID = 1;
+            $categoryDefaultCategoryIndexDdl
+
             ALTER TABLE $mangaMetaTable ADD CONSTRAINT FK_MANGAMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             ALTER TABLE $chapterMetaTable ADD CONSTRAINT FK_CHAPTERMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             ALTER TABLE $categoryMangaTable ADD CONSTRAINT FK_CATEGORYMANGA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;

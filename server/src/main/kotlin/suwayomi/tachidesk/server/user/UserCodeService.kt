@@ -24,7 +24,9 @@ import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.global.model.table.UserCodeTable
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
 import suwayomi.tachidesk.global.model.table.UserRolesTable
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.util.lang.isNotEmpty
+import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.security.SecureRandom
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
@@ -165,33 +167,34 @@ object UserCodeService {
     fun redeemRecoveryCode(
         code: String,
         newPassword: String,
-    ): Int =
-        transaction {
-            val now = now()
+    ): Int {
+        val now = now()
 
-            val match =
-                findUnconsumedCode(UserCodePurpose.RECOVERY, code, now)
-                    ?: throw UserCodeRedemptionException()
+        val match =
+            findUnconsumedCode(UserCodePurpose.RECOVERY, code, now)
+                ?: throw UserCodeRedemptionException()
 
-            val codeId = match[UserCodeTable.id].value
-            val userId =
-                requireNotNull(match[UserCodeTable.user]?.value) {
-                    "recovery code is not bound to a user"
-                }
-
-            if (!claimCode(codeId, now)) {
-                throw UserCodeRedemptionException()
+        val codeId = match[UserCodeTable.id].value
+        val userId =
+            requireNotNull(match[UserCodeTable.user]?.value) {
+                "recovery code is not bound to a user"
             }
 
+        if (!claimCode(codeId, now)) {
+            throw UserCodeRedemptionException()
+        }
+
+        transaction {
             UserAccountTable
                 .update({ UserAccountTable.id eq userId }) {
                     it[UserAccountTable.password] = Bcrypt.encryptPassword(newPassword)
                 }
-
-            SessionVersion.bump(userId)
-
-            userId
         }
+
+        SessionVersion.bump(userId)
+
+        return userId
+    }
 
     /**
      * Redeems a registration code with a username and a self-chosen password, creating the
@@ -203,54 +206,58 @@ object UserCodeService {
         code: String,
         username: String,
         password: String,
-    ): Int =
-        transaction {
-            val now = now()
+    ): Int {
+        val now = now()
 
-            val match =
-                findUnconsumedCode(UserCodePurpose.REGISTRATION, code, now)
-                    ?: throw UserCodeRedemptionException()
+        val match =
+            findUnconsumedCode(UserCodePurpose.REGISTRATION, code, now)
+                ?: throw UserCodeRedemptionException()
 
-            val codeId = match[UserCodeTable.id].value
+        val codeId = match[UserCodeTable.id].value
 
-            if (!claimCode(codeId, now)) {
-                throw UserCodeRedemptionException()
-            }
+        if (!claimCode(codeId, now)) {
+            throw UserCodeRedemptionException()
+        }
 
-            val userExists =
+        val userExists =
+            transaction {
                 UserAccountTable
                     .selectAll()
                     .where { UserAccountTable.username.lowerCase() eq username.lowercase() }
                     .isNotEmpty()
-            if (userExists) {
-                throw Exception("Username already exists")
             }
 
-            val userId = createUser(username, password)
+        if (userExists) {
+            throw Exception("Username already exists")
+        }
 
-            // backfill the code row with the new user for the audit trail
+        val userId = createUser(username, password)
+
+        // backfill the code row with the new user for the audit trail
+        transaction {
             UserCodeTable
                 .update({ UserCodeTable.id eq codeId }) {
                     it[UserCodeTable.user] = userId
                 }
-
-            userId
         }
 
-    fun listOutstandingCodes(userId: Int? = null): List<OutstandingCode> =
-        transaction {
-            val now = now()
+        return userId
+    }
 
-            val base =
-                UserCodeTable.consumedAt.isNull() and (UserCodeTable.expiresAt greater now.epochSeconds)
+    fun listOutstandingCodes(userId: Int? = null): List<OutstandingCode> {
+        val now = now()
 
-            val where =
-                if (userId != null) {
-                    base and (UserCodeTable.user eq userId)
-                } else {
-                    base
-                }
+        val base =
+            UserCodeTable.consumedAt.isNull() and (UserCodeTable.expiresAt greater now.epochSeconds)
 
+        val where =
+            if (userId != null) {
+                base and (UserCodeTable.user eq userId)
+            } else {
+                base
+            }
+
+        return transaction {
             UserCodeTable
                 .selectAll()
                 .where { where }
@@ -265,13 +272,12 @@ object UserCodeService {
                     )
                 }
         }
+    }
 
     fun revokeCode(id: Int) {
-        transaction {
-            val now = now()
-            if (!claimCode(id, now)) {
-                throw Exception("Invalid or expired code")
-            }
+        val now = now()
+        if (!claimCode(id, now)) {
+            throw Exception("Invalid or expired code")
         }
     }
 
@@ -289,24 +295,33 @@ object UserCodeService {
             "Username too long"
         }
 
-        val userId =
-            UserAccountTable
-                .insertAndGetId {
-                    it[UserAccountTable.username] = username
-                    it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
-                }.value
+        return transaction {
+            val userId =
+                UserAccountTable
+                    .insertAndGetId {
+                        it[UserAccountTable.username] = username
+                        it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
+                    }.value
 
-        UserPermissionsTable.batchInsert(UserPermission.defaultPermissions) {
-            this[UserPermissionsTable.user] = userId
-            this[UserPermissionsTable.permission] = it.name
+            UserPermissionsTable.batchInsert(UserPermission.defaultPermissions) {
+                this[UserPermissionsTable.user] = userId
+                this[UserPermissionsTable.permission] = it.name
+            }
+
+            UserRolesTable.insert {
+                it[UserRolesTable.user] = userId
+                it[UserRolesTable.role] = UserRole.USER.name
+            }
+
+            CategoryTable.insert {
+                it[CategoryTable.name] = Category.DEFAULT_CATEGORY_NAME
+                it[CategoryTable.isDefault] = true
+                it[CategoryTable.isDefaultCategory] = true
+                it[CategoryTable.user] = userId
+            }
+
+            userId
         }
-
-        UserRolesTable.insert {
-            it[UserRolesTable.user] = userId
-            it[UserRolesTable.role] = UserRole.USER.name
-        }
-
-        return userId
     }
 
     /**
@@ -319,13 +334,15 @@ object UserCodeService {
         code: String,
         now: Instant,
     ): ResultRow? =
-        UserCodeTable
-            .selectAll()
-            .where {
-                (UserCodeTable.type eq purpose.name) and
-                    UserCodeTable.consumedAt.isNull() and
-                    (UserCodeTable.expiresAt greater now.epochSeconds)
-            }.firstOrNull { Bcrypt.verify(it[UserCodeTable.codeHash], code) }
+        transaction {
+            UserCodeTable
+                .selectAll()
+                .where {
+                    (UserCodeTable.type eq purpose.name) and
+                        UserCodeTable.consumedAt.isNull() and
+                        (UserCodeTable.expiresAt greater now.epochSeconds)
+                }.firstOrNull { Bcrypt.verify(it[UserCodeTable.codeHash], code) }
+        }
 
     /**
      * Atomically claims a code (marks it consumed). Only succeeds if the code is still
@@ -335,12 +352,14 @@ object UserCodeService {
         id: Int,
         now: Instant,
     ): Boolean =
-        UserCodeTable
-            .update({
-                (UserCodeTable.id eq id) and
-                    UserCodeTable.consumedAt.isNull() and
-                    (UserCodeTable.expiresAt greater now.epochSeconds)
-            }) {
-                it[UserCodeTable.consumedAt] = now.epochSeconds
-            } == 1
+        transaction {
+            UserCodeTable
+                .update({
+                    (UserCodeTable.id eq id) and
+                        UserCodeTable.consumedAt.isNull() and
+                        (UserCodeTable.expiresAt greater now.epochSeconds)
+                }) {
+                    it[UserCodeTable.consumedAt] = now.epochSeconds
+                } == 1
+        }
 }

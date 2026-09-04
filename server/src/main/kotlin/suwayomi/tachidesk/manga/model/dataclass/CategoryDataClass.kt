@@ -29,6 +29,7 @@ data class CategoryDataClass(
     val default: Boolean,
     val includeInUpdate: IncludeOrExclude,
     val includeInDownload: IncludeOrExclude,
+    val isDefaultCategory: Boolean,
     val version: Long,
     val uid: Long,
     val lastModifiedAt: Long,

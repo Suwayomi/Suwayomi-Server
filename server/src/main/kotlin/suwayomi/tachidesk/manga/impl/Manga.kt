@@ -546,7 +546,7 @@ object Manga {
         var mangaCategories = CategoryManga.getMangaCategories(userId, mangaId).toSet()
         // if the manga has no categories, then it's implicitly in the default category
         if (mangaCategories.isEmpty()) {
-            val defaultCategory = Category.getCategoryById(userId, Category.DEFAULT_CATEGORY_ID)!!
+            val defaultCategory = Category.getDefaultCategory(userId) ?: return false
             mangaCategories = setOf(defaultCategory)
         }
 

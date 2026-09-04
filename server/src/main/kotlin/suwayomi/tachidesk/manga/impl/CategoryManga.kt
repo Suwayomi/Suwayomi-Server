@@ -25,7 +25,6 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -60,7 +59,8 @@ object CategoryManga {
         mangaIds: List<Int>,
         categoryIds: List<Int>,
     ) {
-        val filteredCategoryIds = categoryIds.filter { it != DEFAULT_CATEGORY_ID }
+        val defaultCategoryId = Category.getDefaultCategoryId(userId)
+        val filteredCategoryIds = categoryIds.filter { it != defaultCategoryId }
 
         val mangaIdsToCategoryIds = getMangasCategories(userId, mangaIds).mapValues { it.value.map { category -> category.id } }
         val mangaIdsToNewCategoryIds =
@@ -93,7 +93,7 @@ object CategoryManga {
         mangaId: Int,
         categoryId: Int,
     ) {
-        if (categoryId == DEFAULT_CATEGORY_ID) return
+        if (categoryId == Category.getDefaultCategoryId(userId)) return
         transaction {
             CategoryMangaTable.deleteWhere {
                 (CategoryMangaTable.category eq categoryId) and
@@ -157,7 +157,7 @@ object CategoryManga {
         return transaction {
             // Fetch data from the MangaTable and join with the CategoryMangaTable, if a category is specified
             val query =
-                if (categoryId == DEFAULT_CATEGORY_ID) {
+                if (categoryId == Category.getDefaultCategoryId(userId)) {
                     MangaTable
                         .getWithUserData(userId)
                         .leftJoin(

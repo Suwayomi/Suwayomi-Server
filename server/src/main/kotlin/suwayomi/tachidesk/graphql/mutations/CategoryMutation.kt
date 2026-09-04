@@ -288,15 +288,20 @@ class CategoryMutation {
         patch: UpdateCategoryPatch,
     ) {
         transaction {
+            // The default category row is protected from rename and landing-flag changes;
             if (patch.name != null) {
-                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
+                CategoryTable.update({
+                    CategoryTable.id inList ids and (CategoryTable.user eq userId) and (CategoryTable.isDefaultCategory eq false)
+                }) { update ->
                     patch.name.also {
                         update[name] = it
                     }
                 }
             }
             if (patch.default != null) {
-                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
+                CategoryTable.update({
+                    CategoryTable.id inList ids and (CategoryTable.user eq userId) and (CategoryTable.isDefaultCategory eq false)
+                }) { update ->
                     patch.default.also {
                         update[isDefault] = it
                     }
@@ -331,7 +336,12 @@ class CategoryMutation {
 
         val category =
             transaction {
-                CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
+                CategoryType(
+                    CategoryTable
+                        .selectAll()
+                        .where { CategoryTable.id eq id and (CategoryTable.user eq userId) }
+                        .first(),
+                )
             }
 
         return UpdateCategoryPayload(
@@ -384,6 +394,20 @@ class CategoryMutation {
         val (clientMutationId, categoryId, position) = input
         require(position > 0) {
             "'order' must not be <= 0"
+        }
+
+        // Don't reorder the default category
+        val defaultCategoryId = Category.getDefaultCategoryId(userId)
+        if (categoryId == defaultCategoryId) {
+            val categories =
+                transaction {
+                    CategoryTable
+                        .selectAll()
+                        .where { CategoryTable.user eq userId }
+                        .orderBy(CategoryTable.order)
+                        .map { CategoryType(it) }
+                }
+            return UpdateCategoryOrderPayload(clientMutationId, categories)
         }
 
         transaction {
@@ -589,18 +613,20 @@ class CategoryMutation {
         ids: List<Int>,
         patch: UpdateMangaCategoriesPatch,
     ) {
+        val removeFromCategoryIds = patch.removeFromCategories.orEmpty()
+        val addToCategoryIds = patch.addToCategories.orEmpty()
         transaction {
             if (patch.clearCategories == true) {
                 CategoryMangaTable.deleteWhere { CategoryMangaTable.manga inList ids and (CategoryMangaTable.user eq userId) }
-            } else if (!patch.removeFromCategories.isNullOrEmpty()) {
+            } else if (removeFromCategoryIds.isNotEmpty()) {
                 CategoryMangaTable.deleteWhere {
                     (CategoryMangaTable.manga inList ids) and
-                        (CategoryMangaTable.category inList patch.removeFromCategories) and
+                        (CategoryMangaTable.category inList removeFromCategoryIds) and
                         (CategoryMangaTable.user eq userId)
                 }
             }
-            if (!patch.addToCategories.isNullOrEmpty()) {
-                CategoryManga.addMangasToCategories(userId, ids, patch.addToCategories)
+            if (addToCategoryIds.isNotEmpty()) {
+                CategoryManga.addMangasToCategories(userId, ids, addToCategoryIds)
             }
         }
     }

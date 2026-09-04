@@ -109,17 +109,18 @@ class UserMutation {
     @RequirePermissions(UserPermission.MANAGE_USERS)
     fun register(input: RegisterInput): RegisterPayload {
         val (clientMutationId, username, password) = input
-        transaction {
-            val userExists =
+
+        val userExists =
+            transaction {
                 UserAccountTable
                     .selectAll()
                     .where { UserAccountTable.username.lowerCase() eq username.lowercase() }
                     .isNotEmpty()
-            if (userExists) {
-                throw Exception("Username already exists")
-            } else {
-                UserCodeService.createUser(username, password)
             }
+        if (userExists) {
+            throw Exception("Username already exists")
+        } else {
+            UserCodeService.createUser(username, password)
         }
 
         return RegisterPayload(

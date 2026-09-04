@@ -20,6 +20,7 @@ object CategoryTable : IntIdTable() {
     val isDefault = bool("is_default").default(false)
     val includeInUpdate = integer("include_in_update").default(IncludeOrExclude.UNSET.value)
     val includeInDownload = integer("include_in_download").default(IncludeOrExclude.UNSET.value)
+    val isDefaultCategory = bool("is_default_category").default(false)
 
     val version = long("version").default(0)
     val uid = long("uid").default(0)
@@ -36,6 +37,7 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
         default = categoryEntry[isDefault],
         includeInUpdate = IncludeOrExclude.fromValue(categoryEntry[includeInUpdate]),
         includeInDownload = IncludeOrExclude.fromValue(categoryEntry[includeInDownload]),
+        isDefaultCategory = categoryEntry[isDefaultCategory],
         version = categoryEntry[version],
         uid = categoryEntry[uid],
         lastModifiedAt = categoryEntry[lastModifiedAt],

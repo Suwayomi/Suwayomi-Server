@@ -12,7 +12,6 @@ import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
-import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
@@ -21,6 +20,7 @@ import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.global.model.table.UserSettingsTable
 import suwayomi.tachidesk.graphql.types.DownloadConversion
+import suwayomi.tachidesk.server.user.UserCodeService
 import suwayomi.tachidesk.test.ApplicationTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,11 +52,10 @@ class UserSettingsTest : ApplicationTest() {
 
     private fun createUser(username: String): Int =
         transaction {
-            UserAccountTable
-                .insertAndGetId {
-                    it[UserAccountTable.username] = username
-                    it[UserAccountTable.password] = "password"
-                }.value
+            UserCodeService.createUser(
+                username,
+                "password",
+            )
         }
 
     @Test
