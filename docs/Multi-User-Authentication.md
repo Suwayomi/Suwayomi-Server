@@ -152,3 +152,5 @@ The following are **not** handled by the multi-user work (documented so they are
 - **page-image and CBZ endpoints** serve content without an ownership/NSFW check; a non-NSFW user could read page content of NSFW manga another user added.
 - **Shared download queue control** (`start`/`stop`/`clear`/`reorder`/`dequeue`) operates on the shared queue and is not per-user gated.
 - **`updateStop`** cancels all users' library-update jobs (a per-user reset would be invasive); known limitation.
+- **Shared library-update status** — the `Updater` emits a single global status/updates stream, so all users see the same update progress (a consequence of the shared update queue).
+- **`globalUpdateInterval` is global** — the automatic library-update cadence is shared across all users and is not a per-user setting.

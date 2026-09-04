@@ -17,6 +17,9 @@ Suwayomi will create a default configuration file when one doesn't exist, you ca
 - Set the special `server.rootDir` key if you need Suwayomi to use a custom data directory path, refer to [this section](#overriding-tachidesk-servers-data-directory-path). 
 
 ## Configuration Options
+
+**Note:** Most behavioral settings are now stored per-user. The `server.*` keys marked **Deprecated** in this document are no longer read from `server.conf`; their values live in per-user storage and are managed via the `userSettings` / `setUserSettings` / `resetUserSettings` GraphQL API (or the UI). Values have been removed from `server.conf`.
+
 ### Server ip and port bindings
 ```conf
 server.ip = "0.0.0.0"
@@ -83,10 +86,10 @@ server.downloadConversions = {}
 ```
 - `server.downloadAsCbz = true` configures Suwayomi to automatically compress chapters into CBZ.
 - `server.downloadsPath = ""` the path where manga downloads will be stored, if the value is empty, the default directory `downloads` inside [the data directory](https://github.com/Suwayomi/Suwayomi-Server/wiki/The-Data-Directory) will be used. If you are on Windows the slashes `\` needs to be doubled(`\\`) or replaced with `/`
-- `server.autoDownloadNewChapters = false` controls if Suwayomi should automatically download new chapters after a library update.
-- `server.excludeEntryWithUnreadChapters = true` controls if Suwayomi will download new chapters for titles with unread chapters (requires `server.autoDownloadNewChapters`).
-- `server.autoDownloadNewChaptersLimit = 0` sets how many chapters should be downloaded at most, `0` to disable the limit; if the limit is reached, new chapters will not be downloaded (requires `server.autoDownloadNewChapters`).
-- `server.autoDownloadIgnoreReUploads = false` controls if Suwayomi will re-download re-uploads on update (requires `server.autoDownloadNewChapters`).
+- `server.autoDownloadNewChapters = false` controls if Suwayomi should automatically download new chapters after a library update. **Deprecated:** now per-user.
+- `server.excludeEntryWithUnreadChapters = true` controls if Suwayomi will download new chapters for titles with unread chapters (requires `server.autoDownloadNewChapters`). **Deprecated:** now per-user.
+- `server.autoDownloadNewChaptersLimit = 0` sets how many chapters should be downloaded at most, `0` to disable the limit; if the limit is reached, new chapters will not be downloaded (requires `server.autoDownloadNewChapters`). **Deprecated:** now per-user.
+- `server.autoDownloadIgnoreReUploads = false` controls if Suwayomi will re-download re-uploads on update (requires `server.autoDownloadNewChapters`). **Deprecated:** now per-user.
 - `server.downloadConversions = {}` configures optional image conversions for all downloads. This is an [JSON object](https://en.wikipedia.org/wiki/JSON#Syntax), with the source image [mime type](https://en.wikipedia.org/wiki/Media_type) as the key and an object with the target mime type or url and options as value.  
   The following options are all valid:  
   ```
@@ -113,7 +116,7 @@ server.downloadConversions = {}
   A source mime type `default` can be used as fallback to convert all images; a target mime type of `none` can be used to disable conversion for a particular format.
   
   This is an example curl command for what Suwayomi-Server will send to the conversion url: `curl -X POST "http://localhost:9999/convert" -F "image=@cat.png;type=image/png"`
-- `server.serveConversions = {}` configures optional image conversions before serving the image to the client. It follows the same format as `server.downloadConversions`.
+- `server.serveConversions = {}` configures optional image conversions before serving the image to the client. It follows the same format as `server.downloadConversions`. **Deprecated:** now per-user.
 
 
 ### Updater
@@ -124,11 +127,11 @@ server.excludeCompleted = true
 server.globalUpdateInterval = 12
 server.updateMangas = false
 ```
-- `server.excludeUnreadChapters = true` controls if Suwayomi should include titles with unread chapters in the library update.
-- `server.excludeNotStarted = true` controls if Suwayomi should include titles which weren't started yet in the library update.
-- `server.excludeCompleted = true` controls if Suwayomi should include titles which are marked completed in the library update.
+- `server.excludeUnreadChapters = true` controls if Suwayomi should include titles with unread chapters in the library update. **Deprecated:** now per-user.
+- `server.excludeNotStarted = true` controls if Suwayomi should include titles which weren't started yet in the library update. **Deprecated:** now per-user.
+- `server.excludeCompleted = true` controls if Suwayomi should include titles which are marked completed in the library update. **Deprecated:** now per-user.
 - `server.globalUpdateInterval = 12` sets the time in hours for the automatic library internal, `0` to disable it. Range: 6 <= n < ∞
-- `server.updateMangas = false` controls if Suwayomi should also update title metadata along with fetching new chapters in the library update.
+- `server.updateMangas = false` controls if Suwayomi should also update title metadata along with fetching new chapters in the library update. **Deprecated:** now per-user.
 
 ### Authentication
 ```
@@ -241,35 +244,27 @@ server.opdsChapterSortOrder = "DESC"
 server.opdsCbzMimetype = "MODERN"
 server.opdsSkipChapterMetadataFeed = false
 ```
-- `server.opdsUseBinaryFileSizes = false` controls if Suwayomi should display file sizes in binary units (KiB, MiB, GiB) or decimal (KB, MB, GB) in OPDS listings.
-- `server.opdsItemsPerPage = 50` sets the number of items per page in OPDS listings. Range: 10 <= n <= 5000.
-- `server.opdsEnablePageReadProgress = true` controls if Suwayomi should include information to track chapter read progress in OPDS chapter page listings. This will cause the reader to mark the pages as read when it downloads the images.
-- `server.opdsMarkAsReadOnDownload = false` controls if Suwayomi should mark the chapters as read when it is downloaded through the OPDS listing.
-- `server.opdsShowOnlyUnreadChapters = false` controls if OPDS listings should only include unread chapters.
-- `server.opdsShowOnlyDownloadedChapters = false` controls if OPDS listings should only include downloaded chapters.
-- `server.opdsChapterSortOrder = "DESC"` sets the default chapter sort order in OPDS listings, either `"ASC"` or `"DESC"`
-- `server.opdsCbzMimetype = "MODERN"` controls which mimetype to use for CBZ downloads. This affects the offered link in OPDS, as well as the content type of the CBZ download. Allowed is MODERN (current IANA standard), LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives). Use LEGACY or COMPATIBLE if older clients don't offer the chapter download (note that the chapter needs to first be downloaded in Suwayomi, before it is available in OPDS).
-- `server.opdsSkipChapterMetadataFeed = false` controls if the metadata feed should be skipped. When enabled, download and streaming links are provided directly in the chapter list. This improves compatibility with automated downloaders (like KOReader). KoSync strategies are applied, but `PROMPT` conflicts are ignored (treating local progress as priority).
+- `server.opdsUseBinaryFileSizes = false` controls if Suwayomi should display file sizes in binary units (KiB, MiB, GiB) or decimal (KB, MB, GB) in OPDS listings. **Deprecated:** now per-user.
+- `server.opdsItemsPerPage = 50` sets the number of items per page in OPDS listings. Range: 10 <= n <= 5000. **Deprecated:** now per-user.
+- `server.opdsEnablePageReadProgress = true` controls if Suwayomi should include information to track chapter read progress in OPDS chapter page listings. This will cause the reader to mark the pages as read when it downloads the images. **Deprecated:** now per-user.
+- `server.opdsMarkAsReadOnDownload = false` controls if Suwayomi should mark the chapters as read when it is downloaded through the OPDS listing. **Deprecated:** now per-user.
+- `server.opdsShowOnlyUnreadChapters = false` controls if OPDS listings should only include unread chapters. **Deprecated:** now per-user.
+- `server.opdsShowOnlyDownloadedChapters = false` controls if OPDS listings should only include downloaded chapters. **Deprecated:** now per-user.
+- `server.opdsChapterSortOrder = "DESC"` sets the default chapter sort order in OPDS listings, either `"ASC"` or `"DESC"`. **Deprecated:** now per-user.
+- `server.opdsCbzMimetype = "MODERN"` controls which mimetype to use for CBZ downloads. This affects the offered link in OPDS, as well as the content type of the CBZ download. Allowed is MODERN (current IANA standard), LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives). Use LEGACY or COMPATIBLE if older clients don't offer the chapter download (note that the chapter needs to first be downloaded in Suwayomi, before it is available in OPDS). **Deprecated:** now per-user.
+- `server.opdsSkipChapterMetadataFeed = false` controls if the metadata feed should be skipped. When enabled, download and streaming links are provided directly in the chapter list. This improves compatibility with automated downloaders (like KOReader). KoSync strategies are applied, but `PROMPT` conflicts are ignored (treating local progress as priority). **Deprecated:** now per-user.
 
 ### KOReader Sync
 ```
-server.koreaderSyncServerUrl = "https://sync.koreader.rocks/"
-server.koreaderSyncUsername = ""
-server.koreaderSyncUserkey = ""
-server.koreaderSyncDeviceId = ""
 server.koreaderSyncChecksumMethod = BINARY # BINARY or FILENAME
 server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
 server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 ```
-- `server.koreaderSyncServerUrl` where KOReader Sync Server is running. Public servers (e.g.,  `https://sync.koreader.rocks/`, `https://kosync.ak-team.com:3042/`) or self-hosted instances can also be used.
-- `server.koreaderSyncUsername` the username with which to authenticate at the KOReader instance.
-- `server.koreaderSyncUserkey` the password/key with which to authenticate at the KOReader instance.
-- `server.koreaderSyncDeviceId` a unique ID to identify Suwayomi at the KOReader Sync Server. Leave blank to auto-generate.
-- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters.
-- `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read.
-- `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local.
-- `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local.
+- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters. **Deprecated:** now per-user.
+- `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read. **Deprecated:** now per-user.
+- `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local. **Deprecated:** now per-user.
+- `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local. **Deprecated:** now per-user.
 
 ### Database
 ```
@@ -297,15 +292,15 @@ server.syncDataHistory = true
 server.syncDataCategories = true
 server.syncInterval = "0s"
 ```
-- `server.syncYomiEnabled` controls whether SyncYomi is enabled.
-- `server.syncYomiHost` base URL of the SyncYomi server instance. e.g. `http://localhost:8282`
-- `server.syncYomiApiKey` API key to authenticate with SyncYomi. You must use the same API key in both Suwayomi and SyncYomi.
-- `server.syncDataManga` enables syncing manga.
-- `server.syncDataChapters` enables syncing chapters.
-- `server.syncDataTracking` enables syncing tracking data.
-- `server.syncDataHistory` enables syncing reading history.
-- `server.syncDataCategories` enables syncing categories.
-- `server.syncInterval` interval between automatic sync operations. Use `0s` to disable.
+- `server.syncYomiEnabled` controls whether SyncYomi is enabled. **Deprecated:** now per-user.
+- `server.syncYomiHost` base URL of the SyncYomi server instance. e.g. `http://localhost:8282`. **Deprecated:** now per-user.
+- `server.syncYomiApiKey` API key to authenticate with SyncYomi. You must use the same API key in both Suwayomi and SyncYomi. **Deprecated:** now per-user.
+- `server.syncDataManga` enables syncing manga. **Deprecated:** now per-user.
+- `server.syncDataChapters` enables syncing chapters. **Deprecated:** now per-user.
+- `server.syncDataTracking` enables syncing tracking data. **Deprecated:** now per-user.
+- `server.syncDataHistory` enables syncing reading history. **Deprecated:** now per-user.
+- `server.syncDataCategories` enables syncing categories. **Deprecated:** now per-user.
+- `server.syncInterval` interval between automatic sync operations. Use `0s` to disable. **Deprecated:** now per-user.
 
 **Note:** The example [docker-compose.yml file](https://github.com/Suwayomi/Suwayomi-Server-docker/blob/main/docker-compose.yml) contains everything you need to get started with Suwayomi+PostgreSQL. Please be aware that PostgreSQL support is currently still in beta.
 
