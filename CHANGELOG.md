@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased] (Preview)
 
 ### Added
+- (**SyncYomi**) Support sync protocol v2: the server merges, only changes since the last upload are sent and category deletions are reported explicitly
 - (**Downloads**) Try to preserve downloaded files during a chapter list update for chapters with title and/or scanlator change
 - (**Downloads/API**) Add batch GQL mutation for reordering chapter downloads (`reorderChapterDownloads`)
 - (**Logs**) Add IP location logging

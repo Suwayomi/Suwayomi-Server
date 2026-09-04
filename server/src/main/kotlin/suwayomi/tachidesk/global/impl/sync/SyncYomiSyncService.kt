@@ -26,6 +26,9 @@ import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import java.util.UUID
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
@@ -43,9 +46,26 @@ object SyncYomiSyncService {
     @Serializable
     private data class SyncEvent(
         val event: SyncEventStatus,
+        val device_id: String? = null,
         val device_Name: String? = null,
         val message: String? = null,
     )
+
+    data class SyncResult(
+        val backup: Backup?,
+        val changed: Boolean,
+        val protocolV2: Boolean,
+    )
+
+    private const val DEVICE_NAME = "Suwayomi Server"
+    private const val PREF_DEVICE_ID = "device_id"
+    private const val PREF_CURSOR = "sync_cursor"
+    private const val PREF_FULL_REQUESTED = "full_sync_requested"
+    private const val PREF_LAST_FULL_SYNC = "last_full_sync"
+    private const val PREF_PENDING_DELETED_CATEGORIES = "pending_deleted_category_uids"
+    private const val PREF_V2_PROBED_HOST = "v2_probed_host"
+    private const val PREF_V2_SUPPORTED = "server_supports_v2"
+    private val fullSyncInterval = 24.hours
 
     @Serializable
     private enum class SyncEventStatus {
@@ -58,39 +78,18 @@ object SyncYomiSyncService {
 
     suspend fun doSync(
         syncData: SyncData,
+        full: Boolean,
         startDate: Instant,
         setSyncState: (SyncManager.SyncState) -> Unit,
-    ): Backup? {
+    ): SyncResult {
         reportSyncEvent(SyncEventStatus.SYNC_STARTED)
-        setSyncState(SyncManager.SyncState.Downloading(startDate))
 
         return try {
-            val (remoteData, etag) = pullSyncData()
-
-            val finalSyncData =
-                if (remoteData != null) {
-                    require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
-                    logger.debug { "Try update remote data with ETag($etag)" }
-                    setSyncState(SyncManager.SyncState.Merging(startDate))
-                    mergeSyncData(syncData, remoteData)
-                } else {
-                    // init or overwrite remote data
-                    logger.debug { "Try overwrite remote data with ETag($etag)" }
-                    syncData
-                }
-
-            if (finalSyncData.backup != null) {
-                setSyncState(SyncManager.SyncState.Uploading(startDate))
-            }
-
-            val success = pushSyncData(finalSyncData, etag)
-            if (success) {
-                reportSyncEvent(SyncEventStatus.SYNC_SUCCESS)
+            if (supportsV2()) {
+                doSyncV2(syncData, full, startDate, setSyncState)
             } else {
-                reportSyncEvent(SyncEventStatus.SYNC_FAILED, "Failed to push sync data")
+                doSyncV1(syncData, startDate, setSyncState)
             }
-
-            finalSyncData.backup
         } catch (e: Exception) {
             if (e is CancellationException) {
                 reportSyncEvent(SyncEventStatus.SYNC_CANCELLED, e.message)
@@ -102,12 +101,181 @@ object SyncYomiSyncService {
         }
     }
 
+    private suspend fun doSyncV1(
+        syncData: SyncData,
+        startDate: Instant,
+        setSyncState: (SyncManager.SyncState) -> Unit,
+    ): SyncResult {
+        setSyncState(SyncManager.SyncState.Downloading(startDate))
+        val (remoteData, etag) = pullSyncData()
+
+        val finalSyncData =
+            if (remoteData != null) {
+                require(etag.isNotEmpty()) { "ETag should never be empty if remote data is not null" }
+                logger.debug { "Try update remote data with ETag($etag)" }
+                setSyncState(SyncManager.SyncState.Merging(startDate))
+                mergeSyncData(syncData, remoteData)
+            } else {
+                // init or overwrite remote data
+                logger.debug { "Try overwrite remote data with ETag($etag)" }
+                syncData
+            }
+
+        if (finalSyncData.backup != null) {
+            setSyncState(SyncManager.SyncState.Uploading(startDate))
+        }
+
+        val success = pushSyncData(finalSyncData, etag)
+        if (success) {
+            reportSyncEvent(SyncEventStatus.SYNC_SUCCESS)
+        } else {
+            reportSyncEvent(SyncEventStatus.SYNC_FAILED, "Failed to push sync data")
+        }
+
+        return SyncResult(finalSyncData.backup, changed = remoteData != null, protocolV2 = false)
+    }
+
+    // Protocol v2: the server merges; we upload what changed and restore what comes back.
+    private suspend fun doSyncV2(
+        syncData: SyncData,
+        full: Boolean,
+        startDate: Instant,
+        setSyncState: (SyncManager.SyncState) -> Unit,
+    ): SyncResult {
+        val backup = syncData.backup ?: return SyncResult(null, changed = false, protocolV2 = true)
+        val host = serverConfig.syncYomiHost.value
+        val apiKey = serverConfig.syncYomiApiKey.value
+
+        val pendingDeleted = pendingDeletedCategories()
+        val headers =
+            baseHeaders(apiKey)
+                .add("X-Sync-Cursor", syncCursor().toString())
+                .add("X-Sync-Full", full.toString())
+        if (pendingDeleted.isNotEmpty()) {
+            headers.add("X-Sync-Deleted-Categories", pendingDeleted.joinToString(","))
+        }
+
+        setSyncState(SyncManager.SyncState.Uploading(startDate))
+        val body =
+            ProtoBuf
+                .encodeToByteArray(Backup.serializer(), backup)
+                .toRequestBody("application/octet-stream".toMediaType())
+        val response =
+            syncClient()
+                .newCall(POST(url = "$host/api/sync/v2/merge", headers = headers.build(), body = body))
+                .await()
+
+        if (!response.isSuccessful) {
+            val responseBody = response.body.string()
+            logger.error { "SyncError (${response.code}): $responseBody" }
+            reportSyncEvent(SyncEventStatus.SYNC_FAILED, "Server answered ${response.code}")
+            throw SyncYomiException("Failed to sync: ${response.code} $responseBody")
+        }
+
+        setSyncState(SyncManager.SyncState.Downloading(startDate))
+        val bytes = response.body.byteStream().use { it.readBytes() }
+        val remote =
+            try {
+                ProtoBuf.decodeFromByteArray(Backup.serializer(), bytes)
+            } catch (e: SerializationException) {
+                logger.error(e) { "Bad content responded from server" }
+                reportSyncEvent(SyncEventStatus.SYNC_FAILED, "Bad content responded from server")
+                throw SyncYomiException("Bad content responded from server: ${e.message}")
+            }
+        val cursor =
+            response.headers["X-Sync-Cursor"]?.toLongOrNull()
+                ?: throw SyncYomiException("Missing X-Sync-Cursor")
+        val changed = response.headers["X-Sync-Changed"]?.toBoolean() ?: true
+        val fullRequested = response.headers["X-Sync-Full-Requested"]?.toBoolean() ?: false
+
+        syncPreferences
+            .edit()
+            .putLong(PREF_CURSOR, cursor)
+            .putBoolean(PREF_FULL_REQUESTED, fullRequested)
+            .putStringSet(PREF_PENDING_DELETED_CATEGORIES, pendingDeletedCategories() - pendingDeleted)
+            .apply()
+        if (full) {
+            syncPreferences.edit().putLong(PREF_LAST_FULL_SYNC, startDate.toEpochMilliseconds()).apply()
+        }
+        logger.debug { "SyncYomi v2 merge done: cursor=$cursor changed=$changed fullRequested=$fullRequested" }
+
+        reportSyncEvent(SyncEventStatus.SYNC_SUCCESS)
+        return SyncResult(remote, changed = changed, protocolV2 = true)
+    }
+
+    // A full library is needed on the first sync, when the server asks for it, and once a day as a safety net.
+    suspend fun needsFullSync(): Boolean {
+        if (!supportsV2()) return true
+        if (syncCursor() == 0L || syncPreferences.getBoolean(PREF_FULL_REQUESTED, false)) return true
+        val lastFull = syncPreferences.getLong(PREF_LAST_FULL_SYNC, 0L)
+        return lastFull == 0L || Clock.System.now() - Instant.fromEpochMilliseconds(lastFull) > fullSyncInterval
+    }
+
+    suspend fun supportsV2(): Boolean {
+        val host = serverConfig.syncYomiHost.value
+        if (syncPreferences.getString(PREF_V2_PROBED_HOST, null) == host) {
+            return syncPreferences.getBoolean(PREF_V2_SUPPORTED, false)
+        }
+
+        val request = GET(url = "$host/api/sync/v2/capabilities", headers = baseHeaders(serverConfig.syncYomiApiKey.value).build())
+        val response = network.client.newCall(request).await()
+        response.close()
+        val supported =
+            when (response.code) {
+                HttpStatus.OK.code -> true
+                HttpStatus.NOT_FOUND.code -> false
+                else -> throw SyncYomiException("Failed to probe server capabilities: ${response.code}")
+            }
+        syncPreferences
+            .edit()
+            .putString(PREF_V2_PROBED_HOST, host)
+            .putBoolean(PREF_V2_SUPPORTED, supported)
+            .apply()
+        logger.info { "SyncYomi server supports protocol v2: $supported" }
+        return supported
+    }
+
+    fun syncCursor(): Long = syncPreferences.getLong(PREF_CURSOR, 0L)
+
+    fun deviceId(): String {
+        syncPreferences.getString(PREF_DEVICE_ID, null)?.let { return it }
+        val id = UUID.randomUUID().toString()
+        syncPreferences.edit().putString(PREF_DEVICE_ID, id).apply()
+        return id
+    }
+
+    fun rememberDeletedCategory(uid: Long) {
+        if (uid == 0L || !serverConfig.syncYomiEnabled.value) return
+        syncPreferences
+            .edit()
+            .putStringSet(PREF_PENDING_DELETED_CATEGORIES, pendingDeletedCategories() + uid.toString())
+            .apply()
+    }
+
+    private fun pendingDeletedCategories(): Set<String> =
+        syncPreferences.getStringSet(PREF_PENDING_DELETED_CATEGORIES, emptySet()).orEmpty().toSet()
+
+    private fun baseHeaders(apiKey: String): Headers.Builder =
+        Headers
+            .Builder()
+            .add("X-API-Token", apiKey)
+            .add("X-Device-ID", deviceId())
+            .add("X-Device-Name", DEVICE_NAME)
+
+    private fun syncClient() =
+        network.client
+            .newBuilder()
+            .connectTimeout(30.seconds)
+            .readTimeout(30.seconds)
+            .writeTimeout(30.seconds)
+            .build()
+
     private suspend fun pullSyncData(): Pair<SyncData?, String> {
         val host = serverConfig.syncYomiHost.value
         val apiKey = serverConfig.syncYomiApiKey.value
         val downloadUrl = "$host/api/sync/content"
 
-        val headersBuilder = Headers.Builder().add("X-API-Token", apiKey)
+        val headersBuilder = baseHeaders(apiKey)
         val lastETag = syncPreferences.getString("last_sync_etag", "") ?: ""
         if (lastETag != "") {
             headersBuilder.add("If-None-Match", lastETag)
@@ -168,21 +336,13 @@ object SyncYomiSyncService {
         val apiKey = serverConfig.syncYomiApiKey.value
         val uploadUrl = "$host/api/sync/content"
 
-        val headersBuilder = Headers.Builder().add("X-API-Token", apiKey)
+        val headersBuilder = baseHeaders(apiKey)
         if (eTag.isNotEmpty()) {
             headersBuilder.add("If-Match", eTag)
         }
         val headers = headersBuilder.build()
 
-        // Set timeout to 30 seconds
-        val timeout = 30.seconds
-        val client =
-            network.client
-                .newBuilder()
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .build()
+        val client = syncClient()
 
         val byteArray = ProtoBuf.encodeToByteArray(Backup.serializer(), backup)
         if (byteArray.isEmpty()) {
@@ -229,13 +389,13 @@ object SyncYomiSyncService {
             val apiKey = serverConfig.syncYomiApiKey.value
             val url = "$host/api/sync/event"
 
-            val headers = Headers.Builder().add("X-API-Token", apiKey).build()
+            val headers = baseHeaders(apiKey).build()
 
-            // Use a fixed server name.
             val bodyObj =
                 SyncEvent(
                     event = event,
-                    device_Name = "Suwayomi Server",
+                    device_id = deviceId(),
+                    device_Name = DEVICE_NAME,
                     message = message,
                 )
 

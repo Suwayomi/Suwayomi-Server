@@ -57,6 +57,8 @@ data class SyncData(
 )
 
 object SyncManager {
+    private const val PREF_LAST_PUSHED_AT = "last_pushed_at"
+
     // bump to force one full converging sync after a change to how versions are maintained
     private const val PREF_SYNC_SCHEMA = "sync_schema"
     private const val SYNC_SCHEMA = 1
@@ -205,10 +207,11 @@ object SyncManager {
             _lastSyncState.value = SyncState.CreatingBackup(startInstant)
             val converge = syncPreferences.getInt(PREF_SYNC_SCHEMA, 0) < SYNC_SCHEMA
             val syncMode = if (converge) SyncRestoreMode.CONVERGE else SyncRestoreMode.ADOPT
+            val full = converge || SyncYomiSyncService.needsFullSync()
             if (converge) {
                 logger.info { "Full converging sync: adopting server versions" }
             }
-            val backupMangas = BackupMangaHandler.backup(backupFlags)
+            val backupMangas = BackupMangaHandler.backup(backupFlags).let { if (full) it else changedSince(it, lastPushedAt()) }
             val backupCategories =
                 BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
             toWireCategoryOrders(backupCategories, backupMangas)
@@ -226,10 +229,11 @@ object SyncManager {
                     backup = backup,
                 )
 
-            val remoteBackup =
-                SyncYomiSyncService.doSync(syncData, startInstant) {
+            val result =
+                SyncYomiSyncService.doSync(syncData, full, startInstant) {
                     _lastSyncState.value = it
                 }
+            val remoteBackup = result.backup
 
             if (remoteBackup == null) {
                 logger.debug { "Skip restore due to network issues" }
@@ -237,34 +241,35 @@ object SyncManager {
                 return
             }
 
-            if (remoteBackup === syncData.backup) {
-                // nothing changed
-                logger.debug { "Skip restore due to remote was overwrite from local" }
+            if (!result.changed) {
+                logger.debug { "Skip restore, nothing new on the server" }
                 markSyncSchema(converge)
-                finishWithSuccess(startInstant, periodic)
+                finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
                 return
             }
 
-            // Stop the sync early if the remote backup is null or empty
-            if (remoteBackup.backupManga.isEmpty() && remoteBackup.backupCategories.isEmpty() && remoteBackup.backupSources.isEmpty()) {
-                logger.error { "No data found on remote server." }
-                finishWithError(startInstant, "No data found on remote server.", periodic)
-                return
-            }
-
-            val isLibraryEmpty =
-                transaction {
-                    MangaTable
-                        .selectAll()
-                        .where { MangaTable.inLibrary eq true }
-                        .empty()
+            if (!result.protocolV2) {
+                // Stop the sync early if the remote backup is null or empty
+                if (remoteBackup.backupManga.isEmpty() && remoteBackup.backupCategories.isEmpty() && remoteBackup.backupSources.isEmpty()) {
+                    logger.error { "No data found on remote server." }
+                    finishWithError(startInstant, "No data found on remote server.", periodic)
+                    return
                 }
 
-            // Check if it's first sync based on lastSyncTimestamp
-            if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
-                // It's first sync no need to restore data. (just update remote data)
-                finishWithSuccess(startInstant, periodic)
-                return
+                val isLibraryEmpty =
+                    transaction {
+                        MangaTable
+                            .selectAll()
+                            .where { MangaTable.inLibrary eq true }
+                            .empty()
+                    }
+
+                // Check if it's first sync based on lastSyncTimestamp
+                if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
+                    // It's first sync no need to restore data. (just update remote data)
+                    finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
+                    return
+                }
             }
 
             val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup, restoreAll = converge)
@@ -274,7 +279,8 @@ object SyncManager {
                 backup.copy(
                     backupManga = filteredFavorites,
                     backupCategories = remoteBackup.backupCategories,
-                    backupSources = remoteBackup.backupSources,
+                    // a v2 delta only carries changed sources
+                    backupSources = remoteBackup.backupSources.ifEmpty { backup.backupSources },
                 )
 
             val hasMangaChanges = filteredFavorites.isNotEmpty()
@@ -284,7 +290,7 @@ object SyncManager {
             if (!hasMangaChanges && !hasCategoryChanges && !hasSourceChanges) {
                 // update the sync timestamp
                 markSyncSchema(converge)
-                finishWithSuccess(startInstant, periodic)
+                finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
                 return
             }
 
@@ -298,8 +304,7 @@ object SyncManager {
                     }
                 if (categoriesToDelete.isNotEmpty()) {
                     transaction {
-                        // the cascade delete of the category links and the sort_order renumbering
-                        // must not bump versions
+                        // the cascade delete of the category links must not bump the manga versions
                         val categoryIds = categoriesToDelete.map { it.id }
                         val mangaIds =
                             CategoryMangaTable
@@ -309,6 +314,7 @@ object SyncManager {
                         MangaTable.update({ MangaTable.id inList mangaIds }) {
                             it[isSyncing] = true
                         }
+                        // normalizeCategories rewrites sort_order; the survivors must not out-version the server
                         CategoryTable.update {
                             it[isSyncing] = true
                         }
@@ -340,7 +346,7 @@ object SyncManager {
             }
 
             // update the sync timestamp
-            finishWithSuccess(startInstant, periodic)
+            finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
         } catch (e: Throwable) {
             logger.error { "Error syncing: ${e.message}" }
             finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
@@ -364,20 +370,18 @@ object SyncManager {
         }
     }
 
-    private fun markSyncSchema(converge: Boolean) {
-        if (converge) {
-            syncPreferences.edit().putInt(PREF_SYNC_SCHEMA, SYNC_SCHEMA).apply()
-        }
-    }
-
     private fun finishWithSuccess(
         startInstant: Instant,
         periodic: Boolean,
+        pushedAt: Instant? = null,
     ) {
         syncPreferences
             .edit()
             .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-            .apply()
+            .apply {
+                // everything modified before this instant reached the server; the next delta starts here
+                if (pushedAt != null) putLong(PREF_LAST_PUSHED_AT, pushedAt.epochSeconds)
+            }.apply()
         _lastSyncState.value = SyncState.Success(startInstant)
 
         logger.info {
@@ -402,6 +406,14 @@ object SyncManager {
             } else {
                 "Manual sync failed: $message"
             }
+        }
+    }
+
+    private fun lastPushedAt(): Long = syncPreferences.getLong(PREF_LAST_PUSHED_AT, 0L)
+
+    private fun markSyncSchema(converge: Boolean) {
+        if (converge) {
+            syncPreferences.edit().putInt(PREF_SYNC_SCHEMA, SYNC_SCHEMA).apply()
         }
     }
 
