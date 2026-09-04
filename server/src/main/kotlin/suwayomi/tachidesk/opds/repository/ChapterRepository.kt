@@ -16,6 +16,8 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.innerJoin
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -75,7 +77,7 @@ object ChapterRepository {
                 conditions.add(ChapterTable.manga eq mangaId)
 
                 when (filter) {
-                    "unread" -> conditions.add(ChapterUserTable.isRead eq false)
+                    "unread" -> conditions.add(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()))
                     "read" -> conditions.add(ChapterUserTable.isRead eq true)
                 }
                 if (userSettings.value(userId, userConfig.opdsShowOnlyDownloadedChapters)) {
