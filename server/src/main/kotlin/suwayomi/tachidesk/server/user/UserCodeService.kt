@@ -110,6 +110,18 @@ object UserCodeService {
                 "The built-in admin user cannot use recovery codes"
             }
 
+            val userExists =
+                transaction {
+                    UserAccountTable
+                        .selectAll()
+                        .where { UserAccountTable.id eq userId }
+                        .isNotEmpty()
+                }
+
+            require(userExists) {
+                "User not found"
+            }
+
             val now = now()
 
             UserCodeTable
