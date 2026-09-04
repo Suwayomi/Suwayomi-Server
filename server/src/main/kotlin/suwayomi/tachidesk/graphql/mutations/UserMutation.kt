@@ -295,18 +295,18 @@ class UserMutation {
     @RequirePermissions(UserPermission.MANAGE_USERS)
     fun updateUser(
         @GraphQLIgnore
-        roles: List<UserRole>,
+        role: List<UserRole>,
         input: UpdateUserInput,
     ): UpdateUserPayload {
-        val (clientMutationId, userId, permissions, role) = input
+        val (clientMutationId, userId, permissions, newRole) = input
         require(userId != 1) {
             "The built-in admin user cannot be modified"
         }
-        role?.let { role ->
-            require(role != UserRole.VISITOR) {
+        newRole?.let { newRole ->
+            require(newRole != UserRole.VISITOR) {
                 "The VISITOR role cannot be granted"
             }
-            require(UserRole.ADMIN in roles) {
+            require(UserRole.ADMIN in role) {
                 "Only ADMIN users can grant roles"
             }
         }
@@ -327,12 +327,12 @@ class UserMutation {
                 }
             }
 
-            if (role != null) {
+            if (newRole != null) {
                 UserRolesTable.deleteWhere { UserRolesTable.user eq userId }
 
                 UserRolesTable.insert {
                     it[UserRolesTable.user] = userId
-                    it[UserRolesTable.role] = role.name
+                    it[UserRolesTable.role] = newRole.name
                 }
             }
         }
