@@ -390,6 +390,10 @@ class M0063_AddUsers : Migration() {
         val createdAt = long("created_at").default(0)
         val expiresAt = long("expires_at").default(0)
         val consumedAt = long("consumed_at").nullable()
+
+        init {
+            index(isUnique = false, user, type, consumedAt)
+        }
     }
 
     private object UserPermissionsTable : Table() {
