@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Logs**) Add IP location logging
 - (**Cache/API**) Add a way to clear cache & cookies
 - (**API**) Add platform information to `aboutServer` query
+- (**Database**) Add indexes on ChapterTable and PageTable for faster queries
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
@@ -20,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Downloads**) Skip LocalSource downloading
 - (**Cloudflare/flaresolverr**) Send full `POST` json body to flaresolverr instead of empty string
 - (**Webview**) Don't throw an exception when disabling CEF
+- (**GraphQL**) Optimize chapter data loaders using SQL window functions instead of in-memory grouping
 
 ### Fixed
 - (**SyncYomi**) Adopt the server's record versions when restoring a sync response so a manga or chapter that lost a merge once can win later; a one-time full converging sync repairs skewed version counters
