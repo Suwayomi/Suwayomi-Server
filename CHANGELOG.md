@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Webview**) Don't throw an exception when disabling CEF
 
 ### Fixed
+- (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
 - (**SyncYomi**) Adopt the server's record versions when restoring a sync response so a manga or chapter that lost a merge once can win later; a one-time full converging sync repairs skewed version counters
 - (**SyncYomi**) Keep TachiyomiSY's library sort, chapter sort/filter and reading mode flags when Suwayomi's copy wins a sync
 - (**SyncYomi**) Fix local changes never winning a sync on PostgreSQL (version triggers were no-ops), chapter versions being reset on chapter refresh, category removals and tracking changes never bumping the manga version, and sync restores re-stamping every row as locally modified
