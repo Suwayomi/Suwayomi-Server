@@ -19,7 +19,8 @@ import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import java.util.Locale
 
 /**
@@ -35,12 +36,14 @@ object OpdsFeedBuilder {
      * @return An XML string representing the root feed.
      */
     fun getRootFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
     ): String {
         val navItems = NavigationRepository.getRootNavigationItems(locale)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "", // Root path is empty
@@ -78,13 +81,15 @@ object OpdsFeedBuilder {
      * @return An XML string representing the history feed.
      */
     suspend fun getHistoryFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
     ): String {
-        val (historyItems, total) = ChapterRepository.getHistory(pageNum)
+        val (historyItems, total) = ChapterRepository.getHistory(userId, pageNum)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "history",
@@ -93,12 +98,13 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
-        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
+        val skipMetadata = userSettings.value(userId, userConfig.opdsSkipChapterMetadataFeed)
         builder.entries.addAll(
             historyItems.map { item ->
                 val mangaDetails =
                     OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
                 OpdsEntryBuilder.createChapterListEntry(
+                    userId,
                     baseUrl,
                     locale,
                     item.chapter,
@@ -120,14 +126,16 @@ object OpdsFeedBuilder {
      * @return An XML string representing the search results feed.
      */
     fun getSearchFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         criteria: OpdsSearchCriteria,
         pageNum: Int,
     ): String {
-        val (mangaEntries, total) = MangaRepository.findMangaByCriteria(criteria)
+        val (mangaEntries, total) = MangaRepository.findMangaByCriteria(userId, criteria)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "library/series",
@@ -153,6 +161,7 @@ object OpdsFeedBuilder {
      * @return An XML string representing the library feed.
      */
     fun getLibraryFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         criteria: OpdsMangaFilter,
@@ -161,7 +170,7 @@ object OpdsFeedBuilder {
         sort: String?,
         filter: String?,
     ): String {
-        val result = MangaRepository.getLibraryManga(criteria, pageNum, sort, filter)
+        val result = MangaRepository.getLibraryManga(userId, criteria, pageNum, sort, filter)
 
         val feedTitle =
             when (criteria.primaryFilter) {
@@ -189,7 +198,7 @@ object OpdsFeedBuilder {
                 PrimaryFilterType.STATUS -> {
                     val statusName =
                         NavigationRepository
-                            .getStatuses(locale, pageNum = null, activeFilters = criteria)
+                            .getStatuses(userId, locale, pageNum = null, activeFilters = criteria)
                             .first
                             .find { it.id == criteria.statusId }
                             ?.title
@@ -218,6 +227,7 @@ object OpdsFeedBuilder {
 
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = feedUrl,
@@ -232,7 +242,7 @@ object OpdsFeedBuilder {
         builder.totalResults = result.totalCount
 
         // Add all library facets (sort, filter, and cross-filtering)
-        OpdsEntryBuilder.addLibraryFacets(builder, baseUrl, locale, criteria)
+        OpdsEntryBuilder.addLibraryFacets(userId, builder, baseUrl, locale, criteria)
 
         builder.entries.addAll(result.mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(baseUrl, locale, it) })
 
@@ -244,16 +254,20 @@ object OpdsFeedBuilder {
      * @param baseUrl The base URL for constructing links.
      * @param locale The locale for localization.
      * @param pageNum The page number for pagination.
+     * @param includeNsfw Whether the user may see NSFW sources.
      * @return An XML string representing the explore sources feed.
      */
     fun getExploreSourcesFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
+        includeNsfw: Boolean,
     ): String {
-        val (sourceNavEntries, total) = NavigationRepository.getExploreSources(pageNum)
+        val (sourceNavEntries, total) = NavigationRepository.getExploreSources(userId, pageNum, includeNsfw)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "sources",
@@ -290,13 +304,15 @@ object OpdsFeedBuilder {
      * @return An XML string representing the library sources feed.
      */
     fun getLibrarySourcesFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
     ): String {
-        val (sourceNavEntries, total) = NavigationRepository.getLibrarySources(pageNum)
+        val (sourceNavEntries, total) = NavigationRepository.getLibrarySources(userId, pageNum)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "library/sources",
@@ -334,16 +350,19 @@ object OpdsFeedBuilder {
      * @param sourceId The ID of the source.
      * @param pageNum The page number for pagination.
      * @param sort The sorting parameter ('popular' or 'latest').
+     * @param includeNsfw Whether the user may fetch NSFW sources.
      * @return An XML string representing the source-specific feed.
      */
     suspend fun getExploreSourceFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         sourceId: Long,
         pageNum: Int,
         sort: String,
+        includeNsfw: Boolean,
     ): String {
-        val (mangaEntries, hasNextPage) = MangaRepository.getMangaBySource(sourceId, pageNum, sort)
+        val (mangaEntries, hasNextPage) = MangaRepository.getMangaBySource(userId, sourceId, pageNum, sort, includeNsfw)
         val sourceInfo = NavigationRepository.getSourceDetails(sourceId)
         val sourceName = sourceInfo?.first ?: sourceId.toString()
         val titleRes =
@@ -357,6 +376,7 @@ object OpdsFeedBuilder {
         val feedTitle = titleRes.localized(locale, sourceName)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "explore/source/$sourceId",
@@ -365,11 +385,12 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
                 currentSort = sort,
             )
+        val itemsPerPage = userSettings.value(userId, userConfig.opdsItemsPerPage)
         builder.totalResults =
             if (hasNextPage) {
-                (pageNum * serverConfig.opdsItemsPerPage.value + 1).toLong()
+                (pageNum * itemsPerPage + 1).toLong()
             } else {
-                ((pageNum - 1) * serverConfig.opdsItemsPerPage.value + mangaEntries.size).toLong()
+                ((pageNum - 1) * itemsPerPage + mangaEntries.size).toLong()
             }
         builder.icon = sourceInfo?.second
         OpdsEntryBuilder.addSourceSortFacets(builder, "$baseUrl/explore/source/$sourceId", locale, sort)
@@ -385,13 +406,15 @@ object OpdsFeedBuilder {
      * @return An XML string representing the categories navigation feed.
      */
     fun getCategoriesFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
     ): String {
-        val (categoryNavEntries, total) = NavigationRepository.getCategories(pageNum)
+        val (categoryNavEntries, total) = NavigationRepository.getCategories(userId, pageNum)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "library/categories",
@@ -430,13 +453,15 @@ object OpdsFeedBuilder {
      * @return An XML string representing the genres navigation feed.
      */
     fun getGenresFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
     ): String {
-        val (genreNavEntries, total) = NavigationRepository.getGenres(locale, pageNum)
+        val (genreNavEntries, total) = NavigationRepository.getGenres(userId, locale, pageNum)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "library/genres",
@@ -475,13 +500,15 @@ object OpdsFeedBuilder {
      * @return An XML string representing the status navigation feed.
      */
     fun getStatusFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
     ): String {
-        val (statuses, total) = NavigationRepository.getStatuses(locale, pageNum)
+        val (statuses, total) = NavigationRepository.getStatuses(userId, locale, pageNum)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "library/statuses",
@@ -520,13 +547,15 @@ object OpdsFeedBuilder {
      * @return An XML string representing the languages navigation feed.
      */
     fun getLanguagesFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
     ): String {
-        val (languages, total) = NavigationRepository.getContentLanguages(locale, pageNum)
+        val (languages, total) = NavigationRepository.getContentLanguages(userId, locale, pageNum)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "library/languages",
@@ -565,13 +594,15 @@ object OpdsFeedBuilder {
      * @return An XML string representing the library updates feed.
      */
     suspend fun getLibraryUpdatesFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         pageNum: Int,
     ): String {
-        val (updateItems, total) = ChapterRepository.getLibraryUpdates(pageNum)
+        val (updateItems, total) = ChapterRepository.getLibraryUpdates(userId, pageNum)
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "library-updates",
@@ -580,12 +611,13 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
-        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
+        val skipMetadata = userSettings.value(userId, userConfig.opdsSkipChapterMetadataFeed)
         builder.entries.addAll(
             updateItems.map { item ->
                 val mangaDetails =
                     OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
                 OpdsEntryBuilder.createChapterListEntry(
+                    userId,
                     baseUrl,
                     locale,
                     item.chapter,
@@ -609,6 +641,7 @@ object OpdsFeedBuilder {
      * @return An XML string representing the series' chapters feed.
      */
     suspend fun getSeriesChaptersFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         mangaId: Int,
@@ -619,6 +652,7 @@ object OpdsFeedBuilder {
         val mangaDetails =
             MangaRepository.getMangaDetails(mangaId)
                 ?: return buildNotFoundFeed(
+                    userId,
                     baseUrl,
                     locale,
                     "series/$mangaId/chapters",
@@ -630,12 +664,14 @@ object OpdsFeedBuilder {
                 "desc", "number_desc" -> ChapterTable.sourceOrder to SortOrder.DESC
                 "date_asc" -> ChapterTable.date_upload to SortOrder.ASC
                 "date_desc" -> ChapterTable.date_upload to SortOrder.DESC
-                else -> ChapterTable.sourceOrder to (serverConfig.opdsChapterSortOrder.value)
+                else -> ChapterTable.sourceOrder to (userSettings.value(userId, userConfig.opdsChapterSortOrder))
             }
-        val currentFilter = filterParam?.lowercase() ?: if (serverConfig.opdsShowOnlyUnreadChapters.value) "unread" else "all"
-        val skipMetadata = serverConfig.opdsSkipChapterMetadataFeed.value
+        val currentFilter =
+            filterParam?.lowercase() ?: if (userSettings.value(userId, userConfig.opdsShowOnlyUnreadChapters)) "unread" else "all"
+        val skipMetadata = userSettings.value(userId, userConfig.opdsSkipChapterMetadataFeed)
         var (chapterEntries, totalChapters) =
             ChapterRepository.getChaptersForManga(
+                userId,
                 mangaId,
                 sortColumn,
                 currentSortOrder,
@@ -647,6 +683,7 @@ object OpdsFeedBuilder {
         // Return a not-found feed if all available chapters are filtered out as unreachable
         if (skipMetadata && chapterEntries.isEmpty() && totalChapters > 0L) {
             return buildNotFoundFeed(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "series/$mangaId/chapters",
@@ -662,6 +699,7 @@ object OpdsFeedBuilder {
                 // Re-query after fetching.
                 val (refetchedChapters, refetchedTotal) =
                     ChapterRepository.getChaptersForManga(
+                        userId,
                         mangaId,
                         sortColumn,
                         currentSortOrder,
@@ -682,10 +720,11 @@ object OpdsFeedBuilder {
                 val suffix = if (currentSortOrder == SortOrder.ASC) "asc" else "desc"
                 "${prefix}_$suffix"
             }
-        val filterCounts = ChapterRepository.getChapterFilterCounts(mangaId)
+        val filterCounts = ChapterRepository.getChapterFilterCounts(userId, mangaId)
         val feedUrl = "series/$mangaId/chapters"
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = feedUrl,
@@ -712,6 +751,7 @@ object OpdsFeedBuilder {
         builder.entries.addAll(
             chapterEntries.map { chapter ->
                 OpdsEntryBuilder.createChapterListEntry(
+                    userId,
                     baseUrl,
                     locale,
                     chapter,
@@ -733,6 +773,7 @@ object OpdsFeedBuilder {
      * @return An XML string representing the chapter's metadata feed.
      */
     suspend fun getChapterMetadataFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         mangaId: Int,
@@ -741,14 +782,16 @@ object OpdsFeedBuilder {
         val mangaDetails =
             MangaRepository.getMangaDetails(mangaId)
                 ?: return buildNotFoundFeed(
+                    userId,
                     baseUrl,
                     locale,
                     "series/$mangaId/chapter/$chapterSourceOrder/metadata",
                     MR.strings.opds_error_manga_not_found.localized(locale, mangaId),
                 )
         val chapterMetadata =
-            ChapterRepository.getChapterDetailsForMetadataFeed(mangaId, chapterSourceOrder)
+            ChapterRepository.getChapterDetailsForMetadataFeed(userId, mangaId, chapterSourceOrder)
                 ?: return buildNotFoundFeed(
+                    userId,
                     baseUrl,
                     locale,
                     "series/$mangaId/chapter/$chapterSourceOrder/metadata",
@@ -757,6 +800,7 @@ object OpdsFeedBuilder {
 
         val builder =
             FeedBuilderInternal(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 idPath = "series/$mangaId/chapter/${chapterMetadata.sourceOrder}/metadata",
@@ -773,6 +817,7 @@ object OpdsFeedBuilder {
 
         val (primaryEntry, conflictEntry) =
             OpdsEntryBuilder.createChapterMetadataEntries(
+                userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
                 chapter = chapterMetadata,
@@ -799,12 +844,14 @@ object OpdsFeedBuilder {
      * @return An XML string representing the 'not found' feed.
      */
     fun buildNotFoundFeed(
+        userId: Int,
         baseUrl: String,
         locale: Locale,
         idPath: String,
         title: String,
     ): String =
         FeedBuilderInternal(
+            userId = userId,
             baseUrl = baseUrl,
             locale = locale,
             idPath = idPath,

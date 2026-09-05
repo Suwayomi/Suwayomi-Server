@@ -29,11 +29,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.cef.network.CefCookieManager
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import org.koin.dsl.module
 import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
 import suwayomi.tachidesk.global.impl.sync.SyncManager
+import suwayomi.tachidesk.global.impl.util.Bcrypt
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
@@ -122,6 +127,11 @@ data class DatabaseSettings(
     val databaseUsername: String,
     val databasePassword: String,
     val useHikariConnectionPool: Boolean,
+)
+
+data class AuthSettings(
+    val authUsername: String,
+    val authPassword: String,
 )
 
 val androidCompat by lazy { AndroidCompat() }
@@ -468,6 +478,31 @@ fun applicationSetup() {
         serverConfig.extensionStores,
         { _ ->
             ExtensionStoreService.syncPrefsToDb()
+        },
+        ignoreInitialValue = false,
+    )
+
+    serverConfig.subscribeTo(
+        combine<Any, AuthSettings>(
+            serverConfig.authUsername,
+            serverConfig.authPassword,
+        ) { vargs ->
+            AuthSettings(
+                authUsername = vargs[0] as String,
+                authPassword = vargs[1] as String,
+            )
+        },
+        onChange = { settings ->
+            transaction {
+                UserAccountTable.update({ UserAccountTable.id eq 1 }) {
+                    it[UserAccountTable.username] =
+                        settings.authUsername.trim().ifEmpty { "admin" }
+                    it[UserAccountTable.password] =
+                        Bcrypt.encryptPassword(
+                            settings.authPassword.trim().ifEmpty { "password" },
+                        )
+                }
+            }
         },
         ignoreInitialValue = false,
     )

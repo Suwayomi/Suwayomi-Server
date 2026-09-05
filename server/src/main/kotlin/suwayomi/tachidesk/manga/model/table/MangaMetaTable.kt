@@ -9,7 +9,7 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
-import suwayomi.tachidesk.manga.model.table.MangaMetaTable.ref
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 
 /**
  * Metadata storage for clients, about Manga with id == [ref].
@@ -29,4 +29,5 @@ object MangaMetaTable : IntIdTable() {
     val key = varchar("meta_key", 256)
     val value = varchar("value", 4096)
     val ref = reference("manga_ref", MangaTable, ReferenceOption.CASCADE)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 }

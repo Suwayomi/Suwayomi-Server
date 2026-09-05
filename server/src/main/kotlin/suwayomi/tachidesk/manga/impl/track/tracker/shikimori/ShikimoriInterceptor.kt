@@ -9,6 +9,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.shikimori.dto.isExpired
 import uy.kohesive.injekt.injectLazy
 
 class ShikimoriInterceptor(
+    private val userId: Int,
     private val shikimori: Shikimori,
 ) : Interceptor {
     private val json: Json by injectLazy()
@@ -16,7 +17,7 @@ class ShikimoriInterceptor(
     /**
      * OAuth object used for authenticated requests.
      */
-    private var oauth: SMOAuth? = shikimori.restoreToken()
+    private var oauth: SMOAuth? = shikimori.restoreToken(userId)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val originalRequest = chain.request()
@@ -47,6 +48,6 @@ class ShikimoriInterceptor(
 
     fun newAuth(oauth: SMOAuth?) {
         this.oauth = oauth
-        shikimori.saveToken(oauth)
+        shikimori.saveToken(userId, oauth)
     }
 }

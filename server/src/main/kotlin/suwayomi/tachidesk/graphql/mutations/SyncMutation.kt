@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.StartSyncResult
@@ -15,10 +16,14 @@ class SyncMutation {
     )
 
     @RequireAuth
-    fun startSync(input: StartSyncInput): StartSyncPayload {
+    fun startSync(
+        @GraphQLIgnore
+        userId: Int,
+        input: StartSyncInput,
+    ): StartSyncPayload {
         val (clientMutationId) = input
 
-        val result = SyncManager.startSync()
+        val result = SyncManager.startSync(userId)
 
         return StartSyncPayload(
             clientMutationId = clientMutationId,

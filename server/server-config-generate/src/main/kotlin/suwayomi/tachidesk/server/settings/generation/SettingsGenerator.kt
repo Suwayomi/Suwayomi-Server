@@ -3,6 +3,8 @@ package suwayomi.tachidesk.server.settings.generation
 import com.typesafe.config.ConfigFactory
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.settings.SettingsRegistry
+import suwayomi.tachidesk.server.settings.UserConfig
+import suwayomi.tachidesk.server.settings.UserSettingsRegistry
 import suwayomi.tachidesk.server.util.ConfigTypeRegistration
 import java.io.File
 import kotlin.reflect.KProperty1
@@ -50,6 +52,13 @@ object SettingsGenerator {
         } catch (e: Exception) {
             // Registration failed, but we tried
         }
+
+        // Instantiate a UserConfig to trigger per-user setting registration.
+        try {
+            UserConfig()
+        } catch (e: Exception) {
+            // Registration failed, but we tried
+        }
     }
 
     fun generate(
@@ -80,5 +89,22 @@ object SettingsGenerator {
 
         val backupSettingsHandlerFile = backupSettingsHandlerOutputDir.resolve("BackupSettingsHandler.kt")
         SettingsBackupSettingsHandlerGenerator.generate(settings, backupSettingsHandlerFile)
+
+        // Per-user settings
+        val userSettings = UserSettingsRegistry.getAll()
+        if (userSettings.isNotEmpty()) {
+            println(" - Total user settings: ${userSettings.size}")
+
+            val userSettingsTypeFile = graphqlOutputDir.resolve("UserSettingsType.kt")
+            UserSettingsGraphqlTypeGenerator.generate(userSettings, userSettingsTypeFile)
+
+            val backupUserSettingsFile = backupSettingsOutputDir.resolve("BackupUserSettings.kt")
+            UserSettingsBackupModelGenerator.generate(userSettings, backupUserSettingsFile)
+
+            val backupUserSettingsHandlerFile = backupSettingsHandlerOutputDir.resolve("BackupUserSettingsHandler.kt")
+            UserSettingsBackupHandlerGenerator.generate(userSettings, backupUserSettingsFile, backupUserSettingsHandlerFile)
+        } else {
+            println("Warning: No user settings found in registry. User settings might not be initialized.")
+        }
     }
 }

@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -22,17 +23,21 @@ import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.server.database.dbTransaction
 
 object BackupCategoryHandler {
-    fun backup(flags: BackupFlags): List<BackupCategory> =
+    fun backup(
+        userId: Int,
+        flags: BackupFlags,
+    ): List<BackupCategory> =
         dbTransaction {
             val categories =
                 CategoryTable
                     .selectAll()
+                    .where { CategoryTable.user eq userId }
                     .orderBy(CategoryTable.order to SortOrder.ASC)
                     .toList()
 
             val categoryToMeta =
                 if (flags.includeClientData) {
-                    Category.getCategoriesMetaMaps(categories.map { it[CategoryTable.id].value })
+                    Category.getCategoriesMetaMaps(userId, categories.map { it[CategoryTable.id].value })
                 } else {
                     emptyMap()
                 }
@@ -52,10 +57,11 @@ object BackupCategoryHandler {
         }
 
     fun restore(
+        userId: Int,
         backupCategories: List<BackupCategory>,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ): Map<Int, Int> {
-        val dbCategories = Category.getCategoryList()
+        val dbCategories = Category.getCategoryList(userId, includeDefault = true)
         val dbCategoriesByName = dbCategories.associateBy { it.name }
         val dbCategoriesByUid = dbCategories.associateBy { it.uid }
 
@@ -113,13 +119,14 @@ object BackupCategoryHandler {
                                 it[version] = backupCategory.version
                                 it[uid] = backupCategory.uid
                                 it[lastModifiedAt] = backupCategory.lastModifiedAt
+                                it[user] = userId
                                 it[flags] = backupCategory.flags
                             }.value
                     }
             }
 
         transaction {
-            CategoryTable.update({ CategoryTable.isSyncing eq true }) {
+            CategoryTable.update({ CategoryTable.user eq userId and (CategoryTable.isSyncing eq true) }) {
                 it[isSyncing] = false
             }
         }
@@ -131,7 +138,7 @@ object BackupCategoryHandler {
                     categoryId to backupCategory.meta
                 }
 
-        modifyCategoriesMetas(metaEntryByCategoryId)
+        modifyCategoriesMetas(userId, metaEntryByCategoryId)
 
         return backupCategories.withIndex().associate { (index, backupCategory) ->
             backupCategory.order to categoryIds[index]

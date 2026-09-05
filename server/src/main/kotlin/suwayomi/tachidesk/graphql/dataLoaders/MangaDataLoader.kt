@@ -12,18 +12,27 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.MangaUserType
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.requireUser
 
 class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
     override val dataLoaderName = "MangaDataLoader"
@@ -51,18 +60,25 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaNodeList> =
         DataLoaderFactory.newDataLoader<Int, MangaNodeList> { ids ->
             future {
+                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
+                    val defaultCategoryId = Category.getDefaultCategoryId(userId)!!
                     val itemsByRef =
-                        if (ids.contains(0)) {
+                        if (ids.contains(defaultCategoryId)) {
                             MangaTable
-                                .leftJoin(CategoryMangaTable)
-                                .selectAll()
-                                .where { MangaTable.inLibrary eq true }
+                                .getWithUserData(userId)
+                                .leftJoin(
+                                    CategoryMangaTable,
+                                    onColumn = { MangaTable.id },
+                                    otherColumn = { CategoryMangaTable.manga },
+                                    additionalConstraint = { CategoryMangaTable.user eq userId },
+                                ).selectAll()
+                                .where { MangaUserTable.inLibrary eq true }
                                 .andWhere { CategoryMangaTable.manga.isNull() }
                                 .map { MangaType(it) }
                                 .let {
-                                    mapOf(0 to it)
+                                    mapOf(defaultCategoryId to it)
                                 }
                         } else {
                             emptyMap()
@@ -70,7 +86,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                             CategoryMangaTable
                                 .innerJoin(MangaTable)
                                 .selectAll()
-                                .where { CategoryMangaTable.category inList ids }
+                                .where { CategoryMangaTable.category inList ids and (CategoryMangaTable.user eq userId) }
                                 .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                                 .groupBy { it.first }
                                 .mapValues { it.value.map { pair -> pair.second } }
@@ -96,6 +112,27 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
                             .map { MangaType(it) }
                             .groupBy { it.sourceId }
                     ids.map { (mangaBySourceId[it] ?: emptyList()).toNodeList() }
+                }
+            }
+        }
+}
+
+class MangaUserForMangaDataLoader : KotlinDataLoader<Int, MangaUserType> {
+    override val dataLoaderName = "MangaUserForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaUserType> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val manga =
+                        MangaUserTable
+                            .selectAll()
+                            .where { MangaUserTable.user eq userId and (MangaUserTable.manga inList ids) }
+                            .map { MangaUserType(it) }
+                            .associateBy { it.mangaId }
+                    ids.map { manga[it] }
                 }
             }
         }

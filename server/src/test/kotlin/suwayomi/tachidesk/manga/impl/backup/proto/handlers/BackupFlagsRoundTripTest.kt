@@ -9,7 +9,9 @@ import suwayomi.tachidesk.manga.impl.backup.proto.SyncRestoreMode
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import java.util.Date
@@ -25,47 +27,52 @@ class BackupFlagsRoundTripTest : ApplicationTest() {
             includeHistory = false,
             includeClientData = false,
             includeServerSettings = false,
+            includeUserSettings = false,
         )
 
     @AfterEach
     fun tearDown() {
-        clearTables(CategoryTable, MangaTable)
+        clearTables(CategoryTable, MangaTable, MangaUserTable, ChapterUserTable)
     }
 
     @Test
     fun `category flags survive a sync round trip`() {
         BackupCategoryHandler.restore(
+            1,
             listOf(BackupCategory(name = "Reading", order = 1, flags = 0x1234, uid = 7, version = 3)),
             SyncRestoreMode.ADOPT,
         )
-        assertEquals(0x1234, BackupCategoryHandler.backup(backupFlags).single { it.name == "Reading" }.flags)
+        assertEquals(0x1234, BackupCategoryHandler.backup(1, backupFlags).single { it.name == "Reading" }.flags)
 
         // a zeroed copy outside ADOPT must not wipe the stored flags
-        BackupCategoryHandler.restore(listOf(BackupCategory(name = "Reading", order = 1, uid = 7, version = 3)))
-        assertEquals(0x1234, BackupCategoryHandler.backup(backupFlags).single { it.name == "Reading" }.flags)
+        BackupCategoryHandler.restore(1, listOf(BackupCategory(name = "Reading", order = 1, uid = 7, version = 3)))
+        assertEquals(0x1234, BackupCategoryHandler.backup(1, backupFlags).single { it.name == "Reading" }.flags)
 
         // an adopted zeroed copy wins
         BackupCategoryHandler.restore(
+            1,
             listOf(BackupCategory(name = "Reading", order = 1, uid = 7, version = 4)),
             SyncRestoreMode.ADOPT,
         )
-        assertEquals(0, BackupCategoryHandler.backup(backupFlags).single { it.name == "Reading" }.flags)
+        assertEquals(0, BackupCategoryHandler.backup(1, backupFlags).single { it.name == "Reading" }.flags)
     }
 
     @Test
     fun `adopt keeps a newer local category`() {
         BackupCategoryHandler.restore(
+            1,
             listOf(BackupCategory(name = "Reading", order = 1, flags = 7, uid = 9, version = 5)),
             SyncRestoreMode.ADOPT,
         )
-        val adopted = BackupCategoryHandler.backup(backupFlags).single { it.name == "Reading" }
+        val adopted = BackupCategoryHandler.backup(1, backupFlags).single { it.name == "Reading" }
 
         // a stale echo with a lower version must not downgrade the local copy
         BackupCategoryHandler.restore(
+            1,
             listOf(BackupCategory(name = "Reading", order = 3, flags = 1, uid = 9, version = 4)),
             SyncRestoreMode.ADOPT,
         )
-        val category = BackupCategoryHandler.backup(backupFlags).single { it.name == "Reading" }
+        val category = BackupCategoryHandler.backup(1, backupFlags).single { it.name == "Reading" }
         assertEquals(5, category.version)
         assertEquals(7, category.flags)
         assertEquals(adopted.order, category.order)
@@ -79,22 +86,24 @@ class BackupFlagsRoundTripTest : ApplicationTest() {
                 source = 42,
                 url = "/m",
                 title = "Manga",
+                favorite = true,
                 viewer = 2,
                 viewer_flags = 5,
                 chapterFlags = 0x4321,
                 version = 3,
             )
 
-        BackupMangaHandler.restore(manga, emptyMap(), emptyMap(), errors, backupFlags, SyncRestoreMode.ADOPT)
+        BackupMangaHandler.restore(1, manga, emptyMap(), emptyMap(), errors, backupFlags, SyncRestoreMode.ADOPT)
         assertTrue(errors.isEmpty(), errors.joinToString())
 
-        val exported = BackupMangaHandler.backup(backupFlags).single()
+        val exported = BackupMangaHandler.backup(1, backupFlags).single()
         assertEquals(2, exported.viewer)
         assertEquals(5, exported.viewer_flags)
         assertEquals(0x4321, exported.chapterFlags)
 
         // a zeroed copy outside ADOPT keeps the stored values
         BackupMangaHandler.restore(
+            1,
             BackupManga(source = 42, url = "/m", title = "Manga", version = 3),
             emptyMap(),
             emptyMap(),
@@ -102,7 +111,7 @@ class BackupFlagsRoundTripTest : ApplicationTest() {
             backupFlags,
         )
         assertTrue(errors.isEmpty(), errors.joinToString())
-        val kept = BackupMangaHandler.backup(backupFlags).single()
+        val kept = BackupMangaHandler.backup(1, backupFlags).single()
         assertEquals(2, kept.viewer)
         assertEquals(5, kept.viewer_flags)
         assertEquals(0x4321, kept.chapterFlags)

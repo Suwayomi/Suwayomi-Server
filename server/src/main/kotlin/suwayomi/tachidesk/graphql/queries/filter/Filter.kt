@@ -8,6 +8,7 @@ import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.QueryBuilder
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.coalesce
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
@@ -29,6 +30,7 @@ import org.jetbrains.exposed.v1.core.wrap
 import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.server.user.UserPermission
 
 class ILikeEscapeOp(
     expr1: Expression<*>,
@@ -350,6 +352,20 @@ data class ContentWarningFilter(
     override val greaterThanOrEqualTo: ContentWarning? = null,
 ) : ComparableScalarFilter<ContentWarning>
 
+data class PermissionsFilter(
+    override val isNull: Boolean? = null,
+    override val equalTo: UserPermission? = null,
+    override val notEqualTo: UserPermission? = null,
+    override val notEqualToAll: List<UserPermission>? = null,
+    override val notEqualToAny: List<UserPermission>? = null,
+    override val distinctFrom: UserPermission? = null,
+    override val distinctFromAll: List<UserPermission>? = null,
+    override val distinctFromAny: List<UserPermission>? = null,
+    override val notDistinctFrom: UserPermission? = null,
+    override val `in`: List<UserPermission>? = null,
+    override val notIn: List<UserPermission>? = null,
+) : ScalarFilter<UserPermission>
+
 data class StringFilter(
     override val isNull: Boolean? = null,
     override val equalTo: String? = null,
@@ -601,7 +617,7 @@ class OpAnd(
 
     fun <T> eq(
         value: T?,
-        column: Column<T>,
+        column: ExpressionWithColumnType<T>,
     ) = andWhere(value) { column eq it }
 
     fun <T : Comparable<T>> eq(
@@ -612,7 +628,7 @@ class OpAnd(
 
 @Suppress("UNCHECKED_CAST")
 fun <T : Comparable<T>, S : T?> andFilterWithCompare(
-    column: Column<S>,
+    column: ExpressionWithColumnType<S>,
     filter: ComparableScalarFilter<T>?,
 ): Op<Boolean>? {
     filter ?: return null
@@ -668,6 +684,30 @@ fun <T : Enum<T>> andFilterWithCompareEnum(
     return opAnd.op
 }
 
+@Suppress("UNCHECKED_CAST")
+fun <T : Enum<T>> andFilterEnum(
+    column: Column<String>,
+    filter: ScalarFilter<T>?,
+): Op<Boolean>? {
+    filter ?: return null
+    val opAnd = OpAnd()
+
+    opAnd.andWhere(filter.isNull) { if (it) column.isNull() else column.isNotNull() }
+
+    opAnd.andWhere(filter.equalTo) { column eq it.name }
+    opAnd.andNotWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it.name }
+    opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it.name) }
+    opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it.name) }
+    if (!filter.`in`.isNullOrEmpty()) {
+        opAnd.andWhere(filter.`in`) { column inList it.map { it.name } }
+    }
+    if (!filter.notIn.isNullOrEmpty()) {
+        opAnd.andWhere(filter.notIn) { column notInList it.map { it.name } }
+    }
+
+    return opAnd.op
+}
+
 fun <T : Comparable<T>> andFilterWithCompareEntity(
     column: Column<EntityID<T>>,
     filter: ComparableScalarFilter<T>?,
@@ -695,3 +735,8 @@ fun <T : Comparable<T>> andFilterWithCompareEntity(
 
     return opAnd.op
 }
+
+fun <T : Any> coalesceDefault(
+    column: Column<T>,
+    default: T,
+): ExpressionWithColumnType<T> = coalesce(column, column.wrap(default))

@@ -222,12 +222,12 @@ class FilterListTest : ApplicationTest() {
 
             setFilter(
                 source.id,
-                FilterChange(0, "change!"),
+                listOf(FilterChange(0, "change!")),
             )
 
             setFilter(
                 source.id,
-                FilterChange(1, "change!"),
+                listOf(FilterChange(1, "change!")),
             )
 
             val filterList = getFilterList(source.id, false)
@@ -250,7 +250,7 @@ class FilterListTest : ApplicationTest() {
 
             setFilter(
                 source.id,
-                FilterChange(2, "1"),
+                listOf(FilterChange(2, "1")),
             )
 
             val filterList = getFilterList(source.id, false)
@@ -268,7 +268,7 @@ class FilterListTest : ApplicationTest() {
 
             setFilter(
                 source.id,
-                FilterChange(3, "I'm a changed man!"),
+                listOf(FilterChange(3, "I'm a changed man!")),
             )
 
             val filterList = getFilterList(source.id, false)
@@ -286,7 +286,7 @@ class FilterListTest : ApplicationTest() {
 
             setFilter(
                 source.id,
-                FilterChange(4, "true"),
+                listOf(FilterChange(4, "true")),
             )
 
             val filterList = getFilterList(source.id, false)
@@ -304,7 +304,7 @@ class FilterListTest : ApplicationTest() {
 
             setFilter(
                 source.id,
-                FilterChange(5, "1"),
+                listOf(FilterChange(5, "1")),
             )
 
             val filterList = getFilterList(source.id, false)
@@ -322,7 +322,7 @@ class FilterListTest : ApplicationTest() {
 
             setFilter(
                 source.id,
-                FilterChange(6, """{"position":0,"state":"true"}"""),
+                listOf(FilterChange(6, """{"position":0,"state":"true"}""")),
             )
 
             val filterList = getFilterList(source.id, false)
@@ -340,7 +340,7 @@ class FilterListTest : ApplicationTest() {
 
             setFilter(
                 source.id,
-                FilterChange(7, """{"index":1,"ascending":"true"}"""),
+                listOf(FilterChange(7, """{"index":1,"ascending":"true"}""")),
             )
 
             val filterList = getFilterList(source.id, false)

@@ -10,12 +10,13 @@ import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 
 class MyAnimeListInterceptor(
+    private val userId: Int,
     private val myanimelist: MyAnimeList,
 ) : Interceptor {
     private val json: Json by injectLazy()
 
-    private var oauth: MALOAuth? = myanimelist.loadOAuth()
-    private val tokenExpired get() = myanimelist.getIfAuthExpired()
+    private var oauth: MALOAuth? = myanimelist.loadOAuth(userId)
+    private val tokenExpired get() = myanimelist.getIfAuthExpired(userId)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         if (tokenExpired) {
@@ -48,7 +49,7 @@ class MyAnimeListInterceptor(
      */
     fun setAuth(oauth: MALOAuth?) {
         this.oauth = oauth
-        myanimelist.saveOAuth(oauth)
+        myanimelist.saveOAuth(userId, oauth)
     }
 
     private fun refreshToken(chain: Interceptor.Chain): MALOAuth =
@@ -64,7 +65,7 @@ class MyAnimeListInterceptor(
                 }
 
             if (response.code == 401) {
-                myanimelist.setAuthExpired()
+                myanimelist.setAuthExpired(userId)
                 throw MALTokenExpired()
             }
 
@@ -78,7 +79,7 @@ class MyAnimeListInterceptor(
             }.getOrNull()
                 ?.also {
                     this.oauth = it
-                    myanimelist.saveOAuth(it)
+                    myanimelist.saveOAuth(userId, it)
                 }
                 ?: throw MALTokenRefreshFailed()
         }

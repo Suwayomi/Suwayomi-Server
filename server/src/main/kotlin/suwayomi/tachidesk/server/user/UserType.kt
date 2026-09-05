@@ -12,6 +12,13 @@ import suwayomi.tachidesk.server.serverConfig
 sealed class UserType {
     class Admin(
         val id: Int,
+        val roles: List<UserRole> = listOf(UserRole.ADMIN),
+    ) : UserType()
+
+    class User(
+        val id: Int,
+        val permissions: List<UserPermission>,
+        val roles: List<UserRole> = listOf(UserRole.USER),
     ) : UserType()
 
     data object Visitor : UserType()
@@ -20,6 +27,7 @@ sealed class UserType {
 fun UserType.requireUser(): Int =
     when (this) {
         is UserType.Admin -> id
+        is UserType.User -> id
         UserType.Visitor -> throw UnauthorizedException()
     }
 
@@ -37,9 +45,13 @@ fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
             ctx.header("WWW-Authenticate", "Basic")
             throw UnauthorizedException()
         }
+
+        is UserType.User -> {
+            id
+        }
     }
 
-fun getUserFromToken(token: String?): UserType {
+suspend fun getUserFromToken(token: String?): UserType {
     if (serverConfig.authMode.value != AuthMode.UI_LOGIN) {
         return UserType.Admin(1)
     }
@@ -51,7 +63,24 @@ fun getUserFromToken(token: String?): UserType {
     return Jwt.verifyJwt(token)
 }
 
-fun getUserFromContext(ctx: Context): UserType {
+fun UserType.requirePermissions(vararg permissions: UserPermission) {
+    when (this) {
+        is UserType.Admin -> {}
+
+        is UserType.User -> {
+            val userPermissions = this.permissions
+            if (!permissions.all { it in userPermissions }) {
+                throw ForbiddenException()
+            }
+        }
+
+        UserType.Visitor -> {
+            throw UnauthorizedException()
+        }
+    }
+}
+
+suspend fun getUserFromContext(ctx: Context): UserType {
     fun cookieValid(): Boolean {
         val username = ctx.sessionAttribute<String>("logged-in") ?: return false
         return username == serverConfig.authUsername.value
@@ -76,7 +105,7 @@ fun getUserFromContext(ctx: Context): UserType {
     }
 }
 
-fun getUserFromWsContext(ctx: WsConnectContext): UserType {
+suspend fun getUserFromWsContext(ctx: WsConnectContext): UserType {
     fun cookieValid(): Boolean {
         val username = ctx.sessionAttribute<String>("logged-in") ?: return false
         return username == serverConfig.authUsername.value

@@ -17,6 +17,7 @@ interface IBackupFlags {
     val includeHistory: Boolean?
     val includeClientData: Boolean?
     val includeServerSettings: Boolean?
+    val includeUserSettings: Boolean?
 }
 
 data class BackupFlags(
@@ -27,6 +28,7 @@ data class BackupFlags(
     override val includeHistory: Boolean,
     override val includeClientData: Boolean,
     override val includeServerSettings: Boolean,
+    override val includeUserSettings: Boolean,
 ) : IBackupFlags {
     companion object {
         val DEFAULT =
@@ -38,6 +40,7 @@ data class BackupFlags(
                 includeHistory = true,
                 includeClientData = true,
                 includeServerSettings = true,
+                includeUserSettings = true,
             )
 
         fun fromPartial(partialFlags: IBackupFlags?): BackupFlags =
@@ -49,6 +52,7 @@ data class BackupFlags(
                 includeHistory = partialFlags?.includeHistory ?: DEFAULT.includeHistory,
                 includeClientData = partialFlags?.includeClientData ?: DEFAULT.includeClientData,
                 includeServerSettings = partialFlags?.includeServerSettings ?: DEFAULT.includeServerSettings,
+                includeUserSettings = partialFlags?.includeUserSettings ?: DEFAULT.includeUserSettings,
             )
 
         fun fromServerConfig(): BackupFlags =
@@ -60,6 +64,7 @@ data class BackupFlags(
                 includeHistory = serverConfig.autoBackupIncludeHistory.value,
                 includeClientData = serverConfig.autoBackupIncludeClientData.value,
                 includeServerSettings = serverConfig.autoBackupIncludeServerSettings.value,
+                includeUserSettings = serverConfig.autoBackupIncludeUserSettings.value,
             )
     }
 }

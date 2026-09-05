@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.exposed.v1.core.eq
@@ -9,6 +10,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.types.ChapterDownloadReorder
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.DownloadStatus
@@ -18,6 +20,7 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.DEQUEUED
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
@@ -33,11 +36,15 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun deleteDownloadedChapters(input: DeleteDownloadedChaptersInput): CompletableFuture<DeleteDownloadedChaptersPayload?> {
+    fun deleteDownloadedChapters(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteDownloadedChaptersInput,
+    ): CompletableFuture<DeleteDownloadedChaptersPayload?> {
         val (clientMutationId, chapters) = input
 
         return future {
-            Chapter.deleteChapters(chapters)
+            Chapter.deleteDownloadedChapters(userId, chapters)
 
             DeleteDownloadedChaptersPayload(
                 clientMutationId = clientMutationId,
@@ -63,11 +70,15 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun deleteDownloadedChapter(input: DeleteDownloadedChapterInput): CompletableFuture<DeleteDownloadedChapterPayload?> {
+    fun deleteDownloadedChapter(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteDownloadedChapterInput,
+    ): CompletableFuture<DeleteDownloadedChapterPayload?> {
         val (clientMutationId, chapter) = input
 
         return future {
-            Chapter.deleteChapters(listOf(chapter))
+            Chapter.deleteDownloadedChapters(userId, listOf(chapter))
 
             DeleteDownloadedChapterPayload(
                 clientMutationId = clientMutationId,
@@ -90,22 +101,31 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun enqueueChapterDownloads(input: EnqueueChapterDownloadsInput): CompletableFuture<EnqueueChapterDownloadsPayload?> {
+    @RequirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
+    fun enqueueChapterDownloads(
+        @GraphQLIgnore
+        userId: Int,
+        input: EnqueueChapterDownloadsInput,
+    ): CompletableFuture<EnqueueChapterDownloadsPayload?> {
         val (clientMutationId, chapters) = input
 
         return future {
-            DownloadManager.enqueue(DownloadManager.EnqueueInput(chapters))
+            val chapterIdsToEnqueue = DownloadManager.enqueue(userId, chapters)
 
             EnqueueChapterDownloadsPayload(
                 clientMutationId = clientMutationId,
                 downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first {
-                                    DownloadManager.getStatus().queue.any { it.chapterId in chapters }
-                                }.let { DownloadManager.getStatus() },
-                        )
+                    if (chapterIdsToEnqueue.isNotEmpty()) {
+                        withTimeout(30.seconds) {
+                            DownloadStatus(
+                                DownloadManager.updates
+                                    .first {
+                                        DownloadManager.getStatus().queue.any { it.chapterId in chapterIdsToEnqueue }
+                                    }.let { DownloadManager.getStatus() },
+                            )
+                        }
+                    } else {
+                        DownloadStatus(DownloadManager.getStatus())
                     },
             )
         }
@@ -122,21 +142,30 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun enqueueChapterDownload(input: EnqueueChapterDownloadInput): CompletableFuture<EnqueueChapterDownloadPayload?> {
+    @RequirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
+    fun enqueueChapterDownload(
+        @GraphQLIgnore
+        userId: Int,
+        input: EnqueueChapterDownloadInput,
+    ): CompletableFuture<EnqueueChapterDownloadPayload?> {
         val (clientMutationId, chapter) = input
 
         return future {
-            DownloadManager.enqueue(DownloadManager.EnqueueInput(listOf(chapter)))
+            val chapterIdsToEnqueue = DownloadManager.enqueue(userId, listOf(chapter))
 
             EnqueueChapterDownloadPayload(
                 clientMutationId = clientMutationId,
                 downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first { it.updates.any { it.downloadQueueItem.chapterId == chapter } }
-                                .let { DownloadManager.getStatus() },
-                        )
+                    if (chapterIdsToEnqueue.isNotEmpty()) {
+                        withTimeout(30.seconds) {
+                            DownloadStatus(
+                                DownloadManager.updates
+                                    .first { it.updates.any { it.downloadQueueItem.chapterId == chapter } }
+                                    .let { DownloadManager.getStatus() },
+                            )
+                        }
+                    } else {
+                        DownloadStatus(DownloadManager.getStatus())
                     },
             )
         }
@@ -153,24 +182,32 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun dequeueChapterDownloads(input: DequeueChapterDownloadsInput): CompletableFuture<DequeueChapterDownloadsPayload?> {
+    fun dequeueChapterDownloads(
+        @GraphQLIgnore
+        userId: Int,
+        input: DequeueChapterDownloadsInput,
+    ): CompletableFuture<DequeueChapterDownloadsPayload?> {
         val (clientMutationId, chapters) = input
 
         return future {
-            DownloadManager.dequeue(DownloadManager.EnqueueInput(chapters))
+            val chapterIdsToDequeue = DownloadManager.dequeue(userId, chapters)
 
             DequeueChapterDownloadsPayload(
                 clientMutationId = clientMutationId,
                 downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first {
-                                    it.updates.any {
-                                        it.downloadQueueItem.chapterId in chapters && it.type == DEQUEUED
-                                    }
-                                }.let { DownloadManager.getStatus() },
-                        )
+                    if (chapterIdsToDequeue.isNotEmpty()) {
+                        withTimeout(30.seconds) {
+                            DownloadStatus(
+                                DownloadManager.updates
+                                    .first {
+                                        it.updates.any {
+                                            it.downloadQueueItem.chapterId in chapterIdsToDequeue && it.type == DEQUEUED
+                                        }
+                                    }.let { DownloadManager.getStatus() },
+                            )
+                        }
+                    } else {
+                        DownloadStatus(DownloadManager.getStatus())
                     },
             )
         }
@@ -187,24 +224,32 @@ class DownloadMutation {
     )
 
     @RequireAuth
-    fun dequeueChapterDownload(input: DequeueChapterDownloadInput): CompletableFuture<DequeueChapterDownloadPayload?> {
+    fun dequeueChapterDownload(
+        @GraphQLIgnore
+        userId: Int,
+        input: DequeueChapterDownloadInput,
+    ): CompletableFuture<DequeueChapterDownloadPayload?> {
         val (clientMutationId, chapter) = input
 
         return future {
-            DownloadManager.dequeue(DownloadManager.EnqueueInput(listOf(chapter)))
+            val chapterIdsToDequeue = DownloadManager.dequeue(userId, listOf(chapter))
 
             DequeueChapterDownloadPayload(
                 clientMutationId = clientMutationId,
                 downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first {
-                                    it.updates.any {
-                                        it.downloadQueueItem.chapterId == chapter && it.type == DEQUEUED
-                                    }
-                                }.let { DownloadManager.getStatus() },
-                        )
+                    if (chapterIdsToDequeue.isNotEmpty()) {
+                        withTimeout(30.seconds) {
+                            DownloadStatus(
+                                DownloadManager.updates
+                                    .first {
+                                        it.updates.any {
+                                            it.downloadQueueItem.chapterId == chapter && it.type == DEQUEUED
+                                        }
+                                    }.let { DownloadManager.getStatus() },
+                            )
+                        }
+                    } else {
+                        DownloadStatus(DownloadManager.getStatus())
                     },
             )
         }

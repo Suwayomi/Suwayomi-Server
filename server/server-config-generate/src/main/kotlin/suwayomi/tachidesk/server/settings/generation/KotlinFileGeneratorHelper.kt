@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.server.settings.generation
 
 import suwayomi.tachidesk.server.settings.SettingsRegistry
+import suwayomi.tachidesk.server.settings.UserSetting
 
 internal fun String.addIndentation(times: Int): String = this.prependIndent(" ".repeat(times))
 
@@ -28,6 +29,21 @@ object KotlinFileGeneratorHelper {
             staticImports.forEach { appendLine("import $it") }
             settings
                 .mapNotNull { it.typeInfo.imports }
+                .flatten()
+                .distinct()
+                .forEach { appendLine("import $it") }
+
+            appendLine()
+        }
+
+    fun createUserSettingsImports(
+        staticImports: List<String>,
+        settings: List<UserSetting<*>>,
+    ): String =
+        buildString {
+            staticImports.forEach { appendLine("import $it") }
+            settings
+                .mapNotNull { it.typeInfo?.imports }
                 .flatten()
                 .distinct()
                 .forEach { appendLine("import $it") }

@@ -7,6 +7,8 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -17,6 +19,7 @@ import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import java.util.concurrent.CompletableFuture
 
 data class SyncConflictInfoType(
@@ -32,16 +35,12 @@ class ChapterType(
     val chapterNumber: Float,
     val scanlator: String?,
     val mangaId: Int,
-    val isRead: Boolean,
-    val isBookmarked: Boolean,
-    val lastPageRead: Int,
-    val lastReadAt: Long,
     val sourceOrder: Int,
     val realUrl: String?,
     val fetchedAt: Long,
-    val isDownloaded: Boolean,
     val pageCount: Int,
-//    val chapterCount: Int?,
+    @get:GraphQLIgnore
+    val lastReadAt: Long? = null,
 ) : Node {
     companion object {
         fun clearCacheFor(
@@ -53,6 +52,7 @@ class ChapterType(
             dataFetchingEnvironment.getDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, Int>("DownloadedChapterCountForMangaDataLoader")?.clear(mangaId)
             dataFetchingEnvironment.getDataLoader<Int, ChapterType>("LastReadChapterForMangaDataLoader")?.clear(mangaId)
+            dataFetchingEnvironment.getDataLoader<Int, ChapterUserType>("ChapterUserForChapterDataLoader")?.clear(chapterId)
         }
     }
 
@@ -64,16 +64,12 @@ class ChapterType(
         row[ChapterTable.chapter_number],
         row[ChapterTable.scanlator],
         row[ChapterTable.manga].value,
-        row[ChapterTable.isRead],
-        row[ChapterTable.isBookmarked],
-        row[ChapterTable.lastPageRead],
-        row[ChapterTable.lastReadAt],
         row[ChapterTable.sourceOrder],
         row[ChapterTable.realUrl],
         row[ChapterTable.fetchedAt],
-        row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount],
-//        transaction { ChapterTable.selectAll().where { Manga eq chapterEntry[manga].value }.count().toInt() },
+        // do not use for regular queries.
+        row.getOrNull(ChapterUserTable.lastReadAt),
     )
 
     constructor(dataClass: ChapterDataClass) : this(
@@ -84,14 +80,10 @@ class ChapterType(
         dataClass.chapterNumber,
         dataClass.scanlator,
         dataClass.mangaId,
-        dataClass.read,
-        dataClass.bookmarked,
-        dataClass.lastPageRead,
-        dataClass.lastReadAt,
         dataClass.index,
         dataClass.realUrl,
         dataClass.fetchedAt,
-        dataClass.downloaded,
+        // do not use for regular queries.
         dataClass.pageCount,
     )
 
@@ -100,6 +92,39 @@ class ChapterType(
 
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterMetaType>> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, List<ChapterMetaType>>("ChapterMetaDataLoader", id)
+
+    fun user(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterUserType?> =
+        dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterUserType?>("ChapterUserForChapterDataLoader", id)
+
+    @GraphQLDeprecated("Use user.isRead instead")
+    fun isRead(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.isRead == true
+        }
+
+    @GraphQLDeprecated("Use user.isBookmarked instead")
+    fun isBookmarked(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.isBookmarked == true
+        }
+
+    @GraphQLDeprecated("Use user.lastPageRead instead")
+    fun lastPageRead(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.lastPageRead ?: 0
+        }
+
+    @GraphQLDeprecated("Use user.lastReadAt instead")
+    fun lastReadAt(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Long> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.lastReadAt ?: 0
+        }
+
+    @GraphQLDeprecated("Use user.isDownloaded instead")
+    fun isDownloaded(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
+        user(dataFetchingEnvironment).thenApply {
+            it?.isDownloaded == true
+        }
 }
 
 data class ChapterNodeList(

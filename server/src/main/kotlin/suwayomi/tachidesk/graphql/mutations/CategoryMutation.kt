@@ -2,12 +2,14 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.minus
 import org.jetbrains.exposed.v1.core.or
@@ -31,6 +33,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 
 class CategoryMutation {
     data class SetCategoryMetaInput(
@@ -44,10 +47,14 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun setCategoryMeta(input: SetCategoryMetaInput): SetCategoryMetaPayload? {
+    fun setCategoryMeta(
+        @GraphQLIgnore
+        userId: Int,
+        input: SetCategoryMetaInput,
+    ): SetCategoryMetaPayload? {
         val (clientMutationId, meta) = input
 
-        Category.modifyMeta(meta.categoryId, meta.key, meta.value)
+        Category.modifyMeta(userId, meta.categoryId, meta.key, meta.value)
 
         return SetCategoryMetaPayload(clientMutationId, meta)
     }
@@ -65,7 +72,11 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategoryMeta(input: DeleteCategoryMetaInput): DeleteCategoryMetaPayload? {
+    fun deleteCategoryMeta(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteCategoryMetaInput,
+    ): DeleteCategoryMetaPayload? {
         val (clientMutationId, categoryId, key) = input
 
         val (meta, category) =
@@ -73,10 +84,17 @@ class CategoryMutation {
                 val meta =
                     CategoryMetaTable
                         .selectAll()
-                        .where { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
-                        .firstOrNull()
+                        .where {
+                            CategoryMetaTable.user eq userId and
+                                (CategoryMetaTable.ref eq categoryId) and
+                                (CategoryMetaTable.key eq key)
+                        }.firstOrNull()
 
-                CategoryMetaTable.deleteWhere { (CategoryMetaTable.ref eq categoryId) and (CategoryMetaTable.key eq key) }
+                CategoryMetaTable.deleteWhere {
+                    CategoryMetaTable.user eq userId and
+                        (CategoryMetaTable.ref eq categoryId) and
+                        (CategoryMetaTable.key eq key)
+                }
 
                 val category =
                     transaction {
@@ -110,7 +128,11 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun setCategoryMetas(input: SetCategoryMetasInput): SetCategoryMetasPayload? {
+    fun setCategoryMetas(
+        @GraphQLIgnore
+        userId: Int,
+        input: SetCategoryMetasInput,
+    ): SetCategoryMetasPayload? {
         val (clientMutationId, items) = input
 
         val metaByCategoryId =
@@ -121,7 +143,7 @@ class CategoryMutation {
                 }.groupBy({ it.first }, { it.second })
                 .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
 
-        Category.modifyCategoriesMetas(metaByCategoryId)
+        Category.modifyCategoriesMetas(userId, metaByCategoryId)
 
         val allCategoryIds = metaByCategoryId.keys
         val allMetaKeys = metaByCategoryId.values.flatMap { item -> item.keys }.distinct()
@@ -131,13 +153,15 @@ class CategoryMutation {
                 val updatedMetas =
                     CategoryMetaTable
                         .selectAll()
-                        .where { (CategoryMetaTable.ref inList allCategoryIds) and (CategoryMetaTable.key inList allMetaKeys) }
-                        .map { CategoryMetaType(it) }
+                        .where {
+                            (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList allCategoryIds) and
+                                (CategoryMetaTable.key inList allMetaKeys)
+                        }.map { CategoryMetaType(it) }
 
                 val categories =
                     CategoryTable
                         .selectAll()
-                        .where { CategoryTable.id inList allCategoryIds }
+                        .where { CategoryTable.user eq userId and (CategoryTable.id inList allCategoryIds) }
                         .map { CategoryType(it) }
                         .distinctBy { it.id }
 
@@ -165,7 +189,11 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategoryMetas(input: DeleteCategoryMetasInput): DeleteCategoryMetasPayload? {
+    fun deleteCategoryMetas(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteCategoryMetasInput,
+    ): DeleteCategoryMetasPayload? {
         val (clientMutationId, items) = input
 
         items.forEach { item ->
@@ -196,7 +224,8 @@ class CategoryMutation {
                             keyCondition ?: prefixCondition!!
                         }
 
-                    val condition = (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
+                    val condition =
+                        (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
 
                     deletedMetas +=
                         CategoryMetaTable
@@ -253,33 +282,40 @@ class CategoryMutation {
     )
 
     private fun updateCategories(
+        @GraphQLIgnore
+        userId: Int,
         ids: List<Int>,
         patch: UpdateCategoryPatch,
     ) {
         transaction {
+            // The default category row is protected from rename and landing-flag changes;
             if (patch.name != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({
+                    CategoryTable.id inList ids and (CategoryTable.user eq userId) and (CategoryTable.isDefaultCategory eq false)
+                }) { update ->
                     patch.name.also {
                         update[name] = it
                     }
                 }
             }
             if (patch.default != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({
+                    CategoryTable.id inList ids and (CategoryTable.user eq userId) and (CategoryTable.isDefaultCategory eq false)
+                }) { update ->
                     patch.default.also {
                         update[isDefault] = it
                     }
                 }
             }
             if (patch.includeInUpdate != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
                     patch.includeInUpdate.also {
                         update[includeInUpdate] = it.value
                     }
                 }
             }
             if (patch.includeInDownload != null) {
-                CategoryTable.update({ CategoryTable.id inList ids }) { update ->
+                CategoryTable.update({ CategoryTable.id inList ids and (CategoryTable.user eq userId) }) { update ->
                     patch.includeInDownload.also {
                         update[includeInDownload] = it.value
                     }
@@ -289,14 +325,23 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateCategory(input: UpdateCategoryInput): UpdateCategoryPayload? {
+    fun updateCategory(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateCategoryInput,
+    ): UpdateCategoryPayload? {
         val (clientMutationId, id, patch) = input
 
-        updateCategories(listOf(id), patch)
+        updateCategories(userId, listOf(id), patch)
 
         val category =
             transaction {
-                CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
+                CategoryType(
+                    CategoryTable
+                        .selectAll()
+                        .where { CategoryTable.id eq id and (CategoryTable.user eq userId) }
+                        .first(),
+                )
             }
 
         return UpdateCategoryPayload(
@@ -306,14 +351,21 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateCategories(input: UpdateCategoriesInput): UpdateCategoriesPayload? {
+    fun updateCategories(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateCategoriesInput,
+    ): UpdateCategoriesPayload? {
         val (clientMutationId, ids, patch) = input
 
-        updateCategories(ids, patch)
+        updateCategories(userId, ids, patch)
 
         val categories =
             transaction {
-                CategoryTable.selectAll().where { CategoryTable.id inList ids }.map { CategoryType(it) }
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id inList ids and (CategoryTable.user eq userId) }
+                    .map { CategoryType(it) }
             }
 
         return UpdateCategoriesPayload(
@@ -334,18 +386,26 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun updateCategoryOrder(input: UpdateCategoryOrderInput): UpdateCategoryOrderPayload? {
+    fun updateCategoryOrder(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateCategoryOrderInput,
+    ): UpdateCategoryOrderPayload? {
         val (clientMutationId, categoryId, position) = input
         require(position > 0) {
             "'order' must not be <= 0"
         }
 
         // position-based: stored sort_order values can collide (pre-existing adopted 0-based rows; sync skips newer local copies)
-        Category.moveCategoryToPosition(categoryId, position)
+        Category.moveCategoryToPosition(userId, categoryId, position)
 
         val categories =
             transaction {
-                CategoryTable.selectAll().orderBy(CategoryTable.order).map { CategoryType(it) }
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.user eq userId }
+                    .orderBy(CategoryTable.order)
+                    .map { CategoryType(it) }
             }
 
         return UpdateCategoryOrderPayload(
@@ -369,10 +429,14 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun createCategory(input: CreateCategoryInput): CreateCategoryPayload? {
+    fun createCategory(
+        @GraphQLIgnore
+        userId: Int,
+        input: CreateCategoryInput,
+    ): CreateCategoryPayload? {
         val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
         transaction {
-            require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
+            require(CategoryTable.selectAll().where { CategoryTable.name eq input.name and (CategoryTable.user eq userId) }.isEmpty()) {
                 "'name' must be unique"
             }
         }
@@ -388,13 +452,14 @@ class CategoryMutation {
         val category =
             transaction {
                 if (order != null) {
-                    CategoryTable.update({ CategoryTable.order greaterEq order }) {
+                    CategoryTable.update({ CategoryTable.order greaterEq order and (CategoryTable.user eq userId) }) {
                         it[CategoryTable.order] = CategoryTable.order + 1
                     }
                 }
 
                 val id =
                     CategoryTable.insertAndGetId {
+                        it[CategoryTable.user] = userId
                         it[CategoryTable.name] = input.name
                         it[CategoryTable.order] = order ?: Int.MAX_VALUE
                         if (default != null) {
@@ -408,9 +473,9 @@ class CategoryMutation {
                         }
                     }
 
-                Category.normalizeCategories()
+                Category.normalizeCategories(userId)
 
-                CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
+                CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id and (CategoryTable.user eq userId) }.first())
             }
 
         return CreateCategoryPayload(clientMutationId, category)
@@ -428,7 +493,11 @@ class CategoryMutation {
     )
 
     @RequireAuth
-    fun deleteCategory(input: DeleteCategoryInput): DeleteCategoryPayload? {
+    fun deleteCategory(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteCategoryInput,
+    ): DeleteCategoryPayload? {
         val (clientMutationId, categoryId) = input
         if (categoryId == 0) { // Don't delete default category
             return DeleteCategoryPayload(
@@ -443,22 +512,27 @@ class CategoryMutation {
                 val category =
                     CategoryTable
                         .selectAll()
-                        .where { CategoryTable.id eq categoryId }
+                        .where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
                         .firstOrNull()
 
                 val mangas =
                     transaction {
                         MangaTable
-                            .innerJoin(CategoryMangaTable)
-                            .selectAll()
+                            .getWithUserData(userId)
+                            .innerJoin(
+                                CategoryMangaTable,
+                                onColumn = { MangaTable.id },
+                                otherColumn = { CategoryMangaTable.manga },
+                                additionalConstraint = { CategoryMangaTable.user eq userId },
+                            ).selectAll()
                             .where { CategoryMangaTable.category eq categoryId }
                             .map { MangaType(it) }
                     }
 
-                CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
+                CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
 
-                Category.normalizeCategories()
-                category?.let { SyncYomiSyncService.rememberDeletedCategory(it[CategoryTable.uid]) }
+                Category.normalizeCategories(userId)
+                category?.let { SyncYomiSyncService.rememberDeletedCategory(userId, it[CategoryTable.uid]) }
 
                 if (category != null) {
                     CategoryType(category)
@@ -499,28 +573,37 @@ class CategoryMutation {
     )
 
     private fun updateMangas(
+        userId: Int,
         ids: List<Int>,
         patch: UpdateMangaCategoriesPatch,
     ) {
+        val removeFromCategoryIds = patch.removeFromCategories.orEmpty()
+        val addToCategoryIds = patch.addToCategories.orEmpty()
         transaction {
             if (patch.clearCategories == true) {
-                CategoryMangaTable.deleteWhere { CategoryMangaTable.manga inList ids }
-            } else if (!patch.removeFromCategories.isNullOrEmpty()) {
+                CategoryMangaTable.deleteWhere { CategoryMangaTable.manga inList ids and (CategoryMangaTable.user eq userId) }
+            } else if (removeFromCategoryIds.isNotEmpty()) {
                 CategoryMangaTable.deleteWhere {
-                    (CategoryMangaTable.manga inList ids) and (CategoryMangaTable.category inList patch.removeFromCategories)
+                    (CategoryMangaTable.manga inList ids) and
+                        (CategoryMangaTable.category inList removeFromCategoryIds) and
+                        (CategoryMangaTable.user eq userId)
                 }
             }
-            if (!patch.addToCategories.isNullOrEmpty()) {
-                CategoryManga.addMangasToCategories(ids, patch.addToCategories)
+            if (addToCategoryIds.isNotEmpty()) {
+                CategoryManga.addMangasToCategories(userId, ids, addToCategoryIds)
             }
         }
     }
 
     @RequireAuth
-    fun updateMangaCategories(input: UpdateMangaCategoriesInput): UpdateMangaCategoriesPayload? {
+    fun updateMangaCategories(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateMangaCategoriesInput,
+    ): UpdateMangaCategoriesPayload? {
         val (clientMutationId, id, patch) = input
 
-        updateMangas(listOf(id), patch)
+        updateMangas(userId, listOf(id), patch)
 
         val manga =
             transaction {
@@ -534,10 +617,14 @@ class CategoryMutation {
     }
 
     @RequireAuth
-    fun updateMangasCategories(input: UpdateMangasCategoriesInput): UpdateMangasCategoriesPayload? {
+    fun updateMangasCategories(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateMangasCategoriesInput,
+    ): UpdateMangasCategoriesPayload? {
         val (clientMutationId, ids, patch) = input
 
-        updateMangas(ids, patch)
+        updateMangas(userId, ids, patch)
 
         val mangas =
             transaction {

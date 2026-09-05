@@ -23,6 +23,7 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
             includeHistory = false,
             includeClientData = false,
             includeServerSettings = false,
+            includeUserSettings = true,
         )
 
     @AfterEach
@@ -34,6 +35,7 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
     fun `sync restore writes ranks instead of raw 0-based wire orders`() {
         val mapping =
             BackupCategoryHandler.restore(
+                1,
                 listOf(
                     BackupCategory(name = "A", order = 0, uid = 1, version = 1),
                     BackupCategory(name = "B", order = 1, uid = 2, version = 1),
@@ -42,11 +44,11 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
                 SyncRestoreMode.ADOPT,
             )
 
-        val orderByName = Category.getCategoryList().associate { it.name to it.order }
+        val orderByName = Category.getCategoryList(1).associate { it.name to it.order }
         assertEquals(mapOf("A" to 1, "B" to 2, "C" to 3), orderByName)
 
         // membership mapping stays keyed by the wire order values
-        val idByName = Category.getCategoryList().associate { it.name to it.id }
+        val idByName = Category.getCategoryList(1).associate { it.name to it.id }
         assertEquals(idByName["A"], mapping[0])
         assertEquals(idByName["B"], mapping[1])
         assertEquals(idByName["C"], mapping[2])
@@ -55,6 +57,7 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
     @Test
     fun `collided incoming orders get distinct ranks`() {
         BackupCategoryHandler.restore(
+            1,
             listOf(
                 BackupCategory(name = "A", order = 0, uid = 1, version = 1),
                 BackupCategory(name = "B", order = 0, uid = 2, version = 1),
@@ -63,23 +66,24 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
             SyncRestoreMode.ADOPT,
         )
 
-        val orderByName = Category.getCategoryList().associate { it.name to it.order }
+        val orderByName = Category.getCategoryList(1).associate { it.name to it.order }
         assertEquals(mapOf("A" to 1, "B" to 2, "C" to 3), orderByName)
     }
 
     @Test
     fun `plain restore ranks matched categories and appends new ones`() {
-        Category.createCategory("k1")
-        Category.createCategory("k2")
+        Category.createCategory(1, "k1")
+        Category.createCategory(1, "k2")
 
         BackupCategoryHandler.restore(
+            1,
             listOf(
                 BackupCategory(name = "k2", order = 0, version = 1),
                 BackupCategory(name = "new", order = 1, version = 1),
             ),
         )
 
-        val orderByName = Category.getCategoryList().associate { it.name to it.order }
+        val orderByName = Category.getCategoryList(1).associate { it.name to it.order }
         assertEquals(0, orderByName["k1"])
         assertEquals(1, orderByName["k2"])
         assertEquals(2, orderByName["new"])
@@ -107,11 +111,11 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
                 BackupCategory(name = "A", order = 0, uid = 1, version = 1),
                 BackupCategory(name = "B", order = 1, uid = 2, version = 1),
             )
-        BackupCategoryHandler.restore(wire, SyncRestoreMode.ADOPT)
+        BackupCategoryHandler.restore(1, wire, SyncRestoreMode.ADOPT)
 
         val exported =
             BackupCategoryHandler
-                .backup(backupFlags)
+                .backup(1, backupFlags)
                 .filter { it.name != Category.DEFAULT_CATEGORY_NAME }
         SyncManager.toWireCategoryOrders(exported, emptyList())
 

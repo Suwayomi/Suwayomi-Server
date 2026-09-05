@@ -5,6 +5,7 @@ import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,10 +19,13 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.types.StartSyncResult
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Library.handleMangaThumbnail
@@ -35,18 +39,24 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
-import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
+import suwayomi.tachidesk.server.subscribeTo
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlin.time.measureTime
@@ -66,161 +76,282 @@ object SyncManager {
     private val syncPreferences = Injekt.get<Application>().getSharedPreferences("sync", Context.MODE_PRIVATE)
     private val logger = KotlinLogging.logger {}
 
-    private var currentTaskId: String? = null
-    private val syncMutex = Mutex()
+    // userId -> (taskId, interval)
+    val scheduledSyncTasks = ConcurrentHashMap<Int, Pair<String, Duration>>()
 
-    private val _lastSyncState: MutableStateFlow<SyncState?> = MutableStateFlow(null)
-    val lastSyncState: StateFlow<SyncState?> = _lastSyncState.asStateFlow()
+    // userId -> StateFlow<SyncState?>
+    val syncStates = ConcurrentHashMap<Int, MutableStateFlow<SyncState?>>()
 
-    @OptIn(DelicateCoroutinesApi::class)
+    // Per-user sync mutexes (so concurrent syncs for different users are not serialized against each other)
+    private val syncMutexes = ConcurrentHashMap<Int, Mutex>()
+
+    // Users whose sync config has been subscribed to
+    private val subscribedUsers = ConcurrentHashMap.newKeySet<Int>()
+
+    // Per-user config subscription jobs
+    private val userConfigSubscriptions = ConcurrentHashMap<Int, Job>()
+
+    private val NEW_USER_CHECK_INTERVAL = 60.seconds
+
+    /**
+     * The per-user sync state. Returns a [StateFlow] that is `null` until the user has (started) syncing.
+     */
+    fun lastSyncState(userId: Int): StateFlow<SyncState?> =
+        syncStates
+            .getOrPut(userId) { MutableStateFlow(null) }
+            .asStateFlow()
+
+    private fun setLastSyncState(
+        userId: Int,
+        state: SyncState?,
+    ) {
+        syncStates.getOrPut(userId) { MutableStateFlow(null) }.value = state
+    }
+
     fun scheduleSyncTask() {
-        serverConfig.subscribeTo(
-            combine(
-                serverConfig.syncYomiEnabled,
-                serverConfig.syncInterval,
-            ) { enabled, interval -> Pair(enabled, interval) },
-            { (enabled, interval) ->
-                currentTaskId?.let { HAScheduler.deschedule(it) }
+        // Subscribe to the sync config of all existing users
+        val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value } }
+        userIds.forEach { userId -> subscribeToUserSyncConfig(userId) }
 
-                currentTaskId =
-                    if (enabled && interval > 0.seconds) {
-                        val lastSyncDate =
-                            syncPreferences
-                                .getLong("last_scheduled_sync", 0L)
-                                .takeIf { it != 0L }
-                                ?.let { Instant.fromEpochMilliseconds(it) }
-
-                        if (lastSyncDate == null) {
-                            syncPreferences
-                                .edit()
-                                .putLong("last_scheduled_sync", Clock.System.now().toEpochMilliseconds())
-                                .apply()
-                        }
-
-                        val delay =
-                            if (lastSyncDate != null) {
-                                ((interval) - (Clock.System.now() - lastSyncDate)).coerceAtLeast(0.seconds)
-                            } else {
-                                interval
-                            }
-
-                        HAScheduler.schedule(
-                            {
-                                startSync(periodic = true)
-
-                                syncPreferences
-                                    .edit()
-                                    .putLong("last_scheduled_sync", Clock.System.now().toEpochMilliseconds())
-                                    .apply()
-                            },
-                            interval = interval.inWholeMilliseconds,
-                            delay = delay.inWholeMilliseconds,
-                            name = "sync",
-                        )
-                    } else {
-                        syncPreferences
-                            .edit()
-                            .remove("last_scheduled_sync")
-                            .apply()
-                        null
-                    }
-            },
-            ignoreInitialValue = false,
+        // Periodically pick up newly created users (and clean up deleted ones)
+        HAScheduler.schedule(
+            { checkForNewUsers() },
+            interval = NEW_USER_CHECK_INTERVAL.inWholeMilliseconds,
+            delay = NEW_USER_CHECK_INTERVAL.inWholeMilliseconds,
+            name = "sync-new-user-check",
         )
     }
 
+    internal fun checkForNewUsers() {
+        val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value }.toSet() }
+
+        userIds.forEach { userId -> subscribeToUserSyncConfig(userId) }
+
+        // Clean up per-user state for users that no longer exist
+        (subscribedUsers + userConfigSubscriptions.keys + scheduledSyncTasks.keys + syncStates.keys + syncMutexes.keys)
+            .filter { userId -> userId !in userIds }
+            .toSet()
+            .forEach { userId -> unsubscribeFromUserSyncConfig(userId) }
+    }
+
+    /**
+     * Remove all per-user sync state for a user that no longer exists.
+     */
+    private fun unsubscribeFromUserSyncConfig(userId: Int) {
+        subscribedUsers.remove(userId)
+        userConfigSubscriptions.remove(userId)?.cancel()
+        scheduledSyncTasks.remove(userId)?.let { HAScheduler.deschedule(it.first) }
+        syncStates.remove(userId)
+        syncMutexes.remove(userId)
+        syncPreferences
+            .edit()
+            .remove("last_sync_timestamp_$userId")
+            .remove("last_scheduled_sync_$userId")
+            .remove("${PREF_LAST_PUSHED_AT}_$userId")
+            .remove("${PREF_SYNC_SCHEMA}_$userId")
+            .apply()
+    }
+
+    /**
+     * Idempotently subscribe to a user's (enabled, interval) config so their scheduled sync task is kept in sync.
+     */
+    private fun subscribeToUserSyncConfig(userId: Int) {
+        if (!subscribedUsers.add(userId)) {
+            return
+        }
+
+        val enabledFlow = userSettings.flow(userId, userConfig.syncYomiEnabled)
+        val intervalFlow = userSettings.flow(userId, userConfig.syncInterval)
+
+        userConfigSubscriptions[userId] =
+            subscribeTo(
+                combine(enabledFlow, intervalFlow) { enabled, interval -> Pair(enabled, interval) },
+                ignoreInitialValue = false,
+            ) { (enabled, interval) ->
+                rescheduleUserSync(userId, enabled, interval)
+            }
+    }
+
+    private fun rescheduleUserSync(
+        userId: Int,
+        enabled: Boolean,
+        interval: Duration,
+    ) {
+        val shouldSchedule = enabled && interval > 0.seconds
+        val existing = scheduledSyncTasks[userId]
+
+        if (shouldSchedule) {
+            if (existing == null || existing.second != interval) {
+                existing?.let { HAScheduler.deschedule(it.first) }
+
+                // Compute the initial delay from the last scheduled sync, so the next sync happens at the next slot
+                // instead of waiting a full interval
+                val lastSyncDate =
+                    syncPreferences
+                        .getLong("last_scheduled_sync_$userId", 0L)
+                        .takeIf { it != 0L }
+                        ?.let { Instant.fromEpochMilliseconds(it) }
+
+                if (lastSyncDate == null) {
+                    syncPreferences
+                        .edit()
+                        .putLong("last_scheduled_sync_$userId", Clock.System.now().toEpochMilliseconds())
+                        .apply()
+                }
+
+                val delay =
+                    if (lastSyncDate != null) {
+                        (interval - (Clock.System.now() - lastSyncDate)).coerceAtLeast(0.seconds)
+                    } else {
+                        interval
+                    }
+
+                val taskId =
+                    HAScheduler.schedule(
+                        {
+                            startSync(userId, periodic = true)
+                            syncPreferences
+                                .edit()
+                                .putLong("last_scheduled_sync_$userId", Clock.System.now().toEpochMilliseconds())
+                                .apply()
+                        },
+                        interval = interval.inWholeMilliseconds,
+                        delay = delay.inWholeMilliseconds,
+                        name = "sync-user-$userId",
+                    )
+                scheduledSyncTasks[userId] = taskId to interval
+            }
+        } else {
+            existing?.let {
+                HAScheduler.deschedule(it.first)
+                scheduledSyncTasks.remove(userId)
+            }
+            if (syncPreferences.contains("last_scheduled_sync_$userId")) {
+                syncPreferences
+                    .edit()
+                    .remove("last_scheduled_sync_$userId")
+                    .apply()
+            }
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class)
-    fun startSync(periodic: Boolean = false): StartSyncResult {
-        if (!serverConfig.syncYomiEnabled.value) {
+    fun startSync(
+        userId: Int,
+        periodic: Boolean = false,
+    ): StartSyncResult {
+        if (!userSettings.value(userId, userConfig.syncYomiEnabled)) {
             return StartSyncResult.SYNC_DISABLED
         }
 
-        if (!syncMutex.tryLock()) {
+        val userMutex = syncMutexes.getOrPut(userId) { Mutex() }
+        if (!userMutex.tryLock()) {
             return StartSyncResult.SYNC_IN_PROGRESS
         }
 
         GlobalScope.launch {
             try {
-                syncData(periodic)
+                syncData(userId, periodic)
             } finally {
-                syncMutex.unlock()
+                userMutex.unlock()
             }
         }
 
         return StartSyncResult.SUCCESS
     }
 
-    suspend fun ensureSync() {
-        if (!serverConfig.syncYomiEnabled.value) {
+    suspend fun ensureSync(userId: Int) {
+        if (!userSettings.value(userId, userConfig.syncYomiEnabled)) {
             return
         }
 
-        if (syncMutex.tryLock()) {
-            // there is no ongoing sync, so start one
+        val userMutex = syncMutexes.getOrPut(userId) { Mutex() }
+        if (userMutex.tryLock()) {
+            // there is no ongoing sync for this user, so start one
             try {
-                syncData()
+                syncData(userId)
             } finally {
-                syncMutex.unlock()
+                userMutex.unlock()
             }
         } else {
             // wait for the ongoing sync to finish
-            syncMutex.withLock {}
+            userMutex.withLock {}
         }
     }
 
-    private suspend fun syncData(periodic: Boolean = false) {
+    private suspend fun syncData(
+        userId: Int,
+        periodic: Boolean = false,
+    ) {
         val startInstant = Clock.System.now()
-        _lastSyncState.value = SyncState.Started(startInstant)
+        setLastSyncState(userId, SyncState.Started(startInstant))
 
         try {
             logger.info {
                 if (periodic) {
-                    "Starting periodic sync"
+                    "Starting periodic sync for user $userId"
                 } else {
-                    "Starting manual sync"
+                    "Starting manual sync for user $userId"
                 }
             }
 
             transaction {
-                MangaTable.update({ MangaTable.isSyncing eq true }) {
-                    it[isSyncing] = false
+                MangaUserTable.update(
+                    {
+                        MangaUserTable.isSyncing eq true and (MangaUserTable.user eq userId)
+                    },
+                ) {
+                    it[MangaUserTable.isSyncing] = false
                 }
-                ChapterTable.update({ ChapterTable.isSyncing eq true }) {
-                    it[isSyncing] = false
+                ChapterUserTable.update(
+                    {
+                        ChapterUserTable.isSyncing eq true and (ChapterUserTable.user eq userId)
+                    },
+                ) {
+                    it[ChapterUserTable.isSyncing] = false
                 }
-                CategoryTable.update({ CategoryTable.isSyncing eq true }) {
-                    it[isSyncing] = false
+                CategoryTable.update(
+                    {
+                        CategoryTable.isSyncing eq true and (CategoryTable.user eq userId)
+                    },
+                ) {
+                    it[CategoryTable.isSyncing] = false
                 }
             }
 
             val backupFlags =
                 BackupFlags(
-                    includeManga = serverConfig.syncDataManga.value,
-                    includeCategories = serverConfig.syncDataCategories.value,
-                    includeChapters = serverConfig.syncDataChapters.value,
-                    includeTracking = serverConfig.syncDataTracking.value,
-                    includeHistory = serverConfig.syncDataHistory.value,
+                    includeManga = userSettings.value(userId, userConfig.syncDataManga),
+                    includeCategories = userSettings.value(userId, userConfig.syncDataCategories),
+                    includeChapters = userSettings.value(userId, userConfig.syncDataChapters),
+                    includeTracking = userSettings.value(userId, userConfig.syncDataTracking),
+                    includeHistory = userSettings.value(userId, userConfig.syncDataHistory),
                     includeClientData = false,
                     includeServerSettings = false,
+                    includeUserSettings = false,
                 )
 
-            _lastSyncState.value = SyncState.CreatingBackup(startInstant)
-            val converge = syncPreferences.getInt(PREF_SYNC_SCHEMA, 0) < SYNC_SCHEMA
+            setLastSyncState(userId, SyncState.CreatingBackup(startInstant))
+            val converge = syncPreferences.getInt("${PREF_SYNC_SCHEMA}_$userId", 0) < SYNC_SCHEMA
             val syncMode = if (converge) SyncRestoreMode.CONVERGE else SyncRestoreMode.ADOPT
-            val full = converge || SyncYomiSyncService.needsFullSync()
+            val full = converge || SyncYomiSyncService.needsFullSync(userId)
             if (converge) {
-                logger.info { "Full converging sync: adopting server versions" }
+                logger.info { "Full converging sync for user $userId: adopting server versions" }
             }
-            val backupMangas = BackupMangaHandler.backup(backupFlags).let { if (full) it else changedSince(it, lastPushedAt()) }
+            val backupMangas =
+                BackupMangaHandler.backup(userId, backupFlags).let {
+                    if (full) it else changedSince(it, lastPushedAt(userId))
+                }
             val backupCategories =
-                BackupCategoryHandler.backup(backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
+                BackupCategoryHandler.backup(userId, backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
             toWireCategoryOrders(backupCategories, backupMangas)
             val backup =
                 Backup(
                     backupMangas,
                     backupCategories,
-                    BackupSourceHandler.backup(backupMangas, backupFlags),
+                    BackupSourceHandler.backup(userId, backupMangas, backupFlags),
                     emptyMap(),
+                    null,
                     null,
                 )
 
@@ -230,21 +361,21 @@ object SyncManager {
                 )
 
             val result =
-                SyncYomiSyncService.doSync(syncData, full, startInstant) {
-                    _lastSyncState.value = it
+                SyncYomiSyncService.doSync(userId, syncData, full, startInstant) {
+                    setLastSyncState(userId, it)
                 }
             val remoteBackup = result.backup
 
             if (remoteBackup == null) {
                 logger.debug { "Skip restore due to network issues" }
-                finishWithError(startInstant, "Network error", periodic)
+                finishWithError(userId, startInstant, "Network error", periodic)
                 return
             }
 
             if (!result.changed) {
                 logger.debug { "Skip restore, nothing new on the server" }
-                markSyncSchema(converge)
-                finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
+                markSyncSchema(userId, converge)
+                finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
                 return
             }
 
@@ -252,28 +383,29 @@ object SyncManager {
                 // Stop the sync early if the remote backup is null or empty
                 if (remoteBackup.backupManga.isEmpty() && remoteBackup.backupCategories.isEmpty() && remoteBackup.backupSources.isEmpty()) {
                     logger.error { "No data found on remote server." }
-                    finishWithError(startInstant, "No data found on remote server.", periodic)
+                    finishWithError(userId, startInstant, "No data found on remote server.", periodic)
                     return
                 }
 
                 val isLibraryEmpty =
                     transaction {
-                        MangaTable
+                        MangaUserTable
                             .selectAll()
-                            .where { MangaTable.inLibrary eq true }
+                            .where { MangaUserTable.user eq userId and (MangaUserTable.inLibrary eq true) }
                             .empty()
                     }
 
                 // Check if it's first sync based on lastSyncTimestamp
-                if (syncPreferences.getLong("last_sync_timestamp", 0) == 0L && !isLibraryEmpty) {
+                if (syncPreferences.getLong("last_sync_timestamp_$userId", 0) == 0L && !isLibraryEmpty) {
                     // It's first sync no need to restore data. (just update remote data)
-                    finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
+                    finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
                     return
                 }
             }
 
-            val (filteredFavorites, nonFavorites) = filterFavoritesAndNonFavorites(remoteBackup, restoreAll = converge)
-            updateNonFavorites(nonFavorites)
+            val (filteredFavorites, nonFavorites) =
+                filterFavoritesAndNonFavorites(userId, remoteBackup, restoreAll = converge)
+            updateNonFavorites(userId, nonFavorites)
 
             val newSyncData =
                 backup.copy(
@@ -289,15 +421,15 @@ object SyncManager {
 
             if (!hasMangaChanges && !hasCategoryChanges && !hasSourceChanges) {
                 // update the sync timestamp
-                markSyncSchema(converge)
-                finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
+                markSyncSchema(userId, converge)
+                finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
                 return
             }
 
-            if (serverConfig.syncDataCategories.value) {
+            if (userSettings.value(userId, userConfig.syncDataCategories)) {
                 val mergedUids = newSyncData.backupCategories.map { it.uid }.toSet()
                 val mergedNames = newSyncData.backupCategories.map { it.name }.toSet()
-                val localCategories = Category.getCategoryList().filterNot { it.default } // Exclude system category
+                val localCategories = Category.getCategoryList(userId).filterNot { it.isDefaultCategory } // Exclude system category
                 val categoriesToDelete =
                     localCategories.filter {
                         it.uid !in mergedUids && it.name !in mergedNames
@@ -309,17 +441,21 @@ object SyncManager {
                         val mangaIds =
                             CategoryMangaTable
                                 .select(CategoryMangaTable.manga)
-                                .where { CategoryMangaTable.category inList categoryIds }
-                                .map { it[CategoryMangaTable.manga].value }
-                        MangaTable.update({ MangaTable.id inList mangaIds }) {
-                            it[isSyncing] = true
+                                .where {
+                                    (CategoryMangaTable.category inList categoryIds) and
+                                        (CategoryMangaTable.user eq userId)
+                                }.map { it[CategoryMangaTable.manga].value }
+                        MangaUserTable.update({
+                            (MangaUserTable.manga inList mangaIds) and (MangaUserTable.user eq userId)
+                        }) {
+                            it[MangaUserTable.isSyncing] = true
                         }
                         // normalizeCategories rewrites sort_order; the survivors must not out-version the server
-                        CategoryTable.update {
-                            it[isSyncing] = true
+                        CategoryTable.update({ CategoryTable.user eq userId }) {
+                            it[CategoryTable.isSyncing] = true
                         }
                         categoriesToDelete.forEach {
-                            Category.removeCategory(it.id)
+                            Category.removeCategory(userId, it.id)
                         }
                     }
                 }
@@ -328,11 +464,12 @@ object SyncManager {
             val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
             val restoreId =
                 ProtoBackupImport.restore(
+                    userId = userId,
                     sourceStream = backupStream,
                     flags = backupFlags,
                     syncMode = syncMode,
                 )
-            _lastSyncState.value = SyncState.Restoring(startInstant, restoreId)
+            setLastSyncState(userId, SyncState.Restoring(startInstant, restoreId))
 
             ProtoBackupImport.notifyFlow.first {
                 val restoreState = ProtoBackupImport.getRestoreState(restoreId)
@@ -342,14 +479,66 @@ object SyncManager {
             }
 
             if (ProtoBackupImport.getRestoreState(restoreId) == ProtoBackupImport.BackupRestoreState.Success) {
-                markSyncSchema(converge)
+                markSyncSchema(userId, converge)
             }
 
             // update the sync timestamp
-            finishWithSuccess(startInstant, periodic, pushedAt = startInstant)
+            finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
         } catch (e: Throwable) {
             logger.error { "Error syncing: ${e.message}" }
-            finishWithError(startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
+            finishWithError(userId, startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
+        }
+    }
+
+    private fun finishWithSuccess(
+        userId: Int,
+        startInstant: Instant,
+        periodic: Boolean,
+        pushedAt: Instant? = null,
+    ) {
+        syncPreferences
+            .edit()
+            .putLong("last_sync_timestamp_$userId", Clock.System.now().toEpochMilliseconds())
+            .apply {
+                // everything modified before this instant reached the server; the next delta starts here
+                if (pushedAt != null) putLong("${PREF_LAST_PUSHED_AT}_$userId", pushedAt.epochSeconds)
+            }.apply()
+        setLastSyncState(userId, SyncState.Success(startInstant))
+
+        logger.info {
+            if (periodic) {
+                "Periodic sync for user $userId completed successfully"
+            } else {
+                "Manual sync for user $userId completed successfully"
+            }
+        }
+    }
+
+    private fun finishWithError(
+        userId: Int,
+        startInstant: Instant,
+        message: String,
+        periodic: Boolean,
+    ) {
+        setLastSyncState(userId, SyncState.Error(startInstant, message))
+
+        logger.info {
+            if (periodic) {
+                "Periodic sync for user $userId failed: $message"
+            } else {
+                "Manual sync for user $userId failed: $message"
+            }
+        }
+    }
+
+    private fun lastPushedAt(userId: Int): Long = syncPreferences.getLong("${PREF_LAST_PUSHED_AT}_$userId", 0L)
+
+    private fun markSyncSchema(
+        userId: Int,
+        converge: Boolean,
+    ) {
+        if (converge) {
+            syncPreferences.edit().putInt("${PREF_SYNC_SCHEMA}_$userId", SYNC_SCHEMA).apply()
         }
     }
 
@@ -370,79 +559,47 @@ object SyncManager {
         }
     }
 
-    private fun finishWithSuccess(
-        startInstant: Instant,
-        periodic: Boolean,
-        pushedAt: Instant? = null,
-    ) {
-        syncPreferences
-            .edit()
-            .putLong("last_sync_timestamp", Clock.System.now().toEpochMilliseconds())
-            .apply {
-                // everything modified before this instant reached the server; the next delta starts here
-                if (pushedAt != null) putLong(PREF_LAST_PUSHED_AT, pushedAt.epochSeconds)
-            }.apply()
-        _lastSyncState.value = SyncState.Success(startInstant)
-
-        logger.info {
-            if (periodic) {
-                "Periodic sync completed successfully"
-            } else {
-                "Manual sync completed successfully"
-            }
-        }
-    }
-
-    private fun finishWithError(
-        startInstant: Instant,
-        message: String,
-        periodic: Boolean,
-    ) {
-        _lastSyncState.value = SyncState.Error(startInstant, message)
-
-        logger.info {
-            if (periodic) {
-                "Periodic sync failed: $message"
-            } else {
-                "Manual sync failed: $message"
-            }
-        }
-    }
-
-    private fun lastPushedAt(): Long = syncPreferences.getLong(PREF_LAST_PUSHED_AT, 0L)
-
-    private fun markSyncSchema(converge: Boolean) {
-        if (converge) {
-            syncPreferences.edit().putInt(PREF_SYNC_SCHEMA, SYNC_SCHEMA).apply()
-        }
-    }
-
     private fun isMangaDifferent(
+        userId: Int,
         localManga: MangaDataClass,
         remoteManga: BackupManga,
     ): Boolean {
-        if (localManga.version != remoteManga.version) {
+        val localVersion =
+            transaction {
+                MangaUserTable
+                    .select(MangaUserTable.version)
+                    .where { (MangaUserTable.user eq userId) and (MangaUserTable.manga eq localManga.id) }
+                    .map { it[MangaUserTable.version] }
+                    .firstOrNull() ?: 0
+            }
+
+        if (localVersion != remoteManga.version) {
             return true
         }
 
-        val localChapters =
+        val localChapterVersions =
             transaction {
                 ChapterTable
+                    .getWithUserData(userId)
                     .selectAll()
                     .where { ChapterTable.manga eq localManga.id }
-                    .map { ChapterTable.toDataClass(it) }
+                    .associate { it[ChapterTable.url] to (it.getOrNull(ChapterUserTable.version) ?: 0) }
             }
 
-        if (areChaptersDifferent(localChapters, remoteManga.chapters)) {
+        if (areChaptersDifferent(localChapterVersions, remoteManga.chapters)) {
             return true
         }
 
         val localCategories =
             transaction {
                 CategoryMangaTable
-                    .innerJoin(CategoryTable)
-                    .selectAll()
-                    .where { CategoryMangaTable.manga eq localManga.id }
+                    .innerJoin(
+                        CategoryTable,
+                        onColumn = { CategoryMangaTable.category },
+                        otherColumn = { CategoryTable.id },
+                        additionalConstraint = { CategoryTable.user eq userId },
+                    ).selectAll()
+                    .where { (CategoryMangaTable.user eq userId) and (CategoryMangaTable.manga eq localManga.id) }
                     .map { it[CategoryTable.order] }
             }
 
@@ -450,21 +607,20 @@ object SyncManager {
     }
 
     private fun areChaptersDifferent(
-        localChapters: List<ChapterDataClass>,
+        localChapterVersions: Map<String, Long>,
         remoteChapters: List<BackupChapter>,
     ): Boolean {
-        val localChapterMap = localChapters.associateBy { it.url }
         val remoteChapterMap = remoteChapters.associateBy { it.url }
 
-        if (localChapterMap.size != remoteChapterMap.size) {
+        if (localChapterVersions.size != remoteChapterMap.size) {
             return true
         }
 
-        for ((url, localChapter) in localChapterMap) {
+        for ((url, localVersion) in localChapterVersions) {
             val remoteChapter = remoteChapterMap[url]
 
             // If a matching remote chapter doesn't exist, or the version numbers are different, consider them different
-            if (remoteChapter == null || localChapter.version != remoteChapter.version) {
+            if (remoteChapter == null || localVersion != remoteChapter.version) {
                 return true
             }
         }
@@ -473,6 +629,7 @@ object SyncManager {
     }
 
     private fun filterFavoritesAndNonFavorites(
+        userId: Int,
         backup: Backup,
         restoreAll: Boolean = false,
     ): Pair<List<BackupManga>, List<BackupManga>> {
@@ -499,7 +656,7 @@ object SyncManager {
                     when {
                         // Checks if the manga is in favorites and needs updating or adding
                         remoteManga.favorite -> {
-                            if (restoreAll || localManga == null || isMangaDifferent(localManga, remoteManga)) {
+                            if (restoreAll || localManga == null || isMangaDifferent(userId, localManga, remoteManga)) {
                                 logger.debug { "Adding to favorites: ${remoteManga.title}" }
                                 favorites.add(remoteManga)
                             } else {
@@ -523,7 +680,10 @@ object SyncManager {
         return Pair(favorites, nonFavorites)
     }
 
-    private fun updateNonFavorites(nonFavorites: List<BackupManga>) {
+    private fun updateNonFavorites(
+        userId: Int,
+        nonFavorites: List<BackupManga>,
+    ) {
         nonFavorites.forEach { nonFavorite ->
             val localManga =
                 transaction {
@@ -538,16 +698,30 @@ object SyncManager {
                 }
 
             if (localManga != null) {
-                if (localManga.inLibrary != nonFavorite.favorite && nonFavorite.version >= localManga.version) {
+                val (inLibrary, localVersion) =
                     transaction {
-                        MangaTable.update({ MangaTable.id eq localManga.id }) {
-                            it[inLibrary] = nonFavorite.favorite
-                            it[version] = nonFavorite.version
-                            it[lastModifiedAt] = nonFavorite.lastModifiedAt
-                            it[isSyncing] = true
+                        val row =
+                            MangaUserTable
+                                .select(MangaUserTable.inLibrary, MangaUserTable.version)
+                                .where {
+                                    (MangaUserTable.user eq userId) and
+                                        (MangaUserTable.manga eq localManga.id)
+                                }.firstOrNull()
+                        (row?.get(MangaUserTable.inLibrary) ?: false) to (row?.get(MangaUserTable.version) ?: 0)
+                    }
+                if (inLibrary != nonFavorite.favorite && nonFavorite.version >= localVersion) {
+                    transaction {
+                        MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
+                            it[MangaUserTable.manga] = localManga.id
+                            it[MangaUserTable.user] = userId
+                            it[MangaUserTable.inLibrary] = nonFavorite.favorite
+                            it[MangaUserTable.inLibraryAt] = nonFavorite.dateAdded
+                            it[MangaUserTable.version] = nonFavorite.version
+                            it[MangaUserTable.lastModifiedAt] = nonFavorite.lastModifiedAt
+                            it[MangaUserTable.isSyncing] = true
                         }
                     }.apply {
-                        handleMangaThumbnail(localManga.id, nonFavorite.favorite)
+                        handleMangaThumbnail(localManga.id)
                     }
                 }
             }

@@ -4,6 +4,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.core.error.KoinApplicationAlreadyStartedException
 import org.koin.dsl.module
 import suwayomi.tachidesk.server.util.CEFManager
 import java.nio.file.Files
@@ -28,15 +29,27 @@ class CefTest {
                         }
                     }
                 }
-            startKoin {
-                modules(module)
-            }
+
+            // If another test class has already started the shared Koin app, it provides the same Json
+            // binding; only start (and later stop) a minimal app when none is running
+            val startedKoinHere =
+                try {
+                    startKoin {
+                        modules(module)
+                    }
+                    true
+                } catch (_: KoinApplicationAlreadyStartedException) {
+                    false
+                }
+
             try {
                 CEFManager.downloadRelease(tempDownload)
                 assertTrue { CEFManager.isInstallationValid(tempDownload / "release") }
             } finally {
                 tempDownload.deleteRecursively()
-                stopKoin()
+                if (startedKoinHere) {
+                    stopKoin()
+                }
             }
         }
 }

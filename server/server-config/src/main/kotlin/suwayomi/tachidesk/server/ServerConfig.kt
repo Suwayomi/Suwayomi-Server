@@ -14,6 +14,7 @@ import io.github.config4k.toConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,7 +44,6 @@ import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
 import suwayomi.tachidesk.server.settings.DisableableDoubleSetting
 import suwayomi.tachidesk.server.settings.DisableableIntSetting
-import suwayomi.tachidesk.server.settings.DoubleSetting
 import suwayomi.tachidesk.server.settings.DurationSetting
 import suwayomi.tachidesk.server.settings.EnumSetting
 import suwayomi.tachidesk.server.settings.IntSetting
@@ -70,6 +70,10 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
+val userSettingDeprecated = SettingsRegistry.SettingDeprecated.Remove(
+    message = "Now per-user",
+)
+
 private val application: Application by injectLazy()
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -77,14 +81,14 @@ fun <T> subscribeTo(
     flow: Flow<T>,
     ignoreInitialValue: Boolean = true,
     onChange: suspend (value: T) -> Unit,
-) {
+): Job {
     val actualFlow =
         if (ignoreInitialValue) {
             flow.drop(1)
         } else {
             flow
         }
-    actualFlow.distinctUntilChanged().conflate().onEach { onChange(it) }.launchIn(mutableConfigValueScope)
+    return actualFlow.distinctUntilChanged().conflate().onEach { onChange(it) }.launchIn(mutableConfigValueScope)
 }
 
 // Settings are ordered by "protoNumber".
@@ -229,19 +233,22 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    val autoDownloadNewChapters: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val autoDownloadNewChapters: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 17,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
-    val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val excludeEntryWithUnreadChapters: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 18,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
         defaultValue = true,
-        description = "Exclude entries with unread chapters from auto-download",
+        deprecated = userSettingDeprecated,
     )
 
     @Deprecated("Will get removed", replaceWith = ReplaceWith("autoDownloadNewChaptersLimit"))
@@ -260,21 +267,22 @@ class ServerConfig(
         setMigrated = { autoDownloadNewChaptersLimit.value = it },
     )
 
-    val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by DisableableIntSetting(
+    @Deprecated("Now per-user")
+    val autoDownloadNewChaptersLimit: MutableStateFlow<Int> by MigratedConfigValue(
         protoNumber = 20,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
         defaultValue = 0,
-        min = 0,
-        description = "Maximum number of new chapters to auto-download",
+        deprecated = userSettingDeprecated,
     )
 
-    val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val autoDownloadIgnoreReUploads: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 21,
         group = SettingGroup.DOWNLOADER,
         privacySafe = true,
         defaultValue = false,
-        description = "Ignore re-uploaded chapters from auto-download",
+        deprecated = userSettingDeprecated,
     )
 
     @Deprecated("Will get removed", replaceWith = ReplaceWith("extensionStores"))
@@ -324,25 +332,31 @@ class ServerConfig(
                 "Library update/downloads are grouped by source and all manga of a source are updated/downloaded synchronously",
     )
 
-    val excludeUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val excludeUnreadChapters: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 24,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val excludeNotStarted: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val excludeNotStarted: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 25,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val excludeCompleted: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val excludeCompleted: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 26,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
     val globalUpdateInterval: MutableStateFlow<Double> by DisableableDoubleSetting(
@@ -354,12 +368,13 @@ class ServerConfig(
         description = "Time in hours",
     )
 
-    val updateMangas: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val updateMangas: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 28,
         group = SettingGroup.LIBRARY_UPDATES,
         privacySafe = true,
         defaultValue = false,
-        description = "Update manga metadata and thumbnail along with the chapter list update during the library update.",
+        deprecated = userSettingDeprecated,
     )
 
     @Deprecated("Will get removed", replaceWith = ReplaceWith("authMode"))
@@ -552,58 +567,68 @@ class ServerConfig(
         defaultValue = false,
     )
 
-    val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val opdsUseBinaryFileSizes: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 49,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
-        description = "Display file size in binary (KiB, MiB, GiB) instead of decimal (KB, MB, GB)",
+        deprecated = userSettingDeprecated,
     )
 
-    val opdsItemsPerPage: MutableStateFlow<Int> by IntSetting(
+    @Deprecated("Now per-user")
+    val opdsItemsPerPage: MutableStateFlow<Int> by MigratedConfigValue(
         protoNumber = 50,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = 100,
-        min = 10,
-        max = 5000,
+        deprecated = userSettingDeprecated,
     )
 
-    val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val opdsEnablePageReadProgress: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 51,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val opdsMarkAsReadOnDownload: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 52,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
-    val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val opdsShowOnlyUnreadChapters: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 53,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
-    val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val opdsShowOnlyDownloadedChapters: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 54,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
+        deprecated = userSettingDeprecated,
     )
 
-    val opdsChapterSortOrder: MutableStateFlow<SortOrder> by EnumSetting(
+    @Deprecated("Now per-user")
+    val opdsChapterSortOrder: MutableStateFlow<SortOrder> by MigratedConfigValue(
         protoNumber = 55,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = SortOrder.DESC,
-        enumClass = SortOrder::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.v1.core.SortOrder")),
+        deprecated = userSettingDeprecated,
     )
 
     val authMode: MutableStateFlow<AuthMode> by EnumSetting(
@@ -616,78 +641,81 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    fun createDownloadConversionsMap(protoNumber: Int, key: String) = MapSetting<String, DownloadConversion>(
+    private fun downloadConversionTypeInfo() = SettingsRegistry.PartialTypeInfo(
+        specificType = "List<SettingsDownloadConversionType>",
+        interfaceType = "List<SettingsDownloadConversion>",
+        backupType = "List<BackupSettingsDownloadConversionType>",
+        imports =
+            listOf(
+                "suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType",
+            ),
+        convertToGqlType = { value ->
+            @Suppress("UNCHECKED_CAST")
+            val castedValue = value as Map<String, DownloadConversion>
+
+            castedValue.map {
+                SettingsDownloadConversionType(
+                    it.key,
+                    it.value.target,
+                    it.value.compressionLevel,
+                    it.value.callTimeout,
+                    it.value.connectTimeout,
+                    it.value.headers?.map { header ->
+                        SettingsDownloadConversionHeaderType(
+                            header.key,
+                            header.value,
+                        )
+                    },
+                )
+            }
+        },
+        convertToInternalType = { list ->
+            @Suppress("UNCHECKED_CAST")
+            val castedList = list as List<SettingsDownloadConversionType>
+
+            castedList.associate {
+                it.mimeType to
+                    DownloadConversion(
+                        target = it.target,
+                        compressionLevel = it.compressionLevel,
+                        callTimeout = it.callTimeout,
+                        connectTimeout = it.connectTimeout,
+                        headers = it.headers?.associate { header ->
+                            header.name to header.value
+                        },
+                    )
+            }
+        },
+        convertToBackupType = { value ->
+            @Suppress("UNCHECKED_CAST")
+            val castedValue = value as Map<String, DownloadConversion>
+
+            castedValue.map {
+                BackupSettingsDownloadConversionType(
+                    it.key,
+                    it.value.target,
+                    it.value.compressionLevel,
+                    it.value.callTimeout,
+                    it.value.connectTimeout,
+                    it.value.headers?.map { header ->
+                        BackupSettingsDownloadConversionHeaderType(
+                            header.key,
+                            header.value,
+                        )
+                    },
+                )
+            }
+        },
+    )
+    fun createDownloadConversionsMap(
+        protoNumber: Int,
+        key: String,
+    ) = MapSetting<String, DownloadConversion>(
         protoNumber = protoNumber,
         group = SettingGroup.DOWNLOADER,
         privacySafe = false,
         defaultValue = emptyMap(),
-        typeInfo =
-            SettingsRegistry.PartialTypeInfo(
-                specificType = "List<SettingsDownloadConversionType>",
-                interfaceType = "List<SettingsDownloadConversion>",
-                backupType = "List<BackupSettingsDownloadConversionType>",
-                imports =
-                    listOf(
-                        "suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType",
-                    ),
-                convertToGqlType = { value ->
-                    @Suppress("UNCHECKED_CAST")
-                    val castedValue = value as Map<String, DownloadConversion>
-
-                    castedValue.map {
-                        SettingsDownloadConversionType(
-                            it.key,
-                            it.value.target,
-                            it.value.compressionLevel,
-                            it.value.callTimeout,
-                            it.value.connectTimeout,
-                            it.value.headers?.map { header ->
-                                SettingsDownloadConversionHeaderType(
-                                    header.key,
-                                    header.value,
-                                )
-                            },
-                        )
-                    }
-                },
-                convertToInternalType = { list ->
-                    @Suppress("UNCHECKED_CAST")
-                    val castedList = list as List<SettingsDownloadConversionType>
-
-                    castedList.associate {
-                        it.mimeType to
-                            DownloadConversion(
-                                target = it.target,
-                                compressionLevel = it.compressionLevel,
-                                callTimeout = it.callTimeout,
-                                connectTimeout = it.connectTimeout,
-                                headers = it.headers?.associate { header ->
-                                    header.name to header.value
-                                },
-                            )
-                    }
-                },
-                convertToBackupType = { value ->
-                    @Suppress("UNCHECKED_CAST")
-                    val castedValue = value as Map<String, DownloadConversion>
-
-                    castedValue.map {
-                        BackupSettingsDownloadConversionType(
-                            it.key,
-                            it.value.target,
-                            it.value.compressionLevel,
-                            it.value.callTimeout,
-                            it.value.connectTimeout,
-                            it.value.headers?.map { header ->
-                                BackupSettingsDownloadConversionHeaderType(
-                                    header.key,
-                                    header.value,
-                                )
-                            },
-                        )
-                    }
-                },
-            ),
+        typeInfo = downloadConversionTypeInfo(),
         description =
             """
             map input mime type to conversion information, or "default" for others
@@ -781,13 +809,14 @@ class ServerConfig(
         ),
     )
 
-    val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by EnumSetting(
+    @Deprecated("Now per-user")
+    val koreaderSyncChecksumMethod: MutableStateFlow<KoreaderSyncChecksumMethod> by MigratedConfigValue(
         protoNumber = 63,
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = true,
         defaultValue = KoreaderSyncChecksumMethod.BINARY,
-        enumClass = KoreaderSyncChecksumMethod::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
+        deprecated = userSettingDeprecated,
     )
 
     @Suppress("DEPRECATION")
@@ -864,14 +893,13 @@ class ServerConfig(
         },
     )
 
-    val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by DoubleSetting(
+    @Deprecated("Now per-user")
+    val koreaderSyncPercentageTolerance: MutableStateFlow<Double> by MigratedConfigValue(
         protoNumber = 65,
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = true,
         defaultValue = 0.000000000000001,
-        min = 0.000000000000001,
-        max = 1.0,
-        description = "Absolute tolerance for progress comparison",
+        deprecated = userSettingDeprecated,
     )
 
     val jwtTokenExpiry: MutableStateFlow<Duration> by DurationSetting(
@@ -932,24 +960,24 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-    val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
+    @Deprecated("Now per-user")
+    val koreaderSyncStrategyForward: MutableStateFlow<KoreaderSyncConflictStrategy> by MigratedConfigValue(
         protoNumber = 73,
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = true,
         defaultValue = KoreaderSyncConflictStrategy.PROMPT,
-        enumClass = KoreaderSyncConflictStrategy::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
-        description = "Strategy to apply when remote progress is newer than local.",
+        deprecated = userSettingDeprecated,
     )
 
-    val koreaderSyncStrategyBackward: MutableStateFlow<KoreaderSyncConflictStrategy> by EnumSetting(
+    @Deprecated("Now per-user")
+    val koreaderSyncStrategyBackward: MutableStateFlow<KoreaderSyncConflictStrategy> by MigratedConfigValue(
         protoNumber = 74,
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = true,
         defaultValue = KoreaderSyncConflictStrategy.DISABLED,
-        enumClass = KoreaderSyncConflictStrategy::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
-        description = "Strategy to apply when remote progress is older than local.",
+        deprecated = userSettingDeprecated,
     )
 
     val webUISubpath: MutableStateFlow<String> by StringSetting(
@@ -1012,20 +1040,24 @@ class ServerConfig(
         defaultValue = BackupFlags.DEFAULT.includeServerSettings,
     )
 
-    val opdsCbzMimetype: MutableStateFlow<CbzMediaType> by EnumSetting(
+    @Deprecated("Now per-user")
+    val opdsCbzMimetype: MutableStateFlow<CbzMediaType> by MigratedConfigValue(
         protoNumber = 83,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = CbzMediaType.MODERN,
-        enumClass = CbzMediaType::class,
         typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
-        excludeFromBackup = true,
-        description = "Controls the MimeType that Suwayomi sends in OPDS entries for CBZ archives. Also affects global CBZ download. Modern follows recent IANA standard (2017), while LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives) might be more compatible with older clients.",
+        deprecated = userSettingDeprecated,
     )
 
-    val serveConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
+    @Deprecated("Now per-user")
+    val serveConversions: MutableStateFlow<Map<String, DownloadConversion>> by MigratedConfigValue(
         protoNumber = 84,
-        key = "serveConversions"
+        deprecated = userSettingDeprecated,
+        group = SettingGroup.DOWNLOADER,
+        privacySafe = false,
+        defaultValue = emptyMap(),
+        typeInfo = downloadConversionTypeInfo()
     )
 
     val useHikariConnectionPool: MutableStateFlow<Boolean> by BooleanSetting(
@@ -1053,75 +1085,94 @@ class ServerConfig(
         description = "Enable the WebView via CEF (Chromium) - Not supported on MacOS",
     )
 
-    val syncYomiEnabled: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val syncYomiEnabled: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 87,
         defaultValue = false,
         group = SettingGroup.SYNCYOMI,
-        privacySafe = true
+        privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncYomiHost: MutableStateFlow<String> by StringSetting(
+    @Deprecated("Now per-user")
+    val syncYomiHost: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 88,
         defaultValue = "",
         group = SettingGroup.SYNCYOMI,
         privacySafe = false,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncYomiApiKey: MutableStateFlow<String> by StringSetting(
+    @Deprecated("Now per-user")
+    val syncYomiApiKey: MutableStateFlow<String> by MigratedConfigValue(
         protoNumber = 89,
         defaultValue = "",
         group = SettingGroup.SYNCYOMI,
         privacySafe = false,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncDataManga: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val syncDataManga: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 90,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncDataChapters: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val syncDataChapters: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 91,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncDataTracking: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val syncDataTracking: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 92,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncDataHistory: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val syncDataHistory: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 93,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncDataCategories: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val syncDataCategories: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 94,
         defaultValue = true,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val syncInterval: MutableStateFlow<Duration> by DurationSetting(
+    @Deprecated("Now per-user")
+    val syncInterval: MutableStateFlow<Duration> by MigratedConfigValue(
         protoNumber = 95,
         defaultValue = 0.seconds,
         group = SettingGroup.SYNCYOMI,
         privacySafe = true,
+        deprecated = userSettingDeprecated,
     )
 
-    val opdsSkipChapterMetadataFeed: MutableStateFlow<Boolean> by BooleanSetting(
+    @Deprecated("Now per-user")
+    val opdsSkipChapterMetadataFeed: MutableStateFlow<Boolean> by MigratedConfigValue(
         protoNumber = 96,
         group = SettingGroup.OPDS,
         privacySafe = true,
         defaultValue = false,
-        description = "Skips the metadata feed and provides download/stream links directly in the chapter list. Improves compatibility with KOReader auto-downloader. KoSync strategies are applied, but PROMPT conflicts are ignored (treating local progress as priority)."
+        deprecated = userSettingDeprecated,
     )
 
     val extensionStores: MutableStateFlow<List<String>> by ListSetting<String>(
@@ -1145,6 +1196,13 @@ class ServerConfig(
                 specificType = "List<String>",
             ),
         description = "List of extension store index URLs",
+    )
+
+    val autoBackupIncludeUserSettings: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 98,
+        group = SettingGroup.BACKUP,
+        privacySafe = true,
+        defaultValue = BackupFlags.DEFAULT.includeUserSettings,
     )
 
     /** ****************************************************************** **/

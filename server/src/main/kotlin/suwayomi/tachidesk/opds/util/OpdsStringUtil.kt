@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.opds.util
 
-import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.settings.userConfig
+import suwayomi.tachidesk.server.settings.userSettings
 import java.net.URLEncoder
 import java.text.Normalizer
 
@@ -53,8 +54,11 @@ object OpdsStringUtil {
      * @param size Size in bytes
      * @return Human-readable representation of the size
      */
-    fun formatFileSizeForOpds(size: Long): String =
-        if (serverConfig.opdsUseBinaryFileSizes.value) {
+    fun formatFileSizeForOpds(
+        userId: Int,
+        size: Long,
+    ): String =
+        if (userSettings.value(userId, userConfig.opdsUseBinaryFileSizes)) {
             // Binary notation (base 1024)
             when {
                 // 1024^4

@@ -3,8 +3,10 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.user.UserPermission
 import uy.kohesive.injekt.injectLazy
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -25,6 +27,7 @@ class ImageMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_CACHE)
     fun clearCachedImages(input: ClearCachedImagesInput): ClearCachedImagesPayload {
         val (clientMutationId, downloadedThumbnails, cachedThumbnails, cachedPages) = input
 

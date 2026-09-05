@@ -7,6 +7,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -19,6 +20,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
@@ -30,10 +32,14 @@ import suwayomi.tachidesk.graphql.types.updateFilterList
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
 class SourceMutation {
@@ -48,10 +54,14 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMeta(input: SetSourceMetaInput): SetSourceMetaPayload? {
+    fun setSourceMeta(
+        @GraphQLIgnore
+        userId: Int,
+        input: SetSourceMetaInput,
+    ): SetSourceMetaPayload? {
         val (clientMutationId, meta) = input
 
-        Source.modifyMeta(meta.sourceId, meta.key, meta.value)
+        Source.modifyMeta(userId, meta.sourceId, meta.key, meta.value)
 
         return SetSourceMetaPayload(clientMutationId, meta)
     }
@@ -69,7 +79,11 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMeta(input: DeleteSourceMetaInput): CompletableFuture<DeleteSourceMetaPayload?> {
+    fun deleteSourceMeta(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteSourceMetaInput,
+    ): CompletableFuture<DeleteSourceMetaPayload?> {
         val (clientMutationId, sourceId, key) = input
 
         return future {
@@ -78,10 +92,17 @@ class SourceMutation {
                     val meta =
                         SourceMetaTable
                             .selectAll()
-                            .where { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
-                            .firstOrNull()
+                            .where {
+                                (SourceMetaTable.user eq userId) and
+                                    (SourceMetaTable.ref eq sourceId) and
+                                    (SourceMetaTable.key eq key)
+                            }.firstOrNull()
 
-                    SourceMetaTable.deleteWhere { (SourceMetaTable.ref eq sourceId) and (SourceMetaTable.key eq key) }
+                    SourceMetaTable.deleteWhere {
+                        (SourceMetaTable.user eq userId) and
+                            (SourceMetaTable.ref eq sourceId) and
+                            (SourceMetaTable.key eq key)
+                    }
 
                     val source =
                         SourceTable
@@ -118,7 +139,11 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun setSourceMetas(input: SetSourceMetasInput): CompletableFuture<SetSourceMetasPayload?> {
+    fun setSourceMetas(
+        @GraphQLIgnore
+        userId: Int,
+        input: SetSourceMetasInput,
+    ): CompletableFuture<SetSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
         return future {
@@ -130,7 +155,7 @@ class SourceMutation {
                     }.groupBy({ it.first }, { it.second })
                     .mapValues { (_, maps) -> maps.reduce { acc, map -> acc + map } }
 
-            Source.modifySourceMetas(metaBySourceId)
+            Source.modifySourceMetas(userId, metaBySourceId)
 
             val allSourceIds = metaBySourceId.keys
             val allMetaKeys = metaBySourceId.values.flatMap { it.keys }.distinct()
@@ -140,8 +165,10 @@ class SourceMutation {
                     val updatedMetas =
                         SourceMetaTable
                             .selectAll()
-                            .where { (SourceMetaTable.ref inList allSourceIds) and (SourceMetaTable.key inList allMetaKeys) }
-                            .map { SourceMetaType(it) }
+                            .where {
+                                (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList allSourceIds) and
+                                    (SourceMetaTable.key inList allMetaKeys)
+                            }.map { SourceMetaType(it) }
 
                     val sources =
                         SourceTable
@@ -175,7 +202,11 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun deleteSourceMetas(input: DeleteSourceMetasInput): CompletableFuture<DeleteSourceMetasPayload?> {
+    fun deleteSourceMetas(
+        @GraphQLIgnore
+        userId: Int,
+        input: DeleteSourceMetasInput,
+    ): CompletableFuture<DeleteSourceMetasPayload?> {
         val (clientMutationId, items) = input
 
         return future {
@@ -207,7 +238,8 @@ class SourceMutation {
                                 keyCondition ?: prefixCondition!!
                             }
 
-                        val condition = (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
+                        val condition =
+                            (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
 
                         deletedMetas +=
                             SourceMetaTable
@@ -257,10 +289,28 @@ class SourceMutation {
     )
 
     @RequireAuth
-    fun fetchSourceManga(input: FetchSourceMangaInput): CompletableFuture<FetchSourceMangaPayload?> {
+    fun fetchSourceManga(
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
+        input: FetchSourceMangaInput,
+    ): CompletableFuture<FetchSourceMangaPayload?> {
         val (clientMutationId, sourceId, type, page, query, filters) = input
 
         return future {
+            val isSourceNsfw =
+                transaction {
+                    SourceTable
+                        .selectAll()
+                        .where { SourceTable.id eq sourceId }
+                        .firstOrNull()
+                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal }
+                        ?: false
+                }
+
+            if (isSourceNsfw && !permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
+                throw ForbiddenException()
+            }
+
             val source = GetSource.getSourceOrNull(sourceId)!!
             val mangasPage =
                 when (type) {
@@ -324,6 +374,7 @@ class SourceMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_SOURCE_PREFERENCES)
     fun updateSourcePreference(input: UpdateSourcePreferenceInput): CompletableFuture<UpdateSourcePreferencePayload?> {
         val (clientMutationId, sourceId, change) = input
 
