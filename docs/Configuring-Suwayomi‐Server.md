@@ -275,12 +275,14 @@ server.databaseType = H2 # H2, POSTGRESQL
 server.databaseUrl = "postgresql://localhost:5432/suwayomi"
 server.databaseUsername = ""
 server.databasePassword = ""
+server.databaseSchema = "suwayomi"
 server.useHikariConnectionPool = true
 ```
 - `server.databaseType` chooses which type of database to use. [H2](https://en.wikipedia.org/wiki/H2_Database_Engine) is the default; it is a simple file-based database for Java applications. Since it is only based on files without a server process, file corruption can be common when the server is not shut down properly. [PostgreSQL](https://en.wikipedia.org/wiki/PostgreSQL) is a popular cross-platform, stable database. To use PostgreSQL, you need to run an instance yourself.
 - `server.databaseUrl` the URL where to find the PostgreSQL server, including the database name.
 - `server.databaseUsername` the username with which to authenticate at the PostgreSQL instance.
 - `server.databasePassword` the username with which to authenticate at the PostgreSQL instance.
+- `server.databaseSchema` the name of the database schema that is going to be used
 - `server.useHikariConnectionPool` use Hikari Connection Pool to connect to the database.
 
 ### SyncYomi

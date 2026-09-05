@@ -121,6 +121,7 @@ data class DatabaseSettings(
     val databaseUrl: String,
     val databaseUsername: String,
     val databasePassword: String,
+    val databaseSchema: String,
     val useHikariConnectionPool: Boolean,
 )
 
@@ -348,19 +349,21 @@ fun applicationSetup() {
             serverConfig.databaseUrl,
             serverConfig.databaseUsername,
             serverConfig.databasePassword,
+            serverConfig.databaseSchema,
             serverConfig.useHikariConnectionPool,
         ) { vargs ->
             DatabaseSettings(
-                vargs[0] as DatabaseType,
-                vargs[1] as String,
-                vargs[2] as String,
-                vargs[3] as String,
-                vargs[4] as Boolean,
+                databaseType = vargs[0] as DatabaseType,
+                databaseUrl = vargs[1] as String,
+                databaseUsername = vargs[2] as String,
+                databasePassword = vargs[3] as String,
+                databaseSchema = vargs[4] as String,
+                useHikariConnectionPool = vargs[5] as Boolean,
             )
         }.distinctUntilChanged(),
-        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, hikariCp) ->
+        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, databaseSchema, hikariCp) ->
             logger.info {
-                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], hikaricp=$hikariCp"
+                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], schema=$databaseSchema, hikaricp=$hikariCp"
             }
             databaseUp()
 

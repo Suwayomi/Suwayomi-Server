@@ -1147,6 +1147,14 @@ class ServerConfig(
         description = "List of extension store index URLs",
     )
 
+    val databaseSchema: MutableStateFlow<String> by StringSetting(
+        protoNumber = 98,
+        group = SettingGroup.DATABASE,
+        privacySafe = true,
+        defaultValue = "suwayomi",
+        minLength = 1
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/

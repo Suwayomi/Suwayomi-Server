@@ -221,6 +221,7 @@ class StringSetting(
     protoNumber: Int,
     defaultValue: String,
     pattern: Regex? = null,
+    minLength: Int? = null,
     maxLength: Int? = null,
     group: SettingGroup,
     deprecated: SettingsRegistry.SettingDeprecated? = null,
@@ -235,6 +236,8 @@ class StringSetting(
             when {
                 pattern != null && !value.matches(pattern) ->
                     "Value (${maybeRedact(value, privacySafe)}) must match pattern: ${pattern.pattern}"
+                minLength != null && value.length < minLength ->
+                    "Value (${maybeRedact(value, privacySafe)}) must have at least $minLength characters"
                 maxLength != null && value.length > maxLength ->
                     "Value (${maybeRedact(value, privacySafe)}) must not exceed $maxLength characters"
                 else -> null
