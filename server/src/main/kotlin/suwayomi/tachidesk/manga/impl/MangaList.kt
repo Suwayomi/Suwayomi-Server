@@ -90,7 +90,11 @@ object MangaList {
                     .mapNotNull { sManga ->
                         existingMangaUrlsToId[sManga.url]?.let { sManga to it }
                     }.filterNot { (_, resultRows) ->
-                        resultRows.any { it[MangaUserTable.inLibrary] && it[MangaTable.sourceReference] != LocalSource.ID }
+                        resultRows.any {
+                            it.getOrNull(
+                                MangaUserTable.inLibrary,
+                            ) == true && it[MangaTable.sourceReference] != LocalSource.ID
+                        }
                     }
 
             if (mangaToUpdate.isNotEmpty()) {

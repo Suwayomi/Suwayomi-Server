@@ -60,7 +60,7 @@ class UserQuery {
         @GraphQLIgnore
         userId: Int,
         dataFetchingEnvironment: DataFetchingEnvironment,
-        id: Int?,
+        id: Int? = null,
     ): CompletableFuture<UserType> = dataFetchingEnvironment.getValueFromDataLoader("UserDataLoader", id ?: userId)
 
     @GraphQLDescription("Outstanding (unconsumed, unexpired) user codes.")

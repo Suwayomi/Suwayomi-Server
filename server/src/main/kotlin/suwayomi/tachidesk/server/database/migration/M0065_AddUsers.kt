@@ -56,7 +56,7 @@ class M0065_AddUsers : Migration() {
                     """
                     INSERT INTO $userAccountTable(USERNAME, PASSWORD)
                     SELECT '$adminUsername','$password';
-                    """.trimIndent()
+                    """
                 }
 
                 DatabaseType.POSTGRESQL -> {
@@ -64,7 +64,7 @@ class M0065_AddUsers : Migration() {
                     """
                     INSERT INTO $userAccountTable(ID, USERNAME, PASSWORD)
                     SELECT 1,'$adminUsername','$password';
-                    """.trimIndent()
+                    """
                 }
             }
 
@@ -100,7 +100,7 @@ class M0065_AddUsers : Migration() {
                     DROP FUNCTION IF EXISTS delete_manga_category_update_version();
                     DROP TRIGGER IF EXISTS trackrecord_update_manga_version ON $tractRecordTable;
                     DROP FUNCTION IF EXISTS trackrecord_update_manga_version();
-                    """.trimIndent()
+                    """
                 }
             }
 
@@ -113,7 +113,7 @@ class M0065_AddUsers : Migration() {
                     """
                     ALTER TABLE $categoryTable ADD COLUMN default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN USER_ID ELSE NULL END);
                     CREATE UNIQUE INDEX ux_category_default_per_user ON $categoryTable (default_user_id);
-                    """.trimIndent()
+                    """
                 }
 
                 DatabaseType.POSTGRESQL -> {
@@ -121,9 +121,39 @@ class M0065_AddUsers : Migration() {
                     """
                     ALTER TABLE $categoryTable ADD COLUMN default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN user_id ELSE NULL END) STORED;
                     CREATE UNIQUE INDEX ux_category_default_per_user ON $categoryTable (default_user_id);
-                    """.trimIndent()
+                    """
                 }
             }
+
+        private fun createMigrationForMetaTable(
+            table: String,
+            refColumn: String? = null,
+        ): String {
+            val groupBy =
+                listOfNotNull(
+                    "USER_ID",
+                    refColumn,
+                    "META_KEY".toSqlName(),
+                ).joinToString(", ")
+
+            return """
+            ALTER TABLE $table
+                DROP CONSTRAINT UC_$table;
+
+            ALTER TABLE $table
+                ADD CONSTRAINT UC_$table UNIQUE ($groupBy);
+
+            """.also {
+                println(it)
+            }
+        }
+
+        private val metaTableMigrations: String =
+            createMigrationForMetaTable("CATEGORYMETA", "CATEGORY_REF") +
+                createMigrationForMetaTable("CHAPTERMETA", "CHAPTER_REF") +
+                createMigrationForMetaTable("GLOBALMETA") +
+                createMigrationForMetaTable("MANGAMETA", "MANGA_REF") +
+                createMigrationForMetaTable("SOURCEMETA", "SOURCE_REF")
 
         // language=h2
         fun h2SyncYomiTriggers(): String =
@@ -177,7 +207,7 @@ class M0065_AddUsers : Migration() {
             AFTER INSERT ON $categoryMangaTable
             FOR EACH ROW
             CALL "suwayomi.tachidesk.server.database.trigger.InsertMangaCategoryUpdateVersionTrigger";
-            """.trimIndent()
+            """
 
         // language=postgresql
         fun postgresSyncYomiTriggers(): String =
@@ -349,7 +379,7 @@ class M0065_AddUsers : Migration() {
             AFTER INSERT OR UPDATE OR DELETE ON $tractRecordTable
             FOR EACH ROW
             EXECUTE FUNCTION trackrecord_update_manga_version();
-            """.trimIndent()
+            """
 
         // language=h2
         val sql =
@@ -384,6 +414,7 @@ class M0065_AddUsers : Migration() {
             ALTER TABLE $categoryMetaTable ADD CONSTRAINT FK_CATEGORYMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             ALTER TABLE $sourceMetaTable ADD CONSTRAINT FK_SOURCEMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
 
+
             ALTER TABLE $categoryTable
             ALTER COLUMN USER_ID DROP DEFAULT;
 
@@ -408,16 +439,36 @@ class M0065_AddUsers : Migration() {
             ALTER TABLE $sourceMetaTable
             ALTER COLUMN USER_ID DROP DEFAULT;
 
+            -- Add User ID to Meta Tables unique index
+            $metaTableMigrations
+
             -- Step 4: Backfill the CHAPTERUSER and MANGAUSER tables with existing data,
             -- including the syncyomi (VERSION, IS_SYNCING, LAST_MODIFIED_AT) and per-user
             -- download (IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED) columns.
             INSERT INTO $chapterUserTable (LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, CHAPTER, USER_ID)
             SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOADED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS CHAPTER, 1 AS USER_ID
-            FROM $chapterTable;
+            FROM $chapterTable
+            WHERE
+                READ <> FALSE
+                OR BOOKMARK <> FALSE
+                OR LAST_PAGE_READ <> 0
+                OR LAST_READ_AT <> 0
+                OR KOREADER_HASH IS NOT NULL
+                OR IS_DOWNLOADED <> FALSE
+                OR VERSION <> 0
+                OR IS_SYNCING <> FALSE;
 
             INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, MANGA, USER_ID)
             SELECT IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, ID AS MANGA, 1 AS USER_ID
-            FROM $mangaTable;
+            FROM $mangaTable
+            WHERE
+                IN_LIBRARY <> FALSE
+                OR IN_LIBRARY_AT <> 0
+                OR VERSION <> 0
+                OR IS_SYNCING <> FALSE
+                OR VIEWER <> 0
+                OR VIEWER_FLAGS IS NOT NULL
+                OR CHAPTER_FLAGS <> 0;
 
             -- Step 5: Drop the old single-user syncyomi triggers before the columns they
             -- reference are removed (PostgreSQL refuses to drop referenced columns)
