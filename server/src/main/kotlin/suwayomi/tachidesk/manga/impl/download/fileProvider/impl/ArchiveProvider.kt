@@ -20,7 +20,12 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.zip.Deflater
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -49,7 +54,9 @@ class ArchiveProvider(
             return
         }
 
-        extractCbzFile(outputFile, chapterDownloadFolder)
+        extractExistingCbzFile(outputFile, chapterDownloadFolder) { exception ->
+            logger.warn(exception) { "Deleting unreadable CBZ before retrying chapter download: ${outputFile.path}" }
+        }
     }
 
     override suspend fun handleSuccessfulDownload() {
@@ -59,30 +66,11 @@ class ArchiveProvider(
 
         withContext(Dispatchers.IO) {
             mangaDownloadFolder.mkdirs()
-            outputFile.createNewFile()
-        }
+            createCbzFile(outputFile, chapterCacheFolder)
 
-        ZipArchiveOutputStream(outputFile.outputStream()).use { zipOut ->
-            zipOut.setMethod(ZipArchiveOutputStream.DEFLATED)
-            zipOut.setLevel(Deflater.DEFAULT_COMPRESSION)
-            if (chapterCacheFolder.isDirectory) {
-                chapterCacheFolder.listFiles()?.sortedBy { it.name }?.forEach {
-                    val entry = ZipArchiveEntry(it.name)
-                    entry.time = 0L
-                    try {
-                        zipOut.putArchiveEntry(entry)
-                        it.inputStream().use { inputStream ->
-                            inputStream.copyTo(zipOut)
-                        }
-                    } finally {
-                        zipOut.closeArchiveEntry()
-                    }
-                }
+            if (chapterCacheFolder.exists() && chapterCacheFolder.isDirectory) {
+                chapterCacheFolder.deleteRecursively()
             }
-        }
-
-        if (chapterCacheFolder.exists() && chapterCacheFolder.isDirectory) {
-            chapterCacheFolder.deleteRecursively()
         }
     }
 
@@ -117,26 +105,102 @@ class ArchiveProvider(
         val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
         return if (cbzFile.exists()) cbzFile.length() else 0L
     }
+}
 
-    private fun extractCbzFile(
-        cbzFile: File,
-        chapterFolder: File,
-    ) {
-        if (!chapterFolder.exists()) chapterFolder.mkdirs()
-        ZipArchiveInputStream(cbzFile.inputStream()).use { zipInputStream ->
-            var zipEntry = zipInputStream.nextEntry
-            while (zipEntry != null) {
-                val file = File(chapterFolder, zipEntry.name)
-                if (!file.exists()) {
-                    file.parentFile.mkdirs()
-                    file.createNewFile()
-                }
-                file.outputStream().use { outputStream ->
-                    zipInputStream.copyTo(outputStream)
-                }
-                zipEntry = zipInputStream.nextEntry
+internal fun extractExistingCbzFile(
+    cbzFile: File,
+    chapterFolder: File,
+    onInvalidArchive: (IOException) -> Unit,
+) {
+    try {
+        validateCbzFile(cbzFile)
+    } catch (exception: IOException) {
+        onInvalidArchive(exception)
+        deleteCorruptedDownload(cbzFile, chapterFolder, exception)
+        return
+    }
+
+    if (!chapterFolder.exists()) chapterFolder.mkdirs()
+    ZipArchiveInputStream(cbzFile.inputStream()).use { zipInputStream ->
+        var zipEntry = zipInputStream.nextEntry
+        while (zipEntry != null) {
+            val file = File(chapterFolder, zipEntry.name)
+            if (!file.exists()) {
+                file.parentFile.mkdirs()
+                file.createNewFile()
+            }
+            file.outputStream().use { outputStream ->
+                zipInputStream.copyTo(outputStream)
+            }
+            zipEntry = zipInputStream.nextEntry
+        }
+    }
+    cbzFile.delete()
+}
+
+private fun validateCbzFile(cbzFile: File) {
+    ZipFile.builder().setFile(cbzFile).get().use { zipFile ->
+        zipFile.entries.asSequence().filterNot { it.isDirectory }.forEach { entry ->
+            zipFile.getInputStream(entry).use { inputStream ->
+                inputStream.copyTo(OutputStream.nullOutputStream())
             }
         }
-        cbzFile.delete()
+    }
+}
+
+private fun deleteCorruptedDownload(
+    cbzFile: File,
+    chapterFolder: File,
+    cause: IOException,
+) {
+    if (chapterFolder.exists() && !chapterFolder.deleteRecursively()) {
+        throw IOException("Failed to delete partially extracted chapter folder: ${chapterFolder.path}", cause)
+    }
+    if (cbzFile.exists() && !cbzFile.delete()) {
+        throw IOException("Failed to delete corrupted CBZ: ${cbzFile.path}", cause)
+    }
+}
+
+internal fun createCbzFile(
+    outputFile: File,
+    chapterCacheFolder: File,
+) {
+    val incompleteOutputFile = File(outputFile.parentFile, "${outputFile.name}.part")
+    if (incompleteOutputFile.exists() && !incompleteOutputFile.delete()) {
+        throw IOException("Failed to delete incomplete CBZ: ${incompleteOutputFile.path}")
+    }
+
+    try {
+        ZipArchiveOutputStream(incompleteOutputFile.outputStream()).use { zipOut ->
+            zipOut.setMethod(ZipArchiveOutputStream.DEFLATED)
+            zipOut.setLevel(Deflater.DEFAULT_COMPRESSION)
+            if (chapterCacheFolder.isDirectory) {
+                chapterCacheFolder.listFiles()?.sortedBy { it.name }?.forEach {
+                    val entry = ZipArchiveEntry(it.name)
+                    entry.time = 0L
+                    try {
+                        zipOut.putArchiveEntry(entry)
+                        it.inputStream().use { inputStream ->
+                            inputStream.copyTo(zipOut)
+                        }
+                    } finally {
+                        zipOut.closeArchiveEntry()
+                    }
+                }
+            }
+        }
+
+        try {
+            Files.move(
+                incompleteOutputFile.toPath(),
+                outputFile.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(incompleteOutputFile.toPath(), outputFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        }
+    } finally {
+        incompleteOutputFile.delete()
     }
 }
