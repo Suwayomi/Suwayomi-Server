@@ -1,197 +1,277 @@
 package suwayomi.tachidesk.server.database
 
-import org.jetbrains.exposed.v1.jdbc.Database
-import org.jetbrains.exposed.v1.jdbc.JdbcTransaction
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
+import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
+import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.test.ApplicationTest
-import java.util.UUID
 
-@Disabled
-class SyncYomiTriggersTest {
-    companion object {
-        @BeforeAll
-        @JvmStatic
-        fun beforeAll() {
-            ApplicationTest.testingSetup()
-        }
-    }
+class SyncYomiTriggersTest : ApplicationTest() {
+    private val userId = 1
 
-    private lateinit var database: Database
+    private var mangaRowId: Int = 0
+    private var chapterRowId: Int = 0
+    private var categoryRowId: Int = 0
+    private var mangaUserId: Int = 0
+    private var chapterUserId: Int = 0
 
-    // language=h2
     @BeforeEach
     fun setUp() {
-        database = Database.connect("jdbc:h2:mem:triggers-${UUID.randomUUID()};DB_CLOSE_DELAY=-1", "org.h2.Driver")
-        transaction(database) {
-            exec("CREATE TABLE manga (id BIGINT PRIMARY KEY, url VARCHAR, title VARCHAR, description VARCHAR)")
-            exec("CREATE TABLE chapter (id BIGINT PRIMARY KEY, name VARCHAR, manga BIGINT)")
-            exec("CREATE TABLE categorymanga (id BIGINT PRIMARY KEY, manga BIGINT, category BIGINT, user_id INT)")
-            exec("CREATE TABLE trackrecord (id BIGINT PRIMARY KEY, manga_id BIGINT, user_id INT, sync_id INT, status INT)")
-            exec(
-                "CREATE TABLE mangauser (id BIGINT PRIMARY KEY, manga BIGINT, user_id INT, in_library BOOLEAN, " +
-                    "in_library_at BIGINT, version BIGINT, is_syncing BOOLEAN, last_modified_at BIGINT)",
-            )
-            exec(
-                "CREATE TABLE chapteruser (id BIGINT PRIMARY KEY, chapter BIGINT, user_id INT, read BOOLEAN, " +
-                    "bookmark BOOLEAN, last_page_read INT, version BIGINT, is_syncing BOOLEAN, last_modified_at BIGINT)",
-            )
+        transaction {
+            mangaRowId =
+                MangaTable
+                    .insertAndGetId {
+                        it[MangaTable.url] = "/m"
+                        it[MangaTable.title] = "Manga"
+                        it[MangaTable.description] = "d"
+                        it[MangaTable.sourceReference] = 1
+                    }.value
 
-            // The per-user syncyomi triggers (M0065) plus the delete/track triggers (M0063)
-            exec(
-                """
-                CREATE TRIGGER update_manga_user_version
-                BEFORE UPDATE ON mangauser
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaUserVersionTrigger";
+            chapterRowId =
+                ChapterTable
+                    .insertAndGetId {
+                        it[ChapterTable.url] = "/c"
+                        it[ChapterTable.name] = "c1"
+                        it[ChapterTable.sourceOrder] = 1
+                        it[ChapterTable.manga] = mangaRowId
+                    }.value
 
-                CREATE TRIGGER update_chapter_user_version
-                BEFORE UPDATE ON chapteruser
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterUserVersionTrigger";
+            categoryRowId =
+                CategoryTable
+                    .insertAndGetId {
+                        it[CategoryTable.name] = "Reading"
+                        it[CategoryTable.user] = userId
+                    }.value
 
-                CREATE TRIGGER update_manga_user_last_modified_at
-                BEFORE UPDATE ON mangauser
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaUserLastModifiedAtTrigger";
+            // the insert triggers stamp last_modified_at; clear the stamps so tests can tell
+            // whether an update stamped
+            mangaUserId =
+                MangaUserTable
+                    .insertAndGetId {
+                        it[MangaUserTable.manga] = mangaRowId
+                        it[MangaUserTable.user] = userId
+                        it[MangaUserTable.inLibrary] = true
+                    }.value
+            MangaUserTable.update({ MangaUserTable.id eq mangaUserId }) {
+                it[MangaUserTable.lastModifiedAt] = 0
+            }
 
-                CREATE TRIGGER insert_manga_user_last_modified_at
-                BEFORE INSERT ON mangauser
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaUserLastModifiedAtTrigger";
-
-                CREATE TRIGGER update_chapter_user_last_modified_at
-                BEFORE UPDATE ON chapteruser
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterUserLastModifiedAtTrigger";
-
-                CREATE TRIGGER insert_chapter_user_last_modified_at
-                BEFORE INSERT ON chapteruser
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.UpdateChapterUserLastModifiedAtTrigger";
-
-                CREATE TRIGGER update_manga_bump_user_versions
-                AFTER UPDATE ON manga
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.UpdateMangaBumpUserVersionsTrigger";
-
-                CREATE TRIGGER insert_manga_category_update_version
-                AFTER INSERT ON categorymanga
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.InsertMangaCategoryUpdateVersionTrigger";
-
-                CREATE TRIGGER delete_manga_category_update_version
-                AFTER DELETE ON categorymanga
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.DeleteMangaCategoryUpdateVersionTrigger";
-
-                CREATE TRIGGER trackrecord_update_manga_version
-                AFTER INSERT, UPDATE, DELETE ON trackrecord
-                FOR EACH ROW
-                CALL "suwayomi.tachidesk.server.database.trigger.TrackRecordUpdateMangaVersionTrigger";
-                """.trimIndent(),
-            )
-
-            exec("INSERT INTO manga (id, url, title, description) VALUES (1, '/m', 'Manga', 'd')")
-            exec("INSERT INTO chapter (id, name, manga) VALUES (1, 'c1', 1)")
-            exec(
-                "INSERT INTO mangauser (id, manga, user_id, in_library, in_library_at, version, is_syncing, last_modified_at) " +
-                    "VALUES (1, 1, 1, TRUE, 0, 0, FALSE, 0)",
-            )
-            exec(
-                "INSERT INTO chapteruser (id, chapter, user_id, read, bookmark, last_page_read, version, is_syncing, last_modified_at) " +
-                    "VALUES (1, 1, 1, FALSE, FALSE, 0, 0, FALSE, 0)",
-            )
+            chapterUserId =
+                ChapterUserTable
+                    .insertAndGetId {
+                        it[ChapterUserTable.chapter] = chapterRowId
+                        it[ChapterUserTable.user] = userId
+                    }.value
+            ChapterUserTable.update({ ChapterUserTable.id eq chapterUserId }) {
+                it[ChapterUserTable.lastModifiedAt] = 0
+            }
         }
     }
 
-    private fun JdbcTransaction.row(sql: String): Pair<Long, Long> =
-        exec(sql) {
-            it.next()
-            it.getLong("version") to it.getLong("last_modified_at")
-        }!!
+    @AfterEach
+    fun tearDown() {
+        transaction {
+            CategoryMangaTable.deleteWhere {
+                (CategoryMangaTable.manga eq mangaRowId) and (CategoryMangaTable.user eq userId)
+            }
+            TrackRecordTable.deleteWhere {
+                (TrackRecordTable.mangaId eq mangaRowId) and (TrackRecordTable.user eq userId)
+            }
+            MangaUserTable.deleteWhere {
+                (MangaUserTable.manga eq mangaRowId) and (MangaUserTable.user eq userId)
+            }
+            ChapterUserTable.deleteWhere {
+                (ChapterUserTable.chapter eq chapterRowId) and (ChapterUserTable.user eq userId)
+            }
+            ChapterTable.deleteWhere { ChapterTable.id eq chapterRowId }
+            MangaTable.deleteWhere { MangaTable.id eq mangaRowId }
+            CategoryTable.deleteWhere { CategoryTable.id eq categoryRowId }
+        }
+    }
 
-    private fun JdbcTransaction.mangauser() = row("SELECT version, last_modified_at FROM mangauser WHERE id = 1")
+    private fun mangaUser(): Pair<Long, Long> =
+        transaction {
+            MangaUserTable
+                .selectAll()
+                .where { MangaUserTable.id eq mangaUserId }
+                .single()
+                .let { it[MangaUserTable.version] to it[MangaUserTable.lastModifiedAt] }
+        }
 
-    private fun JdbcTransaction.chapteruser() = row("SELECT version, last_modified_at FROM chapteruser WHERE id = 1")
+    private fun chapterUser(): Pair<Long, Long> =
+        transaction {
+            ChapterUserTable
+                .selectAll()
+                .where { ChapterUserTable.id eq chapterUserId }
+                .single()
+                .let { it[ChapterUserTable.version] to it[ChapterUserTable.lastModifiedAt] }
+        }
 
     @Test
     fun `marking a chapter read bumps only the chapter version`() {
-        transaction(database) {
-            exec("UPDATE chapteruser SET read = TRUE WHERE id = 1")
-
-            val (chapterVersion, chapterStamp) = chapteruser()
-            assertEquals(1, chapterVersion)
-            assertTrue(chapterStamp > 0)
-            // chapters merge separately in v2; reads must not decide manga-level merges
-            assertEquals(0L to 0L, mangauser())
+        transaction {
+            ChapterUserTable.update({ ChapterUserTable.id eq chapterUserId }) {
+                it[ChapterUserTable.isRead] = true
+            }
         }
+
+        val (chapterVersion, chapterStamp) = chapterUser()
+        assertEquals(1, chapterVersion)
+        assertTrue(chapterStamp > 0)
+        // chapters merge separately in v2; reads must not decide manga-level merges
+        assertEquals(0L to 0L, mangaUser())
     }
 
     @Test
     fun `a sync restore keeps its version and timestamp`() {
-        transaction(database) {
-            exec("UPDATE chapteruser SET read = TRUE, version = 7, last_modified_at = 1234, is_syncing = TRUE WHERE id = 1")
-            assertEquals(7L to 1234L, chapteruser())
-            assertEquals(0L to 0L, mangauser())
-
-            exec("UPDATE chapteruser SET is_syncing = FALSE WHERE is_syncing")
-            assertEquals(7L to 1234L, chapteruser())
+        transaction {
+            ChapterUserTable.update({ ChapterUserTable.id eq chapterUserId }) {
+                it[ChapterUserTable.isRead] = true
+                it[ChapterUserTable.version] = 7
+                it[ChapterUserTable.lastModifiedAt] = 1234
+                it[ChapterUserTable.isSyncing] = true
+            }
         }
+        assertEquals(7L to 1234L, chapterUser())
+        assertEquals(0L to 0L, mangaUser())
+
+        transaction {
+            ChapterUserTable.update({ ChapterUserTable.id eq chapterUserId }) {
+                it[ChapterUserTable.isSyncing] = false
+            }
+        }
+        assertEquals(7L to 1234L, chapterUser())
     }
 
     @Test
     fun `metadata only updates do not stamp`() {
-        transaction(database) {
-            exec("UPDATE chapter SET name = 'renamed' WHERE id = 1")
-            exec("UPDATE manga SET title = 'renamed' WHERE id = 1")
-            assertEquals(0L to 0L, chapteruser())
-            assertEquals(0L to 0L, mangauser())
+        transaction {
+            ChapterTable.update({ ChapterTable.id eq chapterRowId }) {
+                it[ChapterTable.name] = "renamed"
+            }
+            MangaTable.update({ MangaTable.id eq mangaRowId }) {
+                it[MangaTable.title] = "renamed"
+            }
         }
+        assertEquals(0L to 0L, chapterUser())
+        assertEquals(0L to 0L, mangaUser())
     }
 
     @Test
     fun `manga metadata updates bump the user versions`() {
-        transaction(database) {
-            exec("UPDATE manga SET description = 'changed' WHERE id = 1")
-            assertEquals(1, mangauser().first)
-            assertTrue(mangauser().second > 0)
+        transaction {
+            MangaTable.update({ MangaTable.id eq mangaRowId }) {
+                it[MangaTable.description] = "changed"
+            }
         }
+        assertEquals(1, mangaUser().first)
+        assertTrue(mangaUser().second > 0)
     }
 
     @Test
     fun `category links and track records bump the user version`() {
-        transaction(database) {
-            exec("INSERT INTO categorymanga (id, manga, category, user_id) VALUES (1, 1, 1, 1)")
-            assertEquals(1, mangauser().first)
-            exec("DELETE FROM categorymanga WHERE id = 1")
-            assertEquals(2, mangauser().first)
-
-            exec("INSERT INTO trackrecord (id, manga_id, user_id, sync_id, status) VALUES (1, 1, 1, 2, 1)")
-            assertEquals(3, mangauser().first)
-            exec("UPDATE trackrecord SET status = 2 WHERE id = 1")
-            assertEquals(4, mangauser().first)
-            exec("DELETE FROM trackrecord WHERE id = 1")
-            assertEquals(5, mangauser().first)
-            assertNotEquals(0, mangauser().second)
+        transaction {
+            CategoryMangaTable.insert {
+                it[CategoryMangaTable.category] = categoryRowId
+                it[CategoryMangaTable.manga] = mangaRowId
+                it[CategoryMangaTable.user] = userId
+            }
         }
+        assertEquals(1, mangaUser().first)
+
+        transaction {
+            CategoryMangaTable.deleteWhere {
+                (CategoryMangaTable.manga eq mangaRowId) and (CategoryMangaTable.user eq userId)
+            }
+        }
+        assertEquals(2, mangaUser().first)
+
+        val trackRecordId =
+            transaction {
+                TrackRecordTable
+                    .insertAndGetId {
+                        it[TrackRecordTable.mangaId] = mangaRowId
+                        it[TrackRecordTable.trackerId] = 2
+                        it[TrackRecordTable.remoteId] = 0
+                        it[TrackRecordTable.title] = "t"
+                        it[TrackRecordTable.lastChapterRead] = 0.0
+                        it[TrackRecordTable.totalChapters] = 0
+                        it[TrackRecordTable.status] = 1
+                        it[TrackRecordTable.score] = 0.0
+                        it[TrackRecordTable.remoteUrl] = "/u"
+                        it[TrackRecordTable.startDate] = 0
+                        it[TrackRecordTable.finishDate] = 0
+                        it[TrackRecordTable.user] = userId
+                    }.value
+            }
+        assertEquals(3, mangaUser().first)
+
+        transaction {
+            TrackRecordTable.update({ TrackRecordTable.id eq trackRecordId }) {
+                it[TrackRecordTable.status] = 2
+            }
+        }
+        assertEquals(4, mangaUser().first)
+
+        transaction {
+            TrackRecordTable.deleteWhere { TrackRecordTable.id eq trackRecordId }
+        }
+        assertEquals(5, mangaUser().first)
+        assertNotEquals(0, mangaUser().second)
     }
 
     @Test
     fun `nothing bumps while the user row is syncing`() {
-        transaction(database) {
-            exec("UPDATE mangauser SET is_syncing = TRUE WHERE id = 1")
-            exec("INSERT INTO categorymanga (id, manga, category, user_id) VALUES (1, 1, 1, 1)")
-            exec("DELETE FROM categorymanga WHERE id = 1")
-            exec("INSERT INTO trackrecord (id, manga_id, user_id, sync_id, status) VALUES (1, 1, 1, 2, 1)")
-            exec("UPDATE mangauser SET in_library = FALSE WHERE id = 1")
-            assertEquals(0L to 0L, mangauser())
+        transaction {
+            MangaUserTable.update({ MangaUserTable.id eq mangaUserId }) {
+                it[MangaUserTable.isSyncing] = true
+            }
+
+            CategoryMangaTable.insert {
+                it[CategoryMangaTable.category] = categoryRowId
+                it[CategoryMangaTable.manga] = mangaRowId
+                it[CategoryMangaTable.user] = userId
+            }
+            CategoryMangaTable.deleteWhere {
+                (CategoryMangaTable.manga eq mangaRowId) and (CategoryMangaTable.user eq userId)
+            }
+
+            TrackRecordTable.insert {
+                it[TrackRecordTable.mangaId] = mangaRowId
+                it[TrackRecordTable.trackerId] = 2
+                it[TrackRecordTable.remoteId] = 0
+                it[TrackRecordTable.title] = "t"
+                it[TrackRecordTable.lastChapterRead] = 0.0
+                it[TrackRecordTable.totalChapters] = 0
+                it[TrackRecordTable.status] = 1
+                it[TrackRecordTable.score] = 0.0
+                it[TrackRecordTable.remoteUrl] = "/u"
+                it[TrackRecordTable.startDate] = 0
+                it[TrackRecordTable.finishDate] = 0
+                it[TrackRecordTable.user] = userId
+            }
+
+            MangaUserTable.update({ MangaUserTable.id eq mangaUserId }) {
+                it[MangaUserTable.inLibrary] = false
+            }
         }
+        assertEquals(0L to 0L, mangaUser())
     }
 }
