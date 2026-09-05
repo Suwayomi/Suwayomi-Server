@@ -122,6 +122,7 @@ data class DatabaseSettings(
     val databaseUsername: String,
     val databasePassword: String,
     val useHikariConnectionPool: Boolean,
+    val hikariMaxPoolSize: Int,
 )
 
 val androidCompat by lazy { AndroidCompat() }
@@ -349,18 +350,20 @@ fun applicationSetup() {
             serverConfig.databaseUsername,
             serverConfig.databasePassword,
             serverConfig.useHikariConnectionPool,
+            serverConfig.hikariMaxPoolSize,
         ) { vargs ->
             DatabaseSettings(
-                vargs[0] as DatabaseType,
-                vargs[1] as String,
-                vargs[2] as String,
-                vargs[3] as String,
-                vargs[4] as Boolean,
+                databaseType = vargs[0] as DatabaseType,
+                databaseUrl = vargs[1] as String,
+                databaseUsername = vargs[2] as String,
+                databasePassword = vargs[3] as String,
+                useHikariConnectionPool = vargs[4] as Boolean,
+                hikariMaxPoolSize = vargs[5] as Int,
             )
         }.distinctUntilChanged(),
-        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, hikariCp) ->
+        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, hikariCp, hikariMaxPoolSize) ->
             logger.info {
-                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], hikaricp=$hikariCp"
+                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], hikaricp=$hikariCp, hikariMaxPoolSize=$hikariMaxPoolSize"
             }
             databaseUp()
 
