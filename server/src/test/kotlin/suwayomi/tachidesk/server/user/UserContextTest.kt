@@ -5,12 +5,9 @@ import io.javalin.http.Header
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
-import org.jetbrains.exposed.v1.jdbc.insert
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import suwayomi.tachidesk.global.impl.util.Jwt
-import suwayomi.tachidesk.global.model.table.UserRolesTable
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.test.GraphQLTest

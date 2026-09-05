@@ -14,7 +14,6 @@ import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
@@ -27,7 +26,6 @@ import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.hasPermission
-import suwayomi.tachidesk.server.user.requirePermissions
 import suwayomi.tachidesk.server.user.requireUser
 
 class UserDataLoader : KotlinDataLoader<Int, UserType> {

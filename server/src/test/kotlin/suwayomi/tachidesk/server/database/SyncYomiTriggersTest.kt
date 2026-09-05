@@ -121,7 +121,6 @@ class SyncYomiTriggersTest {
 
     private fun JdbcTransaction.chapteruser() = row("SELECT version, last_modified_at FROM chapteruser WHERE id = 1")
 
-
     @Test
     fun `marking a chapter read bumps only the chapter version`() {
         transaction(database) {

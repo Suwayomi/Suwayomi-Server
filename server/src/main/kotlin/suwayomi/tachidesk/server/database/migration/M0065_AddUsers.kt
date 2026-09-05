@@ -80,8 +80,11 @@ class M0065_AddUsers : Migration() {
         // classes and work once the user_id columns exist.
         private val oldSyncYomiTriggerDrops =
             when (serverConfig.databaseType.value) {
-                DatabaseType.H2 -> ""
-                DatabaseType.POSTGRESQL ->
+                DatabaseType.H2 -> {
+                    ""
+                }
+
+                DatabaseType.POSTGRESQL -> {
                     """
                     DROP TRIGGER IF EXISTS update_manga_version ON $mangaTable;
                     DROP FUNCTION IF EXISTS update_manga_version();
@@ -98,6 +101,7 @@ class M0065_AddUsers : Migration() {
                     DROP TRIGGER IF EXISTS trackrecord_update_manga_version ON $tractRecordTable;
                     DROP FUNCTION IF EXISTS trackrecord_update_manga_version();
                     """.trimIndent()
+                }
             }
 
         // Enforces "at most one default category row per user" via a unique index on a generated

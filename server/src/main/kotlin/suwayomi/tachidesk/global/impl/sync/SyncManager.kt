@@ -444,8 +444,7 @@ object SyncManager {
                                 .where {
                                     (CategoryMangaTable.category inList categoryIds) and
                                         (CategoryMangaTable.user eq userId)
-                                }
-                                .map { it[CategoryMangaTable.manga].value }
+                                }.map { it[CategoryMangaTable.manga].value }
                         MangaUserTable.update({
                             (MangaUserTable.manga inList mangaIds) and (MangaUserTable.user eq userId)
                         }) {

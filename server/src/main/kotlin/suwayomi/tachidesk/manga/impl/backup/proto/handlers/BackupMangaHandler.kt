@@ -279,7 +279,6 @@ object BackupMangaHandler {
                             it[thumbnail_url] = manga.thumbnailUrl ?: dbManga[thumbnail_url]
                             it[updateStrategy] = manga.updateStrategy.name
 
-
                             it[initialized] = dbManga[initialized] || manga.description != null
 
                             it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
@@ -300,7 +299,6 @@ object BackupMangaHandler {
                                 dbManga?.get(MangaUserTable.inLibrary) == true || manga.favorite
                             }
                         it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
-
 
                         // outside ADOPT a zeroed backup must not wipe stored flags
                         if (syncMode == SyncRestoreMode.ADOPT || manga.viewer != 0) it[viewer] = manga.viewer

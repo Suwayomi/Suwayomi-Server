@@ -118,7 +118,10 @@ class UpdateMangaBumpUserVersionsTrigger : TriggerAdapter() {
     }
 }
 
-private fun Connection.bumpMangaUserVersion(mangaId: Int, userId: Int) {
+private fun Connection.bumpMangaUserVersion(
+    mangaId: Int,
+    userId: Int,
+) {
     // language=h2
     prepareStatement(
         "UPDATE MANGAUSER SET version = version + 1 WHERE manga = ? AND user_id = ? AND NOT is_syncing",
