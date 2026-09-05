@@ -16,6 +16,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
+import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -25,6 +26,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.util.buildSocksProxyUrl
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
@@ -260,6 +262,11 @@ object CFClearance {
     )
 
     @Serializable
+    data class FlareSolverProxy(
+        val url: String,
+    )
+
+    @Serializable
     data class FlareSolverRequest(
         val cmd: String,
         val url: String,
@@ -269,9 +276,68 @@ object CFClearance {
         val sessionTtlMinutes: Int? = null,
         val cookies: List<FlareSolverCookie>? = null,
         val returnOnlyCookies: Boolean? = null,
-        val proxy: String? = null,
+        val proxy: FlareSolverProxy? = null,
         val postData: String? = null, // only used with cmd 'request.post'
     )
+
+    internal fun buildFlareSolverRequest(
+        originalRequest: Request,
+        onlyCookies: Boolean,
+        timeoutMs: Int,
+        socksEnabled: Boolean,
+        socksVersion: Int,
+        socksHost: String,
+        socksPort: String,
+        configuredSessionName: String,
+        configuredSessionTtl: Int,
+        cookies: List<FlareSolverCookie>,
+    ): FlareSolverRequest {
+        val proxyUrl =
+            buildSocksProxyUrl(
+                enabled = socksEnabled,
+                version = socksVersion,
+                host = socksHost,
+                port = socksPort,
+            )
+
+        val sessionName = if (socksEnabled) null else configuredSessionName
+        val sessionTtl = if (socksEnabled) null else configuredSessionTtl
+        val flareProxy = proxyUrl?.let { FlareSolverProxy(url = it) }
+
+        return FlareSolverRequest(
+            cmd = "request.${originalRequest.method.lowercase()}",
+            url = originalRequest.url.toString(),
+            session = sessionName,
+            sessionTtlMinutes = sessionTtl,
+            cookies = cookies,
+            returnOnlyCookies = onlyCookies,
+            proxy = flareProxy,
+            maxTimeout = timeoutMs,
+            postData =
+                if (originalRequest.method == "POST") {
+                    originalRequest.body
+                        ?.let { body ->
+                            Buffer()
+                                .also { body.writeTo(it) }
+                                .readUtf8()
+                        }.orEmpty()
+                } else {
+                    null
+                },
+        )
+    }
+
+    internal fun buildFlareSolverApiRequest(
+        baseUrl: String,
+        request: FlareSolverRequest,
+    ): Request {
+        val proxyUrl = request.proxy?.url
+        return POST(
+            url = baseUrl.removeSuffix("/") + "/v1",
+            headers = proxyUrl?.let { Headers.headersOf("X-Proxy-Server", it) } ?: Headers.headersOf(),
+            body = Json.encodeToString(request).toRequestBody(jsonMediaType),
+        )
+    }
 
     @Serializable
     data class FlareSolverSolutionCookie(
@@ -314,42 +380,35 @@ object CFClearance {
         val timeout = serverConfig.flareSolverrTimeout.value.seconds
         return with(json) {
             mutex.withLock {
+                val request =
+                    buildFlareSolverRequest(
+                        originalRequest = originalRequest,
+                        onlyCookies = onlyCookies,
+                        timeoutMs = timeout.inWholeMilliseconds.toInt(),
+                        socksEnabled = serverConfig.socksProxyEnabled.value,
+                        socksVersion = serverConfig.socksProxyVersion.value,
+                        socksHost = serverConfig.socksProxyHost.value,
+                        socksPort = serverConfig.socksProxyPort.value,
+                        configuredSessionName = serverConfig.flareSolverrSessionName.value,
+                        configuredSessionTtl = serverConfig.flareSolverrSessionTtl.value,
+                        cookies =
+                            network.cookieStore
+                                .get(originalRequest.url)
+                                .filter { it.name !in CloudflareInterceptor.COOKIE_NAMES }
+                                .map { cookie ->
+                                    FlareSolverCookie(cookie.name, cookie.value)
+                                },
+                    )
+
+                val postRequest =
+                    buildFlareSolverApiRequest(
+                        baseUrl = serverConfig.flareSolverrUrl.value,
+                        request = request,
+                    )
+
                 client.value
-                    .newCall(
-                        POST(
-                            url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
-                            body =
-                                Json
-                                    .encodeToString(
-                                        FlareSolverRequest(
-                                            "request.${originalRequest.method.lowercase()}",
-                                            originalRequest.url.toString(),
-                                            session = serverConfig.flareSolverrSessionName.value,
-                                            sessionTtlMinutes = serverConfig.flareSolverrSessionTtl.value,
-                                            cookies =
-                                                network.cookieStore
-                                                    .get(originalRequest.url)
-                                                    .filter { it.name !in CloudflareInterceptor.COOKIE_NAMES }
-                                                    .map { cookie ->
-                                                        FlareSolverCookie(cookie.name, cookie.value)
-                                                    },
-                                            returnOnlyCookies = onlyCookies,
-                                            maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                            postData =
-                                                if (originalRequest.method == "POST") {
-                                                    originalRequest.body
-                                                        ?.let { body ->
-                                                            Buffer()
-                                                                .also { body.writeTo(it) }
-                                                                .readUtf8()
-                                                        }.orEmpty()
-                                                } else {
-                                                    null
-                                                },
-                                        ),
-                                    ).toRequestBody(jsonMediaType),
-                        ),
-                    ).awaitSuccess()
+                    .newCall(postRequest)
+                    .awaitSuccess()
                     .parseAs<FlareSolverResponse>()
             }
         }

@@ -98,6 +98,14 @@ object CEFManager {
                 return
             }
 
+            val cefProxyArgument =
+                buildCefProxyArgument(
+                    enabled = serverConfig.socksProxyEnabled.value,
+                    version = serverConfig.socksProxyVersion.value,
+                    host = serverConfig.socksProxyHost.value,
+                    port = serverConfig.socksProxyPort.value,
+                )
+
             System.loadLibrary("jawt")
 
             if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
@@ -128,6 +136,9 @@ object CEFManager {
                                     "--change-stack-guard-on-fork=disable",
                                 ),
                             )
+                            cefProxyArgument?.let { proxyArg ->
+                                appArgsAsList.add(proxyArg)
+                            }
                             cefSettings.apply {
                                 windowless_rendering_enabled = true
                                 cache_path = (Path(applicationDirs.cacheDir) / "kcef").absolutePathString()
@@ -142,7 +153,7 @@ object CEFManager {
                     logger.debug {
                         "Attempting to initialize CEF: exe=${config.getServerExe()}, settings={${
                             config.cefSettings.getDescription()
-                        }}, args=${config.getAppArgs().contentToString()}"
+                        }}, args=${sanitizeCefAppArgs(config.getAppArgs())}"
                     }
 
                     // this is essentially https://github.com/JetBrains/jcef/blob/5b93e5b916068316f1c8e7f8a59bf958d5ffd6e1/java/org/cef/CefApp.java#L777
@@ -570,4 +581,20 @@ object CEFManager {
             }
         }
     }
+
+    internal fun buildCefProxyArgument(
+        enabled: Boolean,
+        version: Int,
+        host: String,
+        port: String,
+    ): String? = buildSocksProxyUrl(enabled, version, host, port)?.let { "--proxy-server=$it" }
+
+    internal fun sanitizeCefAppArgs(args: Array<String>?): List<String> =
+        args?.map { argument ->
+            if (argument.startsWith("--proxy-server=")) {
+                "--proxy-server=[REDACTED]"
+            } else {
+                argument
+            }
+        } ?: emptyList()
 }
