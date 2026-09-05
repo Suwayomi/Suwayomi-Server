@@ -43,6 +43,7 @@ import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
+import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionStoreService
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.Updater
@@ -278,6 +279,9 @@ fun applicationSetup() {
     AndroidCompatInitializer().init()
     // start app
     androidCompat.startApp(app)
+
+    // Delete files before any extension-related logic can be executed that causes the jars to get loaded
+    Extension.cleanupExtensionFiles()
 
     // Initialize NetworkHelper early
     Injekt

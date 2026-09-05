@@ -7,6 +7,9 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -34,6 +37,26 @@ class CategoryControllerTest : ApplicationTest() {
         val barReordered = catsReordered.asSequence().filter { it.name == "bar" }.first()
         assertEquals(1, fooReordered.order)
         assertEquals(0, barReordered.order)
+    }
+
+    @Test
+    fun moveCategoryToPositionSurvivesAdoptedZeroBasedOrders() {
+        clearTables(CategoryTable)
+        Category.createCategory(1, "a")
+        Category.createCategory(1, "b")
+        Category.createCategory(1, "c")
+        // a sync restore adopted a peer's 0-based orders
+        transaction {
+            listOf("a" to 0, "b" to 1, "c" to 2).forEach { (name, order) ->
+                CategoryTable.update({ CategoryTable.name eq name }) { it[CategoryTable.order] = order }
+            }
+        }
+
+        val cId = Category.getCategoryList(1).first { it.name == "c" }.id
+        Category.moveCategoryToPosition(1, cId, 1)
+
+        val names = Category.getCategoryList(1).sortedBy { it.order }.map { it.name }
+        assertEquals(listOf("c", "a", "b"), names)
     }
 
     @AfterEach

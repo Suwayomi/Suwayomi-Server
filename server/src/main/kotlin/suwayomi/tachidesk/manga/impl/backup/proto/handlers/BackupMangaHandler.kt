@@ -29,6 +29,7 @@ import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.backup.proto.SyncRestoreMode
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
@@ -46,6 +47,7 @@ import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.database.dbTransaction
 import java.util.Date
 import kotlin.math.max
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import suwayomi.tachidesk.manga.impl.track.Track as Tracker
@@ -85,7 +87,9 @@ object BackupMangaHandler {
                         status = MangaStatus.valueOf(mangaRow[MangaTable.status]).value,
                         thumbnailUrl = mangaRow[MangaTable.thumbnail_url],
                         dateAdded = mangaRow[MangaUserTable.inLibraryAt].seconds.inWholeMilliseconds,
-                        viewer = 0, // not supported in Tachidesk
+                        viewer = mangaRow[MangaUserTable.viewer],
+                        viewer_flags = mangaRow[MangaUserTable.viewerFlags],
+                        chapterFlags = mangaRow[MangaUserTable.chapterFlags],
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
                         lastModifiedAt = mangaRow[MangaUserTable.lastModifiedAt],
                         version = mangaRow[MangaUserTable.version],
@@ -196,6 +200,7 @@ object BackupMangaHandler {
         sourceMapping: Map<Long, String>,
         errors: MutableList<Pair<Date, String>>,
         flags: BackupFlags,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ) {
         val chapters = backupManga.chapters
         val categories = backupManga.categories
@@ -205,7 +210,7 @@ object BackupMangaHandler {
         val dbCategoryIds = categories.mapNotNull { categoryMapping[it] }
 
         try {
-            restoreMangaData(userId, backupManga, chapters, dbCategoryIds, history, tracking, flags)
+            restoreMangaData(userId, backupManga, chapters, dbCategoryIds, history, tracking, flags, syncMode)
         } catch (e: Exception) {
             val sourceName = sourceMapping[backupManga.source] ?: backupManga.source.toString()
             errors.add(Date() to "${backupManga.title} [$sourceName]: ${e.message}")
@@ -220,6 +225,7 @@ object BackupMangaHandler {
         history: List<BackupHistory>,
         tracks: List<BackupTracking>,
         flags: BackupFlags,
+        syncMode: SyncRestoreMode,
     ) {
         val dbManga =
             transaction {
@@ -230,6 +236,9 @@ object BackupMangaHandler {
                     .firstOrNull()
             }
         val restoreMode = if (dbManga != null) RestoreMode.EXISTING else RestoreMode.NEW
+        // a newer local copy wins the next upload; categories and tracking are part of the manga's version
+        val keepLocalManga =
+            syncMode == SyncRestoreMode.ADOPT && dbManga != null && manga.version < dbManga[MangaUserTable.version]
 
         val mangaId =
             transaction {
@@ -255,6 +264,8 @@ object BackupMangaHandler {
 
                                 it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
                             }.value
+                    } else if (keepLocalManga) {
+                        dbManga[MangaTable.id].value
                     } else {
                         val dbMangaId = dbManga[MangaTable.id].value
 
@@ -268,6 +279,7 @@ object BackupMangaHandler {
                             it[thumbnail_url] = manga.thumbnailUrl ?: dbManga[thumbnail_url]
                             it[updateStrategy] = manga.updateStrategy.name
 
+
                             it[initialized] = dbManga[initialized] || manga.description != null
 
                             it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
@@ -276,17 +288,38 @@ object BackupMangaHandler {
                         dbMangaId
                     }
 
-                MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
-                    it[MangaUserTable.user] = userId
-                    it[MangaUserTable.manga] = mangaId
-                    it[inLibrary] = dbManga?.get(MangaUserTable.inLibrary) == true ||
-                        manga.favorite
-                    it[inLibraryAt] = dbManga?.get(MangaUserTable.inLibraryAt)
-                        ?: manga.dateAdded.milliseconds.inWholeSeconds
+                if (!keepLocalManga) {
+                    // a newer local copy wins: keep its MANGAUSER row untouched
+                    MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
+                        it[MangaUserTable.user] = userId
+                        it[MangaUserTable.manga] = mangaId
+                        it[inLibrary] =
+                            if (syncMode == SyncRestoreMode.ADOPT) {
+                                manga.favorite
+                            } else {
+                                dbManga?.get(MangaUserTable.inLibrary) == true || manga.favorite
+                            }
+                        it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
 
-                    it[version] = manga.version
-                    it[lastModifiedAt] = manga.lastModifiedAt
-                    it[isSyncing] = true
+
+                        // outside ADOPT a zeroed backup must not wipe stored flags
+                        if (syncMode == SyncRestoreMode.ADOPT || manga.viewer != 0) it[viewer] = manga.viewer
+                        if (syncMode == SyncRestoreMode.ADOPT || manga.viewer_flags != null) {
+                            it[viewerFlags] = manga.viewer_flags
+                        }
+                        if (syncMode == SyncRestoreMode.ADOPT || manga.chapterFlags != 0) {
+                            it[chapterFlags] = manga.chapterFlags
+                        }
+
+                        if (syncMode == SyncRestoreMode.CONVERGE) {
+                            it[lastModifiedAt] = Clock.System.now().epochSeconds
+                            it[version] = max(manga.version, dbManga?.get(MangaUserTable.version) ?: 0) + 1
+                        } else {
+                            it[lastModifiedAt] = manga.lastModifiedAt
+                            it[version] = manga.version
+                        }
+                        it[isSyncing] = syncMode.isSync
+                    }
                 }
 
                 // delete thumbnail in case cached data still exists
@@ -298,18 +331,18 @@ object BackupMangaHandler {
 
                 // merge chapter data
                 if (flags.includeChapters || flags.includeHistory) {
-                    restoreMangaChapterData(userId, mangaId, restoreMode, chapters, history, flags)
+                    restoreMangaChapterData(userId, mangaId, restoreMode, chapters, history, flags, syncMode)
                 }
 
                 // update categories
-                if (flags.includeCategories) {
-                    restoreMangaCategoryData(userId, mangaId, categoryIds)
+                if (flags.includeCategories && !keepLocalManga) {
+                    restoreMangaCategoryData(userId, mangaId, categoryIds, syncMode)
                 }
 
                 mangaId
             }
 
-        if (flags.includeTracking) {
+        if (flags.includeTracking && !keepLocalManga) {
             restoreMangaTrackerData(userId, mangaId, tracks)
         }
 
@@ -342,9 +375,28 @@ object BackupMangaHandler {
         chapters: List<BackupChapter>,
         history: List<BackupHistory>,
         flags: BackupFlags,
+        syncMode: SyncRestoreMode,
     ) = dbTransaction {
-        val (chaptersToInsert, chaptersToUpdateToDbChapter) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
+        val (chaptersToInsert, allChaptersToUpdate) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
         val historyByChapter = history.groupBy({ it.url }, { it.lastRead })
+
+        val existingUserData =
+            ChapterUserTable
+                .selectAll()
+                .where {
+                    (ChapterUserTable.user eq userId) and
+                        (ChapterUserTable.chapter inList allChaptersToUpdate.map { it.second[ChapterTable.id].value })
+                }.associate { it[ChapterUserTable.chapter].value to it }
+
+        val chaptersToUpdateToDbChapter =
+            if (syncMode == SyncRestoreMode.ADOPT) {
+                allChaptersToUpdate.filter { (backupChapter, dbChapter) ->
+                    backupChapter.version >=
+                        (existingUserData[dbChapter[ChapterTable.id].value]?.get(ChapterUserTable.version) ?: 0)
+                }
+            } else {
+                allChaptersToUpdate
+            }
 
         val insertedChapterIds =
             if (flags.includeChapters) {
@@ -382,7 +434,7 @@ object BackupMangaHandler {
 
                     this[ChapterUserTable.version] = chapter.version
                     this[ChapterUserTable.lastModifiedAt] = chapter.lastModifiedAt
-                    this[ChapterUserTable.isSyncing] = true
+                    this[ChapterUserTable.isSyncing] = syncMode.isSync
 
                     if (flags.includeHistory) {
                         this[ChapterUserTable.lastReadAt] =
@@ -396,14 +448,6 @@ object BackupMangaHandler {
             }
 
         if (chaptersToUpdateToDbChapter.isNotEmpty()) {
-            val existingUserData =
-                ChapterUserTable
-                    .selectAll()
-                    .where {
-                        (ChapterUserTable.user eq userId) and
-                            (ChapterUserTable.chapter inList chaptersToUpdateToDbChapter.map { it.second[ChapterTable.id].value })
-                    }.associate { it[ChapterUserTable.chapter].value to it }
-
             ChapterUserTable.batchUpsert(
                 chaptersToUpdateToDbChapter,
                 ChapterUserTable.user,
@@ -415,24 +459,47 @@ object BackupMangaHandler {
                 this[ChapterUserTable.chapter] = dbChapterId
                 this[ChapterUserTable.user] = userId
                 if (flags.includeChapters) {
-                    this[ChapterUserTable.isRead] =
-                        backupChapter.read || (userData?.get(ChapterUserTable.isRead) ?: false)
-                    this[ChapterUserTable.lastPageRead] =
-                        max(backupChapter.lastPageRead, userData?.get(ChapterUserTable.lastPageRead) ?: 0)
-                            .coerceAtLeast(0)
-                    this[ChapterUserTable.isBookmarked] =
-                        backupChapter.bookmark || (userData?.get(ChapterUserTable.isBookmarked) ?: false)
+                    if (syncMode == SyncRestoreMode.ADOPT) {
+                        this[ChapterUserTable.isRead] = backupChapter.read
+                        this[ChapterUserTable.lastPageRead] = backupChapter.lastPageRead.coerceAtLeast(0)
+                        this[ChapterUserTable.isBookmarked] = backupChapter.bookmark
+                    } else {
+                        this[ChapterUserTable.isRead] =
+                            backupChapter.read || (userData?.get(ChapterUserTable.isRead) ?: false)
+                        this[ChapterUserTable.lastPageRead] =
+                            max(backupChapter.lastPageRead, userData?.get(ChapterUserTable.lastPageRead) ?: 0)
+                                .coerceAtLeast(0)
+                        this[ChapterUserTable.isBookmarked] =
+                            backupChapter.bookmark || (userData?.get(ChapterUserTable.isBookmarked) ?: false)
+                    }
                 }
-
-                this[ChapterUserTable.version] =
-                    max(backupChapter.version, userData?.get(ChapterUserTable.version) ?: 0)
-                this[ChapterUserTable.lastModifiedAt] = backupChapter.lastModifiedAt
-                this[ChapterUserTable.isSyncing] = true
 
                 if (flags.includeHistory) {
                     this[ChapterUserTable.lastReadAt] =
                         (historyByChapter[backupChapter.url]?.maxOrNull()?.milliseconds?.inWholeSeconds ?: 0)
                             .coerceAtLeast(userData?.get(ChapterUserTable.lastReadAt) ?: 0)
+                }
+
+                when (syncMode) {
+                    SyncRestoreMode.ADOPT -> {
+                        this[ChapterUserTable.lastModifiedAt] = backupChapter.lastModifiedAt
+                        this[ChapterUserTable.version] = backupChapter.version
+                        this[ChapterUserTable.isSyncing] = true
+                    }
+
+                    SyncRestoreMode.CONVERGE -> {
+                        this[ChapterUserTable.lastModifiedAt] = Clock.System.now().epochSeconds
+                        this[ChapterUserTable.version] =
+                            max(backupChapter.version, userData?.get(ChapterUserTable.version) ?: 0) + 1
+                        this[ChapterUserTable.isSyncing] = true
+                    }
+
+                    SyncRestoreMode.NONE -> {
+                        this[ChapterUserTable.lastModifiedAt] = backupChapter.lastModifiedAt
+                        this[ChapterUserTable.version] =
+                            max(backupChapter.version, userData?.get(ChapterUserTable.version) ?: 0)
+                        this[ChapterUserTable.isSyncing] = true
+                    }
                 }
             }
         }
@@ -458,8 +525,12 @@ object BackupMangaHandler {
         userId: Int,
         mangaId: Int,
         categoryIds: List<Int>,
+        syncMode: SyncRestoreMode,
     ) {
-        CategoryManga.removeMangaFromAllCategories(userId, mangaId)
+        // CONVERGE keeps the union so a local-only link survives and wins the next upload
+        if (syncMode != SyncRestoreMode.CONVERGE) {
+            CategoryManga.removeMangaFromAllCategories(userId, mangaId)
+        }
         CategoryManga.addMangaToCategories(userId, mangaId, categoryIds)
     }
 

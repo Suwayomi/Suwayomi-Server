@@ -37,7 +37,6 @@ import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupUserSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.model.table.CategoryTable
-import suwayomi.tachidesk.manga.model.table.CategoryTable.isSyncing
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.server.user.UserPermission
@@ -126,7 +125,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         userId: Int,
         sourceStream: InputStream,
         flags: BackupFlags,
-        isSync: Boolean = false,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ): String {
         val restoreId = System.currentTimeMillis().toString()
 
@@ -135,7 +134,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         updateRestoreState(restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
-            restoreLegacy(userId, sourceStream, restoreId, flags, isSync)
+            restoreLegacy(userId, sourceStream, restoreId, flags, syncMode)
         }
 
         return restoreId
@@ -146,12 +145,12 @@ object ProtoBackupImport : ProtoBackupBase() {
         sourceStream: InputStream,
         restoreId: String = "legacy",
         flags: BackupFlags = BackupFlags.DEFAULT,
-        isSync: Boolean = false,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ): ValidationResult =
         backupMutex.withLock {
             try {
                 logger.info { "restore($restoreId): restoring..." }
-                performRestore(userId, restoreId, sourceStream, flags, isSync)
+                performRestore(userId, restoreId, sourceStream, flags, syncMode)
             } catch (e: Exception) {
                 logger.error(e) { "restore($restoreId): failed due to" }
 
@@ -163,23 +162,52 @@ object ProtoBackupImport : ProtoBackupBase() {
                     emptyList(),
                 )
             } finally {
+                if (syncMode.isSync) {
+                    clearSyncingFlags(userId)
+                }
                 logger.info { "restore($restoreId): finished with state ${getRestoreState(restoreId)?.toStatus()?.state}" }
                 cleanupRestoreState(restoreId)
             }
         }
+
+    private fun clearSyncingFlags(userId: Int) {
+        transaction {
+            MangaUserTable.update(
+                {
+                    MangaUserTable.isSyncing eq true and (MangaUserTable.user eq userId)
+                },
+            ) {
+                it[MangaUserTable.isSyncing] = false
+            }
+            ChapterUserTable.update(
+                {
+                    ChapterUserTable.isSyncing eq true and (ChapterUserTable.user eq userId)
+                },
+            ) {
+                it[ChapterUserTable.isSyncing] = false
+            }
+            CategoryTable.update(
+                {
+                    CategoryTable.isSyncing eq true and (CategoryTable.user eq userId)
+                },
+            ) {
+                it[CategoryTable.isSyncing] = false
+            }
+        }
+    }
 
     private fun performRestore(
         userId: Int,
         id: String,
         sourceStream: InputStream,
         flags: BackupFlags,
-        isSync: Boolean,
+        syncMode: SyncRestoreMode,
     ): ValidationResult {
         val backupString =
             sourceStream
                 .source()
                 .run {
-                    if (!isSync) gzip() else this
+                    if (!syncMode.isSync) gzip() else this
                 }.buffer()
                 .use { it.readByteArray() }
         val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
@@ -221,7 +249,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         val categoryMapping =
             if (flags.includeCategories) {
                 updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
-                BackupCategoryHandler.restore(userId, backup.backupCategories)
+                BackupCategoryHandler.restore(userId, backup.backupCategories, syncMode)
             } else {
                 emptyMap()
             }
@@ -258,6 +286,7 @@ object ProtoBackupImport : ProtoBackupBase() {
                     sourceMapping = sourceMapping,
                     errors = errors,
                     flags = flags,
+                    syncMode = syncMode,
                 )
             }
         }
@@ -274,30 +303,6 @@ object ProtoBackupImport : ProtoBackupBase() {
             - Missing Trackers:
                 ${validationResult.missingTrackers.joinToString("\n                    ")}
             """.trimIndent()
-        }
-
-        transaction {
-            MangaUserTable.update(
-                {
-                    MangaUserTable.isSyncing eq true and (MangaUserTable.user eq userId)
-                },
-            ) {
-                it[isSyncing] = false
-            }
-            ChapterUserTable.update(
-                {
-                    ChapterUserTable.isSyncing eq true and (ChapterUserTable.user eq userId)
-                },
-            ) {
-                it[isSyncing] = false
-            }
-            CategoryTable.update(
-                {
-                    CategoryTable.isSyncing eq true and (CategoryTable.user eq userId)
-                },
-            ) {
-                it[isSyncing] = false
-            }
         }
 
         updateRestoreState(id, BackupRestoreState.Success)

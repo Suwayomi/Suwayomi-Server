@@ -105,12 +105,14 @@ object ExtensionsList {
                         .selectAll()
                         .toList()
                         .associateBy { it[ExtensionTable.pkgName] }
+
                 val extensionsToUpdate = mutableListOf<Pair<ExtensionInfo, ResultRow>>()
                 val extensionsToInsert = mutableListOf<ExtensionInfo>()
                 val extensionsToDelete =
                     installedExtensions.filter { it.value[ExtensionTable.storeIndexUrl] != null }.mapNotNull { (pkgName, extension) ->
                         extension.takeUnless { uniqueExtensions.any { it.pkgName == pkgName } }
                     }
+
                 uniqueExtensions.forEach {
                     val extension = installedExtensions[it.pkgName]
                     if (extension != null) {
@@ -119,10 +121,12 @@ object ExtensionsList {
                         extensionsToInsert.add(it)
                     }
                 }
+
                 if (extensionsToUpdate.isNotEmpty()) {
                     val extensionsInstalled =
                         extensionsToUpdate
                             .groupBy { it.second[ExtensionTable.isInstalled] }
+
                     val installedExtensionsToUpdate = extensionsInstalled[true].orEmpty()
                     if (installedExtensionsToUpdate.isNotEmpty()) {
                         BatchUpdateStatement(ExtensionTable)
@@ -135,8 +139,13 @@ object ExtensionsList {
                                     this[ExtensionTable.apkUrl] = foundExtension.apkUrl
                                     this[ExtensionTable.jarUrl] = foundExtension.jarUrl
 
+                                    // Reset the "hasUpdate" flag to ensure that we have no extensions that are incorrectly marked as updatable
+                                    // This can happen if an extension store has some versionCode mismatch that gets fixed without bumping the actual versionCode.
+                                    // I.e.
+                                    // 1. Extension list update -> causes issue => extensions get incorrectly marked as updatable
+                                    // 2. Extension list update -> fixes issue => incorrectly marked extensions get reset
+                                    this[ExtensionTable.hasUpdate] = false
                                     // add these because batch updates need matching columns
-                                    this[ExtensionTable.hasUpdate] = extensionRecord[ExtensionTable.hasUpdate]
                                     this[ExtensionTable.isObsolete] = extensionRecord[ExtensionTable.isObsolete]
 
                                     // a previously removed extension is now available again
@@ -162,6 +171,7 @@ object ExtensionsList {
                             }.toExecutable()
                             .execute(this@transaction)
                     }
+
                     val extensionsToFullyUpdate = extensionsInstalled[false].orEmpty()
                     if (extensionsToFullyUpdate.isNotEmpty()) {
                         BatchUpdateStatement(ExtensionTable)
@@ -184,6 +194,7 @@ object ExtensionsList {
                             .execute(this@transaction)
                     }
                 }
+
                 if (extensionsToInsert.isNotEmpty()) {
                     ExtensionTable.batchInsert(extensionsToInsert) { foundExtension ->
                         this[ExtensionTable.storeIndexUrl] = foundExtension.storeIndexUrl
@@ -205,6 +216,7 @@ object ExtensionsList {
                     extensionsToDelete
                         .groupBy { it[ExtensionTable.isInstalled] }
                         .mapValues { (_, extensions) -> extensions.map { it[ExtensionTable.pkgName] } }
+
                 // not in the repo, so these extensions are obsolete
                 val obsoleteExtensions = extensionsToRemove[true].orEmpty()
                 if (obsoleteExtensions.isNotEmpty()) {
@@ -212,6 +224,7 @@ object ExtensionsList {
                         it[isObsolete] = true
                     }
                 }
+
                 // is not installed, so we can remove the record without a care
                 val removeExtensions = extensionsToRemove[false].orEmpty()
                 if (removeExtensions.isNotEmpty()) {

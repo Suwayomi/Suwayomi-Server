@@ -19,6 +19,11 @@ object MangaUserTable : IntIdTable() {
     val inLibrary = bool("in_library").default(false)
     val inLibraryAt = long("in_library_at").default(0)
 
+    // Tachiyomi reader/chapter-list bitmasks, passthrough for sync
+    val viewer = integer("viewer").default(0)
+    val viewerFlags = integer("viewer_flags").nullable()
+    val chapterFlags = integer("chapter_flags").default(0)
+
     // syncyomi
     val version = long("version").default(0)
     val isSyncing = bool("is_syncing").default(false)

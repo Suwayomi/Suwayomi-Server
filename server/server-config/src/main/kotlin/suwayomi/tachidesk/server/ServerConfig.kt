@@ -54,6 +54,7 @@ import suwayomi.tachidesk.server.settings.PathSetting
 import suwayomi.tachidesk.server.settings.SettingGroup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 import suwayomi.tachidesk.server.settings.StringSetting
+import suwayomi.tachidesk.server.util.Platform
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
@@ -1072,8 +1073,16 @@ class ServerConfig(
         protoNumber = 86,
         group = SettingGroup.WEB_VIEW,
         privacySafe = true,
-        defaultValue = true,
-        description = "Enable the WebView via CEF (Chromium)"
+        defaultValue = !Platform.current.os.isMacOS,
+        validator = {
+            if (Platform.current.os.isMacOS) {
+                return@BooleanSetting "KCEF is not supported on MacOS"
+            }
+
+            return@BooleanSetting null
+        },
+        toValidValue = { !Platform.current.os.isMacOS && it },
+        description = "Enable the WebView via CEF (Chromium) - Not supported on MacOS",
     )
 
     @Deprecated("Now per-user")

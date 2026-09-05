@@ -7,6 +7,8 @@ package suwayomi.tachidesk.manga.impl.extension
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.app.Application
+import android.content.Context
 import android.content.pm.PackageInfo
 import android.net.Uri
 import eu.kanade.tachiyomi.network.GET
@@ -55,9 +57,12 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.database.dbSuspendTransaction
 import suwayomi.tachidesk.server.database.dbTransaction
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.InputStream
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
@@ -236,7 +241,14 @@ object Extension {
             override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
                 val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
 
-                jarFile.deleteIfExists()
+                try {
+                    jarFile.deleteIfExists()
+                } catch (_: Exception) {
+                    // This most likely means that the file could not get deleted during uninstallation on windows due
+                    // to its strict file locking for loaded jars.
+                    // We can just ignore it and reuse the existing jar since it's for the requested version anyway.
+                    return jarFile
+                }
 
                 ZipFile.builder().setPath(file).get().use { jarZip ->
                     try {
@@ -435,6 +447,9 @@ object Extension {
                 null
             }
 
+        val isSameFile = jarFile.toAbsolutePath() == oldJarFile?.toAbsolutePath()
+        check(!isSameFile) { "Extension can't be updated to the same version. Reinstall the extension instead" }
+
         return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) { loadExtensionSources ->
             val apkName = extPackage.getApkName()
 
@@ -470,8 +485,10 @@ object Extension {
 
                     val removeOldJarFile = oldJarFile != null && !jarFile.isSameFileAs(oldJarFile)
                     if (removeOldJarFile) {
-                        oldJarFile.deleteExisting()
+                        tryToDeleteFile(oldJarFile)
                     }
+
+                    removeDeletionOnStartupRequest(jarFile)
                 } catch (e: Throwable) {
                     unload(apkName = apkName)
 
@@ -686,6 +703,36 @@ object Extension {
         }
     }
 
+    private val filesToDeleteOnStartup = ConcurrentHashMap.newKeySet<String>()
+    private val preferences = Injekt.get<Application>().getSharedPreferences(Extension.javaClass.name, Context.MODE_PRIVATE)
+    private const val FILES_TO_DELETE = "files_to_delete"
+
+    fun cleanupExtensionFiles() {
+        logger.debug { "Cleanup extension files that could not be deleted during extension update/deinstallation" }
+        val failedFileDeletions =
+            preferences
+                .getStringSet(FILES_TO_DELETE, emptySet())
+                ?.filterNot {
+                    runCatching { Path(it).deleteIfExists() }.getOrDefault(false)
+                }.orEmpty()
+        preferences.edit().putStringSet(FILES_TO_DELETE, failedFileDeletions.toSet()).apply()
+    }
+
+    private fun tryToDeleteFile(file: Path) {
+        try {
+            file.deleteIfExists()
+        } catch (e: Exception) {
+            logger.warn(e) { "Could not delete file $file, requesting deletion on startup" }
+            filesToDeleteOnStartup.add(file.toRealPath().absolutePathString())
+            preferences.edit().putStringSet(FILES_TO_DELETE, filesToDeleteOnStartup).apply()
+        }
+    }
+
+    private fun removeDeletionOnStartupRequest(file: Path) {
+        filesToDeleteOnStartup.remove(file.toRealPath().absolutePathString())
+        preferences.edit().putStringSet(FILES_TO_DELETE, filesToDeleteOnStartup).apply()
+    }
+
     fun uninstallExtension(pkgName: String) {
         logger.debug { "Uninstalling $pkgName" }
 
@@ -709,7 +756,7 @@ object Extension {
 
             unload(extensionRecord, sources)
 
-            getJarPath(extensionRecord).deleteIfExists()
+            tryToDeleteFile(getJarPath(extensionRecord))
         }
     }
 

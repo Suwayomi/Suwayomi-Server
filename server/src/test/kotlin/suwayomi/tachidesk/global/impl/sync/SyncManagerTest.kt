@@ -103,7 +103,7 @@ class SyncManagerTest : ApplicationTest() {
             // network failure, which drives the sync state machine to its terminal Error state.
             mockkObject(SyncYomiSyncService)
 
-            coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any()) } returns null
+            coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } returns SyncYomiSyncService.SyncResult(null, true, false)
 
             userSettings.set(userId, userConfig.syncYomiEnabled, true)
 

@@ -276,7 +276,7 @@ class CategoryDefaultTest : ApplicationTest() {
             mockkObject(SyncYomiSyncService)
             try {
                 // remote backup: the manga is up-to-date, but no categories at all
-                coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any()) } returns
+                coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } returns SyncYomiSyncService.SyncResult(
                     Backup(
                         backupManga =
                             listOf(
@@ -292,7 +292,10 @@ class CategoryDefaultTest : ApplicationTest() {
                         backupSources = emptyList(),
                         serverSettings = null,
                         userSettings = null,
-                    )
+                    ),
+                    true,
+                    false,
+                )
 
                 assertEquals(StartSyncResult.SUCCESS, SyncManager.startSync(userId))
 

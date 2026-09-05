@@ -21,7 +21,7 @@ import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
 import suwayomi.tachidesk.server.serverConfig
 
 @Suppress("ClassName", "unused")
-class M0063_AddUsers : Migration() {
+class M0065_AddUsers : Migration() {
     class UserSql {
         private val adminUsername =
             serverConfig.authUsername.value
@@ -72,6 +72,32 @@ class M0063_AddUsers : Migration() {
             when (serverConfig.databaseType.value) {
                 DatabaseType.H2 -> h2SyncYomiTriggers()
                 DatabaseType.POSTGRESQL -> postgresSyncYomiTriggers()
+            }
+
+        // The old single-user triggers (M0056/M0063) reference the columns dropped below; on
+        // PostgreSQL they must be dropped before the column drops, H2 allows dropping referenced
+        // columns. The H2 delete/track triggers from M0063 stay: they call the per-user trigger
+        // classes and work once the user_id columns exist.
+        private val oldSyncYomiTriggerDrops =
+            when (serverConfig.databaseType.value) {
+                DatabaseType.H2 -> ""
+                DatabaseType.POSTGRESQL ->
+                    """
+                    DROP TRIGGER IF EXISTS update_manga_version ON $mangaTable;
+                    DROP FUNCTION IF EXISTS update_manga_version();
+                    DROP TRIGGER IF EXISTS update_chapter_and_manga_version ON $chapterTable;
+                    DROP FUNCTION IF EXISTS update_chapter_and_manga_version();
+                    DROP TRIGGER IF EXISTS update_manga_last_modified_at ON $mangaTable;
+                    DROP FUNCTION IF EXISTS update_manga_last_modified_at();
+                    DROP TRIGGER IF EXISTS update_chapter_last_modified_at ON $chapterTable;
+                    DROP FUNCTION IF EXISTS update_chapter_last_modified_at();
+                    DROP TRIGGER IF EXISTS insert_manga_category_update_version ON $categoryMangaTable;
+                    DROP FUNCTION IF EXISTS insert_manga_category_update_version();
+                    DROP TRIGGER IF EXISTS delete_manga_category_update_version ON $categoryMangaTable;
+                    DROP FUNCTION IF EXISTS delete_manga_category_update_version();
+                    DROP TRIGGER IF EXISTS trackrecord_update_manga_version ON $tractRecordTable;
+                    DROP FUNCTION IF EXISTS trackrecord_update_manga_version();
+                    """.trimIndent()
             }
 
         // Enforces "at most one default category row per user" via a unique index on a generated
@@ -152,18 +178,6 @@ class M0063_AddUsers : Migration() {
         // language=postgresql
         fun postgresSyncYomiTriggers(): String =
             """
-            -- The syncyomi triggers from M0056 target the old single-user schema, drop them
-            DROP TRIGGER IF EXISTS update_manga_version ON $mangaTable;
-            DROP FUNCTION IF EXISTS update_manga_version();
-            DROP TRIGGER IF EXISTS update_chapter_and_manga_version ON $chapterTable;
-            DROP FUNCTION IF EXISTS update_chapter_and_manga_version();
-            DROP TRIGGER IF EXISTS update_manga_last_modified_at ON $mangaTable;
-            DROP FUNCTION IF EXISTS update_manga_last_modified_at();
-            DROP TRIGGER IF EXISTS update_chapter_last_modified_at ON $chapterTable;
-            DROP FUNCTION IF EXISTS update_chapter_last_modified_at();
-            DROP TRIGGER IF EXISTS insert_manga_category_update_version ON $categoryMangaTable;
-            DROP FUNCTION IF EXISTS insert_manga_category_update_version();
-
             -- Recreate the syncyomi triggers on the user specific tables
             CREATE OR REPLACE FUNCTION update_manga_user_version()
             RETURNS trigger AS $$
@@ -185,6 +199,8 @@ class M0063_AddUsers : Migration() {
             FOR EACH ROW
             EXECUTE FUNCTION update_manga_user_version();
 
+            -- chapters merge separately by their own version; the per-read manga bump only let the
+            -- device that read more chapters win manga-level merges
             CREATE OR REPLACE FUNCTION update_chapter_user_version()
             RETURNS trigger AS $$
             BEGIN
@@ -194,11 +210,6 @@ class M0063_AddUsers : Migration() {
                        ROW(OLD.read, OLD.bookmark, OLD.last_page_read)
                 THEN
                     NEW.version := NEW.version + 1;
-
-                    UPDATE $mangaUserTable SET version = version + 1
-                    WHERE user_id = NEW.user_id
-                      AND is_syncing = FALSE
-                      AND manga = (SELECT manga FROM $chapterTable WHERE id = NEW.chapter);
                 END IF;
 
                 RETURN NEW;
@@ -210,9 +221,24 @@ class M0063_AddUsers : Migration() {
             FOR EACH ROW
             EXECUTE FUNCTION update_chapter_user_version();
 
+            -- Sync restores keep the timestamp they write; an update only counts when a synced
+            -- column changed. BEFORE triggers fire alphabetically: this runs before
+            -- update_manga_user_version, so the edited columns must be listed here, not just "version".
             CREATE OR REPLACE FUNCTION update_manga_user_last_modified_at()
             RETURNS trigger AS $$
             BEGIN
+                IF NEW.is_syncing THEN
+                    RETURN NEW;
+                END IF;
+
+                IF TG_OP = 'UPDATE'
+                   AND ROW(NEW.in_library, NEW.in_library_at, NEW.version)
+                       IS NOT DISTINCT FROM
+                       ROW(OLD.in_library, OLD.in_library_at, OLD.version)
+                THEN
+                    RETURN NEW;
+                END IF;
+
                 NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
                 RETURN NEW;
             END;
@@ -226,6 +252,18 @@ class M0063_AddUsers : Migration() {
             CREATE OR REPLACE FUNCTION update_chapter_user_last_modified_at()
             RETURNS trigger AS $$
             BEGIN
+                IF NEW.is_syncing THEN
+                    RETURN NEW;
+                END IF;
+
+                IF TG_OP = 'UPDATE'
+                   AND ROW(NEW.read, NEW.bookmark, NEW.last_page_read, NEW.version)
+                       IS NOT DISTINCT FROM
+                       ROW(OLD.read, OLD.bookmark, OLD.last_page_read, OLD.version)
+                THEN
+                    RETURN NEW;
+                END IF;
+
                 NEW.last_modified_at := EXTRACT(EPOCH FROM NOW());
                 RETURN NEW;
             END;
@@ -273,6 +311,40 @@ class M0063_AddUsers : Migration() {
             AFTER INSERT ON $categoryMangaTable
             FOR EACH ROW
             EXECUTE FUNCTION insert_manga_category_update_version();
+
+            CREATE OR REPLACE FUNCTION delete_manga_category_update_version()
+            RETURNS trigger AS $$
+            BEGIN
+                UPDATE $mangaUserTable SET version = version + 1
+                WHERE manga = OLD.manga
+                  AND user_id = OLD.user_id
+                  AND is_syncing = FALSE;
+
+                RETURN OLD;
+            END;
+            $$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER delete_manga_category_update_version
+            AFTER DELETE ON $categoryMangaTable
+            FOR EACH ROW
+            EXECUTE FUNCTION delete_manga_category_update_version();
+
+            CREATE OR REPLACE FUNCTION trackrecord_update_manga_version()
+            RETURNS trigger AS $$
+            BEGIN
+                UPDATE $mangaUserTable SET version = version + 1
+                WHERE manga = COALESCE(NEW.manga_id, OLD.manga_id)
+                  AND user_id = COALESCE(NEW.user_id, OLD.user_id)
+                  AND is_syncing = FALSE;
+
+                RETURN COALESCE(NEW, OLD);
+            END;
+            $$ LANGUAGE plpgsql;
+
+            CREATE TRIGGER trackrecord_update_manga_version
+            AFTER INSERT OR UPDATE OR DELETE ON $tractRecordTable
+            FOR EACH ROW
+            EXECUTE FUNCTION trackrecord_update_manga_version();
             """.trimIndent()
 
         // language=h2
@@ -339,11 +411,15 @@ class M0063_AddUsers : Migration() {
             SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOADED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS CHAPTER, 1 AS USER_ID
             FROM $chapterTable;
 
-            INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, MANGA, USER_ID)
-            SELECT IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS MANGA, 1 AS USER_ID
+            INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, MANGA, USER_ID)
+            SELECT IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, ID AS MANGA, 1 AS USER_ID
             FROM $mangaTable;
 
-            -- Step 5: Remove the extracted columns from the CHAPTER and MANGA tables
+            -- Step 5: Drop the old single-user syncyomi triggers before the columns they
+            -- reference are removed (PostgreSQL refuses to drop referenced columns)
+            $oldSyncYomiTriggerDrops
+
+            -- Step 6: Remove the extracted columns from the CHAPTER and MANGA tables
             ALTER TABLE $chapterTable
             DROP COLUMN LAST_READ_AT;
             ALTER TABLE $chapterTable
@@ -365,6 +441,12 @@ class M0063_AddUsers : Migration() {
             DROP COLUMN IN_LIBRARY;
             ALTER TABLE $mangaTable
             DROP COLUMN IN_LIBRARY_AT;
+            ALTER TABLE $mangaTable
+            DROP COLUMN VIEWER;
+            ALTER TABLE $mangaTable
+            DROP COLUMN VIEWER_FLAGS;
+            ALTER TABLE $mangaTable
+            DROP COLUMN CHAPTER_FLAGS;
             ALTER TABLE $mangaTable
             DROP COLUMN VERSION;
             ALTER TABLE $mangaTable
@@ -413,6 +495,9 @@ class M0063_AddUsers : Migration() {
         val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val inLibrary = bool("in_library").default(false)
         val inLibraryAt = long("in_library_at").default(0)
+        val viewer = integer("viewer").default(0)
+        val viewerFlags = integer("viewer_flags").nullable()
+        val chapterFlags = integer("chapter_flags").default(0)
         val version = long("version").default(0)
         val isSyncing = bool("is_syncing").default(false)
         val lastModifiedAt = long("last_modified_at").default(0)

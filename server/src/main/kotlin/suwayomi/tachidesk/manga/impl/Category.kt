@@ -23,6 +23,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.global.impl.sync.SyncYomiSyncService
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
@@ -129,14 +130,54 @@ object Category {
         }
     }
 
+    /** Move the category to 1-based [position] among the non-default categories, ignoring raw order values. */
+    fun moveCategoryToPosition(
+        userId: Int,
+        categoryId: Int,
+        position: Int,
+    ) {
+        require(position > 0) { "'position' must be > 0" }
+        if (categoryId == getDefaultCategoryId(userId)) return
+        transaction {
+            val categories =
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.isDefaultCategory eq false and (CategoryTable.user eq userId) }
+                    .orderBy(CategoryTable.order to SortOrder.ASC, CategoryTable.id to SortOrder.ASC)
+                    .toMutableList()
+            val from = categories.indexOfFirst { it[CategoryTable.id].value == categoryId }
+            if (from == -1) return@transaction
+            categories.add((position - 1).coerceAtMost(categories.size - 1), categories.removeAt(from))
+            categories.forEachIndexed { index, cat ->
+                if (cat[CategoryTable.order] != index + 1) {
+                    CategoryTable.update({
+                        CategoryTable.id eq cat[CategoryTable.id].value and (CategoryTable.user eq userId)
+                    }) {
+                        it[CategoryTable.order] = index + 1
+                    }
+                }
+            }
+            normalizeCategories(userId)
+        }
+    }
+
     fun removeCategory(
         userId: Int,
         categoryId: Int,
     ) {
         if (categoryId == getDefaultCategoryId(userId)) return
         transaction {
+            val uid =
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
+                    .firstOrNull()
+                    ?.get(CategoryTable.uid)
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
             normalizeCategories(userId)
+            if (uid != null) {
+                SyncYomiSyncService.rememberDeletedCategory(userId, uid)
+            }
         }
     }
 
