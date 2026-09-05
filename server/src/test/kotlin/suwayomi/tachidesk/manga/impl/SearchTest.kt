@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.SearchNotSupportedException
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
@@ -33,6 +34,7 @@ import suwayomi.tachidesk.test.createSMangas
 import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SearchTest : ApplicationTest() {
@@ -67,6 +69,27 @@ class SearchTest : ApplicationTest() {
             }
 
         assertEquals(mangasCount, searchResults.mangaList.size, "should return all the mangas")
+    }
+
+    @Test
+    fun `unsupported search returns a clear error`() {
+        val unsupportedSource =
+            object : StubSource(2L) {
+                override suspend fun getSearchManga(
+                    page: Int,
+                    query: String,
+                    filters: FilterList,
+                ): MangasPage = throw UnsupportedOperationException()
+            }
+        registerSource(unsupportedSource.id to unsupportedSource)
+
+        val error =
+            assertFailsWith<SearchNotSupportedException> {
+                runBlocking { sourceSearch(unsupportedSource.id, "manga", 1) }
+            }
+
+        assertEquals("Search not supported by this source", error.message)
+        unregisterSource(unsupportedSource.id)
     }
 
     @AfterAll
