@@ -17,7 +17,13 @@ import org.xml.sax.XMLReader;
 
 public class Html {
 
+    public static final int FROM_HTML_MODE_LEGACY = 0x00000000;
+
     public static Spanned fromHtml(String source) {
+        return fromHtml(source, FROM_HTML_MODE_LEGACY);
+    }
+
+    public static Spanned fromHtml(String source, int flags) {
         return new FakeSpanned(Jsoup.clean(source, Safelist.none()));
     }
 
