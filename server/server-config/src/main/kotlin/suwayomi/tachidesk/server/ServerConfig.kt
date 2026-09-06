@@ -1147,6 +1147,15 @@ class ServerConfig(
         description = "List of extension store index URLs",
     )
 
+    val hikariMaxPoolSize: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 98,
+        group = SettingGroup.DATABASE,
+        privacySafe = true,
+        defaultValue = 6,
+        min = 1,
+        description = "the maximum number of actual connections to the database; see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/
