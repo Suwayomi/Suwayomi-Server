@@ -31,7 +31,7 @@ object H2Migration {
     private const val TOOL_VERSION = "1.8"
 
     private const val TOOL_URL =
-        "https://manticore-projects.com/download/H2MigrationTool-$TOOL_VERSION/H2MigrationTool-$TOOL_VERSION-all.jar"
+        "https://github.com/Suwayomi/exposed-migrations/releases/download/0.99/H2MigrationTool-$TOOL_VERSION-all.jar"
 
     private const val MAVEN_BASE =
         "https://repo1.maven.org/maven2/com/h2database/h2"
