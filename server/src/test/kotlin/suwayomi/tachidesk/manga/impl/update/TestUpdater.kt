@@ -61,4 +61,8 @@ class TestUpdater : IUpdater {
     override fun getStatus(): UpdateUpdates {
         TODO("Not yet implemented")
     }
+
+    override fun getLastUpdateErrors(): List<UpdateError> {
+        TODO("Not yet implemented")
+    }
 }
