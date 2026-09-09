@@ -47,6 +47,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Migration/Extension**) Fix `extensionRepos` setting not being migrated to `extensionStores`
 - (**Extension/Android**) Implement fromHtml with flags for author's note support
 
+### Deprecated
+- (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
+
 ## [v2.3.2243] - 2026-07-13
 
 ### Added

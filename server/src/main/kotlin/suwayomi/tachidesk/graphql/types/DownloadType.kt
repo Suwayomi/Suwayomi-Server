@@ -7,6 +7,7 @@
 
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
@@ -52,20 +53,20 @@ data class DownloadUpdates(
     val updates: List<suwayomi.tachidesk.graphql.types.DownloadUpdate>,
     @GraphQLDescription("The current download queue at the time of sending initial message. Is null for all following messages")
     val initial: List<DownloadType>?,
+    @GraphQLDeprecated("Removed - has no effect anymore, is always false")
     @GraphQLDescription(
         "Indicates whether updates have been omitted based on the \"maxUpdates\" subscription variable. " +
             "In case updates have been omitted, the \"downloadStatus\" query should be re-fetched.",
     )
-    val omittedUpdates: Boolean,
+    val omittedUpdates: Boolean = false,
 ) {
-    constructor(downloadUpdates: DownloadUpdates, omittedUpdates: Boolean) : this(
+    constructor(downloadUpdates: DownloadUpdates) : this(
         when (downloadUpdates.status) {
             Status.Stopped -> DownloaderState.STOPPED
             Status.Started -> DownloaderState.STARTED
         },
         downloadUpdates.updates.map { DownloadUpdate(it) },
         downloadUpdates.initial?.mapIndexed { index, item -> DownloadType(item, index) },
-        omittedUpdates,
     )
 }
 
