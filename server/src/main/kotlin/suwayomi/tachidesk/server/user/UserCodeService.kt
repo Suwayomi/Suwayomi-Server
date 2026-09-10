@@ -316,7 +316,7 @@ object UserCodeService {
                     // an empty list = the code was created with no permissions.
                     permissions =
                         if (row[UserCodeTable.hasPermissions]) {
-                            permissionSets[codeId] ?: emptyList()
+                            permissionSets[codeId].orEmpty()
                         } else {
                             null
                         },
