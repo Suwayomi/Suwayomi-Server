@@ -137,15 +137,36 @@ class JavaSharedPreferences(
     private fun saveAction(action: Action) {
         when (action) {
             is Action.Add -> {
-                @Suppress("UNCHECKED_CAST")
                 when (val value = action.value) {
-                    is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), action.key, value as Set<String>)
-                    is String -> preferences.putString(action.key, value)
-                    is Int -> preferences.putInt(action.key, value)
-                    is Long -> preferences.putLong(action.key, value)
-                    is Float -> preferences.putFloat(action.key, value)
-                    is Double -> preferences.putDouble(action.key, value)
-                    is Boolean -> preferences.putBoolean(action.key, value)
+                    is Set<*> -> {
+                        saveAction(Action.Remove(action.key))
+                        @Suppress("UNCHECKED_CAST")
+                        preferences.encodeValue(SetSerializer(String.serializer()), action.key, value as Set<String>)
+                    }
+
+                    is String -> {
+                        preferences.putString(action.key, value)
+                    }
+
+                    is Int -> {
+                        preferences.putInt(action.key, value)
+                    }
+
+                    is Long -> {
+                        preferences.putLong(action.key, value)
+                    }
+
+                    is Float -> {
+                        preferences.putFloat(action.key, value)
+                    }
+
+                    is Double -> {
+                        preferences.putDouble(action.key, value)
+                    }
+
+                    is Boolean -> {
+                        preferences.putBoolean(action.key, value)
+                    }
                 }
                 notify(action.key)
             }
