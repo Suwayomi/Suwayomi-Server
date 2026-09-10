@@ -134,20 +134,45 @@ class JavaSharedPreferences(
         }
     }
 
-    private fun saveAction(action: Action) {
+    private fun saveAction(
+        action: Action,
+        shouldNotify: Boolean = true,
+    ) {
         when (action) {
             is Action.Add -> {
-                @Suppress("UNCHECKED_CAST")
                 when (val value = action.value) {
-                    is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), action.key, value as Set<String>)
-                    is String -> preferences.putString(action.key, value)
-                    is Int -> preferences.putInt(action.key, value)
-                    is Long -> preferences.putLong(action.key, value)
-                    is Float -> preferences.putFloat(action.key, value)
-                    is Double -> preferences.putDouble(action.key, value)
-                    is Boolean -> preferences.putBoolean(action.key, value)
+                    is Set<*> -> {
+                        saveAction(Action.Remove(action.key), shouldNotify = false)
+                        @Suppress("UNCHECKED_CAST")
+                        preferences.encodeValue(SetSerializer(String.serializer()), action.key, value as Set<String>)
+                    }
+
+                    is String -> {
+                        preferences.putString(action.key, value)
+                    }
+
+                    is Int -> {
+                        preferences.putInt(action.key, value)
+                    }
+
+                    is Long -> {
+                        preferences.putLong(action.key, value)
+                    }
+
+                    is Float -> {
+                        preferences.putFloat(action.key, value)
+                    }
+
+                    is Double -> {
+                        preferences.putDouble(action.key, value)
+                    }
+
+                    is Boolean -> {
+                        preferences.putBoolean(action.key, value)
+                    }
                 }
-                notify(action.key)
+
+                if (shouldNotify) notify(action.key)
             }
 
             is Action.Remove -> {
@@ -164,7 +189,7 @@ class JavaSharedPreferences(
                     }
                 }
 
-                notify(action.key)
+                if (shouldNotify) notify(action.key)
             }
 
             Action.Clear -> {
