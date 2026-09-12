@@ -765,7 +765,11 @@ object Extension {
 
         logger.debug { "Updating $pkgName to ${targetExtension.versionName}" }
 
-        return installExtension(pkgName, true)
+        val result = installExtension(pkgName, true)
+
+        ExtensionsList.updateMap.remove(pkgName)
+
+        return result
     }
 
     suspend fun getExtensionIcon(pkgName: String): Pair<InputStream, String> {
