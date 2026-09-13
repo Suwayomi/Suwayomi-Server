@@ -16,6 +16,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.Cookie
+import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -25,6 +26,7 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
 import suwayomi.tachidesk.server.serverConfig
+import suwayomi.tachidesk.server.util.buildSocksProxyUrl
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
@@ -260,6 +262,11 @@ object CFClearance {
     )
 
     @Serializable
+    data class FlareSolverProxy(
+        val url: String,
+    )
+
+    @Serializable
     data class FlareSolverRequest(
         val cmd: String,
         val url: String,
@@ -269,9 +276,12 @@ object CFClearance {
         val sessionTtlMinutes: Int? = null,
         val cookies: List<FlareSolverCookie>? = null,
         val returnOnlyCookies: Boolean? = null,
-        val proxy: String? = null,
+        val proxy: FlareSolverProxy? = null,
         val postData: String? = null, // only used with cmd 'request.post'
     )
+
+    internal fun FlareSolverRequest.withRequestProxy(proxyUrl: String?): FlareSolverRequest =
+        proxyUrl?.let { copy(session = null, sessionTtlMinutes = null, proxy = FlareSolverProxy(it)) } ?: this
 
     @Serializable
     data class FlareSolverSolutionCookie(
@@ -312,12 +322,21 @@ object CFClearance {
         onlyCookies: Boolean,
     ): FlareSolverResponse {
         val timeout = serverConfig.flareSolverrTimeout.value.seconds
+        val socksProxy =
+            buildSocksProxyUrl(
+                serverConfig.socksProxyEnabled.value,
+                serverConfig.socksProxyVersion.value,
+                serverConfig.socksProxyHost.value,
+                serverConfig.socksProxyPort.value,
+            )
+
         return with(json) {
             mutex.withLock {
                 client.value
                     .newCall(
                         POST(
                             url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
+                            headers = socksProxy?.let { Headers.headersOf("X-Proxy-Server", it) } ?: Headers.headersOf(),
                             body =
                                 Json
                                     .encodeToString(
@@ -346,7 +365,7 @@ object CFClearance {
                                                 } else {
                                                     null
                                                 },
-                                        ),
+                                        ).withRequestProxy(socksProxy),
                                     ).toRequestBody(jsonMediaType),
                         ),
                     ).awaitSuccess()
