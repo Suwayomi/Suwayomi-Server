@@ -124,7 +124,7 @@ class CategoryMutationTest : GraphQLTest() {
 
         response.assertNoErrors()
         // both categories should still be present
-        assertEquals(2, (response.dataPath("updateCategoryOrder", "categories") as List<*>).size)
+        assertEquals(3, (response.dataPath("updateCategoryOrder", "categories") as List<*>).size)
         assertEquals(true, cat2 in (response.dataPath("updateCategoryOrder", "categories") as List<*>).map { (it as Map<*, *>)["id"] })
     }
 
@@ -431,7 +431,6 @@ class CategoryMutationTest : GraphQLTest() {
         clearTables(
             CategoryMetaTable,
             CategoryMangaTable,
-            CategoryTable,
             ChapterTable,
             MangaUserTable,
             MangaTable,
@@ -439,6 +438,7 @@ class CategoryMutationTest : GraphQLTest() {
 
         transaction {
             UserAccountTable.deleteWhere { UserAccountTable.id neq 1 }
+            CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
         }
     }
 }

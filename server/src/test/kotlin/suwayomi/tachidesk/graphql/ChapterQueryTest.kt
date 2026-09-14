@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.graphql
 
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
@@ -169,7 +170,9 @@ class ChapterQueryTest : GraphQLTest() {
             MangaUserTable,
             MangaTable,
             CategoryMangaTable,
-            CategoryTable,
         )
+        transaction {
+            CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
+        }
     }
 }

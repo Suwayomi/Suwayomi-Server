@@ -8,40 +8,38 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.test.ApplicationTest
-import suwayomi.tachidesk.test.clearTables
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CategoryControllerTest : ApplicationTest() {
     @Test
     fun categoryReorder() {
-        clearTables(
-            CategoryTable,
-        )
         Category.createCategory(1, "foo")
         Category.createCategory(1, "bar")
         val cats = Category.getCategoryList(1)
         val foo = cats.asSequence().filter { it.name == "foo" }.first()
         val bar = cats.asSequence().filter { it.name == "bar" }.first()
-        assertEquals(0, foo.order)
-        assertEquals(1, bar.order)
+        assertEquals(1, foo.order)
+        assertEquals(2, bar.order)
         Category.reorderCategory(1, 1, 2)
         val catsReordered = Category.getCategoryList(1)
         val fooReordered = catsReordered.asSequence().filter { it.name == "foo" }.first()
         val barReordered = catsReordered.asSequence().filter { it.name == "bar" }.first()
-        assertEquals(1, fooReordered.order)
-        assertEquals(0, barReordered.order)
+        assertEquals(2, fooReordered.order)
+        assertEquals(1, barReordered.order)
     }
 
     @Test
     fun moveCategoryToPositionSurvivesAdoptedZeroBasedOrders() {
-        clearTables(CategoryTable)
         Category.createCategory(1, "a")
         Category.createCategory(1, "b")
         Category.createCategory(1, "c")
@@ -61,8 +59,8 @@ class CategoryControllerTest : ApplicationTest() {
 
     @AfterEach
     internal fun tearDown() {
-        clearTables(
-            CategoryTable,
-        )
+        transaction {
+            CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
+        }
     }
 }

@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
@@ -72,25 +73,19 @@ class ChapterTest : ApplicationTest() {
             }
             val pageSource = mockk<Source>()
             coEvery { pageSource.getPageList(any()) } returns listOf(Page(0, "page", "image"))
-            GetSource.registerSource(1L to pageSource)
-            try {
-                assertEquals(1, refreshChapterPageList(mangaId, chapterId))
-                transaction {
-                    val rows = ChapterUserTable.selectAll().where { ChapterUserTable.chapter eq chapterId }.toList()
-                    assertEquals(3, rows.size)
-                    rows.forEach { row ->
-                        assertEquals(row[ChapterUserTable.user].value != thirdUser, row[ChapterUserTable.isDownloadRequested])
-                        assertEquals(false, row[ChapterUserTable.isDownloaded])
-                    }
-                    val chapter = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.single()
-                    assertEquals(false, chapter[ChapterTable.isDownloaded])
-                    assertEquals(1, chapter[ChapterTable.pageCount])
+            GetSource.registerSource(source.id to pageSource)
+
+            assertEquals(1, refreshChapterPageList(mangaId, chapterId))
+            transaction {
+                val rows = ChapterUserTable.selectAll().where { ChapterUserTable.chapter eq chapterId }.toList()
+                assertEquals(3, rows.size)
+                rows.forEach { row ->
+                    assertEquals(row[ChapterUserTable.user].value != thirdUser, row[ChapterUserTable.isDownloadRequested])
+                    assertEquals(false, row[ChapterUserTable.isDownloaded])
                 }
-            } finally {
-                GetSource.unregisterSource(1L)
-                transaction {
-                    UserAccountTable.deleteWhere { UserAccountTable.id eq thirdUser }
-                }
+                val chapter = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.single()
+                assertEquals(false, chapter[ChapterTable.isDownloaded])
+                assertEquals(1, chapter[ChapterTable.pageCount])
             }
         }
 
@@ -802,7 +797,8 @@ class ChapterTest : ApplicationTest() {
             MangaTable,
         )
         transaction {
-            UserAccountTable.deleteWhere { username eq "user2" }
+            UserAccountTable.deleteWhere { id neq 1 }
         }
+        GetSource.unregisterSource(source.id)
     }
 }

@@ -1,5 +1,8 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.handlers
 
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -32,7 +35,14 @@ class BackupFlagsRoundTripTest : ApplicationTest() {
 
     @AfterEach
     fun tearDown() {
-        clearTables(CategoryTable, MangaTable, MangaUserTable, ChapterUserTable)
+        clearTables(
+            MangaTable,
+            MangaUserTable,
+            ChapterUserTable,
+        )
+        transaction {
+            CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
+        }
     }
 
     @Test

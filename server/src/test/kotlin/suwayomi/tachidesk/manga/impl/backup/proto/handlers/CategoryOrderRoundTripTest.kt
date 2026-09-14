@@ -1,5 +1,8 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.handlers
 
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -11,7 +14,6 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.test.ApplicationTest
-import suwayomi.tachidesk.test.clearTables
 
 class CategoryOrderRoundTripTest : ApplicationTest() {
     private val backupFlags =
@@ -28,7 +30,9 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
 
     @AfterEach
     fun tearDown() {
-        clearTables(CategoryTable)
+        transaction {
+            CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
+        }
     }
 
     @Test
@@ -78,15 +82,15 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
         BackupCategoryHandler.restore(
             1,
             listOf(
-                BackupCategory(name = "k2", order = 0, version = 1),
-                BackupCategory(name = "new", order = 1, version = 1),
+                BackupCategory(name = "k2", order = 1, version = 1),
+                BackupCategory(name = "new", order = 2, version = 1),
             ),
         )
 
         val orderByName = Category.getCategoryList(1).associate { it.name to it.order }
-        assertEquals(0, orderByName["k1"])
-        assertEquals(1, orderByName["k2"])
-        assertEquals(2, orderByName["new"])
+        assertEquals(1, orderByName["k1"])
+        assertEquals(2, orderByName["k2"])
+        assertEquals(3, orderByName["new"])
     }
 
     @Test

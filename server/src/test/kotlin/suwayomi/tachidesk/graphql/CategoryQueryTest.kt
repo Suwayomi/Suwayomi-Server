@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql
 
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -132,10 +133,10 @@ class CategoryQueryTest : GraphQLTest() {
     internal fun tearDown() {
         clearTables(
             CategoryMangaTable,
-            CategoryTable,
         )
         transaction {
             UserAccountTable.deleteWhere { UserAccountTable.id neq 1 }
+            CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
         }
     }
 }

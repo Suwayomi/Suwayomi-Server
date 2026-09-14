@@ -125,6 +125,8 @@ object BackupCategoryHandler {
                     }
             }
 
+        Category.normalizeCategories(userId)
+
         transaction {
             CategoryTable.update({ CategoryTable.user eq userId and (CategoryTable.isSyncing eq true) }) {
                 it[isSyncing] = false
