@@ -29,8 +29,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.cef.network.CefCookieManager
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lowerCase
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -504,7 +506,10 @@ fun applicationSetup() {
                         if (
                             UserAccountTable
                                 .select(UserAccountTable.id)
-                                .where { UserAccountTable.username.lowerCase() eq usernameSetting.lowercase() }
+                                .where {
+                                    (UserAccountTable.username.lowerCase() eq usernameSetting.lowercase()) and
+                                        (UserAccountTable.id neq 1)
+                                }
                                 .empty()
                         ) {
                             usernameSetting
