@@ -18,7 +18,6 @@ import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.graphql.queries.filter.coalesceDefault
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -92,7 +91,7 @@ object MangaList {
                         existingMangaUrlsToId[sManga.url]?.let { sManga to it }
                     }.filterNot { (_, resultRows) ->
                         resultRows.any {
-                            it[coalesceDefault(MangaUserTable.inLibrary, false)] &&
+                            it.getOrNull(MangaUserTable.inLibrary) == true &&
                                 it[MangaTable.sourceReference] != LocalSource.ID
                         }
                     }
