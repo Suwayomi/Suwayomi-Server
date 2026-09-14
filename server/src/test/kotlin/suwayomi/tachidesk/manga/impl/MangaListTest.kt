@@ -61,12 +61,13 @@ class MangaListTest : GraphQLTest() {
                 val url = "/browse-$memberships-$local"
                 val mangaId =
                     transaction {
-                        MangaTable.insertAndGetId {
-                            it[MangaTable.url] = url
-                            it[title] = "Original"
-                            it[sourceReference] = sourceId
-                            it[author] = "Existing author"
-                        }.value
+                        MangaTable
+                            .insertAndGetId {
+                                it[MangaTable.url] = url
+                                it[title] = "Original"
+                                it[sourceReference] = sourceId
+                                it[author] = "Existing author"
+                            }.value
                     }
                 if (memberships != "none") {
                     memberships.split(":").forEachIndexed { index, membership ->

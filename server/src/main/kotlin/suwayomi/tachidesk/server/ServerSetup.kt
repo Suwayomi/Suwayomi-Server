@@ -509,8 +509,7 @@ fun applicationSetup() {
                                 .where {
                                     (UserAccountTable.username.lowerCase() eq usernameSetting.lowercase()) and
                                         (UserAccountTable.id neq 1)
-                                }
-                                .empty()
+                                }.empty()
                         ) {
                             usernameSetting
                         } else {
