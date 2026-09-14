@@ -499,7 +499,9 @@ class CategoryMutation {
         input: DeleteCategoryInput,
     ): DeleteCategoryPayload? {
         val (clientMutationId, categoryId) = input
-        if (categoryId == 0) { // Don't delete default category
+
+        val defaultCategoryId = Category.getDefaultCategoryId(userId)
+        if (categoryId == defaultCategoryId) { // Don't delete default category
             return DeleteCategoryPayload(
                 clientMutationId,
                 null,
