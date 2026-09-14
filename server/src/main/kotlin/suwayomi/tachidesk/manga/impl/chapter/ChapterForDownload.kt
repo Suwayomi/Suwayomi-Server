@@ -114,7 +114,6 @@ suspend fun refreshChapterPageList(
             }
             ChapterUserTable.update({ ChapterUserTable.chapter eq chapterId }) {
                 it[isDownloaded] = false
-                it[isDownloadRequested] = false
             }
 
             PageTable.deleteWhere { PageTable.chapter eq chapterId }

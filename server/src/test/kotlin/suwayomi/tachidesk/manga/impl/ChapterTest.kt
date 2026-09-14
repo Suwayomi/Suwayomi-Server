@@ -7,7 +7,11 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.Source
+import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
+import io.mockk.coEvery
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.and
@@ -22,9 +26,11 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.manga.impl.chapter.refreshChapterPageList
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
@@ -41,6 +47,52 @@ import kotlin.test.assertTrue
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ChapterTest : ApplicationTest() {
     private val source = StubSource(1L)
+
+    @Test
+    fun pageListRefreshPreservesEachUsersDownloadRequest() =
+        runTest {
+            val mangaId = createLibraryManga("PAGE_REFRESH_REQUESTS")
+            val chapterId = createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = true).single()
+            val secondUser = createSecondUser()
+            val thirdUser =
+                transaction {
+                    UserAccountTable
+                        .insertAndGetId {
+                            it[username] = "page-refresh-reader"
+                            it[password] = "password"
+                        }.value
+                }
+            transaction {
+                ChapterUserTable.batchInsert(listOf(1, secondUser, thirdUser)) { userId ->
+                    this[ChapterUserTable.chapter] = chapterId
+                    this[ChapterUserTable.user] = userId
+                    this[ChapterUserTable.isDownloadRequested] = userId != thirdUser
+                    this[ChapterUserTable.isDownloaded] = true
+                }
+            }
+            val pageSource = mockk<Source>()
+            coEvery { pageSource.getPageList(any()) } returns listOf(Page(0, "page", "image"))
+            GetSource.registerSource(1L to pageSource)
+            try {
+                assertEquals(1, refreshChapterPageList(mangaId, chapterId))
+                transaction {
+                    val rows = ChapterUserTable.selectAll().where { ChapterUserTable.chapter eq chapterId }.toList()
+                    assertEquals(3, rows.size)
+                    rows.forEach { row ->
+                        assertEquals(row[ChapterUserTable.user].value != thirdUser, row[ChapterUserTable.isDownloadRequested])
+                        assertEquals(false, row[ChapterUserTable.isDownloaded])
+                    }
+                    val chapter = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.single()
+                    assertEquals(false, chapter[ChapterTable.isDownloaded])
+                    assertEquals(1, chapter[ChapterTable.pageCount])
+                }
+            } finally {
+                GetSource.unregisterSource(1L)
+                transaction {
+                    UserAccountTable.deleteWhere { UserAccountTable.id eq thirdUser }
+                }
+            }
+        }
 
     @Test
     fun chapterUrlChangeMigratesPerUserStateForAllUsers() =
