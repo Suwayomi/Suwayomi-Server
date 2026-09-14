@@ -36,6 +36,7 @@ import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
@@ -289,6 +290,8 @@ class SourceMutation {
     @RequireAuth
     fun fetchSourceManga(
         @GraphQLIgnore
+        userId: Int,
+        @GraphQLIgnore
         permissions: List<UserPermission>,
         input: FetchSourceMangaInput,
     ): CompletableFuture<FetchSourceMangaPayload?> {
@@ -335,6 +338,7 @@ class SourceMutation {
             val mangas =
                 transaction {
                     MangaTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id inList mangaIds }
                         .map { MangaType(it) }

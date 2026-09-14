@@ -67,7 +67,7 @@ class MangaQueryTest : GraphQLTest() {
         response.assertNoErrors()
         assertEquals(mangaId, response.dataPath("manga", "id"))
         assertEquals("Isolated Manga", response.dataPath("manga", "title"))
-        assertEquals(null, response.dataPath("manga", "user", "inLibrary"))
+        assertEquals(false, response.dataPath("manga", "user", "inLibrary"))
     }
 
     @Test

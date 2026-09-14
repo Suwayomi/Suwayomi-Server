@@ -30,6 +30,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import uy.kohesive.injekt.injectLazy
@@ -125,6 +126,7 @@ class MangaMutation {
                 transaction {
                     MangaType(
                         MangaTable
+                            .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id eq id }
                             .first(),
@@ -152,6 +154,7 @@ class MangaMutation {
             val mangas =
                 transaction {
                     MangaTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id inList ids }
                         .map { MangaType(it) }
@@ -189,6 +192,7 @@ class MangaMutation {
             val manga =
                 transaction {
                     MangaTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id eq id }
                         .first()
@@ -214,7 +218,11 @@ class MangaMutation {
     )
 
     @RequireAuth
-    fun fetchMangaAndChapters(input: FetchMangaAndChaptersInput): CompletableFuture<DataFetcherResult<FetchMangaAndChaptersPayload?>> {
+    fun fetchMangaAndChapters(
+        @GraphQLIgnore
+        userId: Int,
+        input: FetchMangaAndChaptersInput,
+    ): CompletableFuture<DataFetcherResult<FetchMangaAndChaptersPayload?>> {
         val (clientMutationId, id, fetchManga, fetchChapters) = input
 
         return future {
@@ -234,8 +242,13 @@ class MangaMutation {
             val (manga, chapters) =
                 transaction {
                     Pair(
-                        MangaTable.selectAll().where { MangaTable.id eq id }.first(),
+                        MangaTable
+                            .getWithUserData(userId)
+                            .selectAll()
+                            .where { MangaTable.id eq id }
+                            .first(),
                         ChapterTable
+                            .getWithUserData(userId)
                             .selectAll()
                             .where { ChapterTable.manga eq id }
                             .orderBy(ChapterTable.sourceOrder)
@@ -323,6 +336,7 @@ class MangaMutation {
                     transaction {
                         MangaType(
                             MangaTable
+                                .getWithUserData(userId)
                                 .selectAll()
                                 .where { MangaTable.id eq mangaId }
                                 .first(),
@@ -388,6 +402,7 @@ class MangaMutation {
 
                 val mangas =
                     MangaTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id inList allMangaIds }
                         .map { MangaType(it) }
@@ -470,6 +485,7 @@ class MangaMutation {
         val mangas =
             transaction {
                 MangaTable
+                    .getWithUserData(userId)
                     .selectAll()
                     .where { MangaTable.id inList allMangaIds }
                     .map { MangaType(it) }

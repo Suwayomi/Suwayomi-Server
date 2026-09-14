@@ -2,6 +2,7 @@ package suwayomi.tachidesk.graphql
 
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -26,7 +27,7 @@ class ChapterQueryTest : GraphQLTest() {
         createChapters(mangaId, 5, read = true)
 
         val chapterId =
-            org.jetbrains.exposed.v1.jdbc.transactions.transaction {
+            transaction {
                 ChapterTable
                     .selectAll()
                     .where { ChapterTable.manga eq mangaId }
@@ -61,7 +62,7 @@ class ChapterQueryTest : GraphQLTest() {
         createChapters(mangaId, 5, read = true)
 
         val chapterId =
-            org.jetbrains.exposed.v1.jdbc.transactions.transaction {
+            transaction {
                 ChapterTable
                     .selectAll()
                     .where { ChapterTable.manga eq mangaId }
@@ -88,7 +89,7 @@ class ChapterQueryTest : GraphQLTest() {
 
         response.assertNoErrors()
         assertEquals(chapterId, response.dataPath("chapter", "id"))
-        assertEquals(null, response.dataPath("chapter", "user", "isRead"))
+        assertEquals(false, response.dataPath("chapter", "user", "isRead"))
     }
 
     @Test

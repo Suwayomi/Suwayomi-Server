@@ -16,6 +16,7 @@ import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
@@ -84,6 +85,7 @@ class KoreaderSyncMutation {
             val chapter =
                 transaction {
                     ChapterTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.id eq input.chapterId }
                         .firstOrNull()
@@ -142,6 +144,7 @@ class KoreaderSyncMutation {
             val chapter =
                 transaction {
                     ChapterTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.id eq input.chapterId }
                         .firstOrNull()

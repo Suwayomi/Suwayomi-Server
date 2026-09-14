@@ -607,7 +607,13 @@ class CategoryMutation {
 
         val manga =
             transaction {
-                MangaType(MangaTable.selectAll().where { MangaTable.id eq id }.first())
+                MangaType(
+                    MangaTable
+                        .getWithUserData(userId)
+                        .selectAll()
+                        .where { MangaTable.id eq id }
+                        .first(),
+                )
             }
 
         return UpdateMangaCategoriesPayload(
@@ -628,7 +634,11 @@ class CategoryMutation {
 
         val mangas =
             transaction {
-                MangaTable.selectAll().where { MangaTable.id inList ids }.map { MangaType(it) }
+                MangaTable
+                    .getWithUserData(userId)
+                    .selectAll()
+                    .where { MangaTable.id inList ids }
+                    .map { MangaType(it) }
             }
 
         return UpdateMangasCategoriesPayload(

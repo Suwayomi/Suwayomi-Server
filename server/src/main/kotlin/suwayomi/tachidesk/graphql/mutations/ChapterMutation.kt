@@ -34,6 +34,7 @@ import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.net.URLEncoder
 import java.time.Instant
@@ -157,6 +158,7 @@ class ChapterMutation {
             transaction {
                 ChapterType(
                     ChapterTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.id eq id }
                         .first(),
@@ -182,6 +184,7 @@ class ChapterMutation {
         val chapters =
             transaction {
                 ChapterTable
+                    .getWithUserData(userId)
                     .selectAll()
                     .where { ChapterTable.id inList ids }
                     .map { ChapterType(it) }
@@ -218,6 +221,7 @@ class ChapterMutation {
             val chapters =
                 transaction {
                     ChapterTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.manga eq mangaId }
                         .orderBy(ChapterTable.sourceOrder)
@@ -295,6 +299,7 @@ class ChapterMutation {
                     transaction {
                         ChapterType(
                             ChapterTable
+                                .getWithUserData(userId)
                                 .selectAll()
                                 .where { ChapterTable.id eq chapterId }
                                 .first(),
@@ -360,6 +365,7 @@ class ChapterMutation {
 
                 val chapters =
                     ChapterTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.id inList allChapterIds }
                         .map { ChapterType(it) }
@@ -442,6 +448,7 @@ class ChapterMutation {
         val chapters =
             transaction {
                 ChapterTable
+                    .getWithUserData(userId)
                     .selectAll()
                     .where { ChapterTable.id inList allChapterIds }
                     .map { ChapterType(it) }
@@ -534,7 +541,16 @@ class ChapterMutation {
                     List(chapter.pageCount) { index ->
                         "/api/v1/manga/${chapter.mangaId}/chapter/${chapter.index}/page/${index}$params"
                     },
-                chapter = ChapterType(chapter),
+                chapter =
+                    ChapterType(
+                        transaction {
+                            ChapterTable
+                                .getWithUserData(userId)
+                                .selectAll()
+                                .where { ChapterTable.id eq chapter.id }
+                                .first()
+                        },
+                    ),
                 syncConflict = syncConflictInfo,
             )
         }

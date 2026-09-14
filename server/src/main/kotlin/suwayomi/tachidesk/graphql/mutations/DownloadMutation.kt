@@ -19,6 +19,7 @@ import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.DEQUEUED
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
@@ -51,6 +52,7 @@ class DownloadMutation {
                 chapters =
                     transaction {
                         ChapterTable
+                            .getWithUserData(userId)
                             .selectAll()
                             .where { ChapterTable.id inList chapters }
                             .map { ChapterType(it) }
@@ -84,7 +86,13 @@ class DownloadMutation {
                 clientMutationId = clientMutationId,
                 chapters =
                     transaction {
-                        ChapterType(ChapterTable.selectAll().where { ChapterTable.id eq chapter }.first())
+                        ChapterType(
+                            ChapterTable
+                                .getWithUserData(userId)
+                                .selectAll()
+                                .where { ChapterTable.id eq chapter }
+                                .first(),
+                        )
                     },
             )
         }
