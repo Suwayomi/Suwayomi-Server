@@ -134,46 +134,69 @@ class JavaSharedPreferences(
         }
     }
 
-    private fun saveActions(actions: List<Action>) =
-        synchronized(properties) {
-            actions.forEach {
-                @Suppress("UNCHECKED_CAST")
-                when (it) {
-                    is Action.Add -> {
-                        when (val value = it.value) {
-                            is Set<*> -> preferences.encodeValue(SetSerializer(String.serializer()), it.key, value as Set<String>)
-                            is String -> preferences.putString(it.key, value)
-                            is Int -> preferences.putInt(it.key, value)
-                            is Long -> preferences.putLong(it.key, value)
-                            is Float -> preferences.putFloat(it.key, value)
-                            is Double -> preferences.putDouble(it.key, value)
-                            is Boolean -> preferences.putBoolean(it.key, value)
-                        }
-                        notify(it.key)
+    private fun saveAction(action: Action) {
+        when (action) {
+            is Action.Add -> {
+                when (val value = action.value) {
+                    is Set<*> -> {
+                        saveAction(Action.Remove(action.key))
+                        @Suppress("UNCHECKED_CAST")
+                        preferences.encodeValue(SetSerializer(String.serializer()), action.key, value as Set<String>)
                     }
 
-                    is Action.Remove -> {
-                        preferences.remove(it.key)
-                    /*
-                     Set<String> are stored like
-                     key.0 = value1
-                     key.1 = value2
-                     key.size = 2
-                     */
-                        preferences.keys.forEach { key ->
-                            if (key.startsWith(it.key + ".")) {
-                                preferences.remove(key)
-                            }
-                        }
-
-                        notify(it.key)
+                    is String -> {
+                        preferences.putString(action.key, value)
                     }
 
-                    Action.Clear -> {
-                        preferences.clear()
+                    is Int -> {
+                        preferences.putInt(action.key, value)
+                    }
+
+                    is Long -> {
+                        preferences.putLong(action.key, value)
+                    }
+
+                    is Float -> {
+                        preferences.putFloat(action.key, value)
+                    }
+
+                    is Double -> {
+                        preferences.putDouble(action.key, value)
+                    }
+
+                    is Boolean -> {
+                        preferences.putBoolean(action.key, value)
                     }
                 }
+                notify(action.key)
             }
+
+            is Action.Remove -> {
+                preferences.remove(action.key)
+                /*
+                 Set<String> are stored like
+                 key.0 = value1
+                 key.1 = value2
+                 key.size = 2
+                 */
+                preferences.keys.forEach { key ->
+                    if (key.startsWith(action.key + ".")) {
+                        preferences.remove(key)
+                    }
+                }
+
+                notify(action.key)
+            }
+
+            Action.Clear -> {
+                preferences.clear()
+            }
+        }
+    }
+
+    private fun saveActions(actions: List<Action>) =
+        synchronized(properties) {
+            actions.forEach(::saveAction)
         }
 
     private fun getSnapshot(): Properties =
