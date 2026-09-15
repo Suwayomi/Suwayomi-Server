@@ -761,11 +761,18 @@ object Extension {
     }
 
     suspend fun updateExtension(pkgName: String): String {
-        val targetExtension = ExtensionsList.updateMap.remove(pkgName)!!
+        val targetExtension =
+            checkNotNull(ExtensionsList.updateMap[pkgName]) {
+                "Extension update information for \"$pkgName\" missing. Refetch the extensions"
+            }
 
         logger.debug { "Updating $pkgName to ${targetExtension.versionName}" }
 
-        return installExtension(pkgName, true)
+        val result = installExtension(pkgName, true)
+
+        ExtensionsList.updateMap.remove(pkgName)
+
+        return result
     }
 
     suspend fun getExtensionIcon(pkgName: String): Pair<InputStream, String> {
