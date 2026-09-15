@@ -120,6 +120,7 @@ object ChapterDownloadHelper {
         }
 
     suspend fun getCbzForDownload(
+        userId: Int,
         chapterId: Int,
         markAsRead: Boolean?,
     ): Triple<InputStream, String, Long> {
@@ -129,6 +130,7 @@ object ChapterDownloadHelper {
 
         if (markAsRead == true) {
             Chapter.modifyChapter(
+                userId = userId,
                 chapterData.mangaId,
                 chapterData.index,
                 isRead = true,

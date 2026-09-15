@@ -7,10 +7,11 @@ import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.PartialSettingsType
 import suwayomi.tachidesk.graphql.types.Settings
 import suwayomi.tachidesk.graphql.types.SettingsType
-import suwayomi.tachidesk.server.SERVER_CONFIG_MODULE_NAME
-import suwayomi.tachidesk.server.ServerConfig
+import suwayomi.tachidesk.server.settings.SettingsCompat
 import suwayomi.tachidesk.server.settings.SettingsUpdater
 import suwayomi.tachidesk.server.settings.SettingsValidator
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import xyz.nulldev.ts.config.GlobalConfigManager
 
 class SettingsMutation {
@@ -35,12 +36,24 @@ class SettingsMutation {
     }
 
     @RequireAuth
-    fun setSettings(input: SetSettingsInput): SetSettingsPayload {
+    fun setSettings(
+        @GraphQLIgnore
+        userId: Int,
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
+        input: SetSettingsInput,
+    ): SetSettingsPayload {
         val (clientMutationId, settings) = input
+
+        SettingsCompat.applyMovedSettingsToUser(userId, settings)
+
+        if (!permissions.hasPermission(UserPermission.MANAGE_SETTINGS)) {
+            return SetSettingsPayload(clientMutationId, SettingsType.masked(userId))
+        }
 
         updateSettings(settings)
 
-        return SetSettingsPayload(clientMutationId, SettingsType())
+        return SetSettingsPayload(clientMutationId, SettingsType(userId))
     }
 
     data class ResetSettingsInput(
@@ -53,18 +66,23 @@ class SettingsMutation {
     )
 
     @RequireAuth
-    fun resetSettings(input: ResetSettingsInput): ResetSettingsPayload {
+    fun resetSettings(
+        @GraphQLIgnore
+        userId: Int,
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
+        input: ResetSettingsInput,
+    ): ResetSettingsPayload {
         val (clientMutationId) = input
 
-        GlobalConfigManager.resetUserConfig()
-        val defaultServerConfig =
-            ServerConfig {
-                GlobalConfigManager.config.getConfig(
-                    SERVER_CONFIG_MODULE_NAME,
-                )
-            }
+        SettingsCompat.resetMovedUserSettings(userId)
 
-        val settings = SettingsType(defaultServerConfig)
+        if (!permissions.hasPermission(UserPermission.MANAGE_SETTINGS)) {
+            return ResetSettingsPayload(clientMutationId, SettingsType.masked(userId))
+        }
+
+        GlobalConfigManager.resetUserConfig()
+        val settings = SettingsType.defaults()
         updateSettings(settings)
 
         return ResetSettingsPayload(clientMutationId, settings)

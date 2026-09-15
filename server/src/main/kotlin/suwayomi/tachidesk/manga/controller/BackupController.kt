@@ -31,10 +31,10 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        ProtoBackupImport.restoreLegacy(ctx.bodyInputStream())
+                        ProtoBackupImport.restoreLegacy(userId, ctx.bodyInputStream())
                     }.thenApply {
                         ctx.json(it)
                     }
@@ -61,9 +61,10 @@ object BackupController {
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 // TODO: rewrite this with ctx.uploadedFiles(), don't call the multipart field "backup.proto.gz"
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        ProtoBackupImport.restoreLegacy(ctx.uploadedFile("backup.proto.gz")!!.content())
+                        ProtoBackupImport.restoreLegacy(userId, ctx.uploadedFile("backup.proto.gz")!!.content())
                     }.thenApply {
                         ctx.json(it)
                     }
@@ -85,11 +86,11 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.contentType("application/octet-stream")
                 ctx.future {
                     future {
-                        ProtoBackupExport.createBackup(BackupFlags.DEFAULT)
+                        ProtoBackupExport.createBackup(userId, BackupFlags.DEFAULT)
                     }.thenApply { ctx.result(it) }
                 }
             },
@@ -108,13 +109,16 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.contentType("application/octet-stream")
 
                 ctx.header("Content-Disposition", """attachment; filename="${Backup.getFilename()}"""")
                 ctx.future {
                     future {
-                        ProtoBackupExport.createBackup(BackupFlags.DEFAULT)
+                        ProtoBackupExport.createBackup(
+                            userId,
+                            BackupFlags.DEFAULT,
+                        )
                     }.thenApply { ctx.result(it) }
                 }
             },
@@ -133,10 +137,10 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        ProtoBackupValidator.validate(ctx.bodyInputStream())
+                        ProtoBackupValidator.validate(userId, ctx.bodyInputStream())
                     }.thenApply {
                         ctx.json(it)
                     }
@@ -165,10 +169,10 @@ object BackupController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
                     future {
-                        ProtoBackupValidator.validate(ctx.uploadedFile("backup.proto.gz")!!.content())
+                        ProtoBackupValidator.validate(userId, ctx.uploadedFile("backup.proto.gz")!!.content())
                     }.thenApply {
                         ctx.json(it)
                     }
