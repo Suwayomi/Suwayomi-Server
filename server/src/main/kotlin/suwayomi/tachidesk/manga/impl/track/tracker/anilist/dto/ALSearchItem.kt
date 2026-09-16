@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class ALSearchItem(
     val id: Long,
     val title: ALItemTitle,
+    val synonyms: List<String> = emptyList(),
     val coverImage: ItemCover,
     val description: String?,
     val format: String,
@@ -19,6 +20,7 @@ data class ALSearchItem(
         ALManga(
             remoteId = id,
             title = title.userPreferred,
+            alternativeTitles = title.allTitles() + synonyms,
             imageUrl = coverImage.large,
             description = description,
             format = format.replace("_", "-"),
@@ -33,7 +35,12 @@ data class ALSearchItem(
 @Serializable
 data class ALItemTitle(
     val userPreferred: String,
-)
+    val romaji: String? = null,
+    val english: String? = null,
+    val native: String? = null,
+) {
+    fun allTitles(): List<String> = listOfNotNull(userPreferred, romaji, english, native)
+}
 
 @Serializable
 data class ItemCover(

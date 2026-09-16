@@ -19,9 +19,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALAddMangaResult
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALCurrentUserResult
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALOAuth
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALRelatedNode
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALRelatedResult
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALSearchResult
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALUserListMangaQueryResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelated
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelatedResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.time.Instant
@@ -163,8 +167,12 @@ class AnilistApi(
                                 |}
                             |}
                         |}
+                        |synonyms
                         |title {
                             |userPreferred
+                            |romaji
+                            |english
+                            |native
                         |}
                         |coverImage {
                             |large
@@ -204,6 +212,108 @@ class AnilistApi(
                     .map { it.toALManga().toTrack() }
             }
         }
+
+    suspend fun getRelated(mediaId: Long): TrackRelatedResult =
+        withIOContext {
+            val query =
+                """
+            |query Related(${'$'}id: Int) {
+                |Media(id: ${'$'}id, type: MANGA) {
+                    |relations {
+                        |edges {
+                            |relationType(version: 2)
+                            |node {
+                                |id
+                                |type
+                                |title {
+                                    |userPreferred
+                                |}
+                                |coverImage {
+                                    |large
+                                |}
+                            |}
+                        |}
+                    |}
+                    |recommendations(sort: RATING_DESC, perPage: 30) {
+                        |edges {
+                            |node {
+                                |mediaRecommendation {
+                                    |id
+                                    |type
+                                    |title {
+                                        |userPreferred
+                                    |}
+                                    |coverImage {
+                                        |large
+                                    |}
+                                |}
+                            |}
+                        |}
+                    |}
+                |}
+            |}
+            |
+                """.trimMargin()
+            val payload =
+                buildJsonObject {
+                    put("query", query)
+                    putJsonObject("variables") {
+                        put("id", mediaId)
+                    }
+                }
+            with(json) {
+                // Relations/recommendations are public data, so the unauthenticated client is used
+                // to allow this to work even when the user is not logged in to AniList.
+                val media =
+                    client
+                        .newCall(
+                            POST(
+                                API_URL,
+                                body = payload.toString().toRequestBody(jsonMime),
+                            ),
+                        ).awaitSuccess()
+                        .parseAs<ALRelatedResult>()
+                        .data.Media
+
+                TrackRelatedResult(
+                    relations =
+                        media
+                            ?.relations
+                            ?.edges
+                            .orEmpty()
+                            .mapNotNull { edge ->
+                                edge.node?.takeIf { it.type == "MANGA" }?.toTrackRelated(formatRelationType(edge.relationType))
+                            },
+                    recommendations =
+                        media
+                            ?.recommendations
+                            ?.edges
+                            .orEmpty()
+                            .mapNotNull { edge ->
+                                edge.node
+                                    ?.mediaRecommendation
+                                    ?.takeIf { it.type == "MANGA" }
+                                    ?.toTrackRelated(null)
+                            },
+                )
+            }
+        }
+
+    private fun ALRelatedNode.toTrackRelated(relationType: String?): TrackRelated =
+        TrackRelated(
+            remoteId = id,
+            title = title.userPreferred,
+            coverUrl = coverImage.large,
+            trackingUrl = mangaUrl(id),
+            relationType = relationType,
+        )
+
+    private fun formatRelationType(relationType: String?): String? =
+        relationType
+            ?.split("_")
+            ?.joinToString(" ") { word ->
+                word.lowercase().replaceFirstChar { it.uppercase() }
+            }
 
     suspend fun findLibManga(
         track: Track,
