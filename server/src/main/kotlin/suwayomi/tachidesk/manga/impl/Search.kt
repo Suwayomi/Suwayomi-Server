@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
+import eu.kanade.tachiyomi.source.searchManga
 import io.javalin.json.JsonMapper
 import io.javalin.json.fromJsonString
 import kotlinx.serialization.Serializable
@@ -25,7 +26,7 @@ object Search {
         pageNum: Int,
     ): PagedMangaListDataClass {
         val source = getSourceOrStub(sourceId)
-        val searchManga = source.getSearchManga(pageNum, searchTerm, getFilterListOf(source))
+        val searchManga = source.searchManga(pageNum, searchTerm, getFilterListOf(source))
         return searchManga.processEntries(sourceId)
     }
 
@@ -36,7 +37,7 @@ object Search {
     ): PagedMangaListDataClass {
         val source = getSourceOrStub(sourceId)
         val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
-        val searchManga = source.getSearchManga(pageNum, filter.searchTerm ?: "", filterList)
+        val searchManga = source.searchManga(pageNum, filter.searchTerm ?: "", filterList)
         return searchManga.processEntries(sourceId)
     }
 

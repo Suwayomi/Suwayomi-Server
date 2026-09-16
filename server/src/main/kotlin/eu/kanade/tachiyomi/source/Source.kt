@@ -108,4 +108,19 @@ interface Source {
     fun fetchPageList(chapter: SChapter): Observable<List<Page>> = throw UnsupportedOperationException()
 }
 
+suspend fun Source.searchManga(
+    page: Int,
+    query: String,
+    filters: FilterList,
+): MangasPage =
+    try {
+        getSearchManga(page, query, filters)
+    } catch (e: UnsupportedOperationException) {
+        throw SearchNotSupportedException(e)
+    }
+
+class SearchNotSupportedException(
+    cause: UnsupportedOperationException,
+) : IllegalArgumentException("Search not supported by this source", cause)
+
 // fun Source.icon(): Drawable? = Injekt.get<ExtensionManager>().getAppIconForSource(this)
