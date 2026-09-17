@@ -16,7 +16,7 @@ graphqlkotlin = "10.2.2"
 xmlserialization = "1.0.2"
 ktlint = "1.8.0"
 koin = "4.2.2"
-moko = "0.26.4"
+moko = "0.27.0"
 jcef = "144.0.15-g72717cf-chromium-144.0.7559.172-api-1.21-262-b37"
 
 [libraries]
