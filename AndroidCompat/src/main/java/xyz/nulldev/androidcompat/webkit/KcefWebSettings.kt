@@ -1,7 +1,6 @@
 package xyz.nulldev.androidcompat.webkit
 
 import android.webkit.WebSettings
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlin.collections.Map
 
@@ -392,6 +391,8 @@ class KcefWebSettings : WebSettings() {
 
     fun getUserAgentMetadataMap() = (userAgentMetadata ?: defaultUserAgentMetadata()).toMap()
 
+    fun getUserAgentMetadata() = userAgentMetadata
+
     override fun setNeedInitialFocus(p0: Boolean) {
         needInitialFocus = p0
     }
@@ -445,7 +446,6 @@ class KcefWebSettings : WebSettings() {
     )
 
     @Serializable
-    @SerialName("userAgentMetadata")
     // see https://chromedevtools.github.io/devtools-protocol/#/Emulation.UserAgentMetadata
     public data class UserAgentMetadata(
         val architecture: String,
@@ -493,10 +493,15 @@ class KcefWebSettings : WebSettings() {
             fun fromMap(map: Map<String, Any?>): UserAgentMetadata {
                 val brands =
                     map.get(BRAND_VERSION_LIST)?.let {
-                        if (it !is Array<*>) throw IllegalArgumentException(BRAND_VERSION_LIST)
-                        it.map { v ->
+                        val array: Array<*> =
+                            when (it) {
+                                is List<*> -> it.toTypedArray()
+                                is Array<*> -> it
+                                else -> throw IllegalArgumentException("$BRAND_VERSION_LIST was ${it::class.qualifiedName}")
+                            }
+                        array.map { v: Any? ->
                             val array = assertStringArray(v, BRAND_VERSION_LIST)
-                            if (array.size != 3) throw IllegalArgumentException("Key is not of length 3 in ${BRAND_VERSION_LIST}")
+                            if (array.size != 3) throw IllegalArgumentException("Key is not of length 3 in $BRAND_VERSION_LIST")
                             array
                         }
                     }
@@ -523,10 +528,14 @@ class KcefWebSettings : WebSettings() {
                 v: Any?,
                 name: String,
             ): Array<String> {
+                if (v is List<*>) {
+                    return v.map { it as String }.toTypedArray()
+                }
                 if (v !is Array<*> || v.javaClass.componentType != String::class.java ||
                     v.any { it == null }
                 ) {
-                    throw IllegalArgumentException("Key is not String[] in $name")
+                    val typ = v?.let { it::class.qualifiedName } ?: "null"
+                    throw IllegalArgumentException("Key is not String[] in $name was $typ")
                 }
                 return v as Array<String>
             }
@@ -536,7 +545,7 @@ class KcefWebSettings : WebSettings() {
                 key: String,
             ): String? =
                 map.get(key)?.let { v ->
-                    if (v is String?) v else throw IllegalArgumentException(key)
+                    if (v is String?) v else throw IllegalArgumentException("$key was ${v::class.qualifiedName}")
                 }
 
             private fun getBool(
@@ -544,7 +553,7 @@ class KcefWebSettings : WebSettings() {
                 key: String,
             ): Boolean? =
                 map.get(key)?.let { v ->
-                    if (v is Boolean?) v else throw IllegalArgumentException(key)
+                    if (v is Boolean?) v else throw IllegalArgumentException("$key was ${v::class.qualifiedName}")
                 }
         }
     }
@@ -552,6 +561,7 @@ class KcefWebSettings : WebSettings() {
     companion object {
         fun defaultUserAgent() = System.getProperty("http.agent")
 
+        // TODO: Should we support basic parsing of UA? Currently if no metadata is provided, metadata and UA will mismatch
         fun defaultUserAgentMetadata() =
             UserAgentMetadata(
                 "x86",
