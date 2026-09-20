@@ -564,17 +564,17 @@ class KcefWebSettings : WebSettings() {
         // TODO: Should we support basic parsing of UA? Currently if no metadata is provided, metadata and UA will mismatch
         fun defaultUserAgentMetadata() =
             UserAgentMetadata(
-                "x86",
-                false,
                 "",
-                "Windows",
-                "10.0.0",
-                "64",
-                listOf(UserAgentBrandVersion("Chromium", "120"), UserAgentBrandVersion("Not.A/Brand", "8")),
-                listOf("Desktop"),
-                listOf(UserAgentBrandVersion("Chromium", "120.0.0.0"), UserAgentBrandVersion("Not.A/Brand", "8.0.0.0")),
+                true,
+                "2312DRAABG",
+                "Android",
+                "15.0.0",
+                "",
+                listOf(UserAgentBrandVersion("Chromium", "149"), UserAgentBrandVersion("Not)A;Brand", "24")),
+                listOf("Mobile"),
+                listOf(UserAgentBrandVersion("Chromium", "149.0.7827.197"), UserAgentBrandVersion("Not)A;Brand", "24.0.0.0")),
                 false,
-                null,
+                "149.0.7827.197",
             )
     }
 }
