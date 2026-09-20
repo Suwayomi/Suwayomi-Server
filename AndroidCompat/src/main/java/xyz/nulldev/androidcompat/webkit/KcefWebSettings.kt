@@ -1,6 +1,9 @@
 package xyz.nulldev.androidcompat.webkit
 
 import android.webkit.WebSettings
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlin.collections.Map
 
 class KcefWebSettings : WebSettings() {
     // Boolean settings
@@ -50,6 +53,7 @@ class KcefWebSettings : WebSettings() {
     private var appCachePath: String? = null
     private var defaultTextEncodingName: String? = null
     private var userAgentString: String? = null
+    private var userAgentMetadata: UserAgentMetadata? = null
     private var standardFontFamily: String? = null
     private var fixedFontFamily: String? = null
     private var sansSerifFontFamily: String? = null
@@ -374,9 +378,19 @@ class KcefWebSettings : WebSettings() {
 
     override fun setUserAgentString(p0: String?) {
         userAgentString = p0
+        userAgentMetadata = null // reset metadata; if the client wants custom meta, they must provide it afterwards
     }
 
     override fun getUserAgentString() = userAgentString ?: defaultUserAgent()
+
+    fun setUserAgentMetadataFromMap(uaMetadata: Map<String, Any>?) {
+        userAgentMetadata =
+            uaMetadata?.let {
+                UserAgentMetadata.fromMap(it)
+            }
+    }
+
+    fun getUserAgentMetadataMap() = (userAgentMetadata ?: defaultUserAgentMetadata()).toMap()
 
     override fun setNeedInitialFocus(p0: Boolean) {
         needInitialFocus = p0
@@ -423,7 +437,134 @@ class KcefWebSettings : WebSettings() {
 
     override fun getDisabledActionModeMenuItems() = disabledActionModeMenuItems
 
+    @Serializable
+    // see https://chromedevtools.github.io/devtools-protocol/#/Emulation.UserAgentBrandVersion
+    public data class UserAgentBrandVersion(
+        val brand: String,
+        val version: String,
+    )
+
+    @Serializable
+    @SerialName("userAgentMetadata")
+    // see https://chromedevtools.github.io/devtools-protocol/#/Emulation.UserAgentMetadata
+    public data class UserAgentMetadata(
+        val architecture: String,
+        val mobile: Boolean,
+        val model: String,
+        val platform: String,
+        val platformVersion: String,
+        val bitness: String?,
+        val brands: List<UserAgentBrandVersion>?,
+        val formFactors: List<String>?,
+        val fullVersionList: List<UserAgentBrandVersion>?,
+        val wow64: Boolean?,
+        val fullVersion: String?,
+    ) {
+        fun toMap(): Map<String, Any?> =
+            mapOf(
+                BRAND_VERSION_LIST to
+                    brands?.map {
+                        val fullVersion = fullVersionList?.first { f -> f.brand == it.brand }?.version ?: it.version
+                        arrayOf(it.brand, it.version, fullVersion)
+                    },
+                FULL_VERSION to fullVersion,
+                PLATFORM to platform,
+                PLATFORM_VERSION to platformVersion,
+                ARCHITECTURE to architecture,
+                MODEL to model,
+                MOBILE to mobile,
+                BITNESS to bitness,
+                WOW64 to wow64,
+                FORM_FACTORS to formFactors,
+            )
+
+        companion object {
+            val BRAND_VERSION_LIST = "BRAND_VERSION_LIST"
+            val FULL_VERSION = "FULL_VERSION"
+            val PLATFORM = "PLATFORM"
+            val PLATFORM_VERSION = "PLATFORM_VERSION"
+            val ARCHITECTURE = "ARCHITECTURE"
+            val MODEL = "MODEL"
+            val MOBILE = "MOBILE"
+            val BITNESS = "BITNESS"
+            val WOW64 = "WOW64"
+            val FORM_FACTORS = "FORM_FACTORS"
+
+            fun fromMap(map: Map<String, Any?>): UserAgentMetadata {
+                val brands =
+                    map.get(BRAND_VERSION_LIST)?.let {
+                        if (it !is Array<*>) throw IllegalArgumentException(BRAND_VERSION_LIST)
+                        it.map { v ->
+                            val array = assertStringArray(v, BRAND_VERSION_LIST)
+                            if (array.size != 3) throw IllegalArgumentException("Key is not of length 3 in ${BRAND_VERSION_LIST}")
+                            array
+                        }
+                    }
+                val formFactors = map.get(FORM_FACTORS)?.let { assertStringArray(it, FORM_FACTORS) }
+                val default = defaultUserAgentMetadata()
+
+                return UserAgentMetadata(
+                    getString(map, ARCHITECTURE) ?: default.architecture,
+                    getBool(map, MOBILE) ?: default.mobile,
+                    getString(map, MODEL) ?: default.model,
+                    getString(map, PLATFORM) ?: default.platform,
+                    getString(map, PLATFORM_VERSION) ?: default.platformVersion,
+                    getString(map, BITNESS) ?: default.bitness,
+                    brands?.map { UserAgentBrandVersion(it[0], it[1]) },
+                    formFactors?.toList(),
+                    brands?.map { UserAgentBrandVersion(it[0], it[2]) },
+                    getBool(map, WOW64) ?: default.wow64,
+                    getString(map, FULL_VERSION) ?: default.fullVersion,
+                )
+            }
+
+            @Suppress("UNCHECKED_CAST")
+            private fun assertStringArray(
+                v: Any?,
+                name: String,
+            ): Array<String> {
+                if (v !is Array<*> || v.javaClass.componentType != String::class.java ||
+                    v.any { it == null }
+                ) {
+                    throw IllegalArgumentException("Key is not String[] in $name")
+                }
+                return v as Array<String>
+            }
+
+            private fun getString(
+                map: Map<String, Any?>,
+                key: String,
+            ): String? =
+                map.get(key)?.let { v ->
+                    if (v is String?) v else throw IllegalArgumentException(key)
+                }
+
+            private fun getBool(
+                map: Map<String, Any?>,
+                key: String,
+            ): Boolean? =
+                map.get(key)?.let { v ->
+                    if (v is Boolean?) v else throw IllegalArgumentException(key)
+                }
+        }
+    }
+
     companion object {
         fun defaultUserAgent() = System.getProperty("http.agent")
+
+        fun defaultUserAgentMetadata() =
+            UserAgentMetadata(
+                "x86",
+                false,
+                "",
+                "Windows",
+                "10.0.0",
+                "64",
+                listOf(UserAgentBrandVersion("Chromium", "120"), UserAgentBrandVersion("Not.A/Brand", "8")),
+                listOf("Desktop"),
+                listOf(UserAgentBrandVersion("Chromium", "120.0.0.0"), UserAgentBrandVersion("Not.A/Brand", "8.0.0.0")),
+                false,
+                null,
+            )
     }
 }
