@@ -17,6 +17,7 @@ import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.util.Browser.openInBrowser
 import suwayomi.tachidesk.server.util.ExitCode.MutexCheckFailedAnotherAppRunning
 import suwayomi.tachidesk.server.util.ExitCode.MutexCheckFailedTachideskRunning
+import suwayomi.tachidesk.server.util.ServerSubpath
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -43,9 +44,10 @@ object AppMutex {
                 .connectTimeout(200, TimeUnit.MILLISECONDS)
                 .build()
 
+        val aboutPath = ServerSubpath.maybeAddAsPrefix("/api/v1/settings/about/")
         val request =
             Builder()
-                .url("http://$appIP:${serverConfig.port.value}/api/v1/settings/about/")
+                .url("http://$appIP:${serverConfig.port.value}$aboutPath")
                 .build()
 
         val response =
