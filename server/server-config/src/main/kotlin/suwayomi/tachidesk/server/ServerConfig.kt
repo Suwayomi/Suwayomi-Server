@@ -1147,6 +1147,17 @@ class ServerConfig(
         description = "List of extension store index URLs",
     )
 
+    val markDuplicateReadChaptersAsRead: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 98,
+        group = SettingGroup.LIBRARY_UPDATES,
+        privacySafe = true,
+        defaultValue = false,
+        description =
+            "Marks a chapter as read during a chapter list update in case a chapter with the same number has already " +
+                "been read. Only applies to sources that provide the same chapter more than once, e.g. from different " +
+                "scanlators.",
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/

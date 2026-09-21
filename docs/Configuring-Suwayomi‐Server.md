@@ -123,12 +123,14 @@ server.excludeNotStarted = true
 server.excludeCompleted = true
 server.globalUpdateInterval = 12
 server.updateMangas = false
+server.markDuplicateReadChaptersAsRead = false
 ```
 - `server.excludeUnreadChapters = true` controls if Suwayomi should include titles with unread chapters in the library update.
 - `server.excludeNotStarted = true` controls if Suwayomi should include titles which weren't started yet in the library update.
 - `server.excludeCompleted = true` controls if Suwayomi should include titles which are marked completed in the library update.
 - `server.globalUpdateInterval = 12` sets the time in hours for the automatic library internal, `0` to disable it. Range: 6 <= n < ∞
 - `server.updateMangas = false` controls if Suwayomi should also update title metadata along with fetching new chapters in the library update.
+- `server.markDuplicateReadChaptersAsRead = false` controls if Suwayomi should mark a chapter as read during a chapter list update in case a chapter with the same number has already been read. Only relevant for sources that provide the same chapter more than once, e.g. from different scanlators.
 
 ### Authentication
 ```

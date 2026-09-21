@@ -114,6 +114,7 @@ object Chapter {
         mangaEntry: ResultRow,
         chapters: List<SChapter>,
         source: Source,
+        markDuplicateReadChaptersAsRead: Boolean = serverConfig.markDuplicateReadChaptersAsRead.value,
     ): List<SChapter> {
         val currentLatestChapterNumber = Manga.getLatestChapter(mangaEntry[MangaTable.id].value)?.chapterNumber ?: 0f
         val numberOfCurrentChapters = getCountOfMangaChapters(mangaEntry[MangaTable.id].value)
@@ -220,6 +221,25 @@ object Chapter {
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val chapterUrls = uniqueChapters.map { it.url }.toSet()
 
+        // numbers of chapters that are already read and are kept, thus, a newly fetched chapter with one of these
+        // numbers is a duplicate of an already read chapter, e.g. the same chapter from a different scanlator.
+        // the fetch date is kept around to not surface such a duplicate as a new chapter in the "Updates" tab
+        val fetchedAtByReadChapterNumber: Map<Float, Long> =
+            if (markDuplicateReadChaptersAsRead) {
+                // the chapter number of a kept chapter can change during this update, thus, the new one has to be used
+                val newChapterNumberById = chaptersToUpdate.associate { it.id to it.chapterNumber }
+
+                chaptersInDb
+                    .filter { it.read }
+                    .mapNotNull { dbChapter ->
+                        val chapterNumber = newChapterNumberById[dbChapter.id] ?: return@mapNotNull null
+
+                        if (chapterNumber < 0f) null else chapterNumber to dbChapter.fetchedAt
+                    }.toMap()
+            } else {
+                emptyMap()
+            }
+
         val chaptersIdsToDelete =
             chaptersInDb.mapNotNull { dbChapter ->
                 if (!chapterUrls.contains(dbChapter.url)) {
@@ -273,6 +293,12 @@ object Chapter {
                                     this[ChapterTable.fetchedAt] = it
                                 }
                             }
+
+                            // overrides the restore of a deleted chapter above, a read duplicate wins over an unread one
+                            fetchedAtByReadChapterNumber[chapter.chapterNumber]?.let { readChapterFetchedAt ->
+                                this[ChapterTable.isRead] = true
+                                this[ChapterTable.fetchedAt] = readChapterFetchedAt
+                            }
                         }.map { ChapterTable.toDataClass(it) }
 
                 insertedChapters.forEach { insertedChapterIds.add(it.id) }
@@ -320,6 +346,10 @@ object Chapter {
                             this[ChapterTable.memo] = it.memo
                             this[ChapterTable.isDownloaded] = currentChapter.downloaded
                             this[ChapterTable.pageCount] = currentChapter.pageCount
+                            // catches the duplicates that were already in the database before the setting got enabled.
+                            // has to be set for every batch, otherwise the columns of the batches would differ
+                            this[ChapterTable.isRead] =
+                                currentChapter.read || fetchedAtByReadChapterNumber.containsKey(it.chapterNumber)
 
                             if (!currentChapter.downloaded) {
                                 return@forEach
@@ -352,7 +382,8 @@ object Chapter {
                 mangaEntry[MangaTable.id].value,
                 currentLatestChapterNumber,
                 numberOfCurrentChapters,
-                insertedChapters,
+                // a chapter that got inserted as read, e.g. a duplicate of an already read chapter, is nothing the user still has to read
+                insertedChapters.filterNot { it.read },
             )
         }
 

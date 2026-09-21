@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Cache/API**) Add a way to clear cache & cookies
 - (**API**) Add platform information to `aboutServer` query
 - (**Category/API**) Add `isDefaultCategory` in preparation of incompatible changes of future versions
+- (**Chapter**) Add setting to mark a chapter as read in case a chapter with the same number has already been read, e.g. the same chapter from a different scanlator
 
 ### Changed
 - (**SystemTray**) Disable DorkBox update requests
