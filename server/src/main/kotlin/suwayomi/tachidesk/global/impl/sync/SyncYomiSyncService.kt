@@ -175,7 +175,7 @@ object SyncYomiSyncService {
         }
 
         setSyncState(SyncManager.SyncState.Downloading(startDate))
-        val bytes = response.body.byteStream().use { it.readBytes() }
+        val bytes = response.body.bytes()
         val remote =
             try {
                 ProtoBuf.decodeFromByteArray(Backup.serializer(), bytes)
@@ -307,10 +307,7 @@ object SyncYomiSyncService {
                 response.headers["ETag"]
                     ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
 
-            val byteArray =
-                response.body.byteStream().use {
-                    return@use it.readBytes()
-                }
+            val byteArray = response.body.bytes()
 
             return try {
                 val backup = ProtoBuf.decodeFromByteArray(Backup.serializer(), byteArray)
