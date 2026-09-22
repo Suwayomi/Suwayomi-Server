@@ -156,10 +156,7 @@ object SyncYomiSyncService {
         }
 
         setSyncState(SyncManager.SyncState.Uploading(startDate))
-        val body =
-            ProtoBuf
-                .encodeToByteArray(Backup.serializer(), backup)
-                .toRequestBody("application/octet-stream".toMediaType())
+        val body = BackupRequestBody(backup, ProtoBuf)
         val response =
             syncClient()
                 .newCall(POST(url = "$host/api/sync/v2/merge", headers = headers.build(), body = body))
@@ -344,11 +341,10 @@ object SyncYomiSyncService {
 
         val client = syncClient()
 
-        val byteArray = ProtoBuf.encodeToByteArray(Backup.serializer(), backup)
-        if (byteArray.isEmpty()) {
+        val body = BackupRequestBody(backup, ProtoBuf)
+        if (body.metaBytes.isEmpty() && backup.backupManga.isEmpty()) {
             throw IllegalStateException("Empty backup error")
         }
-        val body = byteArray.toRequestBody("application/octet-stream".toMediaType())
 
         val uploadRequest =
             PUT(
