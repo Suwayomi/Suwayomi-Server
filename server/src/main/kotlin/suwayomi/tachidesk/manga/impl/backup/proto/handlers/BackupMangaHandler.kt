@@ -11,14 +11,19 @@ import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -56,13 +61,24 @@ object BackupMangaHandler {
         EXISTING,
     }
 
-    fun backup(flags: BackupFlags): List<BackupManga> =
+    fun backup(
+        flags: BackupFlags,
+        since: Long? = null,
+    ): List<BackupManga> =
         dbTransaction {
             if (!flags.includeManga) {
                 return@dbTransaction emptyList()
             }
 
-            val manga = MangaTable.selectAll().where { MangaTable.inLibrary eq true }.toList()
+            val changed =
+                since?.let {
+                    val chapterChanged =
+                        ChapterTable
+                            .select(ChapterTable.manga)
+                            .where { ChapterTable.lastModifiedAt greaterEq it }
+                    (MangaTable.lastModifiedAt greaterEq it) or (MangaTable.id inSubQuery chapterChanged)
+                } ?: Op.TRUE
+            val manga = MangaTable.selectAll().where { (MangaTable.inLibrary eq true) and changed }.toList()
 
             manga.map { mangaRow ->
                 val backupManga =
