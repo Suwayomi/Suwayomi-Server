@@ -169,6 +169,16 @@ object ProtoBackupImport : ProtoBackupBase() {
                     emptyList(),
                     emptyList(),
                 )
+            } catch (e: OutOfMemoryError) {
+                logger.error { "restore($restoreId): out of memory" }
+
+                updateRestoreState(restoreId, BackupRestoreState.Failure)
+                ValidationResult(
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                )
             } finally {
                 if (syncMode.isSync) {
                     clearSyncingFlags()
