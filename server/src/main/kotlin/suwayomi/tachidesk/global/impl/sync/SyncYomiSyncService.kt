@@ -98,6 +98,10 @@ object SyncYomiSyncService {
             logger.error { "Error syncing: ${e.message}" }
             reportSyncEvent(SyncEventStatus.SYNC_ERROR, e.message)
             throw e
+        } catch (e: OutOfMemoryError) {
+            logger.error { "Out of memory while syncing" }
+            reportSyncEvent(SyncEventStatus.SYNC_ERROR, "OutOfMemoryError")
+            throw e
         }
     }
 
