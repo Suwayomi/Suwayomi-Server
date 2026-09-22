@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -325,10 +324,9 @@ object SyncManager {
                 }
             }
 
-            val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
             val restoreId =
                 ProtoBackupImport.restore(
-                    sourceStream = backupStream,
+                    backup = newSyncData,
                     flags = backupFlags,
                     syncMode = syncMode,
                 )
