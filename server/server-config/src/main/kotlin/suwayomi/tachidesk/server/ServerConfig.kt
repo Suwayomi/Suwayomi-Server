@@ -113,6 +113,16 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
+    val lnReaderAllowedLocalOrigins: MutableStateFlow<String> by StringSetting(
+        protoNumber = 98,
+        group = SettingGroup.NETWORK,
+        privacySafe = false,
+        defaultValue = "",
+        maxLength = 8192,
+        description = "Comma-separated HTTP(S) origins LNReader plugins may access on local networks",
+        excludeFromBackup = true,
+    )
+
     val socksProxyEnabled: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 3,
         group = SettingGroup.PROXY,

@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.model.dataclass
 import com.fasterxml.jackson.annotation.JsonIgnore
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.json.JsonObject
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Manga.getMangaMetaMap
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.impl.util.lang.trimAll
@@ -47,6 +48,8 @@ data class MangaDataClass(
     val trackers: List<MangaTrackerDataClass>? = null,
     val lastModifiedAt: Long = 0,
     val version: Long = 0,
+    @JsonIgnore
+    val contentType: SourceContentType = SourceContentType.MANGA,
     @JsonIgnore
     val memo: JsonObject = JsonObject.EMPTY,
 ) {

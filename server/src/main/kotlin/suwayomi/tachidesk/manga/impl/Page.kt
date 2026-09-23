@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.http.NotFoundResponse
 import kotlinx.coroutines.flow.StateFlow
 import libcore.net.MimeUtils
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -20,6 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.DownloadConversion
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
@@ -63,6 +65,7 @@ object Page {
         progressFlow: ((StateFlow<Int>) -> Unit)? = null,
     ): Pair<InputStream, String> {
         val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        if (mangaEntry[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL) throw NotFoundResponse()
         val chapterEntry =
             transaction {
                 if (chapterId != null) {

@@ -15,6 +15,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -28,14 +30,19 @@ class CategoryType(
     val includeInUpdate: IncludeOrExclude,
     val includeInDownload: IncludeOrExclude,
     val isDefaultCategory: Boolean = id == 0,
+    val contentType: SourceContentType = SourceContentType.MANGA,
 ) : Node {
-    constructor(row: ResultRow) : this(
+    constructor(
+        row: ResultRow,
+        contentType: SourceContentType? = null,
+    ) : this(
         row[CategoryTable.id].value,
         row[CategoryTable.order],
         row[CategoryTable.name],
         row[CategoryTable.isDefault],
         IncludeOrExclude.fromValue(row[CategoryTable.includeInUpdate]),
         IncludeOrExclude.fromValue(row[CategoryTable.includeInDownload]),
+        contentType = contentType ?: row[CategoryTable.contentType],
     )
 
     constructor(dataClass: CategoryDataClass) : this(
@@ -45,10 +52,28 @@ class CategoryType(
         dataClass.default,
         dataClass.includeInUpdate,
         dataClass.includeInDownload,
+        contentType = dataClass.contentType,
     )
 
-    fun mangas(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
-        dataFetchingEnvironment.getValueFromDataLoader<Int, MangaNodeList>("MangaForCategoryDataLoader", id)
+    fun mangas(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        contentType: SourceContentType? = this.contentType,
+        inLibrary: Boolean? = null,
+    ): CompletableFuture<MangaNodeList> {
+        val future =
+            dataFetchingEnvironment.getValueFromDataLoader<Int, MangaNodeList>("MangaForCategoryDataLoader", id)
+        return if (contentType == null && inLibrary == null) {
+            future
+        } else {
+            future.thenApply { list ->
+                list.nodes
+                    .filter { item ->
+                        (contentType == null || item.contentType == contentType) &&
+                            (inLibrary == null || item.inLibrary == inLibrary)
+                    }.toNodeList()
+            }
+        }
+    }
 
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<CategoryMetaType>> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, List<CategoryMetaType>>("CategoryMetaDataLoader", id)

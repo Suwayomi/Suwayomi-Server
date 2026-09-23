@@ -7,7 +7,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.eclipse.jetty.websocket.core.CloseStatus
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderSource
 import suwayomi.tachidesk.manga.impl.update.Websocket
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 
 object WebView : Websocket<String>() {
     private val logger = KotlinLogging.logger {}
@@ -52,6 +54,7 @@ object WebView : Websocket<String>() {
         val url: String,
         val width: Int,
         val height: Int,
+        val sourceId: String? = null,
     ) : TypeObject()
 
     @Serializable
@@ -100,7 +103,13 @@ object WebView : Websocket<String>() {
             when (event) {
                 is LoadUrlMessage -> {
                     val url = event.url
-                    dr.loadUrl(url)
+                    val binding =
+                        event.sourceId
+                            ?.toLongOrNull()
+                            ?.let(GetSource::getCachedSourceOrNull)
+                            .let { it as? LnReaderSource }
+                            ?.webStorageBindingFor(url)
+                    dr.loadUrl(url, binding)
                     dr.resize(event.width, event.height)
                     logger.debug { "Loading URL $url" }
                 }

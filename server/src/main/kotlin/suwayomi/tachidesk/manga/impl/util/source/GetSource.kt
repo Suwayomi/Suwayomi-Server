@@ -11,10 +11,15 @@ import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderPluginStore
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderSource
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -28,6 +33,7 @@ object GetSource {
 
     private val sourceCache = ConcurrentHashMap<Long, Source>()
     private val applicationDirs: ApplicationDirs by injectLazy()
+    private val lnReaderSourceColdLoadMutex = Mutex()
 
     private suspend fun getSource(sourceId: Long): Source? {
         val cachedResult: Source? = sourceCache[sourceId]
@@ -45,6 +51,23 @@ object GetSource {
             transaction {
                 ExtensionTable.selectAll().where { ExtensionTable.id eq extensionId }.first()
             }
+
+        if (extensionRecord[ExtensionTable.runtimeKind] == ExtensionKind.LNREADER.name) {
+            return lnReaderSourceColdLoadMutex.withLock {
+                sourceCache[sourceId]?.let { return@withLock it }
+
+                val pluginId =
+                    requireNotNull(extensionRecord[ExtensionTable.pluginId]) {
+                        "Missing pluginId for LNReader extension"
+                    }
+                val installedPlugin =
+                    LnReaderPluginStore.active(pluginId, Path(applicationDirs.extensionsRoot))
+                        ?: throw IllegalStateException("Active LNReader plugin '$pluginId' not found")
+                val source = LnReaderSource(installedPlugin)
+                sourceCache[sourceId] = source
+                source
+            }
+        }
 
         val apkName =
             extensionRecord[ExtensionTable.apkName]
@@ -73,17 +96,24 @@ object GetSource {
 
     suspend fun getSourceOrStub(sourceId: Long): Source = getSourceOrNull(sourceId) ?: StubSource(sourceId)
 
+    fun getCachedSourceOrNull(sourceId: Long): Source? = sourceCache[sourceId]
+
     fun registerSource(sourcePair: Pair<Long, Source>) {
         sourceCache += sourcePair
     }
 
+    suspend fun registerSource(sourceId: Long) {
+        unregisterSource(sourceId)
+        getSourceOrNull(sourceId)
+    }
+
     fun unregisterSource(sourceId: Long) {
-        sourceCache.remove(sourceId)
+        (sourceCache.remove(sourceId) as? AutoCloseable)?.close()
     }
 
     fun unregisterAllSources() {
         (sourceCache - 0L).forEach { (id, _) ->
-            sourceCache.remove(id)
+            unregisterSource(id)
         }
     }
 }

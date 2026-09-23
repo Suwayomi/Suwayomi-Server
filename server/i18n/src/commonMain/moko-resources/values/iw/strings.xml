@@ -74,6 +74,7 @@
     <string name="opds_linktitle_stream_pages_start_local">קריאה מקוונת (התקדמות מקומית)</string>
     <string name="opds_linktitle_stream_pages_continue_local">המשך קריאה מקוונת (התקדמות מקומית)</string>
     <string name="opds_linktitle_download_cbz">הורדת CBZ</string>
+    <string name="opds_linktitle_download_epub">הורדת EPUB</string>
     <string name="opds_linktitle_chapter_cover">כריכת הפרק</string>
     <string name="opds_linktitle_stream_pages_start_remote">⁧קריאה מקוונת (סונכרן מ- ‏%1$s‏)⁩</string>
     <string name="opds_linktitle_stream_pages_continue_remote">⁧המשך קריאה מקוונת (סונכרן מ- ‏%1$s‏)⁩</string>

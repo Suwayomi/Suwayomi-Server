@@ -15,6 +15,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import java.util.concurrent.CompletableFuture
 
@@ -27,6 +28,7 @@ class ExtensionStoreType(
     val indexUrl: String,
     val isLegacy: Boolean,
     val extensionListUrl: String?,
+    val kind: ExtensionKind = ExtensionKind.JVM,
 ) : Node {
     constructor(row: ResultRow) : this(
         name = row[ExtensionStoreTable.name],
@@ -37,6 +39,7 @@ class ExtensionStoreType(
         indexUrl = row[ExtensionStoreTable.indexUrl],
         isLegacy = row[ExtensionStoreTable.isLegacy],
         extensionListUrl = row[ExtensionStoreTable.extensionListUrl],
+        kind = ExtensionKind.fromDatabase(row[ExtensionStoreTable.kind]),
     )
 
     fun extensions(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionNodeList> =

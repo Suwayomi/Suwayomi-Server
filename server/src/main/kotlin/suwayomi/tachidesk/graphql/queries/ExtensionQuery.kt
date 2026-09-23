@@ -14,9 +14,11 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -44,6 +46,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
@@ -194,6 +197,7 @@ class ExtensionQuery {
     fun extensions(
         condition: ExtensionCondition? = null,
         filter: ExtensionFilter? = null,
+        includeLightNovels: Boolean = false,
         @GraphQLDeprecated(
             "Replaced with order",
             replaceWith = ReplaceWith("order"),
@@ -216,6 +220,7 @@ class ExtensionQuery {
                 val res = ExtensionTable.selectAll()
 
                 res.adjustWhere { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
+                if (!includeLightNovels) res.andWhere { ExtensionTable.runtimeKind eq ExtensionKind.JVM.name }
 
                 res.applyOps(condition, filter)
 

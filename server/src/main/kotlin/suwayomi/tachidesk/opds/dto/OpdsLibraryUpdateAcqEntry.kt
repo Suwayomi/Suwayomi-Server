@@ -8,4 +8,5 @@ data class OpdsLibraryUpdateAcqEntry(
     val mangaTotalChapters: Long,
     val mangaSourceLang: String?,
     val mangaThumbnailUrl: String?,
+    val isNovel: Boolean = false,
 )

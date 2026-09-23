@@ -24,6 +24,12 @@ server.port = 4567
 ```
 - `server.ip` can be an IP or domain name.
 
+### LNReader local network access
+```conf
+server.lnReaderAllowedLocalOrigins = ""
+```
+- Comma-separated HTTP(S) origins LNReader plugins may access on local networks. Leave empty unless a plugin needs to access a local service.
+
 ### Socks5 proxy
 ```
 server.socksProxyEnabled = false
@@ -332,4 +338,3 @@ For example:
 ```
 java -Dsuwayomi.tachidesk.config.server.rootDir="/path/to/data/directory" -jar Suwayomi-Server-v0.X.Y-rXXXX.jar
 ```
-

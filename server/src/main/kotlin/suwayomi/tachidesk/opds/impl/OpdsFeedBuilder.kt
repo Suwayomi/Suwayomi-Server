@@ -97,7 +97,14 @@ object OpdsFeedBuilder {
         builder.entries.addAll(
             historyItems.map { item ->
                 val mangaDetails =
-                    OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
+                    OpdsMangaDetails(
+                        item.mangaId,
+                        item.mangaTitle,
+                        item.mangaThumbnailUrl,
+                        item.mangaAuthor,
+                        item.mangaTotalChapters,
+                        isNovel = item.isNovel,
+                    )
                 OpdsEntryBuilder.createChapterListEntry(
                     baseUrl,
                     locale,
@@ -584,7 +591,14 @@ object OpdsFeedBuilder {
         builder.entries.addAll(
             updateItems.map { item ->
                 val mangaDetails =
-                    OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
+                    OpdsMangaDetails(
+                        item.mangaId,
+                        item.mangaTitle,
+                        item.mangaThumbnailUrl,
+                        item.mangaAuthor,
+                        item.mangaTotalChapters,
+                        isNovel = item.isNovel,
+                    )
                 OpdsEntryBuilder.createChapterListEntry(
                     baseUrl,
                     locale,

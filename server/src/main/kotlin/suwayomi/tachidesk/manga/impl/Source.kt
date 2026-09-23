@@ -27,10 +27,12 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.Source.preferenceScreenMap
 import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderSource
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.unregisterSource
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
@@ -44,8 +46,10 @@ object Source {
     suspend fun getSourceList(): List<SourceDataClass> {
         return suspendTransaction {
             SourceTable.selectAll().mapNotNull {
-                val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
                 val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
+                if (sourceExtension[ExtensionTable.runtimeKind] != ExtensionKind.JVM.name) return@mapNotNull null
+
+                val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
 
                 SourceDataClass(
                     id = it[SourceTable.id].value.toString(),
@@ -74,7 +78,8 @@ object Source {
                 lang = source[SourceTable.lang],
                 iconUrl = proxyExtensionIconUrl(extension[ExtensionTable.pkgName]),
                 supportsLatest = catalogueSource.supportsLatest,
-                isConfigurable = catalogueSource is ConfigurableSource,
+                isConfigurable =
+                    if (catalogueSource is LnReaderSource) catalogueSource.isConfigurable else catalogueSource is ConfigurableSource,
                 isNsfw = source[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
                 displayName = catalogueSource.toString(),
                 baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),

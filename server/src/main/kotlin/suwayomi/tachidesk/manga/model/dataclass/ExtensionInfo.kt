@@ -11,15 +11,21 @@ data class ExtensionInfo(
     val storeIndexUrl: String,
     val name: String,
     val pkgName: String,
-    val apkUrl: String,
+    val apkUrl: String?,
     val jarUrl: String?,
     val iconUrl: String,
-    val extensionLib: String,
+    val extensionLib: String?,
     val versionCode: Long,
     val versionName: String,
     val lang: String,
     val contentWarning: ContentWarning,
     val sources: List<ExtensionSource>,
+    val runtimeKind: ExtensionKind = ExtensionKind.JVM,
+    val pluginId: String? = null,
+    val siteUrl: String? = null,
+    val codeUrl: String? = null,
+    val customJsUrl: String? = null,
+    val customCssUrl: String? = null,
 )
 
 data class ExtensionSource(

@@ -5,13 +5,13 @@ package suwayomi.tachidesk.graphql.mutations
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.KoSyncConnectPayload
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.LogoutKoSyncAccountPayload
 import suwayomi.tachidesk.graphql.types.SyncConflictInfoType
+import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -106,16 +106,12 @@ class KoreaderSyncMutation {
                         SyncConflictInfoType(
                             deviceName = syncResult.device,
                             remotePage = syncResult.pageRead,
+                            remotePercentage = syncResult.progressPercentage,
                         )
                 }
 
                 if (syncResult.shouldUpdate) {
-                    transaction {
-                        ChapterTable.update({ ChapterTable.id eq input.chapterId }) {
-                            it[lastPageRead] = syncResult.pageRead
-                            it[lastReadAt] = syncResult.timestamp
-                        }
-                    }
+                    Chapter.applyKoreaderSyncResult(input.chapterId, syncResult)
                 }
             }
 

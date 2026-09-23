@@ -19,6 +19,7 @@ import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import java.util.concurrent.CompletableFuture
 
@@ -48,6 +49,12 @@ class ExtensionType(
     val isInstalled: Boolean,
     val hasUpdate: Boolean,
     val isObsolete: Boolean,
+    val runtimeKind: ExtensionKind = ExtensionKind.JVM,
+    val pluginId: String? = null,
+    val siteUrl: String? = null,
+    val codeUrl: String? = null,
+    val customJsUrl: String? = null,
+    val customCssUrl: String? = null,
 ) : Node {
     constructor(row: ResultRow) : this(
         storeIndexUrl = row[ExtensionTable.storeIndexUrl],
@@ -68,6 +75,12 @@ class ExtensionType(
         isInstalled = row[ExtensionTable.isInstalled],
         hasUpdate = row[ExtensionTable.hasUpdate],
         isObsolete = row[ExtensionTable.isObsolete],
+        runtimeKind = ExtensionKind.fromDatabase(row[ExtensionTable.runtimeKind]),
+        pluginId = row[ExtensionTable.pluginId],
+        siteUrl = row[ExtensionTable.siteUrl],
+        codeUrl = row[ExtensionTable.codeUrl],
+        customJsUrl = row[ExtensionTable.customJsUrl],
+        customCssUrl = row[ExtensionTable.customCssUrl],
     )
 
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceNodeList> =

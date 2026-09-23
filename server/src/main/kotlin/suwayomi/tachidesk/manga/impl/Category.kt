@@ -14,6 +14,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.batchInsert
@@ -23,6 +24,7 @@ import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.global.impl.sync.SyncYomiSyncService
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
@@ -34,11 +36,17 @@ object Category {
     /**
      * The new category will be placed at the end of the list
      */
-    fun createCategory(name: String): Int = createCategories(listOf(name)).first()
+    fun createCategory(
+        name: String,
+        contentType: SourceContentType = SourceContentType.MANGA,
+    ): Int = createCategories(listOf(name), contentType).first()
 
-    fun createCategories(names: List<String>): List<Int> =
+    fun createCategories(
+        names: List<String>,
+        contentType: SourceContentType = SourceContentType.MANGA,
+    ): List<Int> =
         transaction {
-            val categoryIdToName = getCategoryList().associate { it.id to it.name.lowercase() }
+            val categoryIdToName = getCategoryList(contentType).associate { it.id to it.name.lowercase() }
 
             val categoriesToCreate =
                 names
@@ -50,10 +58,11 @@ object Category {
                 CategoryTable
                     .batchInsert(categoriesToCreate) {
                         this[CategoryTable.name] = it
+                        this[CategoryTable.contentType] = contentType
                         this[CategoryTable.order] = Int.MAX_VALUE
                     }.associate { it[CategoryTable.name] to it[CategoryTable.id].value }
 
-            normalizeCategories()
+            normalizeCategories(contentType)
 
             names.map {
                 // creating a category named Default is illegal
@@ -94,6 +103,7 @@ object Category {
     fun reorderCategory(
         from: Int,
         to: Int,
+        contentType: SourceContentType = SourceContentType.MANGA,
     ) {
         if (from == 0 || to == 0) return
         transaction {
@@ -101,7 +111,7 @@ object Category {
                 CategoryTable
                     .selectAll()
                     .where {
-                        CategoryTable.id neq DEFAULT_CATEGORY_ID
+                        (CategoryTable.id neq DEFAULT_CATEGORY_ID) and (CategoryTable.contentType eq contentType)
                     }.orderBy(CategoryTable.order to SortOrder.ASC)
                     .toMutableList()
             categories.add(to - 1, categories.removeAt(from - 1))
@@ -110,7 +120,7 @@ object Category {
                     it[CategoryTable.order] = index + 1
                 }
             }
-            normalizeCategories()
+            normalizeCategories(contentType)
         }
     }
 
@@ -122,10 +132,16 @@ object Category {
         require(position > 0) { "'position' must be > 0" }
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
+            val contentType =
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id eq categoryId }
+                    .firstOrNull()
+                    ?.get(CategoryTable.contentType) ?: return@transaction
             val categories =
                 CategoryTable
                     .selectAll()
-                    .where { CategoryTable.id neq DEFAULT_CATEGORY_ID }
+                    .where { (CategoryTable.id neq DEFAULT_CATEGORY_ID) and (CategoryTable.contentType eq contentType) }
                     .orderBy(CategoryTable.order to SortOrder.ASC, CategoryTable.id to SortOrder.ASC)
                     .toMutableList()
             val from = categories.indexOfFirst { it[CategoryTable.id].value == categoryId }
@@ -138,21 +154,22 @@ object Category {
                     }
                 }
             }
-            normalizeCategories()
+            normalizeCategories(contentType)
         }
     }
 
     fun removeCategory(categoryId: Int) {
         if (categoryId == DEFAULT_CATEGORY_ID) return
         transaction {
-            val uid =
+            val category =
                 CategoryTable
                     .selectAll()
                     .where { CategoryTable.id eq categoryId }
                     .firstOrNull()
-                    ?.get(CategoryTable.uid)
+            val uid = category?.get(CategoryTable.uid)
+            val contentType = category?.get(CategoryTable.contentType)
             CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
-            normalizeCategories()
+            contentType?.let(::normalizeCategories)
             if (uid != null) {
                 SyncYomiSyncService.rememberDeletedCategory(uid)
             }
@@ -160,26 +177,28 @@ object Category {
     }
 
     /** make sure category order numbers starts from 1 and is consecutive */
-    fun normalizeCategories() {
+    fun normalizeCategories(contentType: SourceContentType? = null) {
         transaction {
-            CategoryTable
-                .selectAll()
+            val categories = CategoryTable.selectAll()
+            contentType?.let { categories.andWhere { CategoryTable.contentType eq it } }
+            val orderOffset = if (contentType != null && contentType != SourceContentType.MANGA) 1 else 0
+            categories
                 .orderBy(CategoryTable.order to SortOrder.ASC)
                 .sortedWith(compareBy({ it[CategoryTable.id].value != 0 }, { it[CategoryTable.order] }))
                 .forEachIndexed { index, cat ->
                     CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value }) {
-                        it[CategoryTable.order] = index
+                        it[CategoryTable.order] = index + orderOffset
                     }
                 }
         }
     }
 
-    private fun needsDefaultCategory() =
+    fun needsDefaultCategory(contentType: SourceContentType) =
         transaction {
             MangaTable
                 .leftJoin(CategoryMangaTable)
                 .selectAll()
-                .where { MangaTable.inLibrary eq true }
+                .where { (MangaTable.inLibrary eq true) and (MangaTable.contentType eq contentType) }
                 .andWhere { CategoryMangaTable.manga.isNull() }
                 .empty()
                 .not()
@@ -188,42 +207,53 @@ object Category {
     const val DEFAULT_CATEGORY_ID = 0
     const val DEFAULT_CATEGORY_NAME = "Default"
 
-    fun getCategoryList(): List<CategoryDataClass> =
+    fun getCategoryList(contentType: SourceContentType = SourceContentType.MANGA): List<CategoryDataClass> =
         transaction {
             CategoryTable
                 .selectAll()
+                .where { (CategoryTable.contentType eq contentType) or (CategoryTable.id eq DEFAULT_CATEGORY_ID) }
                 .orderBy(CategoryTable.order to SortOrder.ASC)
                 .let {
-                    if (needsDefaultCategory()) {
+                    if (needsDefaultCategory(contentType)) {
                         it
                     } else {
                         it.andWhere { CategoryTable.id neq DEFAULT_CATEGORY_ID }
                     }
                 }.map {
-                    CategoryTable.toDataClass(it)
+                    CategoryTable.toDataClass(it).let { category ->
+                        if (category.id == DEFAULT_CATEGORY_ID) category.copy(contentType = contentType) else category
+                    }
                 }
         }
 
-    fun getCategoryById(categoryId: Int): CategoryDataClass? =
+    fun getCategoryById(
+        categoryId: Int,
+        contentType: SourceContentType? = null,
+    ): CategoryDataClass? =
         transaction {
             CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.firstOrNull()?.let {
-                CategoryTable.toDataClass(it)
+                CategoryTable.toDataClass(it).let { category ->
+                    if (category.id == DEFAULT_CATEGORY_ID && contentType != null) category.copy(contentType = contentType) else category
+                }
             }
         }
 
-    fun getCategorySize(categoryId: Int): Int =
+    fun getCategorySize(
+        categoryId: Int,
+        contentType: SourceContentType = SourceContentType.MANGA,
+    ): Int =
         transaction {
             if (categoryId == DEFAULT_CATEGORY_ID) {
                 MangaTable
                     .leftJoin(CategoryMangaTable)
                     .selectAll()
-                    .where { MangaTable.inLibrary eq true }
+                    .where { (MangaTable.inLibrary eq true) and (MangaTable.contentType eq contentType) }
                     .andWhere { CategoryMangaTable.manga.isNull() }
             } else {
                 CategoryMangaTable
                     .leftJoin(MangaTable)
                     .selectAll()
-                    .where { CategoryMangaTable.category eq categoryId }
+                    .where { (CategoryMangaTable.category eq categoryId) and (MangaTable.contentType eq contentType) }
                     .andWhere { MangaTable.inLibrary eq true }
             }.count().toInt()
         }

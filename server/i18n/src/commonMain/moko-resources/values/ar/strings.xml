@@ -80,6 +80,7 @@
     <string name="opds_linktitle_stream_pages_start_remote">اقرأ عبر الإنترنت (تمت المزامنة من %1$s)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">تابع القراءة عبر الإنترنت (تمت المزامنة من %1$s)</string>
     <string name="opds_linktitle_download_cbz">قم بتنزيل CBZ</string>
+    <string name="opds_linktitle_download_epub">قم بتنزيل EPUB</string>
     <string name="opds_linktitle_chapter_cover">غلاف الفصل</string>
     <string name="opds_linktitle_view_chapter_details">عرض تفاصيل الفصل والحصول على الصفحات</string>
     <string name="opds_chapter_status_read">✅</string>

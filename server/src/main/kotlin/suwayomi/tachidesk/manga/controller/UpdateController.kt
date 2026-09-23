@@ -3,6 +3,7 @@ package suwayomi.tachidesk.manga.controller
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.update.IUpdater
@@ -78,6 +79,7 @@ object UpdateController {
                         Category.getCategoryList(),
                         clear = true,
                         forceAll = false,
+                        contentType = SourceContentType.MANGA,
                     )
                 } else {
                     val category = Category.getCategoryById(categoryId)
@@ -86,6 +88,7 @@ object UpdateController {
                             listOf(category),
                             clear = true,
                             forceAll = true,
+                            contentType = SourceContentType.MANGA,
                         )
                     } else {
                         logger.info { "No Category found" }

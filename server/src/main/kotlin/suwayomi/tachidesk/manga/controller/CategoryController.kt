@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.javalin.http.HttpStatus
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
@@ -119,7 +120,7 @@ object CategoryController {
             },
             behaviorOf = { ctx, categoryId ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                ctx.json(CategoryManga.getCategoryMangaList(categoryId))
+                ctx.json(CategoryManga.getCategoryMangaList(categoryId, SourceContentType.MANGA))
             },
             withResults = {
                 json<Array<MangaDataClass>>(HttpStatus.OK)

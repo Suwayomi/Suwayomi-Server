@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -43,6 +44,8 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.SourceNodeList
 import suwayomi.tachidesk.graphql.types.SourceType
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
+import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
@@ -142,6 +145,7 @@ class SourceQuery {
     fun sources(
         condition: SourceCondition? = null,
         filter: SourceFilter? = null,
+        includeLightNovels: Boolean = false,
         @GraphQLDeprecated(
             "Replaced with order",
             replaceWith = ReplaceWith("order"),
@@ -163,6 +167,10 @@ class SourceQuery {
             val (queryResults, resultsAsType) =
                 suspendTransaction {
                     val res = SourceTable.selectAll()
+                    if (!includeLightNovels) {
+                        res.adjustColumnSet { innerJoin(ExtensionTable) }
+                        res.andWhere { ExtensionTable.runtimeKind eq ExtensionKind.JVM.name }
+                    }
 
                     res.applyOps(condition, filter)
 

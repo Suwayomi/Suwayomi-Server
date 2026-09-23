@@ -47,6 +47,7 @@
     <string name="manga_status_publishing_finished">Đã hoàn thành xuất bản</string>
     <string name="manga_status_cancelled">Đã ngưng</string>
     <string name="opds_linktitle_download_cbz">Tải xuống CBZ</string>
+    <string name="opds_linktitle_download_epub">Tải xuống EPUB</string>
     <string name="opds_linktitle_self_feed">Nguồn cấp dữ liệu hiện tại</string>
     <string name="opds_facet_sort_date_desc">Ngày giảm dần</string>
     <string name="opds_linktitle_view_chapter_details">Xem Chi Tiết Chương &amp; Nhận Trang</string>

@@ -9,11 +9,13 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 
 object CategoryTable : IntIdTable() {
     val name = varchar("name", 64)
+    val contentType = enumerationByName("content_type", 16, SourceContentType::class).default(SourceContentType.MANGA)
     val order = integer("sort_order").default(0)
     val isDefault = bool("is_default").default(false)
     val includeInUpdate = integer("include_in_update").default(IncludeOrExclude.UNSET.value)
@@ -33,6 +35,7 @@ fun CategoryTable.toDataClass(categoryEntry: ResultRow) =
         id = categoryEntry[id].value,
         order = categoryEntry[order],
         name = categoryEntry[name],
+        contentType = categoryEntry[contentType],
         default = categoryEntry[isDefault],
         includeInUpdate = IncludeOrExclude.fromValue(categoryEntry[includeInUpdate]),
         includeInDownload = IncludeOrExclude.fromValue(categoryEntry[includeInDownload]),

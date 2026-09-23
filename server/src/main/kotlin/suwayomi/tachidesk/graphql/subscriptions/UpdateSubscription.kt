@@ -12,14 +12,17 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.graphql.types.UpdaterUpdates
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdateUpdates
+import suwayomi.tachidesk.manga.impl.update.UpdaterRegistry
 import uy.kohesive.injekt.injectLazy
 
 class UpdateSubscription {
     private val updater: IUpdater by injectLazy()
+    private val updaters: UpdaterRegistry by injectLazy()
 
     @GraphQLDeprecated("Replaced with updates", ReplaceWith("updates(input)"))
     @RequireAuth
@@ -37,12 +40,14 @@ class UpdateSubscription {
                 "update has been handled. This is an issue e.g. when starting an update.",
         )
         val maxUpdates: Int?,
+        val contentType: SourceContentType? = SourceContentType.MANGA,
     )
 
     @RequireAuth
     fun libraryUpdateStatusChanged(input: LibraryUpdateStatusChangedInput): Flow<UpdaterUpdates> {
         val omitUpdates = input.maxUpdates != null
         val maxUpdates = input.maxUpdates ?: 50
+        val updater = updaters.forContentType(input.contentType)
 
         return updater.updates.map { updates ->
             val categoryUpdatesCount = updates.categoryUpdates.size

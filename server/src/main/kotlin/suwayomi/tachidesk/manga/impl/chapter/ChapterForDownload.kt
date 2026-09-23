@@ -22,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
@@ -151,6 +152,10 @@ private class ChapterForDownload(
     suspend fun asDownloadReady(): ChapterDataClass {
         val log = KotlinLogging.logger("${logger.name}::asDownloadReady")
 
+        if (chapterEntry[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL) {
+            return ChapterTable.toDataClass(chapterEntry).copy(pageCount = 0)
+        }
+
         val downloadPageCount = runCatching { ChapterDownloadHelper.getImageCount(mangaId, chapterId) }.getOrDefault(0)
         val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
         val dbPageCount = chapterEntry[ChapterTable.pageCount]
@@ -197,6 +202,7 @@ private class ChapterForDownload(
         optMangaId: Int? = null,
     ) = transaction {
         ChapterTable
+            .innerJoin(MangaTable)
             .selectAll()
             .where {
                 if (optChapterId != null) {

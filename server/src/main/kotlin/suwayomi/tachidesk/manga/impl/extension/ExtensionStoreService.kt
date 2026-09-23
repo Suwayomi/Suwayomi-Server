@@ -30,7 +30,9 @@ import suwayomi.tachidesk.manga.impl.extension.github.NetworkLegacyExtension
 import suwayomi.tachidesk.manga.impl.extension.github.NetworkLegacyExtensionRepo
 import suwayomi.tachidesk.manga.impl.extension.github.toExtensionInfo
 import suwayomi.tachidesk.manga.impl.extension.github.toExtensionInfos
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderRepository
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionInfo
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionStore
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.server.serverConfig
@@ -53,14 +55,34 @@ object ExtensionStoreService {
                     when (source.peek().readByte()) {
                         // "[..."
                         0x5B.toByte() -> {
-                            run {
-                                if (!indexUrl.endsWith("/index.min.json")) {
-                                    throw IllegalArgumentException("Provided legacy store url is not valid")
-                                }
-                                updatedIndexUrl = indexUrl.replace("/index.min.json", "/repo.json")
-                                network.client.newCall(GET(updatedIndexUrl)).awaitSuccess().body.source().use {
-                                    json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(it)
-                                }
+                            val lnReaderManifest = runCatching { LnReaderRepository.decodeAndValidate(json, source.peek()) }
+                            val lnReaderPlugins = lnReaderManifest.getOrNull()
+                            if (lnReaderPlugins != null && (lnReaderPlugins.isNotEmpty() || !indexUrl.endsWith("/index.min.json"))) {
+                                return LnReaderRepository.toExtensionStore(indexUrl)
+                            }
+
+                            if (
+                                !indexUrl.endsWith("/index.min.json") ||
+                                LnReaderRepository.containsManifestMarkers(json, source.peek())
+                            ) {
+                                throw IllegalArgumentException(
+                                    "Provided array store is not a valid LNReader manifest",
+                                    lnReaderManifest.exceptionOrNull(),
+                                )
+                            }
+
+                            runCatching {
+                                json.decodeFromBufferedSource<List<NetworkLegacyExtension>>(source.peek())
+                            }.getOrElse { cause ->
+                                throw IllegalArgumentException(
+                                    "Provided array store is neither a valid LNReader manifest nor a legacy extension index",
+                                    cause,
+                                )
+                            }
+
+                            updatedIndexUrl = indexUrl.replace("/index.min.json", "/repo.json")
+                            network.client.newCall(GET(updatedIndexUrl)).awaitSuccess().body.source().use {
+                                json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(it)
                             }
                         }
 
@@ -109,6 +131,7 @@ object ExtensionStoreService {
                     it[indexUrl] = store.indexUrl
                     it[isLegacy] = store.isLegacy
                     it[extensionListUrl] = store.extensionListUrl
+                    it[kind] = store.kind.name
                 }
             } else {
                 ExtensionStoreTable.update({ ExtensionStoreTable.indexUrl eq store.indexUrl }) {
@@ -119,6 +142,7 @@ object ExtensionStoreService {
                     it[contactDiscord] = store.contact.discord
                     it[isLegacy] = store.isLegacy
                     it[extensionListUrl] = store.extensionListUrl
+                    it[kind] = store.kind.name
                 }
             }
         }
@@ -215,7 +239,12 @@ object ExtensionStoreService {
 
     suspend fun getExtensions(store: ExtensionStore): List<ExtensionInfo> {
         val extensions =
-            if (store.extensionListUrl != null) {
+            if (store.kind == ExtensionKind.LNREADER) {
+                val response = network.client.newCall(GET(store.indexUrl)).awaitSuccess()
+                response.body.source().decompressIfGzipped().use { source ->
+                    LnReaderRepository.toExtensionInfos(store, LnReaderRepository.decodeAndValidate(json, source))
+                }
+            } else if (store.extensionListUrl != null) {
                 val response = network.client.newCall(GET(store.extensionListUrl)).awaitSuccess()
                 response.body.source().decompressIfGzipped().use { source ->
                     when (source.peek().readByte()) {

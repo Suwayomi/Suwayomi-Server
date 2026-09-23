@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
@@ -55,6 +56,7 @@ object MangaTable : IntIdTable() {
     val version = long("version").default(0)
     val isSyncing = bool("is_syncing").default(false)
     val memo = jsonObject("memo")
+    val contentType = enumerationByName("content_type", 16, SourceContentType::class).default(SourceContentType.MANGA)
 }
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
@@ -80,6 +82,7 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         lastModifiedAt = mangaEntry[lastModifiedAt],
         version = mangaEntry[version],
         memo = mangaEntry[memo],
+        contentType = mangaEntry[contentType],
     )
 
 enum class MangaStatus(

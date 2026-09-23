@@ -8,9 +8,15 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -28,6 +34,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
@@ -40,9 +47,12 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupHistory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
+import suwayomi.tachidesk.manga.impl.text.ChapterTextSource
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackRecordDataClass
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -100,7 +110,15 @@ object BackupMangaHandler {
                         lastModifiedAt = mangaRow[MangaTable.lastModifiedAt],
                         version = mangaRow[MangaTable.version],
                         initialized = mangaRow[MangaTable.initialized],
-                        memo = Json.encodeToString(mangaRow[MangaTable.memo]).encodeToByteArray(),
+                        memo =
+                            Json
+                                .encodeToString(
+                                    JsonObject(
+                                        mangaRow[MangaTable.memo].toMutableMap().apply {
+                                            put("suwayomi.contentType", JsonPrimitive(mangaRow[MangaTable.contentType].name))
+                                        },
+                                    ),
+                                ).encodeToByteArray(),
                     )
 
                 val mangaId = mangaRow[MangaTable.id].value
@@ -241,6 +259,26 @@ object BackupMangaHandler {
         val keepLocalManga =
             syncMode == SyncRestoreMode.ADOPT && dbManga != null && manga.version < dbManga[MangaTable.version]
 
+        val source = runCatching { runBlocking { GetSource.getSourceOrNull(manga.source) } }.getOrNull()
+        val parsedMemo = runCatching { Json.decodeFromString<JsonObject>(manga.memo.decodeToString()) }.getOrDefault(JsonObject(emptyMap()))
+        val memoContentType = parsedMemo["suwayomi.contentType"]?.jsonPrimitive?.contentOrNull
+        val backupContentType =
+            when (memoContentType) {
+                SourceContentType.MANGA.name -> SourceContentType.MANGA
+                SourceContentType.LIGHT_NOVEL.name -> SourceContentType.LIGHT_NOVEL
+                else -> null
+            }
+        val cleanMemo = JsonObject(parsedMemo - "suwayomi.contentType")
+
+        val resolvedContentType =
+            when {
+                source is ChapterTextSource -> SourceContentType.LIGHT_NOVEL
+                source != null && source !is StubSource -> SourceContentType.MANGA
+                backupContentType != null -> backupContentType
+                dbManga != null -> dbManga[MangaTable.contentType]
+                else -> SourceContentType.MANGA
+            }
+
         val mangaId =
             transaction {
                 val mangaId =
@@ -274,7 +312,8 @@ object BackupMangaHandler {
                                 it[lastModifiedAt] = manga.lastModifiedAt
                                 it[version] = manga.version
                                 it[isSyncing] = syncMode.isSync
-                                it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
+                                it[contentType] = resolvedContentType
+                                it[memo] = cleanMemo
                             }.value
                     } else if (keepLocalManga) {
                         dbManga[MangaTable.id].value
@@ -311,7 +350,8 @@ object BackupMangaHandler {
                                 it[version] = manga.version
                             }
                             it[isSyncing] = syncMode.isSync
-                            it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
+                            it[contentType] = resolvedContentType
+                            it[memo] = cleanMemo
                         }
 
                         dbMangaId
@@ -411,7 +451,14 @@ object BackupMangaHandler {
                         this[ChapterTable.lastModifiedAt] = chapter.lastModifiedAt
                         this[ChapterTable.version] = chapter.version
                         this[ChapterTable.isSyncing] = syncMode.isSync
-                        this[ChapterTable.memo] = Json.decodeFromString<JsonObject>(chapter.memo.decodeToString())
+                        this[ChapterTable.memo] =
+                            runCatching {
+                                if (chapter.memo.isNotEmpty()) {
+                                    Json.decodeFromString<JsonObject>(chapter.memo.decodeToString())
+                                } else {
+                                    JsonObject(emptyMap())
+                                }
+                            }.getOrDefault(JsonObject(emptyMap()))
                     }.map { it[ChapterTable.id].value }
             } else {
                 emptyList()
@@ -433,6 +480,29 @@ object BackupMangaHandler {
                                     max(backupChapter.lastPageRead, dbChapter[ChapterTable.lastPageRead]).coerceAtLeast(0)
                                 this[ChapterTable.isBookmarked] = backupChapter.bookmark || dbChapter[ChapterTable.isBookmarked]
                             }
+                        }
+
+                        val localMemo = dbChapter[ChapterTable.memo]
+                        val backupMemo =
+                            runCatching {
+                                if (backupChapter.memo.isNotEmpty()) {
+                                    Json.decodeFromString<JsonObject>(backupChapter.memo.decodeToString())
+                                } else {
+                                    null
+                                }
+                            }.getOrNull()
+
+                        val mergedMemo =
+                            mergeTextProgressMemo(
+                                localMemo = localMemo,
+                                incomingMemo = backupMemo,
+                                localVersion = dbChapter[ChapterTable.version],
+                                incomingVersion = backupChapter.version,
+                                syncMode = syncMode,
+                                currentKoreaderHash = dbChapter[ChapterTable.koreaderHash],
+                            )
+                        if (mergedMemo != localMemo) {
+                            this[ChapterTable.memo] = mergedMemo
                         }
 
                         if (flags.includeHistory) {
@@ -528,6 +598,70 @@ object BackupMangaHandler {
 
         Tracker.updateTrackRecords(existingTracks)
         Tracker.insertTrackRecords(newTracks)
+    }
+
+    internal fun mergeTextProgressMemo(
+        localMemo: JsonObject,
+        incomingMemo: JsonObject?,
+        localVersion: Long,
+        incomingVersion: Long,
+        syncMode: SyncRestoreMode,
+        currentKoreaderHash: String? = null,
+    ): JsonObject {
+        if (incomingMemo == null) return localMemo
+        val incomingText = incomingMemo["suwayomi.text"] as? JsonObject ?: return localMemo
+        val localText = localMemo["suwayomi.text"] as? JsonObject
+
+        val shouldAdopt =
+            when (syncMode) {
+                SyncRestoreMode.ADOPT -> {
+                    incomingVersion >= localVersion
+                }
+
+                SyncRestoreMode.CONVERGE -> {
+                    if (incomingVersion > localVersion) {
+                        true
+                    } else if (incomingVersion < localVersion) {
+                        false
+                    } else {
+                        val incomingUpdatedAt = incomingText["updatedAt"]?.jsonPrimitive?.longOrNull ?: 0L
+                        val localUpdatedAt = localText?.get("updatedAt")?.jsonPrimitive?.longOrNull ?: 0L
+                        incomingUpdatedAt > localUpdatedAt
+                    }
+                }
+
+                SyncRestoreMode.NONE -> {
+                    val incomingUpdatedAt = incomingText["updatedAt"]?.jsonPrimitive?.longOrNull ?: 0L
+                    val localUpdatedAt = localText?.get("updatedAt")?.jsonPrimitive?.longOrNull ?: 0L
+                    localText == null || incomingUpdatedAt >= localUpdatedAt
+                }
+            }
+
+        if (!shouldAdopt) return localMemo
+
+        val sanitizedIncomingText =
+            if (incomingText.containsKey("koreaderProgress")) {
+                val progressHash = incomingText["koreaderProgressHash"]?.jsonPrimitive?.contentOrNull
+                val retainKoreaderProgress =
+                    progressHash != null && (currentKoreaderHash == null || progressHash == currentKoreaderHash)
+                if (retainKoreaderProgress) {
+                    incomingText
+                } else {
+                    buildJsonObject {
+                        incomingText.forEach { (k, v) ->
+                            if (k != "koreaderProgress" && k != "koreaderProgressHash") {
+                                put(k, v)
+                            }
+                        }
+                    }
+                }
+            } else {
+                incomingText
+            }
+
+        val mutable = localMemo.toMutableMap()
+        mutable["suwayomi.text"] = sanitizedIncomingText
+        return JsonObject(mutable)
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)

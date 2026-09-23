@@ -21,6 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
@@ -239,7 +240,7 @@ object MangaRepository {
                 source.getPopularManga(pageNum)
             }
 
-        val mangaIds = mangasPage.insertOrUpdate(sourceId)
+        val mangaIds = mangasPage.insertOrUpdate(source)
         val mangaEntries =
             transaction {
                 MangaTable
@@ -304,16 +305,18 @@ object MangaRepository {
         transaction {
             val chapterCount = ChapterTable.select(ChapterTable.id).where { ChapterTable.manga eq mangaId }.count()
             MangaTable
-                .select(MangaTable.id, MangaTable.title, MangaTable.thumbnail_url, MangaTable.author)
+                .select(MangaTable.id, MangaTable.title, MangaTable.thumbnail_url, MangaTable.author, MangaTable.contentType)
                 .where { MangaTable.id eq mangaId }
                 .firstOrNull()
                 ?.let {
+                    val isNovel = it[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL
                     OpdsMangaDetails(
                         id = it[MangaTable.id].value,
                         title = it[MangaTable.title],
                         thumbnailUrl = it[MangaTable.thumbnail_url],
                         author = it[MangaTable.author],
                         totalChapters = chapterCount,
+                        isNovel = isNovel,
                     )
                 }
         }

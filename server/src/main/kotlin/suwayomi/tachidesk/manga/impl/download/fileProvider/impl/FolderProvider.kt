@@ -81,7 +81,7 @@ class FolderProvider(
         val chapterDir = File(getChapterDownloadPath(mangaId, chapterId))
 
         if (!chapterDir.exists() || !chapterDir.isDirectory || chapterDir.listFiles().isNullOrEmpty()) {
-            throw IllegalArgumentException("Invalid folder to create CBZ for chapter ID: $chapterId")
+            throw NoSuchElementException("Invalid folder to create CBZ for chapter ID: $chapterId")
         }
 
         val byteArrayOutputStream = ByteArrayOutputStream()

@@ -82,6 +82,7 @@
     <string name="opds_linktitle_stream_pages_start_remote">Leggi online (Sincronizzato da %1$s)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">Continua lettura online (Sincronizzato da %1$s)</string>
     <string name="opds_linktitle_download_cbz">Scarica come CBZ</string>
+    <string name="opds_linktitle_download_epub">Scarica come EPUB</string>
     <string name="opds_linktitle_chapter_cover">Copertina Capitolo</string>
     <string name="opds_linktitle_view_chapter_details">Visualizza i dettagli del capitolo e ottieni le pagine</string>
     <string name="opds_chapter_status_read">✅</string>

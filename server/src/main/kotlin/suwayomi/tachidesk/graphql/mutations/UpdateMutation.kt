@@ -6,20 +6,22 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.LibraryUpdateStatus
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.graphql.types.UpdateStatus
 import suwayomi.tachidesk.manga.impl.Category
-import suwayomi.tachidesk.manga.impl.update.IUpdater
+import suwayomi.tachidesk.manga.impl.update.UpdaterRegistry
 import suwayomi.tachidesk.server.JavalinSetup.future
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
 
 class UpdateMutation {
-    private val updater: IUpdater by injectLazy()
+    private val updaters: UpdaterRegistry by injectLazy()
 
     data class UpdateLibraryInput(
         val clientMutationId: String? = null,
         val categories: List<Int>?,
+        val contentType: SourceContentType? = SourceContentType.MANGA,
     )
 
     data class UpdateLibraryPayload(
@@ -29,10 +31,12 @@ class UpdateMutation {
 
     @RequireAuth
     fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<UpdateLibraryPayload?> {
+        val updater = updaters.forContentType(input.contentType)
         updater.addCategoriesToUpdateQueue(
-            Category.getCategoryList().filter { input.categories?.contains(it.id) ?: true },
+            Category.getCategoryList(input.contentType ?: SourceContentType.MANGA).filter { input.categories?.contains(it.id) ?: true },
             clear = true,
             forceAll = !input.categories.isNullOrEmpty(),
+            contentType = input.contentType,
         )
 
         return future {
@@ -71,7 +75,7 @@ class UpdateMutation {
                 input.clientMutationId,
                 updateStatus =
                     withTimeout(30.seconds) {
-                        UpdateStatus(updater.status.first())
+                        UpdateStatus(updaters.manga.status.first())
                     },
             )
         }
@@ -80,6 +84,7 @@ class UpdateMutation {
     data class UpdateCategoryMangaInput(
         val clientMutationId: String? = null,
         val categories: List<Int>,
+        val contentType: SourceContentType? = SourceContentType.MANGA,
     )
 
     data class UpdateCategoryMangaPayload(
@@ -93,6 +98,7 @@ class UpdateMutation {
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
                 categories = input.categories,
+                contentType = input.contentType,
             ),
         )
 
@@ -101,7 +107,7 @@ class UpdateMutation {
                 input.clientMutationId,
                 updateStatus =
                     withTimeout(30.seconds) {
-                        UpdateStatus(updater.status.first())
+                        UpdateStatus(updaters.forContentType(input.contentType).status.first())
                     },
             )
         }
@@ -109,6 +115,7 @@ class UpdateMutation {
 
     data class UpdateStopInput(
         val clientMutationId: String? = null,
+        val contentType: SourceContentType? = SourceContentType.MANGA,
     )
 
     data class UpdateStopPayload(
@@ -117,7 +124,7 @@ class UpdateMutation {
 
     @RequireAuth
     fun updateStop(input: UpdateStopInput): UpdateStopPayload {
-        updater.reset()
+        updaters.forContentType(input.contentType).reset()
         return UpdateStopPayload(input.clientMutationId)
     }
 }

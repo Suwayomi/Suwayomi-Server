@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.model.SChapter
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
@@ -69,3 +70,13 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         version = chapterEntry[version],
         memo = chapterEntry[memo],
     )
+
+fun ResultRow.toSChapter(): SChapter =
+    SChapter.create().apply {
+        url = this@toSChapter[ChapterTable.url]
+        name = this@toSChapter[ChapterTable.name]
+        chapter_number = this@toSChapter[ChapterTable.chapter_number]
+        scanlator = this@toSChapter[ChapterTable.scanlator]
+        date_upload = this@toSChapter[ChapterTable.date_upload]
+        memo = this@toSChapter[ChapterTable.memo]
+    }

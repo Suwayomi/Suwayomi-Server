@@ -24,6 +24,7 @@
     <string name="opds_facetgroup_sort_order">並び替え</string>
     <string name="opds_facet_filter_all_chapters">すべての章</string>
     <string name="opds_linktitle_download_cbz">CBZをダウンロード</string>
+    <string name="opds_linktitle_download_epub">EPUBをダウンロード</string>
     <string name="opds_linktitle_chapter_cover">チャプターカバー</string>
     <string name="opds_linktitle_previous_page">前のページ</string>
     <string name="opds_chapter_status_downloaded">⬇️</string>

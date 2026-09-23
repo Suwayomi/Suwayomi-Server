@@ -17,15 +17,20 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.extension.Extension.proxyExtensionIconUrl
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderRepository
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionInfo
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.serverConfig
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 
@@ -36,20 +41,23 @@ object ExtensionsList {
     var updateMap = ConcurrentHashMap<String, ExtensionInfo>()
 
     suspend fun fetchExtensions() {
-        val allExtensions = mutableListOf<ExtensionInfo>()
-
-        ExtensionStoreService.getAndRefresh().forEach { store ->
-            try {
-                val extensions = ExtensionStoreService.getExtensions(store)
-                allExtensions.addAll(extensions)
-            } catch (e: Exception) {
-                logger.warn(e) {
-                    "Failed to fetch extensions for store: ${store.indexUrl}"
+        val storeResults =
+            ExtensionStoreService.getAndRefresh().map { store ->
+                try {
+                    ExtensionStoreService.getExtensions(store)
+                } catch (e: Exception) {
+                    logger.warn(e) {
+                        "Failed to fetch extensions for store: ${store.indexUrl}"
+                    }
+                    emptyList()
                 }
             }
-        }
 
-        updateExtensionDatabase(allExtensions)
+        val configuredStoreOrder =
+            serverConfig.extensionStores.value
+                .withIndex()
+                .associate { it.value to it.index }
+        updateExtensionDatabase(LnReaderRepository.mergeStoreResults(storeResults, configuredStoreOrder))
     }
 
     suspend fun fetchExtensionsCached() {
@@ -71,22 +79,27 @@ object ExtensionsList {
 
     fun extensionTableAsDataClass() =
         transaction {
-            ExtensionTable.selectAll().filter { it[ExtensionTable.name] != LocalSource.EXTENSION_NAME }.map {
-                ExtensionDataClass(
-                    repo = it[ExtensionTable.storeIndexUrl],
-                    apkName = it[ExtensionTable.apkName].orEmpty(),
-                    iconUrl = proxyExtensionIconUrl(it[ExtensionTable.pkgName]),
-                    name = it[ExtensionTable.name],
-                    pkgName = it[ExtensionTable.pkgName],
-                    versionName = it[ExtensionTable.versionName],
-                    versionCode = it[ExtensionTable.versionCode].toInt(),
-                    lang = it[ExtensionTable.lang],
-                    isNsfw = it[ExtensionTable.contentWarning] >= ContentWarning.MIXED.ordinal,
-                    installed = it[ExtensionTable.isInstalled],
-                    hasUpdate = it[ExtensionTable.hasUpdate],
-                    obsolete = it[ExtensionTable.isObsolete],
-                )
-            }
+            ExtensionTable
+                .selectAll()
+                .filter {
+                    it[ExtensionTable.name] != LocalSource.EXTENSION_NAME &&
+                        it[ExtensionTable.runtimeKind] == ExtensionKind.JVM.name
+                }.map {
+                    ExtensionDataClass(
+                        repo = it[ExtensionTable.storeIndexUrl],
+                        apkName = it[ExtensionTable.apkName].orEmpty(),
+                        iconUrl = proxyExtensionIconUrl(it[ExtensionTable.pkgName]),
+                        name = it[ExtensionTable.name],
+                        pkgName = it[ExtensionTable.pkgName],
+                        versionName = it[ExtensionTable.versionName],
+                        versionCode = it[ExtensionTable.versionCode].toInt(),
+                        lang = it[ExtensionTable.lang],
+                        isNsfw = it[ExtensionTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+                        installed = it[ExtensionTable.isInstalled],
+                        hasUpdate = it[ExtensionTable.hasUpdate],
+                        obsolete = it[ExtensionTable.isObsolete],
+                    )
+                }
         }
 
     private val updateExtensionDatabaseMutex = Mutex()
@@ -94,12 +107,34 @@ object ExtensionsList {
     private suspend fun updateExtensionDatabase(foundExtensions: List<ExtensionInfo>) {
         updateExtensionDatabaseMutex.withLock {
             transaction {
+                val lnReaderExtensions = foundExtensions.filter { it.runtimeKind == ExtensionKind.LNREADER }
+                if (lnReaderExtensions.isNotEmpty()) {
+                    val sourceIds = lnReaderExtensions.map { LnReaderRepository.sourceId(requireNotNull(it.pluginId)) }
+                    val existingSourceOwners =
+                        SourceTable
+                            .innerJoin(ExtensionTable)
+                            .select(SourceTable.id, ExtensionTable.runtimeKind, ExtensionTable.pluginId)
+                            .where { SourceTable.id inList sourceIds }
+                            .associate { row ->
+                                row[SourceTable.id].value to
+                                    LnReaderRepository.ExistingSourceOwner(
+                                        runtimeKind = ExtensionKind.fromDatabase(row[ExtensionTable.runtimeKind]),
+                                        pluginId = row[ExtensionTable.pluginId],
+                                    )
+                            }
+                    LnReaderRepository.validateSourceIdCollisions(lnReaderExtensions, existingSourceOwners)
+                }
+
                 val uniqueExtensions =
                     foundExtensions
                         .groupBy { it.pkgName }
-                        .mapValues { (_, extension) ->
-                            extension.maxBy { it.versionCode }
-                        }.values
+                        .map { (pkgName, extensions) ->
+                            val runtimeKinds = extensions.map { it.runtimeKind }.distinct()
+                            check(runtimeKinds.size == 1) {
+                                "Extension identity '$pkgName' is shared by multiple runtime kinds: $runtimeKinds"
+                            }
+                            extensions.maxBy { it.versionCode }
+                        }
                 val installedExtensions =
                     ExtensionTable
                         .selectAll()
@@ -116,6 +151,10 @@ object ExtensionsList {
                 uniqueExtensions.forEach {
                     val extension = installedExtensions[it.pkgName]
                     if (extension != null) {
+                        val existingRuntimeKind = ExtensionKind.fromDatabase(extension[ExtensionTable.runtimeKind])
+                        check(existingRuntimeKind == it.runtimeKind) {
+                            "Extension identity '${it.pkgName}' cannot change runtime kind from $existingRuntimeKind to ${it.runtimeKind}"
+                        }
                         extensionsToUpdate.add(it to extension)
                     } else {
                         extensionsToInsert.add(it)
@@ -138,6 +177,12 @@ object ExtensionsList {
                                     this[ExtensionTable.storeIndexUrl] = foundExtension.storeIndexUrl
                                     this[ExtensionTable.apkUrl] = foundExtension.apkUrl
                                     this[ExtensionTable.jarUrl] = foundExtension.jarUrl
+                                    this[ExtensionTable.runtimeKind] = foundExtension.runtimeKind.name
+                                    this[ExtensionTable.pluginId] = foundExtension.pluginId
+                                    this[ExtensionTable.siteUrl] = foundExtension.siteUrl
+                                    this[ExtensionTable.codeUrl] = foundExtension.codeUrl
+                                    this[ExtensionTable.customJsUrl] = foundExtension.customJsUrl
+                                    this[ExtensionTable.customCssUrl] = foundExtension.customCssUrl
 
                                     // Reset the "hasUpdate" flag to ensure that we have no extensions that are incorrectly marked as updatable
                                     // This can happen if an extension store has some versionCode mismatch that gets fixed without bumping the actual versionCode.
@@ -159,7 +204,11 @@ object ExtensionsList {
                                         foundExtension.versionCode > extensionRecord[ExtensionTable.versionCode] -> {
                                             // there is an update
                                             this[ExtensionTable.hasUpdate] = true
-                                            updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
+                                            if (foundExtension.runtimeKind == ExtensionKind.LNREADER) {
+                                                updateMap[foundExtension.pkgName] = foundExtension
+                                            } else {
+                                                updateMap.putIfAbsent(foundExtension.pkgName, foundExtension)
+                                            }
                                         }
 
                                         foundExtension.versionCode < extensionRecord[ExtensionTable.versionCode] -> {
@@ -181,13 +230,19 @@ object ExtensionsList {
                                     // extension is not installed, so we can overwrite the data without a care
                                     this[ExtensionTable.storeIndexUrl] = foundExtension.storeIndexUrl
                                     this[ExtensionTable.name] = foundExtension.name
-                                    this[ExtensionTable.extensionLib] = foundExtension.extensionLib
+                                    this[ExtensionTable.extensionLib] = foundExtension.extensionLib.orEmpty()
                                     this[ExtensionTable.versionName] = foundExtension.versionName
                                     this[ExtensionTable.versionCode] = foundExtension.versionCode
                                     this[ExtensionTable.lang] = foundExtension.lang
                                     this[ExtensionTable.contentWarning] = foundExtension.contentWarning.ordinal
                                     this[ExtensionTable.apkUrl] = foundExtension.apkUrl
                                     this[ExtensionTable.jarUrl] = foundExtension.jarUrl
+                                    this[ExtensionTable.runtimeKind] = foundExtension.runtimeKind.name
+                                    this[ExtensionTable.pluginId] = foundExtension.pluginId
+                                    this[ExtensionTable.siteUrl] = foundExtension.siteUrl
+                                    this[ExtensionTable.codeUrl] = foundExtension.codeUrl
+                                    this[ExtensionTable.customJsUrl] = foundExtension.customJsUrl
+                                    this[ExtensionTable.customCssUrl] = foundExtension.customCssUrl
                                     this[ExtensionTable.iconUrl] = foundExtension.iconUrl
                                 }
                             }.toExecutable()
@@ -200,13 +255,19 @@ object ExtensionsList {
                         this[ExtensionTable.storeIndexUrl] = foundExtension.storeIndexUrl
                         this[ExtensionTable.name] = foundExtension.name
                         this[ExtensionTable.pkgName] = foundExtension.pkgName
-                        this[ExtensionTable.extensionLib] = foundExtension.extensionLib
+                        this[ExtensionTable.extensionLib] = foundExtension.extensionLib.orEmpty()
                         this[ExtensionTable.versionName] = foundExtension.versionName
                         this[ExtensionTable.versionCode] = foundExtension.versionCode
                         this[ExtensionTable.lang] = foundExtension.lang
                         this[ExtensionTable.contentWarning] = foundExtension.contentWarning.ordinal
                         this[ExtensionTable.apkUrl] = foundExtension.apkUrl
                         this[ExtensionTable.jarUrl] = foundExtension.jarUrl
+                        this[ExtensionTable.runtimeKind] = foundExtension.runtimeKind.name
+                        this[ExtensionTable.pluginId] = foundExtension.pluginId
+                        this[ExtensionTable.siteUrl] = foundExtension.siteUrl
+                        this[ExtensionTable.codeUrl] = foundExtension.codeUrl
+                        this[ExtensionTable.customJsUrl] = foundExtension.customJsUrl
+                        this[ExtensionTable.customCssUrl] = foundExtension.customCssUrl
                         this[ExtensionTable.iconUrl] = foundExtension.iconUrl
                     }
                 }

@@ -41,7 +41,7 @@ import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionStoreService
 import suwayomi.tachidesk.manga.impl.update.IUpdater
-import suwayomi.tachidesk.manga.impl.update.Updater
+import suwayomi.tachidesk.manga.impl.update.UpdaterRegistry
 import suwayomi.tachidesk.manga.impl.util.lang.renameTo
 import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.generated.BuildConfig
@@ -145,7 +145,8 @@ fun setupLogLevelUpdating(
 fun serverModule(applicationDirs: ApplicationDirs): Module =
     module {
         single { applicationDirs }
-        single<IUpdater> { Updater() }
+        single { UpdaterRegistry() }
+        single<IUpdater> { get<UpdaterRegistry>() }
         single<JsonMapper> { JavalinJackson3() }
     }
 
@@ -448,8 +449,7 @@ fun applicationSetup() {
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    val updater = Injekt.get<IUpdater>()
-    (updater as Updater).scheduleUpdateTask()
+    Injekt.get<UpdaterRegistry>().scheduleUpdateTasks()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()

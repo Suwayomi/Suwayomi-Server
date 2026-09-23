@@ -83,6 +83,7 @@
     <string name="opds_linktitle_stream_pages_start_remote">온라인으로 읽기 (%1$s에서 동기화됨)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">온라인으로 이어 읽기 (%1$s에서 동기화됨)</string>
     <string name="opds_linktitle_download_cbz">CBZ 다운로드</string>
+    <string name="opds_linktitle_download_epub">EPUB 다운로드</string>
     <string name="opds_linktitle_chapter_cover">챕터 표지</string>
     <string name="opds_linktitle_view_chapter_details">챕터 상세 정보 보기 &amp; 페이지 가져오기</string>
     <string name="opds_chapter_status_read">✅</string>

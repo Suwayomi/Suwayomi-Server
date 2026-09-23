@@ -32,6 +32,7 @@
     <string name="opds_facet_filter_unread_only">Não lidos</string>
     <string name="opds_facet_filter_read_only">Lidos</string>
     <string name="opds_linktitle_download_cbz">Baixar CBZ</string>
+    <string name="opds_linktitle_download_epub">Baixar EPUB</string>
     <string name="opds_linktitle_view_chapter_details">Ver Detalhes do Capítulo e Obter Páginas</string>
     <string name="opds_linktitle_chapter_cover">Capa do Capítulo</string>
     <string name="opds_linktitle_catalog_root">Raiz do Catálogo</string>

@@ -18,4 +18,5 @@ object ExtensionStoreTable : IntIdTable() {
     val contactDiscord = varchar("contact_discord", 2048).nullable()
     val isLegacy = bool("is_legacy").default(false)
     val extensionListUrl = varchar("extension_list_url", 2048).nullable()
+    val kind = varchar("kind", 16).default("JVM")
 }

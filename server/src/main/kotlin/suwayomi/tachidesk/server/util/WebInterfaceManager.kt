@@ -637,6 +637,9 @@ object WebInterfaceManager {
         }
 
     private suspend fun getLatestCompatibleVersion(flavor: WebUIFlavor): String {
+        if (flavor == WebUIFlavor.CUSTOM) {
+            return getLocalVersion()
+        }
         if (serverConfig.webUIChannel.value == WebUIChannel.BUNDLED) {
             logger.debug { "getLatestCompatibleVersion: Channel is \"${WebUIChannel.BUNDLED}\", do not check for update" }
             return BuildConfig.WEBUI_TAG
@@ -842,6 +845,9 @@ object WebInterfaceManager {
         raiseError: Boolean = false,
     ): Pair<String, Boolean> =
         try {
+            if (flavor == WebUIFlavor.CUSTOM) {
+                return Pair(currentVersion, false)
+            }
             val isServedWebUIForCurrentFlavor = flavor.uiName == getServedWebUIFlavor().uiName
             val latestCompatibleVersion = getLatestCompatibleVersion(flavor)
             val isVersionUpdateAvailable = latestCompatibleVersion != currentVersion

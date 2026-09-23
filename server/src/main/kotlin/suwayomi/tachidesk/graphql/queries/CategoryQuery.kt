@@ -13,8 +13,11 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -39,6 +42,8 @@ import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.CategoryNodeList
 import suwayomi.tachidesk.graphql.types.CategoryType
+import suwayomi.tachidesk.graphql.types.SourceContentType
+import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import java.util.concurrent.CompletableFuture
 
@@ -92,6 +97,7 @@ class CategoryQuery {
         val order: Int? = null,
         val name: String? = null,
         val default: Boolean? = null,
+        val contentType: SourceContentType? = SourceContentType.MANGA,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -143,11 +149,18 @@ class CategoryQuery {
         last: Int? = null,
         offset: Int? = null,
     ): CategoryNodeList {
+        val contentType = condition?.contentType ?: SourceContentType.MANGA
+        val includeDefaultCategory = contentType == SourceContentType.MANGA || Category.needsDefaultCategory(contentType)
         val queryResults =
             transaction {
                 val res = CategoryTable.selectAll()
 
                 res.applyOps(condition, filter)
+                if (includeDefaultCategory) {
+                    res.andWhere { (CategoryTable.contentType eq contentType) or (CategoryTable.id eq Category.DEFAULT_CATEGORY_ID) }
+                } else {
+                    res.andWhere { CategoryTable.contentType eq contentType }
+                }
 
                 val baseSort = listOf(CategoryOrder(CategoryOrderBy.ID, SortOrder.ASC))
                 val deprecatedSort = listOfNotNull(orderBy?.let { CategoryOrder(orderBy, orderByType) })
@@ -173,7 +186,7 @@ class CategoryQuery {
 
         val getAsCursor: (CategoryType) -> Cursor = (order?.firstOrNull()?.by ?: CategoryOrderBy.ID)::asCursor
 
-        val resultsAsType = queryResults.results.map { CategoryType(it) }
+        val resultsAsType = queryResults.results.map { CategoryType(it, contentType = contentType) }
 
         return CategoryNodeList(
             resultsAsType,

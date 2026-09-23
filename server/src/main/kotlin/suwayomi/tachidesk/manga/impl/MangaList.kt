@@ -7,8 +7,10 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
@@ -18,7 +20,10 @@ import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.types.SourceContentType
+import suwayomi.tachidesk.manga.impl.text.ChapterTextSource
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
@@ -46,11 +51,19 @@ object MangaList {
                     throw Exception("Source $source doesn't support latest")
                 }
             }
-        return mangasPage.processEntries(sourceId)
+        return mangasPage.processEntries(source)
     }
 
-    fun MangasPage.insertOrUpdate(sourceId: Long): List<Int> =
+    fun MangasPage.insertOrUpdate(source: Source): List<Int> =
         transaction {
+            val sourceId = source.id
+            val resolvedContentType =
+                when {
+                    source is ChapterTextSource -> SourceContentType.LIGHT_NOVEL
+                    source !is StubSource -> SourceContentType.MANGA
+                    else -> null
+                }
+
             val existingMangaUrlsToId =
                 MangaTable
                     .selectAll()
@@ -75,7 +88,17 @@ object MangaList {
                         this[MangaTable.status] = it.status
                         this[MangaTable.thumbnail_url] = it.thumbnail_url
                         this[MangaTable.updateStrategy] = it.update_strategy.name
-                        this[MangaTable.memo] = it.memo
+                        this[MangaTable.memo] =
+                            if (source is ChapterTextSource) {
+                                JsonObject(
+                                    it.memo.filterNot { (key, _) ->
+                                        key.startsWith("suwayomi.")
+                                    },
+                                )
+                            } else {
+                                it.memo
+                            }
+                        this[MangaTable.contentType] = resolvedContentType ?: SourceContentType.MANGA
 
                         this[MangaTable.sourceReference] = sourceId
                     }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
@@ -104,7 +127,20 @@ object MangaList {
                             this[MangaTable.status] = sManga.status
                             this[MangaTable.thumbnail_url] = sManga.thumbnail_url ?: manga[MangaTable.thumbnail_url]
                             this[MangaTable.updateStrategy] = sManga.update_strategy.name
-                            this[MangaTable.memo] = sManga.memo
+                            this[MangaTable.memo] =
+                                if (source is ChapterTextSource) {
+                                    val mergedMemo = manga[MangaTable.memo].toMutableMap()
+                                    mergedMemo.remove("suwayomi.contentType")
+                                    sManga.memo.forEach { (key, value) ->
+                                        if (!key.startsWith("suwayomi.")) mergedMemo[key] = value
+                                    }
+                                    JsonObject(mergedMemo)
+                                } else {
+                                    sManga.memo
+                                }
+                            if (resolvedContentType != null) {
+                                this[MangaTable.contentType] = resolvedContentType
+                            }
                             if (!sManga.thumbnail_url.isNullOrEmpty() && manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
                                 this[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
                                 Manga.clearThumbnail(manga[MangaTable.id].value)
@@ -127,11 +163,11 @@ object MangaList {
             }
         }
 
-    fun MangasPage.processEntries(sourceId: Long): PagedMangaListDataClass {
+    fun MangasPage.processEntries(source: Source): PagedMangaListDataClass {
         val mangasPage = this
         val mangaList =
             transaction {
-                val mangaIds = insertOrUpdate(sourceId)
+                val mangaIds = insertOrUpdate(source)
                 return@transaction MangaTable.selectAll().where { MangaTable.id inList mangaIds }.map { MangaTable.toDataClass(it) }
             }
         return PagedMangaListDataClass(

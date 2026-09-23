@@ -13,6 +13,7 @@ import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.Category.modifyCategoriesMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
@@ -27,6 +28,7 @@ object BackupCategoryHandler {
             val categories =
                 CategoryTable
                     .selectAll()
+                    .where { CategoryTable.contentType eq SourceContentType.MANGA }
                     .orderBy(CategoryTable.order to SortOrder.ASC)
                     .toList()
 

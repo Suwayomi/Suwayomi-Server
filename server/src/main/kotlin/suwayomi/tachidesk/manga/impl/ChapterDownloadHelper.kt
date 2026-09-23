@@ -3,11 +3,15 @@ package suwayomi.tachidesk.manga.impl
 import kotlinx.coroutines.CoroutineScope
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.EpubArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
+import suwayomi.tachidesk.manga.impl.download.lnreader.LnEpubStore
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
@@ -35,7 +39,32 @@ object ChapterDownloadHelper {
     suspend fun delete(
         mangaId: Int,
         chapterId: Int,
-    ): Boolean = provider(mangaId, chapterId).delete()
+    ): Boolean {
+        var deletedAny = false
+        val epubFile = LnEpubStore.resolveFile(mangaId, chapterId)
+        val cbzFile = File(getChapterCbzPath(mangaId, chapterId))
+        val chapterFolder = File(getChapterDownloadPath(mangaId, chapterId))
+        val hadArtifact = epubFile.exists() || cbzFile.exists() || chapterFolder.exists()
+        if (epubFile.exists()) {
+            deletedAny = LnEpubStore.delete(mangaId, chapterId) || deletedAny
+        }
+        if (cbzFile.exists()) {
+            deletedAny = ArchiveProvider(mangaId, chapterId).delete() || deletedAny
+        }
+        if (chapterFolder.exists()) {
+            deletedAny = FolderProvider(mangaId, chapterId).delete() || deletedAny
+        }
+        LnEpubStore.healChapterDownloadState(mangaId, chapterId)
+        if (hadArtifact) return deletedAny
+        return transaction {
+            MangaTable
+                .selectAll()
+                .where { MangaTable.id eq mangaId }
+                .firstOrNull()
+                ?.get(MangaTable.contentType) !=
+                SourceContentType.LIGHT_NOVEL
+        }
+    }
 
     /**
      * This function should never be called without calling [getChapterDownloadReady] beforehand.
@@ -60,17 +89,35 @@ object ChapterDownloadHelper {
         return FolderProvider(mangaId, chapterId)
     }
 
+    private suspend fun archiveProvider(
+        mangaId: Int,
+        chapterId: Int,
+    ): ChaptersFilesProvider<*> {
+        val isNovel =
+            transaction {
+                MangaTable
+                    .selectAll()
+                    .where { MangaTable.id eq mangaId }
+                    .firstOrNull()
+                    ?.get(MangaTable.contentType) == SourceContentType.LIGHT_NOVEL
+            }
+        return if (isNovel) EpubArchiveProvider(mangaId, chapterId) else provider(mangaId, chapterId)
+    }
+
     suspend fun getArchiveStreamWithSize(
         mangaId: Int,
         chapterId: Int,
-    ): Pair<InputStream, Long> = provider(mangaId, chapterId).getAsArchiveStream()
+    ): Pair<InputStream, Long> = archiveProvider(mangaId, chapterId).getAsArchiveStream()
 
     suspend fun getChapterArchiveSize(
         mangaId: Int,
         chapterId: Int,
-    ): Long = provider(mangaId, chapterId).getArchiveSize()
+    ): Long = archiveProvider(mangaId, chapterId).getArchiveSize()
 
-    private fun getChapterWithCbzFileName(chapterId: Int): Pair<ChapterDataClass, String> =
+    private fun getChapterWithFileName(
+        chapterId: Int,
+        extension: String = "cbz",
+    ): Pair<ChapterDataClass, String> =
         transaction {
             val row =
                 (ChapterTable innerJoin MangaTable)
@@ -110,7 +157,7 @@ object ChapterDownloadHelper {
                         append(scanlatorName)
                         append("]")
                     }
-                    append(".cbz")
+                    append(".$extension")
                 }
 
             // Sanitize filename for OS compatibility
@@ -123,9 +170,11 @@ object ChapterDownloadHelper {
         chapterId: Int,
         markAsRead: Boolean?,
     ): Triple<InputStream, String, Long> {
-        val (chapterData, fileName) = getChapterWithCbzFileName(chapterId)
-
-        val cbzFile = provider(chapterData.mangaId, chapterData.id).getAsArchiveStream()
+        val (chapterData, _) = getChapterWithFileName(chapterId)
+        val prov = archiveProvider(chapterData.mangaId, chapterData.id)
+        val ext = if (prov is EpubArchiveProvider) "epub" else "cbz"
+        val (_, fileName) = getChapterWithFileName(chapterId, ext)
+        val (stream, length) = prov.getAsArchiveStream()
 
         if (markAsRead == true) {
             Chapter.modifyChapter(
@@ -138,14 +187,18 @@ object ChapterDownloadHelper {
             )
         }
 
-        return Triple(cbzFile.first, fileName, cbzFile.second)
+        return Triple(stream, fileName, length)
     }
 
     suspend fun getCbzMetadataForDownload(chapterId: Int): Pair<String, Long> { // fileName, fileSize
-        val (chapterData, fileName) = getChapterWithCbzFileName(chapterId)
-
-        val fileSize = provider(chapterData.mangaId, chapterData.id).getArchiveSize()
-
+        val (chapterData, _) = getChapterWithFileName(chapterId)
+        val prov = archiveProvider(chapterData.mangaId, chapterData.id)
+        val ext = if (prov is EpubArchiveProvider) "epub" else "cbz"
+        val (_, fileName) = getChapterWithFileName(chapterId, ext)
+        val fileSize = prov.getArchiveSize()
+        if (prov is EpubArchiveProvider && fileSize <= 0L) {
+            throw NoSuchElementException("Chapter download not found for chapter ID: $chapterId")
+        }
         return Pair(fileName, fileSize)
     }
 }

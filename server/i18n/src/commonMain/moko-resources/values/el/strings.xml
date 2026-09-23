@@ -82,6 +82,7 @@
     <string name="opds_linktitle_stream_pages_start_remote">Διάβασε Online (Συγχρονισμένο από %1$s)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">Συνέχισε να διαβάζεις Online (Συγχρονισμένο από %1$s)</string>
     <string name="opds_linktitle_download_cbz">Λήψη CBZ</string>
+    <string name="opds_linktitle_download_epub">Λήψη EPUB</string>
     <string name="opds_linktitle_chapter_cover">Εξώφυλλο κεφαλαίου</string>
     <string name="opds_linktitle_view_chapter_details">Λεπτομέρειες κεφαλαίου &amp; Σελίδες</string>
     <string name="opds_chapter_status_read">✅</string>

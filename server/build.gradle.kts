@@ -91,6 +91,12 @@ dependencies {
     implementation(projects.androidCompat)
     implementation(projects.androidCompat.config)
 
+    // LNReader runs only in Graal's isolated UNTRUSTED runtime. Keep these direct,
+    // version-catalog-pinned dependencies coherent with AndroidCompat' JS support.
+    implementation(libs.polyglot.core)
+    implementation(libs.polyglot.graaljs)
+    implementation(libs.polyglot.js.isolate)
+
     // i18n
     implementation(projects.server.i18n)
 
@@ -102,6 +108,7 @@ dependencies {
     implementation(kotlin("script-runtime"))
 
     testImplementation(libs.mockk)
+    testImplementation("org.junit.jupiter:junit-jupiter-params")
 
     implementation(libs.cron4j)
 
@@ -193,6 +200,11 @@ tasks {
             // META-INF/services files are still merged by mergeServiceFiles.
             exclude(dependency("org.graalvm.js:js-community:.*"))
             exclude(dependency("org.graalvm.js:js:.*"))
+            // The isolate aggregate has the same POM-only platform selector
+            // shape. Keep the concrete org.graalvm.js isolate jars, which are
+            // needed at runtime, while dropping only the non-ZIP selectors.
+            exclude(dependency("org.graalvm.polyglot:js-isolate-community:.*"))
+            exclude(dependency("org.graalvm.polyglot:js-isolate-.*-community:.*"))
         }
     }
 
@@ -206,6 +218,12 @@ tasks {
             showStandardStreams = true
             events("passed", "skipped", "failed")
         }
+        val customPort =
+            System.getProperty("suwayomi.tachidesk.server.port")
+                ?: System.getProperty("suwayomi.tachidesk.config.server.port")
+                ?: "4591"
+        systemProperty("suwayomi.tachidesk.config.server.port", customPort)
+        systemProperty("suwayomi.tachidesk.server.port", customPort)
     }
 
     withType<KotlinJvmCompile> {

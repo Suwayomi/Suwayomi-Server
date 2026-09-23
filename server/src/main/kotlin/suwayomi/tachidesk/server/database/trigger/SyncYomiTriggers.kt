@@ -3,6 +3,7 @@ package suwayomi.tachidesk.server.database.trigger
 import org.h2.tools.TriggerAdapter
 import java.sql.Connection
 import java.sql.ResultSet
+import java.sql.SQLException
 import kotlin.random.Random
 import kotlin.time.Clock
 
@@ -17,7 +18,8 @@ class UpdateMangaVersionTrigger : TriggerAdapter() {
         val hasChanged =
             oldRow.getString("url") != newRow.getString("url") ||
                 oldRow.getString("description") != newRow.getString("description") ||
-                oldRow.getBoolean("in_library") != newRow.getBoolean("in_library")
+                oldRow.getBoolean("in_library") != newRow.getBoolean("in_library") ||
+                runCatching { oldRow.getString("content_type") != newRow.getString("content_type") }.getOrDefault(false)
 
         if (!isSyncing && hasChanged) {
             val currentVersion = newRow.getLong("version")
@@ -53,7 +55,17 @@ private fun ResultSet.stampLastModifiedAt(
 ) {
     if (getBoolean("is_syncing")) return
 
-    if (oldRow != null && watchedColumns.all { oldRow.getObject(it) == getObject(it) }) return
+    val availableColumns =
+        watchedColumns.filter { col ->
+            try {
+                findColumn(col)
+                true
+            } catch (_: SQLException) {
+                false
+            }
+        }
+
+    if (oldRow != null && availableColumns.all { oldRow.getObject(it) == getObject(it) }) return
 
     updateLong("last_modified_at", Clock.System.now().epochSeconds)
 }
@@ -65,7 +77,7 @@ class UpdateMangaLastModifiedAtTrigger : TriggerAdapter() {
         oldRow: ResultSet?,
         newRow: ResultSet,
     ) {
-        newRow.stampLastModifiedAt(oldRow, listOf("url", "description", "in_library", "version"))
+        newRow.stampLastModifiedAt(oldRow, listOf("url", "description", "in_library", "content_type", "version"))
     }
 }
 

@@ -28,14 +28,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.impl.sync.SyncManager
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
@@ -46,8 +54,37 @@ import kotlin.math.absoluteValue
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.seconds
 
+private object UpdateConcurrencyLimiter {
+    private var maxSourcesInParallel = 20
+    private val semaphore = Semaphore(maxSourcesInParallel)
+
+    init {
+        serverConfig.subscribeTo(
+            serverConfig.maxSourcesInParallel,
+            { newMaxPermits ->
+                val permitDifference = maxSourcesInParallel - newMaxPermits
+                maxSourcesInParallel = newMaxPermits
+
+                val addMorePermits = permitDifference < 0
+                for (i in 1..permitDifference.absoluteValue) {
+                    if (addMorePermits) {
+                        semaphore.release()
+                    } else {
+                        semaphore.acquire()
+                    }
+                }
+            },
+            ignoreInitialValue = false,
+        )
+    }
+
+    suspend fun <T> withPermit(block: suspend () -> T): T = semaphore.withPermit { block() }
+}
+
 @OptIn(FlowPreview::class)
-class Updater : IUpdater {
+class Updater(
+    private val contentType: SourceContentType = SourceContentType.MANGA,
+) : IUpdater {
     private val logger = KotlinLogging.logger {}
     private val notifyFlowScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -83,40 +120,42 @@ class Updater : IUpdater {
     private val tracker = ConcurrentHashMap<Int, UpdateJob>()
     private val updateChannels = ConcurrentHashMap<String, Channel<UpdateJob>>()
 
-    private var maxSourcesInParallel = 20 // max permits, necessary to be set to be able to release up to 20 permits
-    private val semaphore = Semaphore(maxSourcesInParallel)
-
     private val lastUpdateKey = "lastGlobalUpdate"
-    private val lastAutomatedUpdateKey = "lastAutomatedGlobalUpdate"
+    private val mangaUpdateKey = "$lastUpdateKey.${SourceContentType.MANGA.name}"
+    private val lastAutomatedUpdateKey =
+        if (contentType == SourceContentType.MANGA) {
+            "lastAutomatedGlobalUpdate"
+        } else {
+            "lastAutomatedGlobalUpdate.${contentType.name}"
+        }
     private val preferences = Injekt.get<Application>().getSharedPreferences("server_util", Context.MODE_PRIVATE)
 
-    private var currentUpdateTaskId = ""
+    private var currentUpdateTaskId = updateTaskId(contentType)
 
     init {
         serverConfig.subscribeTo(serverConfig.globalUpdateInterval, ::scheduleUpdateTask)
-        serverConfig.subscribeTo(
-            serverConfig.maxSourcesInParallel,
-            { newMaxPermits ->
-                val permitDifference = maxSourcesInParallel - newMaxPermits
-                maxSourcesInParallel = newMaxPermits
-
-                val addMorePermits = permitDifference < 0
-                for (i in 1..permitDifference.absoluteValue) {
-                    if (addMorePermits) {
-                        semaphore.release()
-                    } else {
-                        semaphore.acquire()
-                    }
-                }
-            },
-            ignoreInitialValue = false,
-        )
     }
 
     override fun getLastUpdateTimestamp(): Long = preferences.getLong(lastUpdateKey, 0)
 
-    fun saveLastUpdateTimestamp() {
-        preferences.edit().putLong(lastUpdateKey, System.currentTimeMillis()).apply()
+    override fun getLastContentUpdateTimestamp(contentType: SourceContentType): Long =
+        preferences.getLong(
+            "$lastUpdateKey.${contentType.name}",
+            if (contentType == SourceContentType.MANGA) getLastUpdateTimestamp() else 0,
+        )
+
+    fun saveLastUpdateTimestamp(contentType: SourceContentType? = null) {
+        val effectiveContentType = contentType ?: this.contentType
+        val timestamp = System.currentTimeMillis()
+        val editor = preferences.edit()
+        if (effectiveContentType == SourceContentType.LIGHT_NOVEL && !preferences.contains(mangaUpdateKey)) {
+            editor.putLong(mangaUpdateKey, getLastUpdateTimestamp())
+        }
+        editor.putLong("$lastUpdateKey.${effectiveContentType.name}", timestamp)
+        if (effectiveContentType == SourceContentType.MANGA) {
+            editor.putLong(lastUpdateKey, timestamp)
+        }
+        editor.apply()
     }
 
     fun getLastAutomatedUpdateTimestamp(): Long = preferences.getLong(lastAutomatedUpdateKey, 0)
@@ -144,7 +183,7 @@ class Updater : IUpdater {
                     lastAutomatedUpdate,
                 )})"
             }
-            addCategoriesToUpdateQueue(Category.getCategoryList(), clear = true, forceAll = false)
+            addCategoriesToUpdateQueue(Category.getCategoryList(contentType), clear = true, forceAll = false, contentType = contentType)
         } catch (e: Exception) {
             logger.error(e) { "autoUpdateTask: failed due to" }
         }
@@ -184,7 +223,7 @@ class Updater : IUpdater {
             }
         }
 
-        currentUpdateTaskId = HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, "global-update")
+        currentUpdateTaskId = HAScheduler.schedule(::autoUpdateTask, updateInterval, timeToNextExecution, updateTaskId(contentType))
     }
 
     private fun isRunning(): Boolean =
@@ -277,7 +316,7 @@ class Updater : IUpdater {
         channel
             .consumeAsFlow()
             .onEach { job ->
-                semaphore.withPermit {
+                UpdateConcurrencyLimiter.withPermit {
                     process(job)
                 }
             }.catch {
@@ -336,27 +375,52 @@ class Updater : IUpdater {
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,
+        contentType: SourceContentType?,
     ) {
         scope.launch {
             SyncManager.ensureSync()
 
-            saveLastUpdateTimestamp()
+            val effectiveContentType = contentType ?: this@Updater.contentType
+            saveLastUpdateTimestamp(effectiveContentType)
 
             if (clear == true) {
                 reset()
             }
 
-            val includeInUpdateStatusToCategoryMap = categories.groupBy { it.includeInUpdate }
+            val matchingCategoryIds =
+                transaction {
+                    CategoryMangaTable
+                        .innerJoin(MangaTable)
+                        .select(CategoryMangaTable.category)
+                        .where { (MangaTable.inLibrary eq true) and (MangaTable.contentType eq effectiveContentType) }
+                        .map { it[CategoryMangaTable.category].value }
+                        .toMutableSet()
+                        .also { ids ->
+                            val hasUncategorizedContent =
+                                MangaTable
+                                    .leftJoin(CategoryMangaTable)
+                                    .select(MangaTable.id)
+                                    .where {
+                                        (MangaTable.inLibrary eq true) and
+                                            (MangaTable.contentType eq effectiveContentType) and
+                                            CategoryMangaTable.manga.isNull()
+                                    }.limit(1)
+                                    .any()
+                            if (hasUncategorizedContent) ids.add(Category.DEFAULT_CATEGORY_ID)
+                        }
+                }
+            val effectiveCategories = categories.filter { it.id in matchingCategoryIds }
+            val includeInUpdateStatusToCategoryMap = effectiveCategories.groupBy { it.includeInUpdate }
             val excludedCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.EXCLUDE].orEmpty()
             val includedCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.INCLUDE].orEmpty()
             val unsetCategories = includeInUpdateStatusToCategoryMap[IncludeOrExclude.UNSET].orEmpty()
             val categoriesToUpdate =
                 if (forceAll) {
-                    categories
+                    effectiveCategories
                 } else {
                     includedCategories.ifEmpty { unsetCategories }
                 }
-            val skippedCategories = categories.subtract(categoriesToUpdate.toSet()).toList()
+            val skippedCategories = effectiveCategories.subtract(categoriesToUpdate.toSet()).toList()
             val updateStatusCategories =
                 mapOf(
                     Pair(CategoryUpdateStatus.UPDATING, categoriesToUpdate),
@@ -367,7 +431,7 @@ class Updater : IUpdater {
 
             val categoriesToUpdateMangas =
                 categoriesToUpdate
-                    .flatMap { CategoryManga.getCategoryMangaList(it.id) }
+                    .flatMap { CategoryManga.getCategoryMangaList(it.id, effectiveContentType) }
                     .distinctBy { it.id }
             val mangasToCategoriesMap = CategoryManga.getMangasCategories(categoriesToUpdateMangas.map { it.id })
             val mangasToUpdate =
@@ -460,5 +524,20 @@ class Updater : IUpdater {
 
         updateChannels.forEach { (_, channel) -> channel.cancel() }
         updateChannels.clear()
+    }
+
+    private fun updateTaskId(contentType: SourceContentType): String =
+        if (contentType == SourceContentType.MANGA) "global-update" else "global-update-${contentType.name.lowercase()}"
+}
+
+class UpdaterRegistry(
+    val manga: Updater = Updater(SourceContentType.MANGA),
+    val lightNovel: Updater = Updater(SourceContentType.LIGHT_NOVEL),
+) : IUpdater by manga {
+    fun forContentType(contentType: SourceContentType?): IUpdater = if (contentType == SourceContentType.LIGHT_NOVEL) lightNovel else manga
+
+    fun scheduleUpdateTasks() {
+        manga.scheduleUpdateTask()
+        lightNovel.scheduleUpdateTask()
     }
 }

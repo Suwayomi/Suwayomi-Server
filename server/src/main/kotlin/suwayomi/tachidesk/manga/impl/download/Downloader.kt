@@ -23,6 +23,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
+import suwayomi.tachidesk.manga.impl.download.lnreader.LnChapterDownloader
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Downloading
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState.Error
@@ -35,6 +36,8 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.FINISHED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PAUSED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PROGRESS
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.STOPPED
+import suwayomi.tachidesk.manga.impl.text.ChapterTextSource
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -165,17 +168,28 @@ class Downloader(
                 download.state = Downloading
                 step(PROGRESS, download, true)
 
-                val chapter = getChapterDownloadReadyById(download.chapterId)
+                val source = GetSource.getSourceOrNull(download.sourceId)
+                if (source is ChapterTextSource) {
+                    // Novel prose branch: skip page table refresh; execute prose download
+                    download.pageCount = 1
+                    LnChapterDownloader.download(download, source, scope) { downloadChapter, immediate ->
+                        step(PROGRESS, downloadChapter, immediate)
+                    }
+                } else {
+                    // Manga image branch: ensure page table rows exist
+                    val chapter = getChapterDownloadReadyById(download.chapterId)
 
-                if (chapter.pageCount <= 0) {
-                    throw EmptyChapterException()
+                    if (chapter.pageCount <= 0) {
+                        throw EmptyChapterException()
+                    }
+
+                    download.pageCount = chapter.pageCount
+
+                    ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, immediate ->
+                        step(PROGRESS, downloadChapter, immediate)
+                    }
                 }
-
-                download.pageCount = chapter.pageCount
-
-                ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, immediate ->
-                    step(PROGRESS, downloadChapter, immediate)
-                }
+                // Rejoin common downloader lifecycle flow
                 download.state = Finished
                 transaction {
                     ChapterTable.update(

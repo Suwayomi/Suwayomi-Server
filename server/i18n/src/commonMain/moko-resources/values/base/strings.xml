@@ -105,6 +105,7 @@
     <string name="opds_linktitle_stream_pages_start_remote">Read Online (Synced from %1$s)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">Continue Reading Online (Synced from %1$s)</string>
     <string name="opds_linktitle_download_cbz">Download CBZ</string>
+    <string name="opds_linktitle_download_epub">Download EPUB</string>
     <string name="opds_linktitle_chapter_cover">Chapter Cover</string>
     <string name="opds_linktitle_view_chapter_details">View Chapter Details &amp; Get Pages</string>
 

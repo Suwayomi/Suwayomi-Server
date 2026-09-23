@@ -2,6 +2,7 @@ package suwayomi.tachidesk.manga.impl.update
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 
@@ -38,6 +39,7 @@ class TestUpdater : IUpdater {
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,
+        contentType: SourceContentType?,
     ) {
         TODO("Not yet implemented")
     }

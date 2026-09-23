@@ -15,6 +15,7 @@ data class ExtensionStore(
     val contact: Contact,
     val isLegacy: Boolean,
     val extensionListUrl: String?,
+    val kind: ExtensionKind = ExtensionKind.JVM,
 ) {
     data class Contact(
         val website: String,

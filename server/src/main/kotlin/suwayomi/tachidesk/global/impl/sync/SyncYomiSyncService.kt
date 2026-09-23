@@ -12,7 +12,11 @@ import io.javalin.http.HttpStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.protobuf.ProtoBuf
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
@@ -613,15 +617,55 @@ object SyncYomiSyncService {
                     localChapter != null && remoteChapter != null -> {
                         // Use version number to decide which chapter to keep
                         val chosenChapter =
-                            if (localChapter.version >= remoteChapter.version) {
-                                // If there are more chapter on remote, local sourceOrder will need to be updated to maintain correct source order.
+                            if (localChapter.version > remoteChapter.version) {
                                 if (localChapters.size < remoteChapters.size) {
                                     localChapter.copy(sourceOrder = remoteChapter.sourceOrder)
                                 } else {
                                     localChapter
                                 }
-                            } else {
+                            } else if (remoteChapter.version > localChapter.version) {
                                 remoteChapter
+                            } else {
+                                val localMemo =
+                                    runCatching {
+                                        if (localChapter.memo.isNotEmpty()) {
+                                            Json.decodeFromString<JsonObject>(localChapter.memo.decodeToString())
+                                        } else {
+                                            null
+                                        }
+                                    }.getOrNull()
+                                val remoteMemo =
+                                    runCatching {
+                                        if (remoteChapter.memo.isNotEmpty()) {
+                                            Json.decodeFromString<JsonObject>(remoteChapter.memo.decodeToString())
+                                        } else {
+                                            null
+                                        }
+                                    }.getOrNull()
+                                val localUpdatedAt =
+                                    (localMemo?.get("suwayomi.text") as? JsonObject)?.get("updatedAt")?.jsonPrimitive?.longOrNull ?: 0L
+                                val remoteUpdatedAt =
+                                    (remoteMemo?.get("suwayomi.text") as? JsonObject)?.get("updatedAt")?.jsonPrimitive?.longOrNull ?: 0L
+
+                                val base =
+                                    if (localChapters.size < remoteChapters.size) {
+                                        localChapter.copy(sourceOrder = remoteChapter.sourceOrder)
+                                    } else {
+                                        localChapter
+                                    }
+
+                                if (remoteUpdatedAt > localUpdatedAt && remoteMemo != null) {
+                                    val remoteText = remoteMemo["suwayomi.text"] as? JsonObject
+                                    if (remoteText != null) {
+                                        val mutable = (localMemo ?: JsonObject(emptyMap())).toMutableMap()
+                                        mutable["suwayomi.text"] = remoteText
+                                        base.copy(memo = Json.encodeToString(JsonObject(mutable)).encodeToByteArray())
+                                    } else {
+                                        base
+                                    }
+                                } else {
+                                    base
+                                }
                             }
                         logger.debug {
                             "Merging chapter: ${chosenChapter.name}. Chosen version from: ${if (localChapter.version >= remoteChapter.version) "Local" else "Remote"}, Local version: ${localChapter.version}, Remote version: ${remoteChapter.version}."

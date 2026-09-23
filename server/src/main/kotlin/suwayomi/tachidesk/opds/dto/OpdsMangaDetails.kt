@@ -6,4 +6,5 @@ data class OpdsMangaDetails( // Kept name, it's specific enough
     val thumbnailUrl: String?,
     val author: String?, // Added for chapter entry authors
     val totalChapters: Long, // Added to determine if it's a oneshot
+    val isNovel: Boolean = false,
 )

@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.model.dataclass
 
 import com.fasterxml.jackson.annotation.JsonValue
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Category
 
 /*
@@ -27,6 +28,7 @@ data class CategoryDataClass(
     val id: Int,
     val order: Int,
     val name: String,
+    val contentType: SourceContentType,
     val default: Boolean,
     val includeInUpdate: IncludeOrExclude,
     val includeInDownload: IncludeOrExclude,
@@ -36,7 +38,7 @@ data class CategoryDataClass(
 ) {
     @Deprecated("Remove with V1 Api")
     val size: Int by lazy {
-        Category.getCategorySize(id)
+        Category.getCategorySize(id, contentType)
     }
 
     @Deprecated("Remove with V1 Api")

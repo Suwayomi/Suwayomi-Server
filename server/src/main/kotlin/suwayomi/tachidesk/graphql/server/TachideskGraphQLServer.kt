@@ -61,10 +61,17 @@ class TachideskGraphQLServer(
 
                     logger.error(exception) { "GraphQL execution failed due to" }
 
+                    val rootCause = generateSequence(exception) { it.cause }.last()
+                    val cleanMessage =
+                        rootCause.message?.ifBlank { null }
+                            ?: exception.message?.ifBlank { null }
+                            ?: exception::class.simpleName
+                            ?: "Unknown error"
+
                     val error =
                         ExceptionWhileDataFetching(
                             path,
-                            Throwable(exception.message + "\r\n\r\n" + exception.stackTraceToString(), exception),
+                            Throwable(cleanMessage + "\r\n\r\n" + exception.stackTraceToString(), exception),
                             sourceLocation,
                         )
 

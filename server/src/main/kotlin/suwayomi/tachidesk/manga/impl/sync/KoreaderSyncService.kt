@@ -6,15 +6,20 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.util.lang.Hash
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.javalin.json.JsonMapper
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.floatOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -22,7 +27,9 @@ import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.KoSyncStatusPayload
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
+import suwayomi.tachidesk.manga.impl.download.lnreader.LnEpubStore
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -32,6 +39,7 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
+import java.util.Locale
 import java.util.UUID
 import kotlin.math.abs
 
@@ -46,7 +54,6 @@ object KoreaderSyncService {
     private val logger = KotlinLogging.logger {}
     private val network: NetworkHelper by injectLazy()
     private val json: Json by injectLazy()
-    private val jsonMapper: JsonMapper by injectLazy()
 
     @Serializable
     private data class KoreaderProgressPayload(
@@ -74,6 +81,10 @@ object KoreaderSyncService {
         val device: String,
         val shouldUpdate: Boolean = false,
         val isConflict: Boolean = false,
+        val progressPercentage: Float? = null,
+        val isNovel: Boolean = false,
+        val rawKoreaderProgress: String? = null,
+        val koreaderHash: String? = null,
     )
 
     data class ConnectResult(
@@ -115,11 +126,11 @@ object KoreaderSyncService {
         return deviceId
     }
 
-    private suspend fun getOrGenerateChapterHash(chapterId: Int): String? {
+    internal suspend fun getOrGenerateChapterHash(chapterId: Int): String? {
         return suspendTransaction {
             val chapterRow =
-                ChapterTable
-                    .select(ChapterTable.koreaderHash, ChapterTable.manga, ChapterTable.isDownloaded)
+                (ChapterTable innerJoin MangaTable)
+                    .select(ChapterTable.koreaderHash, ChapterTable.manga, ChapterTable.isDownloaded, MangaTable.contentType)
                     .where { ChapterTable.id eq chapterId }
                     .firstOrNull() ?: return@suspendTransaction null
 
@@ -130,6 +141,24 @@ object KoreaderSyncService {
 
             val mangaId = chapterRow[ChapterTable.manga].value
             val isDownloaded = chapterRow[ChapterTable.isDownloaded]
+            val isNovel = chapterRow[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL
+
+            if (isNovel) {
+                // If light novel, hash the canonical EPUB directly
+                if (isDownloaded && LnEpubStore.existsValid(mangaId, chapterId)) {
+                    val file = LnEpubStore.getFile(mangaId, chapterId)
+                    val newHash = LnEpubStore.hash(file)
+                    if (newHash != null) {
+                        ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                            it[koreaderHash] = newHash
+                        }
+                    }
+                    return@suspendTransaction newHash
+                } else {
+                    return@suspendTransaction null
+                }
+            }
+
             val checksumMethod = serverConfig.koreaderSyncChecksumMethod.value
 
             val newHash =
@@ -210,13 +239,10 @@ object KoreaderSyncService {
                 if (response.isSuccessful) {
                     AuthResult(true, "Registration successful.")
                 } else {
-                    val errorBody = response.body.string()
                     val errorMessage =
                         runCatching {
-                            jsonMapper.fromJsonString<Map<String, String>>(
-                                errorBody,
-                                Map::class.java,
-                            )["message"]
+                            val parsed = json.parseToJsonElement(response.body.string()).jsonObject
+                            parsed["message"]?.jsonPrimitive?.contentOrNull
                         }.getOrNull()
                     val finalMessage = errorMessage ?: "Registration failed with code ${response.code}"
                     AuthResult(false, finalMessage)
@@ -261,6 +287,11 @@ object KoreaderSyncService {
         val userkey = preferences.getString(USERKEY_KEY, "")!!
 
         return Triple(serverAddress, username, userkey)
+    }
+
+    fun hasConfiguredCredentials(): Boolean {
+        val (serverAddress, username, userkey) = getCredentials()
+        return serverAddress.isNotBlank() && username.isNotBlank() && userkey.isNotBlank()
     }
 
     private fun setCredentials(
@@ -359,35 +390,55 @@ object KoreaderSyncService {
             return
         }
 
-        val chapterInfo =
+        val chapterData =
             transaction {
-                ChapterTable
-                    .select(ChapterTable.lastPageRead, ChapterTable.pageCount)
-                    .where { ChapterTable.id eq chapterId }
+                (ChapterTable innerJoin MangaTable)
+                    .select(
+                        ChapterTable.lastPageRead,
+                        ChapterTable.pageCount,
+                        ChapterTable.memo,
+                        MangaTable.contentType,
+                    ).where { ChapterTable.id eq chapterId }
                     .firstOrNull()
-                    ?.let {
-                        object {
-                            val lastPageRead = it[ChapterTable.lastPageRead]
-                            val pageCount = it[ChapterTable.pageCount]
-                        }
-                    }
             } ?: return
-
-        if (chapterInfo.pageCount <= 0) {
-            logger.warn { "[KOSYNC PUSH] Aborted for chapterId=$chapterId: Invalid pageCount." }
-            return
-        }
 
         try {
             val deviceId = getOrGenerateDeviceId()
+            val isNovel = chapterData[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL
+            val textMemo = chapterData[ChapterTable.memo]["suwayomi.text"] as? JsonObject
             val payload =
-                KoreaderProgressPayload(
-                    document = chapterHash,
-                    progress = (chapterInfo.lastPageRead + 1).toString(),
-                    percentage = (chapterInfo.lastPageRead + 1).toFloat() / chapterInfo.pageCount.toFloat(),
-                    device = "Suwayomi-Server (${Platform.current.os.name})",
-                    device_id = deviceId,
-                )
+                if (isNovel) {
+                    val percentage = (textMemo?.get("progress")?.jsonPrimitive?.floatOrNull ?: 0f).coerceIn(0f, 1f)
+                    val koreaderProgress = textMemo?.get("koreaderProgress")?.jsonPrimitive?.contentOrNull
+                    val koreaderProgressHash = textMemo?.get("koreaderProgressHash")?.jsonPrimitive?.contentOrNull
+                    val progressStr =
+                        if (!koreaderProgress.isNullOrBlank() && koreaderProgressHash == chapterHash) {
+                            koreaderProgress
+                        } else {
+                            String.format(Locale.US, "%.4f", percentage)
+                        }
+                    KoreaderProgressPayload(
+                        document = chapterHash,
+                        progress = progressStr,
+                        percentage = percentage,
+                        device = "Suwayomi-Server (${Platform.current.os.name})",
+                        device_id = deviceId,
+                    )
+                } else {
+                    val pageCount = chapterData[ChapterTable.pageCount]
+                    if (pageCount <= 0) {
+                        logger.warn { "[KOSYNC PUSH] Aborted for chapterId=$chapterId: Invalid pageCount." }
+                        return
+                    }
+                    val lastPageRead = chapterData[ChapterTable.lastPageRead]
+                    KoreaderProgressPayload(
+                        document = chapterHash,
+                        progress = (lastPageRead + 1).toString(),
+                        percentage = (lastPageRead + 1).toFloat() / pageCount.toFloat(),
+                        device = "Suwayomi-Server (${Platform.current.os.name})",
+                        device_id = deviceId,
+                    )
+                }
 
             val requestBody = json.encodeToString(KoreaderProgressPayload.serializer(), payload)
             val request =
@@ -413,7 +464,10 @@ object KoreaderSyncService {
         }
     }
 
-    suspend fun checkAndPullProgress(chapterId: Int): SyncResult? {
+    suspend fun checkAndPullProgress(
+        chapterId: Int,
+        readOnly: Boolean = false,
+    ): SyncResult? {
         val forwardStrategy = serverConfig.koreaderSyncStrategyForward.value
         val backwardStrategy = serverConfig.koreaderSyncStrategyBackward.value
 
@@ -449,52 +503,86 @@ object KoreaderSyncService {
                     if (body.isBlank() || body == "{}") return null
 
                     val progressResponse = json.decodeFromString(KoreaderProgressResponse.serializer(), body)
-                    val pageRead = progressResponse.progress?.toIntOrNull()?.minus(1)
-                    val timestamp = progressResponse.updated_at
+                    val timestamp = progressResponse.updated_at ?: return null
                     val device = progressResponse.device ?: "KOReader"
 
-                    val localProgress =
+                    val chapterInfo =
                         transaction {
-                            ChapterTable
-                                .select(ChapterTable.lastReadAt, ChapterTable.lastPageRead, ChapterTable.pageCount)
-                                .where { ChapterTable.id eq chapterId }
+                            (ChapterTable innerJoin MangaTable)
+                                .select(
+                                    ChapterTable.lastReadAt,
+                                    ChapterTable.lastPageRead,
+                                    ChapterTable.pageCount,
+                                    ChapterTable.memo,
+                                    MangaTable.contentType,
+                                ).where { ChapterTable.id eq chapterId }
                                 .firstOrNull()
-                                ?.let {
-                                    object {
-                                        val lastReadAt = it[ChapterTable.lastReadAt]
-                                        val lastPageRead = it[ChapterTable.lastPageRead]
-                                        val pageCount = it[ChapterTable.pageCount]
-                                    }
-                                }
-                        }
+                        } ?: return null
 
-                    if (pageRead != null && timestamp != null) {
-                        // Ignore XPath progress for now as we only support paginated files
-                        if (progressResponse.progress?.startsWith("/") == true) {
+                    val isNovel = chapterInfo[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL
+                    val localPercentage: Float
+                    val localTimestamp = chapterInfo[ChapterTable.lastReadAt]
+                    val remotePercentage: Float
+                    val rawProgress = progressResponse.progress
+                    val lastPage: Int
+
+                    if (isNovel) {
+                        remotePercentage = (progressResponse.percentage ?: 0f).coerceIn(0f, 1f)
+                        val textMemo = chapterInfo[ChapterTable.memo]["suwayomi.text"]?.let { if (it is JsonObject) it else null }
+                        localPercentage = (textMemo?.get("progress")?.jsonPrimitive?.floatOrNull ?: 0f).coerceIn(0f, 1f)
+                        val localKoreaderProgress = textMemo?.get("koreaderProgress")?.jsonPrimitive?.contentOrNull
+                        val localKoreaderProgressHash = textMemo?.get("koreaderProgressHash")?.jsonPrimitive?.contentOrNull
+                        val progressMatch =
+                            rawProgress.isNullOrBlank() ||
+                                (localKoreaderProgress == rawProgress && localKoreaderProgressHash == chapterHash)
+                        if (abs(localPercentage - remotePercentage) < serverConfig.koreaderSyncPercentageTolerance.value &&
+                            progressMatch
+                        ) {
                             return null
                         }
+                        lastPage = chapterInfo[ChapterTable.lastPageRead].coerceAtLeast(0)
+                    } else {
+                        val pageRead = rawProgress?.toIntOrNull()?.minus(1) ?: return null
+                        if (rawProgress.startsWith("/")) return null
+                        val pageCount = chapterInfo[ChapterTable.pageCount]
+                        localPercentage = if (pageCount > 0) (chapterInfo[ChapterTable.lastPageRead] + 1).toFloat() / pageCount else 0f
+                        remotePercentage = (progressResponse.percentage ?: 0f)
+                        if (abs(localPercentage - remotePercentage) < serverConfig.koreaderSyncPercentageTolerance.value) return null
+                        lastPage = pageRead.coerceAtLeast(0)
+                    }
 
-                        val localPercentage =
-                            if ((localProgress?.pageCount ?: 0) > 0) {
-                                (localProgress!!.lastPageRead + 1).toFloat() / localProgress.pageCount
-                            } else {
-                                0f
-                            }
-                        val percentageDifference = abs(localPercentage - (progressResponse.percentage ?: 0f))
+                    val isRemoteNewer = timestamp > localTimestamp
+                    val strategy = if (isRemoteNewer) forwardStrategy else backwardStrategy
 
-                        // Progress is within tolerance, no sync needed
-                        if (percentageDifference < serverConfig.koreaderSyncPercentageTolerance.value) {
-                            return null
+                    return when (strategy) {
+                        KoreaderSyncConflictStrategy.PROMPT -> {
+                            SyncResult(
+                                pageRead = lastPage,
+                                timestamp = timestamp,
+                                device = device,
+                                isConflict = true,
+                                progressPercentage = remotePercentage,
+                                isNovel = isNovel,
+                                rawKoreaderProgress = rawProgress,
+                                koreaderHash = chapterHash,
+                            )
                         }
 
-                        val localTimestamp = localProgress?.lastReadAt ?: 0L
-                        val isRemoteNewer = timestamp > localTimestamp
-                        val strategy = if (isRemoteNewer) forwardStrategy else backwardStrategy
+                        KoreaderSyncConflictStrategy.KEEP_REMOTE -> {
+                            SyncResult(
+                                pageRead = lastPage,
+                                timestamp = timestamp,
+                                device = device,
+                                shouldUpdate = true,
+                                progressPercentage = remotePercentage,
+                                isNovel = isNovel,
+                                rawKoreaderProgress = rawProgress,
+                                koreaderHash = chapterHash,
+                            )
+                        }
 
-                        return when (strategy) {
-                            KoreaderSyncConflictStrategy.PROMPT -> SyncResult(pageRead, timestamp, device, isConflict = true)
-                            KoreaderSyncConflictStrategy.KEEP_REMOTE -> SyncResult(pageRead, timestamp, device, shouldUpdate = true)
-                            KoreaderSyncConflictStrategy.KEEP_LOCAL, KoreaderSyncConflictStrategy.DISABLED -> null
+                        KoreaderSyncConflictStrategy.KEEP_LOCAL, KoreaderSyncConflictStrategy.DISABLED -> {
+                            null
                         }
                     }
                 } else {

@@ -6,6 +6,9 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.Cookie
 import okhttp3.HttpUrl
 import org.cef.CefClient
@@ -25,6 +28,9 @@ import org.cef.misc.BoolRef
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import org.cef.network.CefRequest
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnPluginStorage
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderRepository
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnWebStorageBinding
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import xyz.nulldev.androidcompat.webkit.dispose
@@ -45,6 +51,9 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Date
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import javax.imageio.ImageIO
 import javax.swing.JPanel
 
@@ -53,10 +62,14 @@ class KcefWebView {
     private val renderHandler = RenderHandler()
     private var kcefClient: CefClient? = null
     private var browser: CefBrowser? = null
+
+    @Volatile private var webStorageBinding: LnWebStorageBinding? = null
+    private val webStorageCaptureSequence = AtomicLong()
     private var width = 1000
     private var height = 1000
 
     companion object {
+        private const val MAX_WEB_STORAGE_SNAPSHOT_LENGTH = 1 shl 20
         private val networkHelper: NetworkHelper by injectLazy()
 
         fun Cookie.toCefCookie(): CefCookie {
@@ -180,6 +193,7 @@ class KcefWebView {
         ) {
             logger.trace { "Load event: ${frame.name} - ${frame.url}" }
             if (httpStatusCode > 0 && frame.isMain) handleLoad(frame.url, httpStatusCode)
+            if (frame.isMain) captureWebStorage(browser, frame)
             flush()
         }
 
@@ -293,6 +307,7 @@ class KcefWebView {
     }
 
     fun destroy() {
+        captureCurrentWebStorage(waitForCompletion = true)
         flush()
         browser?.close(true)
         browser?.dispose()
@@ -301,7 +316,12 @@ class KcefWebView {
         kcefClient = null
     }
 
-    fun loadUrl(url: String) {
+    internal fun loadUrl(
+        url: String,
+        webStorageBinding: LnWebStorageBinding?,
+    ) {
+        captureCurrentWebStorage(waitForCompletion = true)
+        this.webStorageBinding = webStorageBinding
         browser?.close(true)
         browser?.dispose()
         browser =
@@ -315,6 +335,63 @@ class KcefWebView {
                     // NOTE: Without this, we don't seem to be receiving any events
                     createImmediately()
                 }
+    }
+
+    private fun captureCurrentWebStorage(waitForCompletion: Boolean = false) {
+        val currentBrowser = browser ?: return
+        currentBrowser.mainFrame?.let { captureWebStorage(currentBrowser, it, waitForCompletion) }
+    }
+
+    private fun captureWebStorage(
+        browser: CefBrowser,
+        frame: CefFrame,
+        waitForCompletion: Boolean = false,
+    ) {
+        val binding = webStorageBinding ?: return
+        if (LnReaderRepository.webStorageOrigin(frame.url) != binding.origin) return
+
+        val captureSequence = webStorageCaptureSequence.incrementAndGet()
+        val completion = if (waitForCompletion) CountDownLatch(1) else null
+        try {
+            browser.evaluateJavaScript(
+                """return JSON.stringify({
+                    origin: window.location.origin,
+                    local: (() => { const s = window.localStorage, o = Object.create(null); for (let i = 0; i < s.length; i++) { const k = s.key(i); if (k !== null) o[k] = s.getItem(k); } return o; })(),
+                    session: (() => { const s = window.sessionStorage, o = Object.create(null); for (let i = 0; i < s.length; i++) { const k = s.key(i); if (k !== null) o[k] = s.getItem(k); } return o; })()
+                })""",
+            ) { result ->
+                try {
+                    if (result.isNullOrBlank() ||
+                        result.length > MAX_WEB_STORAGE_SNAPSHOT_LENGTH ||
+                        captureSequence != webStorageCaptureSequence.get() ||
+                        browser !== this.browser ||
+                        binding !== webStorageBinding
+                    ) {
+                        return@evaluateJavaScript
+                    }
+                    runCatching {
+                        val snapshot = Json.parseToJsonElement(result).jsonObject
+                        val actualOrigin = snapshot["origin"]?.jsonPrimitive?.contentOrNull ?: return@runCatching
+                        if (LnReaderRepository.webStorageOrigin(actualOrigin) != binding.origin) return@runCatching
+                        val local = snapshot["local"]?.jsonObject ?: return@runCatching
+                        val session = snapshot["session"]?.jsonObject ?: return@runCatching
+                        LnPluginStorage.forPlugin(binding.pluginId, binding.origin).saveWebStorageSnapshots(local, session)
+                    }.onFailure { error -> logger.warn(error) { "Failed to capture LNReader Web Storage" } }
+                } finally {
+                    completion?.countDown()
+                }
+            }
+        } catch (error: Exception) {
+            completion?.countDown()
+            logger.warn(error) { "Failed to capture LNReader Web Storage" }
+        }
+        if (completion != null) {
+            try {
+                completion.await(1, TimeUnit.SECONDS)
+            } catch (error: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
     }
 
     fun resize(

@@ -26,7 +26,7 @@ object Search {
     ): PagedMangaListDataClass {
         val source = getSourceOrStub(sourceId)
         val searchManga = source.getSearchManga(pageNum, searchTerm, getFilterListOf(source))
-        return searchManga.processEntries(sourceId)
+        return searchManga.processEntries(source)
     }
 
     suspend fun sourceFilter(
@@ -37,7 +37,7 @@ object Search {
         val source = getSourceOrStub(sourceId)
         val filterList = if (filter.filter != null) buildFilterList(sourceId, filter.filter) else source.getFilterList()
         val searchManga = source.getSearchManga(pageNum, filter.searchTerm ?: "", filterList)
-        return searchManga.processEntries(sourceId)
+        return searchManga.processEntries(source)
     }
 
     private val filterListCache = mutableMapOf<Long, FilterList>()

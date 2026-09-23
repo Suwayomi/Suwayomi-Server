@@ -376,6 +376,7 @@
         const origTitle = document.title;
         const params = new URLSearchParams(window.location.search);
         const token = params.get('token');
+        const sourceId = params.get('sourceId');
 
         function connectWs(socketUrl, token) {
             return new Promise((resolve, reject) => {
@@ -533,7 +534,7 @@
                     messageDiv.textContent = "${MR.strings.webview_label_loading.localized(locale)}";
                     messageDiv.classList.remove('error');
                     urlInput.value = u;
-                    socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight }));
+                    socket.send(JSON.stringify({ type: 'loadUrl', url: u, width: frame.clientWidth, height: frame.clientHeight, sourceId }));
                     ctx.clearRect(0, 0, frame.width, frame.height);
                 };
 

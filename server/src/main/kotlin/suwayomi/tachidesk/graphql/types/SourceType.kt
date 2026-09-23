@@ -24,6 +24,8 @@ import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.Source.getSourcePreferencesRaw
 import suwayomi.tachidesk.manga.impl.extension.Extension
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderSource
+import suwayomi.tachidesk.manga.impl.text.ChapterTextSource
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
@@ -53,6 +55,7 @@ class SourceType(
     val homeUrl: String?,
     @GraphQLDeprecated("", ReplaceWith("homeUrl"))
     val baseUrl: String?,
+    val contentType: SourceContentType = SourceContentType.MANGA,
 ) : Node {
     constructor(row: ResultRow, sourceExtension: ResultRow, source: Source) : this(
         id = row[SourceTable.id].value,
@@ -61,11 +64,12 @@ class SourceType(
         contentWarning = ContentWarning.valueOf(row[SourceTable.contentWarning]),
         iconUrl = Extension.proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
         supportsLatest = source.supportsLatest,
-        isConfigurable = source is ConfigurableSource,
+        isConfigurable = if (source is LnReaderSource) source.isConfigurable else source is ConfigurableSource,
         isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
         displayName = source.toString(),
         homeUrl = runCatching { (source as? HttpSource)?.getHomeUrl() }.getOrNull(),
         baseUrl = runCatching { (source as? HttpSource)?.baseUrl }.getOrNull(),
+        contentType = if (source is ChapterTextSource) SourceContentType.LIGHT_NOVEL else SourceContentType.MANGA,
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =

@@ -45,6 +45,7 @@ import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -117,6 +118,7 @@ class MangaQuery {
         val lastFetchedAt: Long? = null,
         val chaptersLastFetchedAt: Long? = null,
         val categoryIds: List<Int>? = null,
+        val contentType: SourceContentType? = SourceContentType.MANGA,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -137,6 +139,7 @@ class MangaQuery {
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
             opAnd.andWhere(categoryIds) { CategoryMangaTable.category inList it }
+            opAnd.eq(contentType, MangaTable.contentType)
 
             return opAnd.op
         }
@@ -249,6 +252,7 @@ class MangaQuery {
         last: Int? = null,
         offset: Int? = null,
     ): MangaNodeList {
+        val effectiveCondition = condition ?: MangaCondition()
         val queryResults =
             transaction {
                 val mangaIdsQuery =
@@ -256,13 +260,13 @@ class MangaQuery {
                         .leftJoin(CategoryMangaTable)
                         .select(MangaTable.id)
                         .withDistinct()
-                        .applyOps(condition, filter)
+                        .applyOps(effectiveCondition, filter)
 
                 val res =
                     if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
                         MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
                     } else {
-                        MangaTable.selectAll().applyOps(condition, filter)
+                        MangaTable.selectAll().applyOps(effectiveCondition, filter)
                     }
 
                 val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))

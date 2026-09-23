@@ -9,12 +9,7 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -22,11 +17,11 @@ import suwayomi.tachidesk.manga.impl.Library
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyByIndex
+import suwayomi.tachidesk.manga.impl.download.lnreader.LnChapterDownloader
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
-import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
@@ -39,6 +34,9 @@ import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
+import java.util.NoSuchElementException
+import java.util.concurrent.CompletionException
 import kotlin.time.Duration.Companion.days
 
 object MangaController {
@@ -354,20 +352,15 @@ object MangaController {
 
                         if (syncResult != null) {
                             if (syncResult.shouldUpdate) {
-                                // Update DB for SILENT and RECEIVE
-                                transaction {
-                                    ChapterTable.update({ ChapterTable.id eq chapter.id }) {
-                                        it[lastPageRead] = syncResult.pageRead
-                                        it[lastReadAt] = syncResult.timestamp
-                                    }
-                                }
+                                chapter = Chapter.applyKoreaderSyncResult(chapter.id, syncResult)
+                            } else if (!syncResult.isNovel) {
+                                // For manga PROMPT, return the remote progress in the ephemeral response
+                                chapter =
+                                    chapter.copy(
+                                        lastPageRead = syncResult.pageRead,
+                                        lastReadAt = syncResult.timestamp,
+                                    )
                             }
-                            // For PROMPT, SILENT, and RECEIVE, return the remote progress
-                            chapter =
-                                chapter.copy(
-                                    lastPageRead = syncResult.pageRead,
-                                    lastReadAt = syncResult.timestamp,
-                                )
                         }
                         chapter
                     }.thenApply { ctx.json(it) }
@@ -396,13 +389,7 @@ object MangaController {
             },
             behaviorOf = { ctx, mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val chapterId = Chapter.modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
-
-                // Sync with KoreaderSync when progress is updated
-                if (lastPageRead != null || read == true) {
-                    GlobalScope.launch { KoreaderSyncService.pushProgress(chapterId) }
-                }
-
+                Chapter.modifyChapter(mangaId, chapterIndex, read, bookmarked, markPrevRead, lastPageRead)
                 ctx.status(200)
             },
             withResults = {
@@ -501,11 +488,7 @@ object MangaController {
                         ctx.result(it.first)
 
                         if (updateProgress == true) {
-                            val chapterId = Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
-                            // Sync progress with KoreaderSync if chapter update was successful
-                            if (chapterId != -1) {
-                                GlobalScope.launch { KoreaderSyncService.pushProgress(chapterId) }
-                            }
+                            Chapter.updateChapterProgress(mangaId, chapterIndex, pageNo = index)
                         }
                     }
                 }
@@ -513,6 +496,52 @@ object MangaController {
             withResults = {
                 image(HttpStatus.OK)
                 httpCode(HttpStatus.NOT_FOUND)
+            },
+        )
+
+    val novelIllustration =
+        handler(
+            pathParam<Int>("chapterId"),
+            queryParam<String?>("url"),
+            queryParam<String?>("token"),
+            documentWith = {
+                withOperation {
+                    summary("Get a light novel illustration")
+                    description("Fetch a light novel illustration using the source's request headers.")
+                }
+            },
+            behaviorOf = { ctx, chapterId, imageUrl, token ->
+                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                if (imageUrl.isNullOrBlank() ||
+                    imageUrl.length > LnChapterDownloader.MAX_LIVE_IMAGE_URL_LENGTH ||
+                    token.isNullOrBlank() ||
+                    token.length > LnChapterDownloader.MAX_LIVE_IMAGE_TOKEN_LENGTH
+                ) {
+                    ctx.status(HttpStatus.BAD_REQUEST)
+                } else {
+                    ctx.future {
+                        future {
+                            LnChapterDownloader.fetchLiveIllustration(chapterId, imageUrl, token)
+                        }.thenApply { asset ->
+                            ctx.header("content-type", asset.mimeType)
+                            ctx.header("cache-control", "private, max-age=${1.days.inWholeSeconds}")
+                            ctx.result(asset.bytes)
+                        }.exceptionally { error ->
+                            when (val cause = error.cause ?: error) {
+                                is IllegalArgumentException -> ctx.status(HttpStatus.BAD_REQUEST)
+                                is NoSuchElementException -> ctx.status(HttpStatus.NOT_FOUND)
+                                is IOException -> ctx.status(HttpStatus.BAD_GATEWAY)
+                                else -> throw CompletionException(cause)
+                            }
+                        }
+                    }
+                }
+            },
+            withResults = {
+                image(HttpStatus.OK)
+                httpCode(HttpStatus.BAD_REQUEST)
+                httpCode(HttpStatus.NOT_FOUND)
+                httpCode(HttpStatus.BAD_GATEWAY)
             },
         )
 
@@ -534,7 +563,13 @@ object MangaController {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzMetadataForDownload(chapterId) }
                             .thenApply { (fileName, fileSize) ->
-                                ctx.header("Content-Type", contentType)
+                                val effectiveContentType =
+                                    if (fileName.endsWith(".epub", ignoreCase = true)) {
+                                        "application/epub+zip"
+                                    } else {
+                                        contentType
+                                    }
+                                ctx.header("Content-Type", effectiveContentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
                                 ctx.status(HttpStatus.OK)
@@ -545,7 +580,13 @@ object MangaController {
                     ctx.future {
                         future { ChapterDownloadHelper.getCbzForDownload(chapterId, shouldMarkAsRead) }
                             .thenApply { (inputStream, fileName, fileSize) ->
-                                ctx.header("Content-Type", contentType)
+                                val effectiveContentType =
+                                    if (fileName.endsWith(".epub", ignoreCase = true)) {
+                                        "application/epub+zip"
+                                    } else {
+                                        contentType
+                                    }
+                                ctx.header("Content-Type", effectiveContentType)
                                 ctx.header("Content-Disposition", "attachment; filename=\"$fileName\"")
                                 ctx.header("Content-Length", fileSize.toString())
                                 ctx.result(inputStream)

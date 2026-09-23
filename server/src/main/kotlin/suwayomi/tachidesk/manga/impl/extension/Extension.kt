@@ -20,20 +20,29 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import net.dongliu.apk.parser.ApkFile
 import net.dongliu.apk.parser.bean.Icon
 import okhttp3.CacheControl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import org.apache.commons.compress.archivers.zip.ZipFile
 import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
+import suwayomi.tachidesk.graphql.types.SourceContentType
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnNetworkGateway
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnNetworkPolicy
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderPluginStore
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderRepository
 import suwayomi.tachidesk.manga.impl.util.AndroidManifestParser
 import suwayomi.tachidesk.manga.impl.util.PackageTools
 import suwayomi.tachidesk.manga.impl.util.PackageTools.EXTENSION_FEATURE
@@ -52,11 +61,15 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionInfo
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.database.dbSuspendTransaction
 import suwayomi.tachidesk.server.database.dbTransaction
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
@@ -89,6 +102,13 @@ object Extension {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs: ApplicationDirs by injectLazy()
 
+    private val lnReaderPluginStore by lazy {
+        LnReaderPluginStore(
+            extensionsRoot = Path(applicationDirs.extensionsRoot),
+            fetch = ::downloadLnReaderPluginResource,
+        )
+    }
+
     private suspend fun fetchExtensionFile(url: String): Path {
         val name = Uri.parse(url).lastPathSegment!!
         val savePath = Path(applicationDirs.tempRoot) / "extensions" / name
@@ -101,15 +121,39 @@ object Extension {
     suspend fun installExtension(
         pkgName: String,
         isUpdate: Boolean = false,
+    ): String = installExtensionInternal(pkgName, isUpdate, null)
+
+    private suspend fun installExtensionInternal(
+        pkgName: String,
+        isUpdate: Boolean,
+        updateInfo: ExtensionInfo?,
     ): String {
         logger.debug { "Installing $pkgName" }
         val extension =
             transaction {
                 ExtensionTable
-                    .select(ExtensionTable.apkUrl, ExtensionTable.jarUrl)
-                    .where { ExtensionTable.pkgName eq pkgName }
+                    .select(
+                        ExtensionTable.apkUrl,
+                        ExtensionTable.jarUrl,
+                        ExtensionTable.runtimeKind,
+                        ExtensionTable.pluginId,
+                        ExtensionTable.name,
+                        ExtensionTable.siteUrl,
+                        ExtensionTable.lang,
+                        ExtensionTable.versionName,
+                        ExtensionTable.versionCode,
+                        ExtensionTable.codeUrl,
+                        ExtensionTable.iconUrl,
+                        ExtensionTable.customJsUrl,
+                        ExtensionTable.customCssUrl,
+                        ExtensionTable.contentWarning,
+                    ).where { ExtensionTable.pkgName eq pkgName }
                     .firstOrNull()
             } ?: throw NullPointerException("Could not find extension for $pkgName")
+        val runtimeKind = ExtensionKind.fromDatabase(extension[ExtensionTable.runtimeKind])
+        if (runtimeKind == ExtensionKind.LNREADER) {
+            return installLnReaderExtension(pkgName, extension, updateInfo)
+        }
         val jarUrl = extension[ExtensionTable.jarUrl]
         val apkUrl = extension[ExtensionTable.apkUrl]
 
@@ -134,6 +178,89 @@ object Extension {
                 throw NullPointerException("Could not find extension url for $pkgName")
             }
         }
+    }
+
+    private suspend fun installLnReaderExtension(
+        pkgName: String,
+        extension: ResultRow,
+        updateInfo: ExtensionInfo?,
+    ): String {
+        val installedVersionCode = updateInfo?.versionCode ?: extension[ExtensionTable.versionCode]
+        val plugin =
+            LnReaderRepository.PluginItem(
+                id = requireNotNull(extension[ExtensionTable.pluginId]) { "LNReader extension is missing plugin id" },
+                name = extension[ExtensionTable.name],
+                site = requireNotNull(extension[ExtensionTable.siteUrl]) { "LNReader extension is missing site URL" },
+                lang = extension[ExtensionTable.lang],
+                version = updateInfo?.versionName ?: extension[ExtensionTable.versionName],
+                url = updateInfo?.codeUrl ?: requireNotNull(extension[ExtensionTable.codeUrl]) { "LNReader extension is missing code URL" },
+                iconUrl = extension[ExtensionTable.iconUrl],
+                customJS = extension[ExtensionTable.customJsUrl],
+                customCSS = extension[ExtensionTable.customCssUrl],
+            )
+
+        // Keep the current source active until the replacement has been
+        // downloaded, validated, and promoted successfully.
+        val staleSources =
+            transaction {
+                val extensionId =
+                    ExtensionTable
+                        .select(ExtensionTable.id)
+                        .where { ExtensionTable.pkgName eq pkgName }
+                        .first()[ExtensionTable.id]
+                        .value
+                SourceTable.select(SourceTable.id).where { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
+            }
+        val sourceId = LnReaderRepository.sourceId(plugin.id)
+        val contentWarning = extension[ExtensionTable.contentWarning]
+        lnReaderPluginStore.install(plugin) {
+            transaction {
+                val hasNewerUpdate =
+                    ExtensionsList.updateMap[pkgName]?.versionCode?.let { it > installedVersionCode } == true
+                val extensionId =
+                    ExtensionTable
+                        .select(ExtensionTable.id)
+                        .where { ExtensionTable.pkgName eq pkgName }
+                        .first()[ExtensionTable.id]
+                        .value
+                ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
+                    it[isInstalled] = true
+                    it[hasUpdate] = hasNewerUpdate
+                    it[versionName] = plugin.version
+                    it[versionCode] = installedVersionCode
+                    it[apkName] = null
+                    it[classFQName] = ""
+                }
+                val existing = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull()
+                if (existing == null) {
+                    SourceTable.insert {
+                        it[id] = sourceId
+                        it[name] = plugin.name
+                        it[lang] = LnReaderRepository.normalizeLanguage(plugin.lang)
+                        it[this.extension] = extensionId
+                        it[this.contentWarning] = contentWarning
+                    }
+                } else {
+                    SourceTable.update({ SourceTable.id eq sourceId }) {
+                        it[name] = plugin.name
+                        it[lang] = LnReaderRepository.normalizeLanguage(plugin.lang)
+                        it[this.extension] = extensionId
+                        it[this.contentWarning] = contentWarning
+                    }
+                }
+                MangaTable.update(
+                    { (MangaTable.sourceReference eq sourceId) and (MangaTable.contentType neq SourceContentType.LIGHT_NOVEL) },
+                ) {
+                    it[contentType] = SourceContentType.LIGHT_NOVEL
+                }
+            }
+            staleSources.forEach { id ->
+                runCatching { GetSource.unregisterSource(id) }
+                    .onFailure { error -> logger.warn(error) { "Failed to unregister stale LNReader source $id" } }
+            }
+        }
+        GetSource.registerSource(sourceId)
+        return pkgName
     }
 
     private fun copyToExtensionsRoot(
@@ -589,6 +716,16 @@ object Extension {
                     }.toExecutable()
                     .execute(this@dbTransaction)
             }
+
+            httpSources.forEach { source ->
+                transaction {
+                    MangaTable.update(
+                        { (MangaTable.sourceReference eq source.id) and (MangaTable.contentType neq SourceContentType.MANGA) },
+                    ) {
+                        it[contentType] = SourceContentType.MANGA
+                    }
+                }
+            }
         }
     }
 
@@ -685,6 +822,36 @@ object Extension {
 
     private val network: NetworkHelper by injectLazy()
 
+    private suspend fun downloadLnReaderPluginResource(
+        url: String,
+        maxBytes: Long,
+    ): ByteArray {
+        require(maxBytes in 0 until Int.MAX_VALUE.toLong()) { "Invalid LNReader resource size limit: $maxBytes" }
+        var target = url.toHttpUrlOrNull() ?: throw IllegalArgumentException("Invalid LNReader resource URL")
+        val policy = LnNetworkPolicy { LnNetworkPolicy.parseOrigins(serverConfig.lnReaderAllowedLocalOrigins.value) }
+        for (redirectCount in 0..LnNetworkGateway.MAX_REDIRECTS) {
+            require(target.toString().length <= LnNetworkGateway.MAX_URL_LENGTH) { "LNReader resource URL is too long" }
+            val client = LnNetworkGateway.createPinnedClient(network.client, target, policy)
+            val response = client.newCall(GET(target.toString(), cache = CacheControl.FORCE_NETWORK)).await()
+            val location = response.header("Location")
+            if (!response.isRedirect || redirectCount == LnNetworkGateway.MAX_REDIRECTS || location == null) {
+                return response.use {
+                    require(it.isSuccessful) { "LNReader resource request failed with HTTP ${it.code}" }
+                    val body = it.body
+                    val contentLength = body.contentLength()
+                    require(contentLength == -1L || contentLength <= maxBytes) { "LNReader resource exceeds $maxBytes bytes" }
+                    val bytes = body.byteStream().readNBytes((maxBytes + 1).toInt())
+                    require(bytes.size.toLong() <= maxBytes) { "LNReader resource exceeds $maxBytes bytes" }
+                    bytes
+                }
+            }
+            val redirectTarget = target.resolve(location)
+            response.close()
+            target = redirectTarget ?: throw IllegalArgumentException("Invalid LNReader resource redirect")
+        }
+        error("Unreachable LNReader resource redirect state")
+    }
+
     private suspend fun downloadExtension(
         url: String,
         savePath: Path,
@@ -736,8 +903,19 @@ object Extension {
     fun uninstallExtension(pkgName: String) {
         logger.debug { "Uninstalling $pkgName" }
 
+        val lnReaderRecord =
+            transaction {
+                ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first()
+            }
+        if (ExtensionKind.fromDatabase(lnReaderRecord[ExtensionTable.runtimeKind]) == ExtensionKind.LNREADER) {
+            uninstallLnReaderExtension(pkgName, lnReaderRecord)
+            return
+        }
+
         transaction {
-            val extensionRecord = ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first()
+            val extensionRecord = lnReaderRecord
+            val runtimeKind = ExtensionKind.fromDatabase(extensionRecord[ExtensionTable.runtimeKind])
+            check(runtimeKind == ExtensionKind.JVM)
             val extensionId = extensionRecord[ExtensionTable.id].value
 
             val sources = SourceTable.selectAll().where { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
@@ -760,6 +938,34 @@ object Extension {
         }
     }
 
+    private fun uninstallLnReaderExtension(
+        pkgName: String,
+        extensionRecord: ResultRow,
+    ) {
+        val extensionId = extensionRecord[ExtensionTable.id].value
+        val sourceIds =
+            transaction {
+                SourceTable.select(SourceTable.id).where { SourceTable.extension eq extensionId }.map { it[SourceTable.id].value }
+            }
+        sourceIds.forEach(GetSource::unregisterSource)
+        val pluginId = requireNotNull(extensionRecord[ExtensionTable.pluginId])
+        LnReaderPluginStore.uninstall(pluginId, Path(applicationDirs.extensionsRoot))
+
+        transaction {
+            SourceTable.deleteWhere { SourceTable.extension eq extensionId }
+            if (extensionRecord[ExtensionTable.isObsolete] || extensionRecord[ExtensionTable.codeUrl] == null) {
+                ExtensionTable.deleteWhere { ExtensionTable.pkgName eq pkgName }
+            } else {
+                ExtensionTable.update({ ExtensionTable.pkgName eq pkgName }) {
+                    it[isInstalled] = false
+                    it[hasUpdate] = false
+                    it[apkName] = null
+                    it[classFQName] = ""
+                }
+            }
+        }
+    }
+
     suspend fun updateExtension(pkgName: String): String {
         val targetExtension =
             checkNotNull(ExtensionsList.updateMap[pkgName]) {
@@ -768,10 +974,14 @@ object Extension {
 
         logger.debug { "Updating $pkgName to ${targetExtension.versionName}" }
 
+        if (targetExtension.runtimeKind == ExtensionKind.LNREADER) {
+            return installExtensionInternal(pkgName, true, targetExtension).also {
+                ExtensionsList.updateMap.remove(pkgName, targetExtension)
+            }
+        }
+
         val result = installExtension(pkgName, true)
-
         ExtensionsList.updateMap.remove(pkgName)
-
         return result
     }
 

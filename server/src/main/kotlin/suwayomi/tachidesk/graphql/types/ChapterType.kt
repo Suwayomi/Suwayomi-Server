@@ -9,19 +9,25 @@ package suwayomi.tachidesk.graphql.types
 
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.exposed.v1.core.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.impl.text.NovelContentService
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
 
 data class SyncConflictInfoType(
     val deviceName: String,
     val remotePage: Int,
+    val remotePercentage: Float? = null,
 )
 
 class ChapterType(
@@ -41,6 +47,7 @@ class ChapterType(
     val fetchedAt: Long,
     val isDownloaded: Boolean,
     val pageCount: Int,
+    val textProgress: Float? = null,
 //    val chapterCount: Int?,
 ) : Node {
     companion object {
@@ -73,6 +80,9 @@ class ChapterType(
         row[ChapterTable.fetchedAt],
         row[ChapterTable.isDownloaded],
         row[ChapterTable.pageCount],
+        row[ChapterTable.memo]["suwayomi.text"]?.let {
+            if (it is JsonObject) it["progress"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() else null
+        },
 //        transaction { ChapterTable.selectAll().where { Manga eq chapterEntry[manga].value }.count().toInt() },
     )
 
@@ -93,6 +103,9 @@ class ChapterType(
         dataClass.fetchedAt,
         dataClass.downloaded,
         dataClass.pageCount,
+        dataClass.memo["suwayomi.text"]?.let {
+            if (it is JsonObject) it["progress"]?.jsonPrimitive?.contentOrNull?.toFloatOrNull() else null
+        },
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> =
@@ -100,6 +113,11 @@ class ChapterType(
 
     fun meta(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<List<ChapterMetaType>> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, List<ChapterMetaType>>("ChapterMetaDataLoader", id)
+
+    fun textContent(): CompletableFuture<ChapterTextContent?> =
+        future {
+            NovelContentService.getChapterTextOrNull(id)
+        }
 }
 
 data class ChapterNodeList(

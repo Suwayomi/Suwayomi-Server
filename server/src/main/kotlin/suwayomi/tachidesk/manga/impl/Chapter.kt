@@ -15,7 +15,14 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.chapter.ChapterRecognition
 import eu.kanade.tachiyomi.util.chapter.ChapterSanitizer.sanitize
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -33,9 +40,19 @@ import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jsoup.Jsoup
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.download.DownloadManager.EnqueueInput
+import suwayomi.tachidesk.manga.impl.download.lnreader.LnChapterDownloader
+import suwayomi.tachidesk.manga.impl.download.lnreader.LnEpubStore
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
+import suwayomi.tachidesk.manga.impl.text.ChapterTextContent
+import suwayomi.tachidesk.manga.impl.text.ChapterTextSanitizer
+import suwayomi.tachidesk.manga.impl.text.ChapterTextSource
 import suwayomi.tachidesk.manga.impl.track.Track
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.impl.util.updateChapterDownloadDir
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
@@ -46,10 +63,15 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.manga.model.table.toSChapter
+import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
+import uy.kohesive.injekt.injectLazy
 import java.time.Instant
 import java.util.TreeSet
 import kotlin.math.max
+
+private val applicationDirs: ApplicationDirs by injectLazy()
 
 private fun List<ChapterDataClass>.removeDuplicates(currentChapter: ChapterDataClass): List<ChapterDataClass> =
     groupBy { it.chapterNumber }
@@ -110,11 +132,30 @@ object Chapter {
         }
     }
 
+    @Suppress("DEPRECATION")
     suspend fun updateChapterListDatabase(
         mangaEntry: ResultRow,
         chapters: List<SChapter>,
         source: Source,
     ): List<SChapter> {
+        val mangaId = mangaEntry[MangaTable.id].value
+        val sourceContentType =
+            when {
+                source is ChapterTextSource -> SourceContentType.LIGHT_NOVEL
+                source !is StubSource -> SourceContentType.MANGA
+                else -> null
+            }
+        if (sourceContentType != null && mangaEntry[MangaTable.contentType] != sourceContentType) {
+            transaction {
+                MangaTable.update({ MangaTable.id eq mangaId }) { it[contentType] = sourceContentType }
+            }
+        }
+        val isNovel =
+            if (source is StubSource) {
+                mangaEntry[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL
+            } else {
+                source is ChapterTextSource
+            }
         val currentLatestChapterNumber = Manga.getLatestChapter(mangaEntry[MangaTable.id].value)?.chapterNumber ?: 0f
         val numberOfCurrentChapters = getCountOfMangaChapters(mangaEntry[MangaTable.id].value)
         // it's possible that the source returns a list containing chapters with the same url
@@ -178,6 +219,16 @@ object Chapter {
         uniqueChapters.reversed().forEachIndexed { index, fetchedChapter ->
             val chapterEntry = chaptersInDb.find { it.url == fetchedChapter.url }
 
+            if (mangaEntry[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL) {
+                val sanitizedMemo = fetchedChapter.memo.filterNot { (key, _) -> key.startsWith("suwayomi.") }.toMutableMap()
+                if (chapterEntry != null) {
+                    chapterEntry.memo.filter { (key, _) -> key.startsWith("suwayomi.") }.forEach { (key, value) ->
+                        sanitizedMemo[key] = value
+                    }
+                }
+                fetchedChapter.memo = JsonObject(sanitizedMemo)
+            }
+
             val chapterData =
                 ChapterDataClass.fromSChapter(
                     fetchedChapter,
@@ -216,6 +267,7 @@ object Chapter {
         val deletedBookmarkedChapterNumbers = TreeSet<Float>()
         val deletedDownloadedChapterByChapterNumber = mutableMapOf<Float, ChapterDataClass>()
         val deletedChapterNumberDateFetchMap = mutableMapOf<Float, Long>()
+        val deletedChapterByChapterNumber = mutableMapOf<Float, ChapterDataClass>()
 
         // clear any orphaned/duplicate chapters that are in the db but not in `chapterList`
         val chapterUrls = uniqueChapters.map { it.url }.toSet()
@@ -228,6 +280,7 @@ object Chapter {
                     if (dbChapter.downloaded) deletedDownloadedChapterByChapterNumber[dbChapter.chapterNumber] = dbChapter
                     deletedChapterNumbers.add(dbChapter.chapterNumber)
                     deletedChapterNumberDateFetchMap[dbChapter.chapterNumber] = dbChapter.fetchedAt
+                    deletedChapterByChapterNumber[dbChapter.chapterNumber] = dbChapter
                     dbChapter.id
                 } else {
                     null
@@ -238,6 +291,12 @@ object Chapter {
             // we got some clean up due
             if (chaptersIdsToDelete.isNotEmpty()) {
                 DownloadManager.dequeue(chaptersIdsToDelete)
+                if (isNovel) {
+                    val mangaId = mangaEntry[MangaTable.id].value
+                    chaptersIdsToDelete.forEach { chapterId ->
+                        LnEpubStore.delete(mangaId, chapterId)
+                    }
+                }
                 PageTable.deleteWhere { chapter inList chaptersIdsToDelete }
                 ChapterTable.deleteWhere { id inList chaptersIdsToDelete }
             }
@@ -272,6 +331,26 @@ object Chapter {
                                 deletedChapterNumberDateFetchMap[chapter.chapterNumber]?.let {
                                     this[ChapterTable.fetchedAt] = it
                                 }
+
+                                if (isNovel) {
+                                    val oldDeleted = deletedChapterByChapterNumber[chapter.chapterNumber]
+                                    if (oldDeleted != null) {
+                                        val oldText =
+                                            oldDeleted.memo["suwayomi.text"]?.let {
+                                                if (it is JsonObject) it else null
+                                            }
+                                        if (oldText != null && oldText.containsKey("progress")) {
+                                            val newText =
+                                                buildJsonObject {
+                                                    oldText["progress"]?.let { put("progress", it) }
+                                                    oldText["updatedAt"]?.let { put("updatedAt", it) }
+                                                }
+                                            val currentMemo = chapter.memo.toMutableMap()
+                                            currentMemo["suwayomi.text"] = newText
+                                            this[ChapterTable.memo] = JsonObject(currentMemo)
+                                        }
+                                    }
+                                }
                             }
                         }.map { ChapterTable.toDataClass(it) }
 
@@ -279,6 +358,7 @@ object Chapter {
 
                 val chaptersToPreserveDownload =
                     insertedChapters.filter { chapter ->
+                        if (isNovel) return@filter false
                         val deletedChapter =
                             deletedDownloadedChapterByChapterNumber[chapter.chapterNumber] ?: return@filter false
 
@@ -325,7 +405,7 @@ object Chapter {
                                 return@forEach
                             }
 
-                            val isDownloadPreservable = updateChapterDownloadDir(currentChapter, it)
+                            val isDownloadPreservable = if (isNovel) true else updateChapterDownloadDir(currentChapter, it)
                             if (!isDownloadPreservable) {
                                 this[ChapterTable.isDownloaded] = false
                                 this[ChapterTable.pageCount] = -1
@@ -493,6 +573,9 @@ object Chapter {
         if (isRead == true || markPrevRead == true) {
             Track.asyncTrackChapter(setOf(mangaId))
         }
+        if (lastPageRead != null || isRead == true) {
+            asyncPushKoreaderProgress(listOf(chapterId))
+        }
 
         return chapterId
     }
@@ -595,7 +678,63 @@ object Chapter {
                 }
             Track.asyncTrackChapter(mangaIds)
         }
+        if (lastPageRead != null || isRead == true) {
+            val targetIds = transaction { ChapterTable.select(ChapterTable.id).where(condition).map { it[ChapterTable.id].value } }
+            if (targetIds.isNotEmpty()) {
+                asyncPushKoreaderProgress(targetIds)
+            }
+        }
     }
+
+    fun asyncPushKoreaderProgress(chapterIds: Collection<Int>) {
+        if (chapterIds.isEmpty() || !KoreaderSyncService.hasConfiguredCredentials()) return
+        CoroutineScope(Dispatchers.IO).launch {
+            chapterIds.forEach { id ->
+                KoreaderSyncService.pushProgress(id)
+            }
+        }
+    }
+
+    fun applyKoreaderSyncResult(
+        chapterId: Int,
+        syncResult: KoreaderSyncService.SyncResult,
+    ): ChapterDataClass =
+        transaction {
+            val currentChapter =
+                ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.firstOrNull()
+                    ?: throw NoSuchElementException("Chapter $chapterId not found")
+            if (syncResult.isNovel) {
+                val currentMemo = currentChapter[ChapterTable.memo].toMutableMap()
+                val existingText = currentMemo["suwayomi.text"]?.let { if (it is JsonObject) it else null }
+                val newText =
+                    buildJsonObject {
+                        existingText?.forEach { (k, v) ->
+                            if (k != "progress" && k != "koreaderProgress" && k != "koreaderProgressHash" && k != "updatedAt") {
+                                put(k, v)
+                            }
+                        }
+                        put("progress", syncResult.progressPercentage ?: 0f)
+                        syncResult.rawKoreaderProgress?.let {
+                            put("koreaderProgress", it)
+                            syncResult.koreaderHash?.let { h -> put("koreaderProgressHash", h) }
+                        }
+                        put("updatedAt", syncResult.timestamp * 1000)
+                    }
+                currentMemo["suwayomi.text"] = newText
+                ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                    it[memo] = JsonObject(currentMemo)
+                    it[lastReadAt] = syncResult.timestamp
+                    it[version] = currentChapter[ChapterTable.version] + 1
+                    it[lastModifiedAt] = Instant.now().epochSecond
+                }
+            } else {
+                ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                    it[lastPageRead] = syncResult.pageRead
+                    it[lastReadAt] = syncResult.timestamp
+                }
+            }
+            ChapterTable.toDataClass(ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first())
+        }
 
     fun getChaptersMetaMaps(chapterIds: List<Int>): Map<Int, Map<String, String>> =
         transaction {
@@ -764,8 +903,11 @@ object Chapter {
             transaction {
                 (ChapterTable innerJoin MangaTable)
                     .selectAll()
-                    .where { (MangaTable.inLibrary eq true) and (ChapterTable.fetchedAt greater MangaTable.inLibraryAt) }
-                    .orderBy(ChapterTable.fetchedAt to SortOrder.DESC)
+                    .where {
+                        (MangaTable.inLibrary eq true) and
+                            (MangaTable.contentType eq SourceContentType.MANGA) and
+                            (ChapterTable.fetchedAt greater MangaTable.inLibraryAt)
+                    }.orderBy(ChapterTable.fetchedAt to SortOrder.DESC)
                     .map {
                         MangaChapterDataClass(
                             MangaTable.toDataClass(it),
@@ -805,4 +947,147 @@ object Chapter {
 
         return chapterData.id
     }
+
+    fun updateTextProgress(
+        chapterId: Int,
+        progress: Float,
+    ): ChapterDataClass {
+        require(progress.isFinite()) { "Novel reading progress must be finite" }
+        val clampedProgress = progress.coerceIn(0.0f, 1.0f)
+        val now = Instant.now().epochSecond
+
+        val (updatedChapter, newlyMarkedRead) =
+            transaction {
+                val chapterRow =
+                    (ChapterTable innerJoin MangaTable)
+                        .select(ChapterTable.columns + MangaTable.contentType)
+                        .where { ChapterTable.id eq chapterId }
+                        .firstOrNull()
+                        ?: throw NoSuchElementException("Chapter $chapterId not found")
+                require(chapterRow[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL) {
+                    "Chapter $chapterId is not a light novel chapter"
+                }
+
+                val currentMemo = chapterRow[ChapterTable.memo].toMutableMap()
+                val existingText = currentMemo["suwayomi.text"] as? JsonObject
+
+                currentMemo["suwayomi.text"] =
+                    buildJsonObject {
+                        existingText?.forEach { (k, v) ->
+                            if (k != "koreaderProgress" && k != "koreaderProgressHash") {
+                                put(k, v)
+                            }
+                        }
+                        put("progress", JsonPrimitive(clampedProgress))
+                        put("updatedAt", JsonPrimitive(System.currentTimeMillis()))
+                    }
+
+                val willMarkRead = clampedProgress >= 0.95f && !chapterRow[ChapterTable.isRead]
+                ChapterTable.update({ ChapterTable.id eq chapterId }) {
+                    it[memo] = JsonObject(currentMemo)
+                    if (clampedProgress > 0f) {
+                        it[lastReadAt] = now
+                    }
+                    if (!willMarkRead) {
+                        it[version] = chapterRow[ChapterTable.version] + 1
+                    }
+                    if (clampedProgress >= 0.95f) {
+                        it[isRead] = true
+                    }
+                }
+
+                ChapterTable.toDataClass(ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.first()) to willMarkRead
+            }
+
+        if (newlyMarkedRead) {
+            Track.asyncTrackChapter(setOf(updatedChapter.mangaId))
+        }
+        asyncPushKoreaderProgress(listOf(chapterId))
+
+        return updatedChapter
+    }
+
+    suspend fun getChapterText(chapterId: Int): ChapterTextContent {
+        val (chapterRow, mangaRow) =
+            suspendTransaction {
+                val ch =
+                    ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.firstOrNull()
+                        ?: throw NoSuchElementException("Chapter $chapterId not found")
+                val mg =
+                    MangaTable.selectAll().where { MangaTable.id eq ch[ChapterTable.manga] }.firstOrNull()
+                        ?: throw NoSuchElementException("Manga ${ch[ChapterTable.manga]} not found")
+                Pair(ch, mg)
+            }
+
+        val mangaId = mangaRow[MangaTable.id].value
+        if (mangaRow[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL &&
+            LnEpubStore.existsValid(mangaId, chapterId)
+        ) {
+            val downloadedContent = LnEpubStore.readChapterContent(mangaId, chapterId, resolveAssetsToDataUri = true)
+            if (downloadedContent != null) {
+                LnEpubStore.healChapterDownloadState(mangaId, chapterId)
+                return ChapterTextContent(
+                    html = downloadedContent.html,
+                    fromDownload = true,
+                    customCss = downloadedContent.customCss,
+                    customJs = downloadedContent.customJs,
+                )
+            }
+        }
+        val sourceId = mangaRow[MangaTable.sourceReference]
+        val source = GetSource.getSourceOrNull(sourceId)
+        val isNovel = mangaRow[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL || source is ChapterTextSource
+        if (!isNovel) {
+            throw IllegalStateException("Chapter $chapterId is not a light novel chapter")
+        }
+        if (source !is ChapterTextSource) {
+            throw IllegalStateException("Source $sourceId does not support text content")
+        }
+
+        if (mangaRow[MangaTable.contentType] != SourceContentType.LIGHT_NOVEL) {
+            suspendTransaction {
+                MangaTable.update({ MangaTable.id eq mangaId }) {
+                    it[contentType] = SourceContentType.LIGHT_NOVEL
+                }
+            }
+        }
+        LnEpubStore.healChapterDownloadState(mangaId, chapterId)
+
+        val sChapter = chapterRow.toSChapter()
+        val rawText = source.getChapterText(sChapter)
+        val baseUrl = (source as? HttpSource)?.baseUrl
+        val sanitizedHtml = ChapterTextSanitizer.sanitize(rawText.text, baseUrl)
+        val chapterDoc = Jsoup.parseBodyFragment(sanitizedHtml)
+        chapterDoc.select("img[src]").forEach { img ->
+            val imageUrl = img.attr("src").trim()
+            if (
+                imageUrl.startsWith("http://", ignoreCase = true) ||
+                imageUrl.startsWith("https://", ignoreCase = true)
+            ) {
+                img
+                    .attr("data-lnreader-image-url", imageUrl)
+                    .attr("data-lnreader-chapter-id", chapterId.toString())
+                    .attr(
+                        "data-lnreader-image-token",
+                        LnChapterDownloader.createLiveIllustrationToken(chapterId, imageUrl),
+                    ).removeAttr("src")
+            }
+        }
+
+        return ChapterTextContent(
+            html = chapterDoc.body().html(),
+            fromDownload = false,
+            customCss = rawText.customCss,
+            customJs = rawText.customJs,
+        )
+    }
+
+    suspend fun getChapterTextOrNull(chapterId: Int): ChapterTextContent? =
+        try {
+            getChapterText(chapterId)
+        } catch (_: IllegalStateException) {
+            null
+        } catch (_: NoSuchElementException) {
+            null
+        }
 }

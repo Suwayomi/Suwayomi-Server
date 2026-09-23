@@ -14,6 +14,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ExtensionStoreType
 import suwayomi.tachidesk.manga.impl.extension.ExtensionStoreService
+import suwayomi.tachidesk.manga.model.dataclass.ExtensionKind
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.server.JavalinSetup.future
 import java.util.concurrent.CompletableFuture
@@ -22,6 +23,7 @@ class ExtensionStoreMutation {
     data class AddExtensionStoreInput(
         val clientMutationId: String? = null,
         val indexUrl: String,
+        val kind: ExtensionKind? = null,
     )
 
     data class AddExtensionStorePayload(
@@ -31,9 +33,17 @@ class ExtensionStoreMutation {
 
     @RequireAuth
     fun addExtensionStore(input: AddExtensionStoreInput): CompletableFuture<AddExtensionStorePayload?> {
-        val (clientMutationId, indexUrl) = input
+        val (clientMutationId, indexUrl, kind) = input
         return future {
             val store = ExtensionStoreService.fetch(indexUrl)
+
+            if (kind != null && store.kind != kind) {
+                val expected = if (kind == ExtensionKind.LNREADER) "Light Novel" else "Manga"
+                val actual = if (store.kind == ExtensionKind.LNREADER) "Light Novel" else "Manga"
+                throw IllegalArgumentException(
+                    "The repository at '$indexUrl' is a $actual extension repository, not a $expected repository",
+                )
+            }
 
             ExtensionStoreService.upsert(store)
             ExtensionStoreService.syncDbToPrefs()
@@ -96,6 +106,7 @@ class ExtensionStoreMutation {
                             indexUrl = it.indexUrl,
                             isLegacy = it.isLegacy,
                             extensionListUrl = it.extensionListUrl,
+                            kind = it.kind,
                         )
                     },
             )

@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.minus
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.plus
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -23,6 +24,7 @@ import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.util.lang.isEmpty
@@ -340,12 +342,30 @@ class CategoryMutation {
             "'order' must not be <= 0"
         }
 
+        val contentType =
+            transaction {
+                CategoryTable
+                    .selectAll()
+                    .where { CategoryTable.id eq categoryId }
+                    .firstOrNull()
+                    ?.get(CategoryTable.contentType) ?: SourceContentType.MANGA
+            }
+
         // position-based: stored sort_order values can collide (pre-existing adopted 0-based rows; sync skips newer local copies)
         Category.moveCategoryToPosition(categoryId, position)
+        val includeDefaultCategory = contentType == SourceContentType.MANGA || Category.needsDefaultCategory(contentType)
 
         val categories =
             transaction {
-                CategoryTable.selectAll().orderBy(CategoryTable.order).map { CategoryType(it) }
+                val query = CategoryTable.selectAll()
+                if (includeDefaultCategory) {
+                    query.andWhere { (CategoryTable.contentType eq contentType) or (CategoryTable.id eq Category.DEFAULT_CATEGORY_ID) }
+                } else {
+                    query.andWhere { CategoryTable.contentType eq contentType }
+                }
+                query
+                    .orderBy(CategoryTable.order)
+                    .map { CategoryType(it, contentType = contentType) }
             }
 
         return UpdateCategoryOrderPayload(
@@ -361,6 +381,7 @@ class CategoryMutation {
         val default: Boolean? = null,
         val includeInUpdate: IncludeOrExclude? = null,
         val includeInDownload: IncludeOrExclude? = null,
+        val contentType: SourceContentType = SourceContentType.MANGA,
     )
 
     data class CreateCategoryPayload(
@@ -370,9 +391,14 @@ class CategoryMutation {
 
     @RequireAuth
     fun createCategory(input: CreateCategoryInput): CreateCategoryPayload? {
-        val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
+        val (clientMutationId, name, order, default, includeInUpdate, includeInDownload, contentType) = input
         transaction {
-            require(CategoryTable.selectAll().where { CategoryTable.name eq input.name }.isEmpty()) {
+            require(
+                CategoryTable
+                    .selectAll()
+                    .where { (CategoryTable.name eq input.name) and (CategoryTable.contentType eq input.contentType) }
+                    .isEmpty(),
+            ) {
                 "'name' must be unique"
             }
         }
@@ -388,7 +414,7 @@ class CategoryMutation {
         val category =
             transaction {
                 if (order != null) {
-                    CategoryTable.update({ CategoryTable.order greaterEq order }) {
+                    CategoryTable.update({ (CategoryTable.order greaterEq order) and (CategoryTable.contentType eq contentType) }) {
                         it[CategoryTable.order] = CategoryTable.order + 1
                     }
                 }
@@ -396,6 +422,7 @@ class CategoryMutation {
                 val id =
                     CategoryTable.insertAndGetId {
                         it[CategoryTable.name] = input.name
+                        it[CategoryTable.contentType] = contentType
                         it[CategoryTable.order] = order ?: Int.MAX_VALUE
                         if (default != null) {
                             it[CategoryTable.isDefault] = default
@@ -408,7 +435,7 @@ class CategoryMutation {
                         }
                     }
 
-                Category.normalizeCategories()
+                Category.normalizeCategories(contentType)
 
                 CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id }.first())
             }
@@ -457,7 +484,7 @@ class CategoryMutation {
 
                 CategoryTable.deleteWhere { CategoryTable.id eq categoryId }
 
-                Category.normalizeCategories()
+                category?.get(CategoryTable.contentType)?.let(Category::normalizeCategories)
                 category?.let { SyncYomiSyncService.rememberDeletedCategory(it[CategoryTable.uid]) }
 
                 if (category != null) {

@@ -18,11 +18,13 @@ import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.max
 import org.jetbrains.exposed.v1.core.wrapAsExpression
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.Category.DEFAULT_CATEGORY_ID
 import suwayomi.tachidesk.manga.model.dataclass.CategoryDataClass
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
@@ -53,6 +55,32 @@ object CategoryManga {
         categoryIds: List<Int>,
     ) {
         val filteredCategoryIds = categoryIds.filter { it != DEFAULT_CATEGORY_ID }
+
+        if (mangaIds.isNotEmpty() && filteredCategoryIds.isNotEmpty()) {
+            transaction {
+                val mangaContentTypes =
+                    MangaTable
+                        .select(MangaTable.id, MangaTable.contentType)
+                        .where { MangaTable.id inList mangaIds }
+                        .associate { it[MangaTable.id].value to it[MangaTable.contentType] }
+                val categoryContentTypes =
+                    CategoryTable
+                        .select(CategoryTable.id, CategoryTable.contentType)
+                        .where { CategoryTable.id inList filteredCategoryIds }
+                        .associate { it[CategoryTable.id].value to it[CategoryTable.contentType] }
+
+                require(categoryContentTypes.size == filteredCategoryIds.distinct().size) {
+                    "One or more categories do not exist"
+                }
+                require(
+                    mangaContentTypes.values.all { mangaContentType ->
+                        categoryContentTypes.values.all { categoryContentType -> categoryContentType == mangaContentType }
+                    },
+                ) {
+                    "Manga and category content types must match"
+                }
+            }
+        }
 
         val mangaIdsToCategoryIds = getMangasCategories(mangaIds).mapValues { it.value.map { category -> category.id } }
         val mangaIdsToNewCategoryIds =
@@ -98,7 +126,10 @@ object CategoryManga {
     /**
      * list of mangas that belong to a category
      */
-    fun getCategoryMangaList(categoryId: Int): List<MangaDataClass> {
+    fun getCategoryMangaList(
+        categoryId: Int,
+        contentType: SourceContentType? = null,
+    ): List<MangaDataClass> {
         // Select the required columns from the MangaTable and add the aggregate functions to compute unread, download, and chapter counts
         val unreadCount =
             wrapAsExpression<Long>(
@@ -147,6 +178,8 @@ object CategoryManga {
                         .select(columns = selectedColumns)
                         .where { (MangaTable.inLibrary eq true) and (CategoryMangaTable.category eq categoryId) }
                 }
+
+            if (contentType != null) query.andWhere { MangaTable.contentType eq contentType }
 
             // Join with the ChapterTable to fetch the last read chapter for each manga
             query.groupBy(*MangaTable.columns.toTypedArray()).map(transform)

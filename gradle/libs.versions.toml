@@ -131,6 +131,7 @@ android-annotations = "androidx.annotation:annotation:1.10.0"
 # Substitute for duktape-android
 polyglot-core = { module = "org.graalvm.polyglot:polyglot", version.ref = "polyglot" }
 polyglot-graaljs = { module = "org.graalvm.polyglot:js-community", version.ref = "polyglot" }
+polyglot-js-isolate = { module = "org.graalvm.polyglot:js-isolate-community", version.ref = "polyglot" }
 
 # Settings
 settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.ref = "settings" }

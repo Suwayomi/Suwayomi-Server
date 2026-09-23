@@ -13,6 +13,7 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.andWhere
@@ -42,6 +43,7 @@ import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.util.concurrent.CompletableFuture
@@ -129,6 +131,7 @@ class ChapterQuery {
         val fetchedAt: Long? = null,
         val isDownloaded: Boolean? = null,
         val pageCount: Int? = null,
+        val contentType: SourceContentType? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -148,7 +151,7 @@ class ChapterQuery {
             opAnd.eq(fetchedAt, ChapterTable.fetchedAt)
             opAnd.eq(isDownloaded, ChapterTable.isDownloaded)
             opAnd.eq(pageCount, ChapterTable.pageCount)
-
+            opAnd.eq(contentType, MangaTable.contentType)
             return opAnd.op
         }
     }
@@ -224,11 +227,20 @@ class ChapterQuery {
                 val res = ChapterTable.selectAll()
 
                 val libraryOp = filter?.getLibraryOp()
-                if (libraryOp != null) {
+                val defaultMangaOnly =
+                    condition?.contentType == null && condition?.mangaId == null && condition?.id == null &&
+                        filter?.mangaId == null && filter?.id == null
+                val needsMangaJoin = libraryOp != null || condition?.contentType != null || defaultMangaOnly
+                if (needsMangaJoin) {
                     res.adjustColumnSet {
                         innerJoin(MangaTable)
                     }
-                    res.andWhere { libraryOp }
+                    if (libraryOp != null) {
+                        res.andWhere { libraryOp }
+                    }
+                    if (defaultMangaOnly) {
+                        res.andWhere { MangaTable.contentType eq SourceContentType.MANGA }
+                    }
                 }
 
                 res.applyOps(condition, filter)

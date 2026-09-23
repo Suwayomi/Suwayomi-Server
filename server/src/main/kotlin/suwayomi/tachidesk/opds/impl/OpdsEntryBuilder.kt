@@ -24,6 +24,7 @@ import suwayomi.tachidesk.opds.util.OpdsDateUtil
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatFileSizeForOpds
 import suwayomi.tachidesk.server.serverConfig
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * A builder class responsible for creating OPDS Entry XML objects from data transfer objects.
@@ -197,9 +198,10 @@ object OpdsEntryBuilder {
     ): OpdsEntryXml {
         var effectiveLastPageRead = chapter.lastPageRead
         var effectiveLastReadAt = chapter.lastReadAt
+        var effectivePercentage = chapter.progressPercentage
 
         if (skipMetadataFeed) {
-            val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+            val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id, readOnly = true)
 
             // If sync strategy dictates an update (e.g. KEEP_REMOTE), use remote data.
             // If sync strategy is PROMPT (isConflict=true), we ignore it here (effectively KEEP_LOCAL/DISABLED)
@@ -207,15 +209,29 @@ object OpdsEntryBuilder {
             if (syncResult != null && syncResult.shouldUpdate) {
                 effectiveLastPageRead = syncResult.pageRead
                 effectiveLastReadAt = syncResult.timestamp
+                if (syncResult.progressPercentage != null) {
+                    effectivePercentage = syncResult.progressPercentage
+                }
             }
         }
 
         val statusKey =
             when {
-                chapter.downloaded -> MR.strings.opds_chapter_status_downloaded
-                chapter.read -> MR.strings.opds_chapter_status_read
-                effectiveLastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
-                else -> MR.strings.opds_chapter_status_unread
+                chapter.downloaded -> {
+                    MR.strings.opds_chapter_status_downloaded
+                }
+
+                chapter.read -> {
+                    MR.strings.opds_chapter_status_read
+                }
+
+                effectiveLastPageRead > 0 || (manga.isNovel && (effectivePercentage ?: 0f) > 0f) -> {
+                    MR.strings.opds_chapter_status_in_progress
+                }
+
+                else -> {
+                    MR.strings.opds_chapter_status_unread
+                }
             }
         val titlePrefix = statusKey.localized(locale)
         val chapterName = resolveChapterTitle(chapter.name, chapter.chapterNumber, chapter.sourceOrder, manga.totalChapters, locale)
@@ -228,27 +244,36 @@ object OpdsEntryBuilder {
                 }
                 if (chapter.pageCount > 0) {
                     append(MR.strings.opds_chapter_details_progress.localized(locale, effectiveLastPageRead, chapter.pageCount))
+                } else if (manga.isNovel && (effectivePercentage ?: 0f) > 0f) {
+                    val percentInt = ((effectivePercentage ?: 0f) * 100).toInt()
+                    append(" | Progress: $percentInt%")
                 }
             }
 
         val links = mutableListOf<OpdsLinkXml>()
 
         if (skipMetadataFeed) {
-            // Provide Acquisition Link (Download CBZ) if downloaded
+            // Provide Acquisition Link (Download CBZ or EPUB) if downloaded
             if (chapter.downloaded) {
+                val (mediaType, titleRes) =
+                    if (manga.isNovel) {
+                        Pair("application/epub+zip", MR.strings.opds_linktitle_download_epub)
+                    } else {
+                        Pair(serverConfig.opdsCbzMimetype.value.mediaType, MR.strings.opds_linktitle_download_cbz)
+                    }
                 links.add(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
                         "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
-                        serverConfig.opdsCbzMimetype.value.mediaType,
-                        MR.strings.opds_linktitle_download_cbz.localized(locale),
+                        mediaType,
+                        titleRes.localized(locale),
                         length = chapter.cbzFileSize,
                     ),
                 )
             }
 
-            // Provide Stream Link (OPDS-PSE) if page count is known
-            if (chapter.pageCount > 0) {
+            // Provide Stream Link (OPDS-PSE) if page count is known (only for manga, NOT for LN prose)
+            if (!manga.isNovel && chapter.pageCount > 0) {
                 val basePageHref =
                     "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
                         "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}&opds=true"
@@ -325,10 +350,18 @@ object OpdsEntryBuilder {
         manga: OpdsMangaDetails,
     ): Pair<OpdsEntryXml, OpdsEntryXml?> {
         // Check remote progress before building the entry
-        val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id)
+        val syncResult = KoreaderSyncService.checkAndPullProgress(chapter.id, readOnly = true)
 
-        // Exists a conflict if the sync service reports a conflict and the page numbers differ.
-        val hasConflict = syncResult?.isConflict == true && syncResult.pageRead != chapter.lastPageRead
+        // Exists a conflict if the sync service reports a conflict and the progress differs.
+        val hasConflict =
+            syncResult?.isConflict == true && (
+                if (manga.isNovel) {
+                    abs((chapter.progressPercentage ?: 0f) - (syncResult.progressPercentage ?: 0f)) >=
+                        serverConfig.koreaderSyncPercentageTolerance.value
+                } else {
+                    syncResult.pageRead != chapter.lastPageRead
+                }
+            )
 
         if (hasConflict) {
             // Generate two entries: one for local progress and another for remote.
@@ -338,7 +371,7 @@ object OpdsEntryBuilder {
                     locale,
                     chapter,
                     manga,
-                    progressSource = ProgressSource.Local(chapter.lastPageRead, chapter.lastReadAt),
+                    progressSource = ProgressSource.Local(chapter.lastPageRead, chapter.lastReadAt, chapter.progressPercentage),
                     isConflict = true,
                 )
 
@@ -348,7 +381,13 @@ object OpdsEntryBuilder {
                     locale,
                     chapter,
                     manga,
-                    progressSource = ProgressSource.Remote(syncResult!!.pageRead, syncResult.timestamp, syncResult.device),
+                    progressSource =
+                        ProgressSource.Remote(
+                            syncResult.pageRead,
+                            syncResult.timestamp,
+                            syncResult.device,
+                            syncResult.progressPercentage,
+                        ),
                     isConflict = true,
                 )
             return Pair(localEntry, remoteEntry)
@@ -356,9 +395,14 @@ object OpdsEntryBuilder {
             // No conflict, generate a single entry. Use remote progress if a silent update occurred.
             val progressSource =
                 if (syncResult?.shouldUpdate == true) {
-                    ProgressSource.Remote(syncResult.pageRead, syncResult.timestamp, syncResult.device)
+                    ProgressSource.Remote(
+                        syncResult.pageRead,
+                        syncResult.timestamp,
+                        syncResult.device,
+                        syncResult.progressPercentage,
+                    )
                 } else {
-                    ProgressSource.Local(chapter.lastPageRead, chapter.lastReadAt)
+                    ProgressSource.Local(chapter.lastPageRead, chapter.lastReadAt, chapter.progressPercentage)
                 }
 
             val mainEntry =
@@ -380,16 +424,19 @@ object OpdsEntryBuilder {
     private sealed class ProgressSource {
         abstract val lastPageRead: Int
         abstract val lastReadAt: Long
+        abstract val progressPercentage: Float?
 
         data class Local(
             override val lastPageRead: Int,
             override val lastReadAt: Long,
+            override val progressPercentage: Float? = null,
         ) : ProgressSource()
 
         data class Remote(
             override val lastPageRead: Int,
             override val lastReadAt: Long,
             val device: String,
+            override val progressPercentage: Float? = null,
         ) : ProgressSource()
     }
 
@@ -412,10 +459,21 @@ object OpdsEntryBuilder {
                 idSuffix = "" // No suffix for the primary/local entry
                 val statusKey =
                     when {
-                        chapter.downloaded -> MR.strings.opds_chapter_status_downloaded
-                        chapter.read -> MR.strings.opds_chapter_status_read
-                        progressSource.lastPageRead > 0 -> MR.strings.opds_chapter_status_in_progress
-                        else -> MR.strings.opds_chapter_status_unread
+                        chapter.downloaded -> {
+                            MR.strings.opds_chapter_status_downloaded
+                        }
+
+                        chapter.read -> {
+                            MR.strings.opds_chapter_status_read
+                        }
+
+                        progressSource.lastPageRead > 0 || (manga.isNovel && (progressSource.progressPercentage ?: 0f) > 0f) -> {
+                            MR.strings.opds_chapter_status_in_progress
+                        }
+
+                        else -> {
+                            MR.strings.opds_chapter_status_unread
+                        }
                     }
                 titlePrefix = statusKey.localized(locale)
             }
@@ -432,8 +490,13 @@ object OpdsEntryBuilder {
                 chapter.scanlator?.takeIf { it.isNotBlank() }?.let {
                     append(MR.strings.opds_chapter_details_scanlator.localized(locale, it))
                 }
-                val pageCountDisplay = chapter.pageCount.takeIf { it > 0 } ?: "?"
-                append(MR.strings.opds_chapter_details_progress.localized(locale, progressSource.lastPageRead, pageCountDisplay))
+                if (!manga.isNovel) {
+                    val pageCountDisplay = chapter.pageCount.takeIf { it > 0 } ?: "?"
+                    append(MR.strings.opds_chapter_details_progress.localized(locale, progressSource.lastPageRead, pageCountDisplay))
+                } else if ((progressSource.progressPercentage ?: 0f) > 0f) {
+                    val percentInt = ((progressSource.progressPercentage ?: 0f) * 100).toInt()
+                    append(" | Progress: $percentInt%")
+                }
             }
 
         val entryTitle = "$titlePrefix ${chapter.name}"
@@ -446,17 +509,23 @@ object OpdsEntryBuilder {
             )
         }
         if (chapter.downloaded) {
+            val (mediaType, titleRes) =
+                if (manga.isNovel) {
+                    Pair("application/epub+zip", MR.strings.opds_linktitle_download_epub)
+                } else {
+                    Pair(serverConfig.opdsCbzMimetype.value.mediaType, MR.strings.opds_linktitle_download_cbz)
+                }
             links.add(
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
                     "/api/v1/chapter/${chapter.id}/download?markAsRead=${serverConfig.opdsMarkAsReadOnDownload.value}",
-                    serverConfig.opdsCbzMimetype.value.mediaType,
-                    MR.strings.opds_linktitle_download_cbz.localized(locale),
+                    mediaType,
+                    titleRes.localized(locale),
                     length = cbzFileSize,
                 ),
             )
         }
-        if (chapter.pageCount > 0) {
+        if (!manga.isNovel && chapter.pageCount > 0) {
             val basePageHref =
                 "/api/v1/manga/${manga.id}/chapter/${chapter.sourceOrder}/page/{pageNumber}" +
                     "?updateProgress=${serverConfig.opdsEnablePageReadProgress.value}&opds=true"
@@ -532,7 +601,7 @@ object OpdsEntryBuilder {
             summary = OpdsSummaryXml(value = details),
             link = links,
             extent = cbzFileSize?.let { formatFileSizeForOpds(it) },
-            format = if (cbzFileSize != null) "CBZ" else null,
+            format = if (cbzFileSize != null) (if (manga.isNovel) "EPUB" else "CBZ") else null,
         )
     }
 

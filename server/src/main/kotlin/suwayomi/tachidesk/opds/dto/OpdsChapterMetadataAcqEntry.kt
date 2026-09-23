@@ -15,4 +15,5 @@ data class OpdsChapterMetadataAcqEntry(
     val pageCount: Int,
     val url: String?,
     val cbzFileSize: Long? = null,
+    val progressPercentage: Float? = null,
 )

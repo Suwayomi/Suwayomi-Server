@@ -3,8 +3,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -19,7 +17,6 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -29,6 +26,7 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
+import suwayomi.tachidesk.manga.impl.text.NovelContentService
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -116,11 +114,7 @@ class ChapterMutation {
 
         // Sync with KoreaderSync when progress is updated
         if (patch.lastPageRead != null || patch.isRead == true) {
-            GlobalScope.launch {
-                ids.forEach { chapterId ->
-                    KoreaderSyncService.pushProgress(chapterId)
-                }
-            }
+            Chapter.asyncPushKoreaderProgress(ids)
         }
     }
 
@@ -418,24 +412,13 @@ class ChapterMutation {
                         SyncConflictInfoType(
                             deviceName = syncResult.device,
                             remotePage = syncResult.pageRead,
+                            remotePercentage = syncResult.progressPercentage,
                         )
                 }
 
                 if (syncResult.shouldUpdate) {
-                    // Update DB for SILENT and RECEIVE
-                    transaction {
-                        ChapterTable.update({ ChapterTable.id eq chapter.id }) {
-                            it[lastPageRead] = syncResult.pageRead
-                            it[lastReadAt] = syncResult.timestamp
-                        }
-                    }
+                    chapter = Chapter.applyKoreaderSyncResult(chapter.id, syncResult)
                 }
-                // For PROMPT, SILENT, and RECEIVE, return the remote progress
-                chapter =
-                    chapter.copy(
-                        lastPageRead = if (syncResult.shouldUpdate) syncResult.pageRead else chapter.lastPageRead,
-                        lastReadAt = if (syncResult.shouldUpdate) syncResult.timestamp else chapter.lastReadAt,
-                    )
             }
 
             val params =
@@ -461,6 +444,30 @@ class ChapterMutation {
                     },
                 chapter = ChapterType(chapter),
                 syncConflict = syncConflictInfo,
+            )
+        }
+    }
+
+    data class UpdateChapterTextProgressInput(
+        val clientMutationId: String? = null,
+        val chapterId: Int,
+        val progress: Double,
+    )
+
+    data class UpdateChapterTextProgressPayload(
+        val clientMutationId: String?,
+        val chapter: ChapterType,
+    )
+
+    @RequireAuth
+    fun updateChapterTextProgress(input: UpdateChapterTextProgressInput): CompletableFuture<UpdateChapterTextProgressPayload?> {
+        val (clientMutationId, chapterId, progress) = input
+
+        return future {
+            val updated = NovelContentService.updateTextProgress(chapterId, progress.toFloat())
+            UpdateChapterTextProgressPayload(
+                clientMutationId = clientMutationId,
+                chapter = ChapterType(updated),
             )
         }
     }

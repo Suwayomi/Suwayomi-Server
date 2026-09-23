@@ -14,4 +14,5 @@ data class OpdsChapterListAcqEntry(
     val pageCount: Int, // Can be -1 if not known
     val downloaded: Boolean,
     val cbzFileSize: Long? = null,
+    val progressPercentage: Float? = null,
 )

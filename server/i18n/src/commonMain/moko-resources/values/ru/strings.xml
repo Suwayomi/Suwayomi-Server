@@ -103,6 +103,7 @@
     <string name="opds_linktitle_stream_pages_start_remote">Читать (Синхронизировано с %1$s)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">Продолжить читать (Синхронизировано с %1$s)</string>
     <string name="opds_linktitle_download_cbz">Скачать CBZ</string>
+    <string name="opds_linktitle_download_epub">Скачать EPUB</string>
     <string name="opds_linktitle_chapter_cover">Обложка главы</string>
     <string name="manga_status_on_hiatus">На Перерыв</string>
     <string name="webview_label_title">Веб-просмотр Suwayomi</string>

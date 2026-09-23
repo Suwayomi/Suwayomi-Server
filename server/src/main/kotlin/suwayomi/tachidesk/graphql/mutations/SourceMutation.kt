@@ -282,7 +282,7 @@ class SourceMutation {
                     }
                 }
 
-            val mangaIds = mangasPage.insertOrUpdate(sourceId)
+            val mangaIds = mangasPage.insertOrUpdate(source)
 
             val mangas =
                 transaction {

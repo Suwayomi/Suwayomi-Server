@@ -24,6 +24,7 @@ import io.github.reactivecircus.cache4k.Cache
 import io.javalin.http.HttpStatus
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonObject
 import okhttp3.CacheControl
 import okhttp3.Response
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -39,7 +40,12 @@ import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.graphql.types.SourceContentType
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnNetworkGateway
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnNetworkPolicy
+import suwayomi.tachidesk.manga.impl.extension.lnreader.LnReaderSource
+import suwayomi.tachidesk.manga.impl.text.ChapterTextSource
 import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
@@ -56,6 +62,7 @@ import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.serverConfig
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.IOException
@@ -243,7 +250,23 @@ object Manga {
                 it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
 
                 it[MangaTable.updateStrategy] = sManga.update_strategy.name
-                it[MangaTable.memo] = sManga.memo
+                if (source is ChapterTextSource) {
+                    val mergedMemo = mangaEntry[MangaTable.memo].toMutableMap()
+                    sManga.memo.forEach { (key, value) ->
+                        if (!key.startsWith("suwayomi.")) {
+                            mergedMemo[key] = value
+                        }
+                    }
+                    mergedMemo.remove("suwayomi.contentType")
+                    it[MangaTable.memo] = JsonObject(mergedMemo)
+                } else {
+                    it[MangaTable.memo] = sManga.memo
+                }
+                if (source is ChapterTextSource) {
+                    it[MangaTable.contentType] = SourceContentType.LIGHT_NOVEL
+                } else if (source !is StubSource) {
+                    it[MangaTable.contentType] = SourceContentType.MANGA
+                }
             }
         }
 
@@ -389,10 +412,8 @@ object Manga {
             } ?: throw NullPointerException("No thumbnail found")
 
         return try {
-            source.client
-                .newCall(
-                    GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
-                ).awaitSuccess()
+            val request = GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK)
+            if (source is LnReaderSource) source.fetchImage(request) else source.client.newCall(request).awaitSuccess()
         } catch (e: HttpException) {
             val tryToRefreshUrl =
                 !refreshUrl &&
@@ -446,10 +467,16 @@ object Manga {
                     val thumbnailUrl =
                         mangaEntry[MangaTable.thumbnail_url]
                             ?: throw NullPointerException("No thumbnail found")
-                    network.client
-                        .newCall(
-                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                        ).await()
+                    val request = GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK)
+                    if (mangaEntry[MangaTable.contentType] == SourceContentType.LIGHT_NOVEL) {
+                        LnNetworkGateway.fetchImage(
+                            network.client,
+                            request,
+                            LnNetworkPolicy { LnNetworkPolicy.parseOrigins(serverConfig.lnReaderAllowedLocalOrigins.value) },
+                        )
+                    } else {
+                        network.client.newCall(request).await()
+                    }
                 }
             }
 
@@ -500,16 +527,17 @@ object Manga {
         mangaId: Int,
     ): Boolean {
         val log = KotlinLogging.logger("${logContext.name}::isInExcludedDownloadCategory($mangaId)")
+        val contentType = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()[MangaTable.contentType] }
 
         // Verify the manga is configured to be downloaded based on it's categories.
         var mangaCategories = CategoryManga.getMangaCategories(mangaId).toSet()
         // if the manga has no categories, then it's implicitly in the default category
         if (mangaCategories.isEmpty()) {
-            val defaultCategory = Category.getCategoryById(Category.DEFAULT_CATEGORY_ID)!!
+            val defaultCategory = Category.getCategoryById(Category.DEFAULT_CATEGORY_ID, contentType)!!
             mangaCategories = setOf(defaultCategory)
         }
 
-        val downloadCategoriesMap = Category.getCategoryList().groupBy { it.includeInDownload }
+        val downloadCategoriesMap = Category.getCategoryList(contentType).groupBy { it.includeInDownload }
         val unsetCategories = downloadCategoriesMap[IncludeOrExclude.UNSET].orEmpty()
         // We only download if it's in the include list, and not in the exclude list.
         // Use the unset categories as the included categories if the included categories is
