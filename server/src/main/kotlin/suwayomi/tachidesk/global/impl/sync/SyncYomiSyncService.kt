@@ -98,6 +98,10 @@ object SyncYomiSyncService {
             logger.error { "Error syncing: ${e.message}" }
             reportSyncEvent(SyncEventStatus.SYNC_ERROR, e.message)
             throw e
+        } catch (e: OutOfMemoryError) {
+            logger.error { "Out of memory while syncing" }
+            reportSyncEvent(SyncEventStatus.SYNC_ERROR, "OutOfMemoryError")
+            throw e
         }
     }
 
@@ -151,15 +155,13 @@ object SyncYomiSyncService {
             baseHeaders(apiKey)
                 .add("X-Sync-Cursor", syncCursor().toString())
                 .add("X-Sync-Full", full.toString())
+                .add("Content-Encoding", "gzip")
         if (pendingDeleted.isNotEmpty()) {
             headers.add("X-Sync-Deleted-Categories", pendingDeleted.joinToString(","))
         }
 
         setSyncState(SyncManager.SyncState.Uploading(startDate))
-        val body =
-            ProtoBuf
-                .encodeToByteArray(Backup.serializer(), backup)
-                .toRequestBody("application/octet-stream".toMediaType())
+        val body = BackupRequestBody(backup, ProtoBuf, gzip = true)
         val response =
             syncClient()
                 .newCall(POST(url = "$host/api/sync/v2/merge", headers = headers.build(), body = body))
@@ -173,7 +175,7 @@ object SyncYomiSyncService {
         }
 
         setSyncState(SyncManager.SyncState.Downloading(startDate))
-        val bytes = response.body.byteStream().use { it.readBytes() }
+        val bytes = response.body.bytes()
         val remote =
             try {
                 ProtoBuf.decodeFromByteArray(Backup.serializer(), bytes)
@@ -305,10 +307,7 @@ object SyncYomiSyncService {
                 response.headers["ETag"]
                     ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
 
-            val byteArray =
-                response.body.byteStream().use {
-                    return@use it.readBytes()
-                }
+            val byteArray = response.body.bytes()
 
             return try {
                 val backup = ProtoBuf.decodeFromByteArray(Backup.serializer(), byteArray)
@@ -336,7 +335,7 @@ object SyncYomiSyncService {
         val apiKey = serverConfig.syncYomiApiKey.value
         val uploadUrl = "$host/api/sync/content"
 
-        val headersBuilder = baseHeaders(apiKey)
+        val headersBuilder = baseHeaders(apiKey).add("Content-Encoding", "gzip")
         if (eTag.isNotEmpty()) {
             headersBuilder.add("If-Match", eTag)
         }
@@ -344,11 +343,10 @@ object SyncYomiSyncService {
 
         val client = syncClient()
 
-        val byteArray = ProtoBuf.encodeToByteArray(Backup.serializer(), backup)
-        if (byteArray.isEmpty()) {
+        val body = BackupRequestBody(backup, ProtoBuf, gzip = true)
+        if (body.metaBytes.isEmpty() && backup.backupManga.isEmpty()) {
             throw IllegalStateException("Empty backup error")
         }
-        val body = byteArray.toRequestBody("application/octet-stream".toMediaType())
 
         val uploadRequest =
             PUT(

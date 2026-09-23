@@ -111,11 +111,23 @@ object ProtoBackupImport : ProtoBackupBase() {
         )
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun restore(
         sourceStream: InputStream,
         flags: BackupFlags,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+    ): String = queueRestore(flags, syncMode) { decode(sourceStream, syncMode) }
+
+    fun restore(
+        backup: Backup,
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+    ): String = queueRestore(flags, syncMode) { backup }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun queueRestore(
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode,
+        load: () -> Backup,
     ): String {
         val restoreId = System.currentTimeMillis().toString()
 
@@ -124,7 +136,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         updateRestoreState(restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
-            restoreLegacy(sourceStream, restoreId, flags, syncMode)
+            runRestore(restoreId, flags, syncMode, load)
         }
 
         return restoreId
@@ -135,13 +147,30 @@ object ProtoBackupImport : ProtoBackupBase() {
         restoreId: String = "legacy",
         flags: BackupFlags = BackupFlags.DEFAULT,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+    ): ValidationResult = runRestore(restoreId, flags, syncMode) { decode(sourceStream, syncMode) }
+
+    private suspend fun runRestore(
+        restoreId: String,
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode,
+        load: () -> Backup,
     ): ValidationResult =
         backupMutex.withLock {
             try {
                 logger.info { "restore($restoreId): restoring..." }
-                performRestore(restoreId, sourceStream, flags, syncMode)
+                performRestore(restoreId, load(), flags, syncMode)
             } catch (e: Exception) {
                 logger.error(e) { "restore($restoreId): failed due to" }
+
+                updateRestoreState(restoreId, BackupRestoreState.Failure)
+                ValidationResult(
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                )
+            } catch (e: OutOfMemoryError) {
+                logger.error { "restore($restoreId): out of memory" }
 
                 updateRestoreState(restoreId, BackupRestoreState.Failure)
                 ValidationResult(
@@ -173,21 +202,26 @@ object ProtoBackupImport : ProtoBackupBase() {
         }
     }
 
-    private fun performRestore(
-        id: String,
+    private fun decode(
         sourceStream: InputStream,
-        flags: BackupFlags,
         syncMode: SyncRestoreMode,
-    ): ValidationResult {
-        val backupString =
+    ): Backup {
+        val bytes =
             sourceStream
                 .source()
                 .run {
                     if (!syncMode.isSync) gzip() else this
                 }.buffer()
                 .use { it.readByteArray() }
-        val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
+        return parser.decodeFromByteArray(Backup.serializer(), bytes)
+    }
 
+    private fun performRestore(
+        id: String,
+        backup: Backup,
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode,
+    ): ValidationResult {
         val validationResult = validate(backup)
 
         val restoreCategories = if (flags.includeCategories) 1 else 0
