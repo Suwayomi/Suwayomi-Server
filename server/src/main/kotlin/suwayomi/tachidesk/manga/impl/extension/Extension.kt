@@ -190,13 +190,16 @@ object Extension {
         abstract suspend fun prepareJarAndIcons(extensionsRoot: Path): Path
 
         fun getApkName(): String {
-            val apkNameWithVersion = file.nameWithoutExtension + "-v${metadata.versionName}" + ".apk"
+            val nameWithVersion =
+                if (file.name.contains(metadata.versionName)) {
+                    file.nameWithoutExtension
+                } else {
+                    file.nameWithoutExtension + "-v${metadata.versionName}"
+                }
 
-            return if (file.name.contains(metadata.versionName)) {
-                file.name.substringBeforeLast(".") + ".apk"
-            } else {
-                apkNameWithVersion
-            }
+            // Rebuilt extensions can increase versionCode without changing versionName.
+            // Keep their JAR paths distinct so an update never overwrites the loaded version.
+            return "$nameWithVersion-code${metadata.versionCode}.apk"
         }
 
         class Apk(
@@ -438,7 +441,8 @@ object Extension {
         logger.debug { "Main class for extension is $className" }
 
         val extensionsRoot = Path(applicationDirs.extensionsRoot)
-        val jarFile = extPackage.prepareJarAndIcons(extensionsRoot)
+        val apkName = extPackage.getApkName()
+        val jarFile = getJarPath(apkName)
 
         val oldJarFile =
             try {
@@ -448,10 +452,13 @@ object Extension {
             }
 
         val isSameFile = jarFile.toAbsolutePath() == oldJarFile?.toAbsolutePath()
-        check(!isSameFile) { "Extension can't be updated to the same version. Reinstall the extension instead" }
+        if (isSameFile) {
+            extPackage.file.deleteIfExists()
+            error("Extension can't be updated to the same version. Reinstall the extension instead")
+        }
 
         return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) { loadExtensionSources ->
-            val apkName = extPackage.getApkName()
+            extPackage.prepareJarAndIcons(extensionsRoot)
 
             dbSuspendTransaction {
                 try {
