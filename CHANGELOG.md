@@ -47,6 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Fix authentication with subpath option
 - (**WebView**) Fix `kcef` causing the server startup to fail
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
+- (**Chapter**) Fix the fallback upload date of new chapters without one being stored in seconds instead of milliseconds (sorted as early 1970); existing chapters are repaired by a migration
 
 ## [v2.3.2243] - 2026-07-13
 
