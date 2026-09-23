@@ -21,7 +21,7 @@ import suwayomi.tachidesk.server.database.migration.helpers.toSqlName
 import suwayomi.tachidesk.server.serverConfig
 
 @Suppress("ClassName", "unused")
-class M0065_AddUsers : Migration() {
+class M0066_AddUsers : Migration() {
     class UserSql {
         private val adminUsername =
             serverConfig.authUsername.value

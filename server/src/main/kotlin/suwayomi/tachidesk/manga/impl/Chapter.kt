@@ -162,7 +162,7 @@ object Chapter {
             chapter.scanlator = chapter.scanlator?.ifBlank { null }?.trim()
         }
 
-        val now = Instant.now().epochSecond
+        val now = Instant.now()
         // Used to not set upload date of older chapters
         // to a higher value than newer chapters
         var maxSeenUploadDate = 0L
@@ -190,7 +190,7 @@ object Chapter {
                     fetchedChapter,
                     chapterEntry?.id ?: 0,
                     index + 1,
-                    now,
+                    now.epochSecond,
                     mangaEntry[MangaTable.id].value,
                     runCatching {
                         (source as? HttpSource)?.getChapterUrl(fetchedChapter)
@@ -200,7 +200,7 @@ object Chapter {
             if (chapterEntry == null) {
                 val newChapterData =
                     if (chapterData.uploadDate == 0L) {
-                        val altDateUpload = if (maxSeenUploadDate == 0L) now else maxSeenUploadDate
+                        val altDateUpload = if (maxSeenUploadDate == 0L) now.toEpochMilli() else maxSeenUploadDate
                         chapterData.copy(uploadDate = altDateUpload)
                     } else {
                         maxSeenUploadDate = max(maxSeenUploadDate, chapterData.uploadDate)

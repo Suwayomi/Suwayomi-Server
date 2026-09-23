@@ -120,12 +120,26 @@ object ProtoBackupImport : ProtoBackupBase() {
         )
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun restore(
         userId: Int,
         sourceStream: InputStream,
         flags: BackupFlags,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+    ): String = queueRestore(userId, flags, syncMode) { decode(sourceStream, syncMode) }
+
+    fun restore(
+        userId: Int,
+        backup: Backup,
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+    ): String = queueRestore(userId, flags, syncMode) { backup }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun queueRestore(
+        userId: Int,
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode,
+        load: () -> Backup,
     ): String {
         val restoreId = System.currentTimeMillis().toString()
 
@@ -134,7 +148,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         updateRestoreState(restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
-            restoreLegacy(userId, sourceStream, restoreId, flags, syncMode)
+            runRestore(userId, restoreId, flags, syncMode, load)
         }
 
         return restoreId
@@ -146,13 +160,31 @@ object ProtoBackupImport : ProtoBackupBase() {
         restoreId: String = "legacy",
         flags: BackupFlags = BackupFlags.DEFAULT,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+    ): ValidationResult = runRestore(userId, restoreId, flags, syncMode) { decode(sourceStream, syncMode) }
+
+    private suspend fun runRestore(
+        userId: Int,
+        restoreId: String,
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode,
+        load: () -> Backup,
     ): ValidationResult =
         backupMutex.withLock {
             try {
                 logger.info { "restore($restoreId): restoring..." }
-                performRestore(userId, restoreId, sourceStream, flags, syncMode)
+                performRestore(userId, restoreId, load(), flags, syncMode)
             } catch (e: Exception) {
                 logger.error(e) { "restore($restoreId): failed due to" }
+
+                updateRestoreState(restoreId, BackupRestoreState.Failure)
+                ValidationResult(
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                )
+            } catch (e: OutOfMemoryError) {
+                logger.error { "restore($restoreId): out of memory" }
 
                 updateRestoreState(restoreId, BackupRestoreState.Failure)
                 ValidationResult(
@@ -196,22 +228,27 @@ object ProtoBackupImport : ProtoBackupBase() {
         }
     }
 
-    private fun performRestore(
-        userId: Int,
-        id: String,
+    private fun decode(
         sourceStream: InputStream,
-        flags: BackupFlags,
         syncMode: SyncRestoreMode,
-    ): ValidationResult {
-        val backupString =
+    ): Backup {
+        val bytes =
             sourceStream
                 .source()
                 .run {
                     if (!syncMode.isSync) gzip() else this
                 }.buffer()
                 .use { it.readByteArray() }
-        val backup = parser.decodeFromByteArray(Backup.serializer(), backupString)
+        return parser.decodeFromByteArray(Backup.serializer(), bytes)
+    }
 
+    private fun performRestore(
+        userId: Int,
+        id: String,
+        backup: Backup,
+        flags: BackupFlags,
+        syncMode: SyncRestoreMode,
+    ): ValidationResult {
         val validationResult = validate(userId, backup)
 
         // only users with the MANAGE_SETTINGS permission can change the global server settings

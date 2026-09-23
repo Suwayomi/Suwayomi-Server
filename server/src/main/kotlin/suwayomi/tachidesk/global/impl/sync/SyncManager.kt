@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.protobuf.ProtoBuf
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -340,10 +339,9 @@ object SyncManager {
             if (converge) {
                 logger.info { "Full converging sync for user $userId: adopting server versions" }
             }
+            val since = if (full) null else lastPushedAt(userId)
             val backupMangas =
-                BackupMangaHandler.backup(userId, backupFlags).let {
-                    if (full) it else changedSince(it, lastPushedAt(userId))
-                }
+                BackupMangaHandler.backup(userId, backupFlags, since).let { if (since == null) it else changedSince(it, since) }
             val backupCategories =
                 BackupCategoryHandler.backup(userId, backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
             toWireCategoryOrders(backupCategories, backupMangas)
@@ -463,11 +461,10 @@ object SyncManager {
                 }
             }
 
-            val backupStream = ProtoBuf.encodeToByteArray(Backup.serializer(), newSyncData).inputStream()
             val restoreId =
                 ProtoBackupImport.restore(
                     userId = userId,
-                    sourceStream = backupStream,
+                    backup = newSyncData,
                     flags = backupFlags,
                     syncMode = syncMode,
                 )

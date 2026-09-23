@@ -10,14 +10,19 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -61,17 +66,27 @@ object BackupMangaHandler {
     fun backup(
         userId: Int,
         flags: BackupFlags,
+        since: Long? = null,
     ): List<BackupManga> =
         dbTransaction {
             if (!flags.includeManga) {
                 return@dbTransaction emptyList()
             }
 
+            val changed =
+                since?.let {
+                    val chapterChanged =
+                        ChapterTable
+                            .getWithUserData(userId)
+                            .select(ChapterTable.manga)
+                            .where { ChapterUserTable.lastModifiedAt greaterEq it }
+                    (MangaUserTable.lastModifiedAt greaterEq it) or (MangaTable.id inSubQuery chapterChanged)
+                } ?: Op.TRUE
             val manga =
                 MangaTable
                     .getWithUserData(userId)
                     .selectAll()
-                    .where { MangaUserTable.inLibrary eq true }
+                    .where { (MangaUserTable.inLibrary eq true) and changed }
                     .toList()
 
             manga.map { mangaRow ->
