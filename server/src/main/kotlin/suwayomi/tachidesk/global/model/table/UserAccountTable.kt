@@ -1,0 +1,19 @@
+package suwayomi.tachidesk.global.model.table
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+
+/**
+ * Users registered in Suwayomi.
+ */
+object UserAccountTable : IntIdTable() {
+    val username = varchar("username", 64).uniqueIndex()
+    val password = varchar("password", 90)
+    val sessionVersion = integer("session_version").default(0)
+}

@@ -1,0 +1,36 @@
+package suwayomi.tachidesk.server.user
+
+import suwayomi.tachidesk.graphql.types.UserSettings
+import suwayomi.tachidesk.server.settings.UserSettingsRegistry
+import suwayomi.tachidesk.server.settings.asMap
+
+object UserSettingsValidator {
+    fun validate(
+        name: String,
+        value: Any?,
+    ): String? {
+        val metadata = UserSettingsRegistry.get(name) ?: return null
+
+        val maybeConvertedValue =
+            if (value != null) {
+                metadata.typeInfo?.convertToInternalType?.invoke(value) ?: value
+            } else {
+                value
+            }
+
+        return metadata.validator?.invoke(maybeConvertedValue)
+    }
+
+    fun validate(
+        values: Map<String, Any?>,
+        ignoreNull: Boolean?,
+    ): List<String> =
+        values
+            .filterValues { value -> ignoreNull == false || value != null }
+            .mapNotNull { (name, value) -> validate(name, value)?.let { error -> "$name: $error" } }
+
+    fun validate(
+        settings: UserSettings,
+        ignoreNull: Boolean = false,
+    ): List<String> = validate(settings.asMap(), ignoreNull)
+}

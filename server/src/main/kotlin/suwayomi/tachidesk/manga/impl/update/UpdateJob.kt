@@ -14,6 +14,7 @@ enum class JobStatus {
 data class UpdateJob(
     val manga: MangaDataClass,
     val status: JobStatus = JobStatus.PENDING,
+    val userId: Int? = null,
 )
 
 enum class CategoryUpdateStatus {

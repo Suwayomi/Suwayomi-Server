@@ -11,12 +11,17 @@ interface IUpdater {
     fun deleteLastAutomatedUpdateTimestamp()
 
     fun addCategoriesToUpdateQueue(
+        userId: Int,
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,
+        automatedUpdate: Boolean = false,
     )
 
-    fun addMangasToQueue(mangas: List<MangaDataClass>)
+    fun addMangasToQueue(
+        mangas: List<MangaDataClass>,
+        userId: Int? = null,
+    )
 
     @Deprecated("Replaced with updates", replaceWith = ReplaceWith("updates"))
     val status: Flow<UpdateStatus>

@@ -2,6 +2,7 @@
 
 package suwayomi.tachidesk.graphql.mutations
 
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -28,9 +29,14 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateLibrary(input: UpdateLibraryInput): CompletableFuture<UpdateLibraryPayload?> {
+    fun updateLibrary(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateLibraryInput,
+    ): CompletableFuture<UpdateLibraryPayload?> {
         updater.addCategoriesToUpdateQueue(
-            Category.getCategoryList().filter { input.categories?.contains(it.id) ?: true },
+            userId,
+            Category.getCategoryList(userId).filter { input.categories?.contains(it.id) ?: true },
             clear = true,
             forceAll = !input.categories.isNullOrEmpty(),
         )
@@ -58,8 +64,13 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateLibraryManga(input: UpdateLibraryMangaInput): CompletableFuture<UpdateLibraryMangaPayload?> {
+    fun updateLibraryManga(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateLibraryMangaInput,
+    ): CompletableFuture<UpdateLibraryMangaPayload?> {
         updateLibrary(
+            userId,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
                 categories = null,
@@ -88,8 +99,13 @@ class UpdateMutation {
     )
 
     @RequireAuth
-    fun updateCategoryManga(input: UpdateCategoryMangaInput): CompletableFuture<UpdateCategoryMangaPayload?> {
+    fun updateCategoryManga(
+        @GraphQLIgnore
+        userId: Int,
+        input: UpdateCategoryMangaInput,
+    ): CompletableFuture<UpdateCategoryMangaPayload?> {
         updateLibrary(
+            userId,
             UpdateLibraryInput(
                 clientMutationId = input.clientMutationId,
                 categories = input.categories,

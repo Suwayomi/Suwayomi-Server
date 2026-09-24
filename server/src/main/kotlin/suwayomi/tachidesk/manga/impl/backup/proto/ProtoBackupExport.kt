@@ -19,13 +19,16 @@ import okio.Buffer
 import okio.Sink
 import okio.buffer
 import okio.gzip
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupCategoryHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupGlobalMetaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupMangaHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupSourceHandler
+import suwayomi.tachidesk.manga.impl.backup.proto.handlers.BackupUserSettingsHandler
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
@@ -69,8 +72,9 @@ object ProtoBackupExport : ProtoBackupBase() {
         val task = {
             try {
                 cleanupAutomatedBackups()
-                createAutomatedBackup()
-                preferences.edit().putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis()).apply()
+                if (createAutomatedBackup()) {
+                    preferences.edit().putLong(LAST_AUTOMATED_BACKUP_KEY, System.currentTimeMillis()).apply()
+                }
             } catch (e: Exception) {
                 logger.error(e) { "scheduleAutomatedBackupTask: failed due to" }
             }
@@ -95,20 +99,44 @@ object ProtoBackupExport : ProtoBackupBase() {
         backupSchedulerJobId = HAScheduler.scheduleCron(task, "$backupMinute $backupHour */${backupInterval.inWholeDays} * *", "backup")
     }
 
-    private fun createAutomatedBackup() {
+    /**
+     * Creates one backup file per user. Returns true if at least one backup succeeded.
+     */
+    internal fun createAutomatedBackup(): Boolean {
         logger.info { "Creating automated backup..." }
 
-        createBackup(BackupFlags.fromServerConfig()).use { input ->
-            val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
-            automatedBackupDir.mkdirs()
-
-            val backupFile = File(applicationDirs.automatedBackupRoot, Backup.getFilename(AUTO_BACKUP_FILENAME))
-
-            backupFile.outputStream().use { output -> input.copyTo(output) }
+        val users =
+            transaction {
+                UserAccountTable
+                    .select(UserAccountTable.id, UserAccountTable.username)
+                    .map { it[UserAccountTable.id].value to it[UserAccountTable.username] }
+            }
+        if (users.isEmpty()) {
+            logger.warn { "No users found; skipping automated backup" }
+            return false
         }
+
+        val automatedBackupDir = File(applicationDirs.automatedBackupRoot)
+        automatedBackupDir.mkdirs()
+
+        var anySucceeded = false
+        users.forEach { (userId, username) ->
+            try {
+                createBackup(userId, BackupFlags.fromServerConfig()).use { input ->
+                    val backupFile = File(automatedBackupDir, Backup.getFilename("$AUTO_BACKUP_FILENAME.$username"))
+
+                    backupFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                logger.info { "Automated backup for user $userId complete" }
+                anySucceeded = true
+            } catch (e: Exception) {
+                logger.error(e) { "Automated backup for user $userId failed" }
+            }
+        }
+        return anySucceeded
     }
 
-    private fun cleanupAutomatedBackups() {
+    internal fun cleanupAutomatedBackups() {
         logger.debug { "Cleanup automated backups (ttl= ${serverConfig.backupTTL.value})" }
 
         val isCleanupDisabled = serverConfig.backupTTL.value == 0
@@ -146,17 +174,21 @@ object ProtoBackupExport : ProtoBackupBase() {
         }
     }
 
-    fun createBackup(flags: BackupFlags): InputStream {
+    fun createBackup(
+        userId: Int,
+        flags: BackupFlags,
+    ): InputStream {
         // Create root object
         val backup: Backup =
             transaction {
-                val backupMangas = BackupMangaHandler.backup(flags)
+                val backupMangas = BackupMangaHandler.backup(userId, flags)
                 Backup(
                     backupMangas,
-                    BackupCategoryHandler.backup(flags),
-                    BackupSourceHandler.backup(backupMangas, flags),
-                    BackupGlobalMetaHandler.backup(flags),
+                    BackupCategoryHandler.backup(userId, flags),
+                    BackupSourceHandler.backup(userId, backupMangas, flags),
+                    BackupGlobalMetaHandler.backup(userId, flags),
                     BackupSettingsHandler.backup(flags),
+                    BackupUserSettingsHandler.backup(flags, userId),
                 )
             }
 

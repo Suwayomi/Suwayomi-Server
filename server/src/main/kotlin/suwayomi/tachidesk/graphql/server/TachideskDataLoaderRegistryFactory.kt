@@ -33,6 +33,8 @@ import suwayomi.tachidesk.graphql.dataLoaders.MangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaForCategoryDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.PermissionsForUserDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.RolesForUserDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourceMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourcesForExtensionDataLoader
@@ -43,6 +45,7 @@ import suwayomi.tachidesk.graphql.dataLoaders.TrackerDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerScoresDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerStatusesDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackerTokenExpiredDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.UserDataLoader
 
 class TachideskDataLoaderRegistryFactory {
     companion object {
@@ -83,6 +86,9 @@ class TachideskDataLoaderRegistryFactory {
                 DisplayScoreForTrackSearchDataLoader(),
                 TrackRecordsForTrackerIdDataLoader(),
                 TrackRecordDataLoader(),
+                UserDataLoader(),
+                PermissionsForUserDataLoader(),
+                RolesForUserDataLoader(),
             )
     }
 }

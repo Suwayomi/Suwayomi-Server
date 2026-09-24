@@ -19,6 +19,7 @@ import suwayomi.tachidesk.server.database.dbTransaction
 
 object BackupSourceHandler {
     fun backup(
+        userId: Int,
         backupMangas: List<BackupManga>,
         flags: BackupFlags,
     ): List<BackupSource> =
@@ -32,7 +33,7 @@ object BackupSourceHandler {
             val sources = SourceTable.selectAll().where { SourceTable.id inList inLibraryMangaSourceIds }
             val sourceToMeta =
                 if (flags.includeClientData) {
-                    Source.getSourcesMetaMaps(sources.map { it[SourceTable.id].value })
+                    Source.getSourcesMetaMaps(userId, sources.map { it[SourceTable.id].value })
                 } else {
                     emptyMap()
                 }
@@ -51,7 +52,10 @@ object BackupSourceHandler {
                 }.toList()
         }
 
-    fun restore(backupSources: List<BackupSource>) {
-        modifySourceMetas(backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
+    fun restore(
+        userId: Int,
+        backupSources: List<BackupSource>,
+    ) {
+        modifySourceMetas(userId, backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
     }
 }

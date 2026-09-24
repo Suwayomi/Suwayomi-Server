@@ -35,14 +35,19 @@ class TestUpdater : IUpdater {
     }
 
     override fun addCategoriesToUpdateQueue(
+        userId: Int,
         categories: List<CategoryDataClass>,
         clear: Boolean?,
         forceAll: Boolean,
+        automatedUpdate: Boolean,
     ) {
         TODO("Not yet implemented")
     }
 
-    override fun addMangasToQueue(mangas: List<MangaDataClass>) {
+    override fun addMangasToQueue(
+        mangas: List<MangaDataClass>,
+        userId: Int?,
+    ) {
         TODO("Not yet implemented")
     }
 
