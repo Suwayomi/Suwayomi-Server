@@ -93,16 +93,13 @@ fun getUserFromWsContext(ctx: WsConnectContext): UserType {
         }
 
         AuthMode.UI_LOGIN -> {
-            getUserFromToken(getWebSocketToken(ctx))
+            val authentication =
+                ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
+            val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
+
+            getUserFromToken(token)
         }
     }
-}
-
-internal fun getWebSocketToken(ctx: WsConnectContext): String? {
-    // GraphQL sends authentication in connection_init; its subprotocol name is not a JWT.
-    val protocolToken = ctx.header("Sec-WebSocket-Protocol")?.takeUnless { it == "graphql-transport-ws" }
-    val authentication = ctx.header(Header.AUTHORIZATION) ?: protocolToken ?: ctx.cookie("suwayomi-server-token")
-    return authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
 }
 
 class UnauthorizedException : IllegalStateException("Unauthorized")
