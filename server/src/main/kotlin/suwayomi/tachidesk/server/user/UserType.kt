@@ -94,7 +94,7 @@ fun getUserFromWsContext(ctx: WsConnectContext): UserType {
 
         AuthMode.UI_LOGIN -> {
             val authentication =
-                ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol") ?: ctx.cookie("suwayomi-server-token")
+                ctx.header(Header.AUTHORIZATION) ?: ctx.cookie("suwayomi-server-token")
             val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
 
             getUserFromToken(token)
