@@ -187,16 +187,19 @@ object Extension {
         abstract val metadata: PackageMetadata
 
         // Abstract hook for type-specific preprocessing
-        abstract suspend fun prepareJarAndIcons(extensionsRoot: Path): Path
+        abstract suspend fun prepareJarAndIcons(jarFile: Path)
 
         fun getApkName(): String {
-            val apkNameWithVersion = file.nameWithoutExtension + "-v${metadata.versionName}" + ".apk"
+            val nameWithVersion =
+                if (file.name.contains(metadata.versionName)) {
+                    file.nameWithoutExtension
+                } else {
+                    file.nameWithoutExtension + "-v${metadata.versionName}"
+                }
 
-            return if (file.name.contains(metadata.versionName)) {
-                file.name.substringBeforeLast(".") + ".apk"
-            } else {
-                apkNameWithVersion
-            }
+            // Rebuilt extensions can increase versionCode without changing versionName.
+            // Keep their JAR paths distinct so an update never overwrites the loaded version.
+            return "$nameWithVersion-code${metadata.versionCode}.apk"
         }
 
         class Apk(
@@ -213,14 +216,12 @@ object Extension {
                     label = packageInfo.applicationInfo.nonLocalizedLabel?.toString(),
                 )
 
-            override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
-                val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
+            override suspend fun prepareJarAndIcons(jarFile: Path) {
                 jarFile.deleteIfExists()
                 dex2jar(file, jarFile)
                 extractAssetsFromApk(file, jarFile)
                 extractAndCacheApkIcon(file, metadata.packageName)
                 file.deleteExisting()
-                return jarFile
             }
         }
 
@@ -238,16 +239,14 @@ object Extension {
                     label = manifest.application.label,
                 )
 
-            override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
-                val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
-
+            override suspend fun prepareJarAndIcons(jarFile: Path) {
                 try {
                     jarFile.deleteIfExists()
                 } catch (_: Exception) {
                     // This most likely means that the file could not get deleted during uninstallation on windows due
                     // to its strict file locking for loaded jars.
                     // We can just ignore it and reuse the existing jar since it's for the requested version anyway.
-                    return jarFile
+                    return
                 }
 
                 ZipFile.builder().setPath(file).get().use { jarZip ->
@@ -263,7 +262,6 @@ object Extension {
 
                 file.copyTo(jarFile)
                 file.deleteExisting()
-                return jarFile
             }
         }
     }
@@ -312,7 +310,7 @@ object Extension {
         return getJarPath(apkName)
     }
 
-    private fun getJarPathForPkgName(pkgName: String): Path {
+    internal fun getJarPathForPkgName(pkgName: String): Path {
         val extension = transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
 
         return getJarPath(extension)
@@ -437,8 +435,8 @@ object Extension {
 
         logger.debug { "Main class for extension is $className" }
 
-        val extensionsRoot = Path(applicationDirs.extensionsRoot)
-        val jarFile = extPackage.prepareJarAndIcons(extensionsRoot)
+        val apkName = extPackage.getApkName()
+        val jarFile = getJarPath(apkName)
 
         val oldJarFile =
             try {
@@ -448,10 +446,13 @@ object Extension {
             }
 
         val isSameFile = jarFile.toAbsolutePath() == oldJarFile?.toAbsolutePath()
-        check(!isSameFile) { "Extension can't be updated to the same version. Reinstall the extension instead" }
+        if (isSameFile) {
+            extPackage.file.deleteIfExists()
+            error("Extension can't be updated to the same version. Reinstall the extension instead")
+        }
 
         return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) { loadExtensionSources ->
-            val apkName = extPackage.getApkName()
+            extPackage.prepareJarAndIcons(jarFile)
 
             dbSuspendTransaction {
                 try {
