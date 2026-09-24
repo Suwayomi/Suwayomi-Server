@@ -187,7 +187,7 @@ object Extension {
         abstract val metadata: PackageMetadata
 
         // Abstract hook for type-specific preprocessing
-        abstract suspend fun prepareJarAndIcons(extensionsRoot: Path): Path
+        abstract suspend fun prepareJarAndIcons(jarFile: Path)
 
         fun getApkName(): String {
             val nameWithVersion =
@@ -216,14 +216,12 @@ object Extension {
                     label = packageInfo.applicationInfo.nonLocalizedLabel?.toString(),
                 )
 
-            override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
-                val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
+            override suspend fun prepareJarAndIcons(jarFile: Path) {
                 jarFile.deleteIfExists()
                 dex2jar(file, jarFile)
                 extractAssetsFromApk(file, jarFile)
                 extractAndCacheApkIcon(file, metadata.packageName)
                 file.deleteExisting()
-                return jarFile
             }
         }
 
@@ -241,16 +239,14 @@ object Extension {
                     label = manifest.application.label,
                 )
 
-            override suspend fun prepareJarAndIcons(extensionsRoot: Path): Path {
-                val jarFile = extensionsRoot / (getApkName().substringBeforeLast(".") + ".jar")
-
+            override suspend fun prepareJarAndIcons(jarFile: Path) {
                 try {
                     jarFile.deleteIfExists()
                 } catch (_: Exception) {
                     // This most likely means that the file could not get deleted during uninstallation on windows due
                     // to its strict file locking for loaded jars.
                     // We can just ignore it and reuse the existing jar since it's for the requested version anyway.
-                    return jarFile
+                    return
                 }
 
                 ZipFile.builder().setPath(file).get().use { jarZip ->
@@ -266,7 +262,6 @@ object Extension {
 
                 file.copyTo(jarFile)
                 file.deleteExisting()
-                return jarFile
             }
         }
     }
@@ -315,7 +310,7 @@ object Extension {
         return getJarPath(apkName)
     }
 
-    private fun getJarPathForPkgName(pkgName: String): Path {
+    internal fun getJarPathForPkgName(pkgName: String): Path {
         val extension = transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
 
         return getJarPath(extension)
@@ -440,7 +435,6 @@ object Extension {
 
         logger.debug { "Main class for extension is $className" }
 
-        val extensionsRoot = Path(applicationDirs.extensionsRoot)
         val apkName = extPackage.getApkName()
         val jarFile = getJarPath(apkName)
 
@@ -458,7 +452,7 @@ object Extension {
         }
 
         return PackageTools.blockJarUsageWhile(listOfNotNull(oldJarFile, jarFile)) { loadExtensionSources ->
-            extPackage.prepareJarAndIcons(extensionsRoot)
+            extPackage.prepareJarAndIcons(jarFile)
 
             dbSuspendTransaction {
                 try {
