@@ -9,17 +9,14 @@ import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
-import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
-import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
-import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -96,41 +93,28 @@ class ChapterMutation {
                 } else {
                     emptyMap()
                 }
-            val currentChapterUserItems =
-                ChapterUserTable
-                    .select(ChapterUserTable.chapter)
-                    .where { ChapterUserTable.chapter inList ids }
-                    .map { it[ChapterUserTable.chapter].value }
-            if (currentChapterUserItems.size < ids.size) {
-                ChapterUserTable.batchInsert(ids - currentChapterUserItems.toSet()) {
-                    this[ChapterUserTable.user] = userId
-                    this[ChapterUserTable.chapter] = it
-                }
-            }
             if (patch.isRead != null || patch.isBookmarked != null || patch.lastPageRead != null) {
                 val now = Instant.now().epochSecond
 
-                BatchUpdateStatement(ChapterUserTable)
-                    .apply {
-                        ids.forEach { chapterId ->
-                            addBatch(EntityID(chapterId, ChapterUserTable))
-                            patch.isRead?.also {
-                                this[ChapterUserTable.isRead] = it
-                            }
-                            patch.isBookmarked?.also {
-                                this[ChapterUserTable.isBookmarked] = it
-                            }
-                            patch.lastPageRead?.also {
-                                this[ChapterUserTable.lastPageRead] =
-                                    it.coerceIn(
-                                        0,
-                                        chapterIdToPageCount[chapterId] ?: 0,
-                                    )
-                                this[ChapterUserTable.lastReadAt] = now
-                            }
-                        }
-                    }.toExecutable()
-                    .execute(this@transaction)
+                ChapterUserTable.batchUpsert(ids, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
+                    this[ChapterUserTable.user] = userId
+                    this[ChapterUserTable.chapter] = chapterId
+
+                    patch.isRead?.also {
+                        this[ChapterUserTable.isRead] = it
+                    }
+                    patch.isBookmarked?.also {
+                        this[ChapterUserTable.isBookmarked] = it
+                    }
+                    patch.lastPageRead?.also {
+                        this[ChapterUserTable.lastPageRead] =
+                            it.coerceIn(
+                                0,
+                                chapterIdToPageCount[chapterId] ?: 0,
+                            )
+                        this[ChapterUserTable.lastReadAt] = now
+                    }
+                }
             }
         }
 
