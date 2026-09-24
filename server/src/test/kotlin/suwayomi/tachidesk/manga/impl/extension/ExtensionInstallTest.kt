@@ -12,10 +12,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import suwayomi.tachidesk.manga.impl.util.AndroidManifestParser
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
-import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.test.ApplicationTest
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
 import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import java.util.zip.ZipEntry
@@ -49,12 +46,7 @@ class ExtensionInstallTest : ApplicationTest() {
             Extension.installExternalExtension(original.inputStream(), filename)
             val originalPath = installedPath()
 
-            val update = createJar(104065, "updated")
-            Extension.installExternalExtension(update.inputStream(), filename)
-
-            assertNotEquals(originalPath, installedPath())
-            assertContentEquals(update, installedPath().readBytes())
-            assertEquals(104065L, installedVersionCode())
+            assertUpdateInstallsNewArchive(originalPath)
         }
 
     @Test
@@ -64,12 +56,7 @@ class ExtensionInstallTest : ApplicationTest() {
             seedInstalled(legacyName, createJar(65, "legacy"))
             val legacyPath = installedPath()
 
-            val update = createJar(104065, "updated")
-            Extension.installExternalExtension(update.inputStream(), filename)
-
-            assertNotEquals(legacyPath, installedPath())
-            assertContentEquals(update, installedPath().readBytes())
-            assertEquals(104065L, installedVersionCode())
+            assertUpdateInstallsNewArchive(legacyPath)
         }
 
     @Test
@@ -88,6 +75,15 @@ class ExtensionInstallTest : ApplicationTest() {
             assertContentEquals(original, installedPath().readBytes())
             assertEquals(65L, installedVersionCode())
         }
+
+    private suspend fun assertUpdateInstallsNewArchive(previousPath: Path) {
+        val update = createJar(104065, "updated")
+        Extension.installExternalExtension(update.inputStream(), filename)
+
+        assertNotEquals(previousPath, installedPath())
+        assertContentEquals(update, installedPath().readBytes())
+        assertEquals(104065L, installedVersionCode())
+    }
 
     private fun seedInstalled(
         apkName: String,
@@ -109,11 +105,7 @@ class ExtensionInstallTest : ApplicationTest() {
         installedPath().writeBytes(bytes)
     }
 
-    private fun installedPath(): Path =
-        transaction {
-            val row = ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.single()
-            Path.of(Injekt.get<ApplicationDirs>().extensionsRoot) / (row[ExtensionTable.apkName]!!.removeSuffix(".apk") + ".jar")
-        }
+    private fun installedPath(): Path = Extension.getJarPathForPkgName(pkgName)
 
     private fun installedVersionCode(): Long =
         transaction {
