@@ -49,6 +49,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Category**) Fix library/category counts not matching the actual number of manga due to duplicate category-manga rows
 - (**Chapter**) Fix the fallback upload date of new chapters without one being stored in seconds instead of milliseconds (sorted as early 1970); existing chapters are repaired by a migration
 
+### Deprecated
+- (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
+
 ## [v2.3.2243] - 2026-07-13
 
 ### Added
