@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Category/API**) Add `isDefaultCategory` in preparation of incompatible changes of future versions
 
 ### Changed
+- (**GraphQL**) Resolve a manga's last read, latest read/fetched/uploaded, first unread and highest numbered chapter with one ranked query instead of loading all its chapters
 - (**SystemTray**) Disable DorkBox update requests
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloads**) Skip LocalSource downloading
