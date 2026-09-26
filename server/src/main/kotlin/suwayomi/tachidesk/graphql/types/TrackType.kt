@@ -11,6 +11,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelated
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
 import suwayomi.tachidesk.manga.model.table.TrackSearchTable
 import java.util.concurrent.CompletableFuture
@@ -62,6 +63,22 @@ class TrackStatusType(
     val value: Int,
     val name: String,
 )
+
+class TrackRelatedMangaType(
+    val remoteId: Long,
+    val title: String,
+    val coverUrl: String,
+    val trackingUrl: String,
+    val relationType: String?,
+) {
+    constructor(related: TrackRelated) : this(
+        related.remoteId,
+        related.title,
+        related.coverUrl,
+        related.trackingUrl,
+        related.relationType,
+    )
+}
 
 class TrackRecordType(
     val id: Int,

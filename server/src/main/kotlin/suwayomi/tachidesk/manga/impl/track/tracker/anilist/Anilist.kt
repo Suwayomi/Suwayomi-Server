@@ -8,6 +8,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALOAuth
 import suwayomi.tachidesk.manga.impl.track.tracker.extractToken
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
+import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackRelatedResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
@@ -212,6 +213,8 @@ class Anilist(
     }
 
     override suspend fun search(query: String): List<TrackSearch> = api.search(query)
+
+    suspend fun getRelated(remoteId: Long): TrackRelatedResult = api.getRelated(remoteId)
 
     override suspend fun refresh(track: Track): Track {
         val remoteTrack = api.getLibManga(track, getUsername().toInt())
