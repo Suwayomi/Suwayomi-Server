@@ -12,8 +12,12 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.JoinType
+import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
@@ -21,6 +25,7 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.rowNumber
 import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -164,6 +169,44 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
         }
 }
 
+/**
+ * For each manga in [mangaIds], its first chapter by [order] among those
+ * matching [where], ties going to the lowest id.
+ *
+ * Ranked in SQL (ROW_NUMBER over each manga), so a single row per manga
+ * leaves the database. Loading every matching chapter of every manga to keep
+ * the first one scaled with the size of the whole chapter table, and a
+ * library list resolves several of these per manga.
+ */
+internal fun firstChapterPerManga(
+    mangaIds: List<Int>,
+    order: List<Pair<Expression<*>, SortOrder>>,
+    where: Op<Boolean>? = null,
+): Map<Int, ChapterType> {
+    val rank =
+        rowNumber()
+            .over()
+            .partitionBy(ChapterTable.manga)
+            .orderBy(*(order + (ChapterTable.id to SortOrder.ASC)).toTypedArray())
+            .alias("chapter_rank")
+    val ranked =
+        ChapterTable
+            .select(ChapterTable.id, rank)
+            .where {
+                val inMangas = ChapterTable.manga inList mangaIds
+                if (where == null) inMangas else inMangas and where
+            }.alias("ranked_chapter")
+    return ChapterTable
+        .join(
+            ranked,
+            JoinType.INNER,
+            additionalConstraint = {
+                (ChapterTable.id eq ranked[ChapterTable.id]) and (ranked[rank] eq 1L)
+            },
+        ).select(ChapterTable.columns)
+        .associate { it[ChapterTable.manga].value to ChapterType(it) }
+}
+
 class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LastReadChapterForMangaDataLoader"
 
@@ -172,13 +215,9 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val lastReadChaptersByMangaId =
-                        ChapterTable
-                            .selectAll()
-                            .where { (ChapterTable.manga inList ids) }
-                            .orderBy(ChapterTable.lastReadAt to SortOrder.DESC)
-                            .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> lastReadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                    val lastReadChapterByMangaId =
+                        firstChapterPerManga(ids, listOf(ChapterTable.lastReadAt to SortOrder.DESC))
+                    ids.map { lastReadChapterByMangaId[it] }
                 }
             }
         }
@@ -192,13 +231,13 @@ class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val latestReadChaptersByMangaId =
-                        ChapterTable
-                            .selectAll()
-                            .where { (ChapterTable.manga inList ids) and (ChapterTable.isRead eq true) }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
-                            .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> latestReadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                    val latestReadChapterByMangaId =
+                        firstChapterPerManga(
+                            ids,
+                            listOf(ChapterTable.sourceOrder to SortOrder.DESC),
+                            ChapterTable.isRead eq true,
+                        )
+                    ids.map { latestReadChapterByMangaId[it] }
                 }
             }
         }
@@ -212,13 +251,12 @@ class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val latestFetchedChaptersByMangaId =
-                        ChapterTable
-                            .selectAll()
-                            .where { (ChapterTable.manga inList ids) }
-                            .orderBy(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
-                            .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> latestFetchedChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                    val latestFetchedChapterByMangaId =
+                        firstChapterPerManga(
+                            ids,
+                            listOf(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
+                        )
+                    ids.map { latestFetchedChapterByMangaId[it] }
                 }
             }
         }
@@ -232,13 +270,12 @@ class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTyp
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val latestUploadedChaptersByMangaId =
-                        ChapterTable
-                            .selectAll()
-                            .where { (ChapterTable.manga inList ids) }
-                            .orderBy(ChapterTable.date_upload to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
-                            .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> latestUploadedChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                    val latestUploadedChapterByMangaId =
+                        firstChapterPerManga(
+                            ids,
+                            listOf(ChapterTable.date_upload to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
+                        )
+                    ids.map { latestUploadedChapterByMangaId[it] }
                 }
             }
         }
@@ -252,13 +289,13 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> 
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val firstUnreadChaptersByMangaId =
-                        ChapterTable
-                            .selectAll()
-                            .where { (ChapterTable.manga inList ids) and (ChapterTable.isRead eq false) }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
-                            .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id -> firstUnreadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
+                    val firstUnreadChapterByMangaId =
+                        firstChapterPerManga(
+                            ids,
+                            listOf(ChapterTable.sourceOrder to SortOrder.ASC),
+                            ChapterTable.isRead eq false,
+                        )
+                    ids.map { firstUnreadChapterByMangaId[it] }
                 }
             }
         }
@@ -272,17 +309,13 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val highestNumberedChaptersByMangaId =
-                        ChapterTable
-                            .selectAll()
-                            .where { (ChapterTable.manga inList ids) and (ChapterTable.chapter_number greater 0f) }
-                            .orderBy(ChapterTable.chapter_number to SortOrder.DESC_NULLS_LAST)
-                            .groupBy { it[ChapterTable.manga].value }
-                    ids.map { id ->
-                        highestNumberedChaptersByMangaId[id]
-                            ?.firstOrNull()
-                            ?.let { chapter -> ChapterType(chapter) }
-                    }
+                    val highestNumberedChapterByMangaId =
+                        firstChapterPerManga(
+                            ids,
+                            listOf(ChapterTable.chapter_number to SortOrder.DESC_NULLS_LAST),
+                            ChapterTable.chapter_number greater 0f,
+                        )
+                    ids.map { highestNumberedChapterByMangaId[it] }
                 }
             }
         }
