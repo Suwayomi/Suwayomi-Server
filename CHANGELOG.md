@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Add User Accounts
 
 ### Changed
-- 
+- (**GraphQL**) Count a manga's chapters in SQL when `chapters { totalCount }` is its only selection
 
 ### Fixed
 - 
