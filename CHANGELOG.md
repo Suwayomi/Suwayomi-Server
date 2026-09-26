@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Category/API**) Add `isDefaultCategory` in preparation of incompatible changes of future versions
 
 ### Changed
+- (**GraphQL**) Count a manga's chapters in SQL when `chapters { totalCount }` is its only selection
 - (**SystemTray**) Disable DorkBox update requests
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloads**) Skip LocalSource downloading

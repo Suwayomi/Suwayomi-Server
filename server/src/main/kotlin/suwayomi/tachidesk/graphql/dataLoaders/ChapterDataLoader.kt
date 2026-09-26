@@ -71,6 +71,36 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
         }
 }
 
+/** How many chapters each manga in [mangaIds] has; absent when none. */
+internal fun chapterCountPerManga(mangaIds: List<Int>): Map<Int, Int> {
+    val count = ChapterTable.id.count()
+    return ChapterTable
+        .select(ChapterTable.manga, count)
+        .where { ChapterTable.manga inList mangaIds }
+        .groupBy(ChapterTable.manga)
+        .associate { it[ChapterTable.manga].value to it[count].toInt() }
+}
+
+/**
+ * Chapter totals for `MangaType.chapters` when only `totalCount` is selected,
+ * as a library list does: counted in SQL instead of loading every chapter of
+ * every manga the way [ChaptersForMangaDataLoader] does for the nodes.
+ */
+class ChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
+    override val dataLoaderName = "ChapterCountForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val countByMangaId = chapterCountPerManga(ids)
+                    ids.map { countByMangaId[it] ?: 0 }
+                }
+            }
+        }
+}
+
 data class MangaChapterStats(
     val unreadCount: Int,
     val downloadCount: Int,
