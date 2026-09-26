@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Category/API**) Add `isDefaultCategory` in preparation of incompatible changes of future versions
 
 ### Changed
+- (**GraphQL**) Skip the count and first/last lookups of `chapters` and `mangas` lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**SystemTray**) Disable DorkBox update requests
 - (**GraphQL**) Updated GraphiQL GraphQL Playground
 - (**Downloads**) Skip LocalSource downloading

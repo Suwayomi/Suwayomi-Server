@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.server.primitives
 
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -105,10 +106,36 @@ data class PaginationInfo<T : Any>(
     val lastResult: T? = null,
 )
 
+/**
+ * Which parts of the pagination info a list query's caller selected.
+ *
+ * The total runs a COUNT over the whole filtered set, and the bounds (for
+ * `pageInfo.hasNextPage` / `hasPreviousPage`) run two more sorted queries over
+ * it, each once per request whatever the page size. A client that selects
+ * neither, such as a fixed window of nodes, shouldn't pay for them.
+ */
+data class PaginationNeeds(
+    val total: Boolean = true,
+    val bounds: Boolean = true,
+) {
+    companion object {
+        val ALL = PaginationNeeds()
+
+        fun of(dataFetchingEnvironment: DataFetchingEnvironment): PaginationNeeds {
+            val selection = dataFetchingEnvironment.selectionSet
+            return PaginationNeeds(
+                total = selection.contains("totalCount"),
+                bounds = selection.containsAnyOf("pageInfo/hasNextPage", "pageInfo/hasPreviousPage"),
+            )
+        }
+    }
+}
+
 fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
     sort: List<Order<T>>,
     before: Cursor?,
     last: Int?,
+    needs: PaginationNeeds = PaginationNeeds.ALL,
     selectValue: (resultRow: ResultRow?) -> V?,
 ): PaginationInfo<V> {
     val baseQuery = this.copy()
@@ -116,21 +143,29 @@ fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
     this.applySort(sort, before, last)
 
     return PaginationInfo(
-        total = baseQuery.count(),
+        total = if (needs.total) baseQuery.count() else 0,
         firstResult =
-            baseQuery
-                .copy()
-                .applySort(sort, before, last)
-                .limit(1)
-                .firstOrNull()
-                ?.let(selectValue),
+            if (needs.bounds) {
+                baseQuery
+                    .copy()
+                    .applySort(sort, before, last)
+                    .limit(1)
+                    .firstOrNull()
+                    ?.let(selectValue)
+            } else {
+                null
+            },
         lastResult =
-            baseQuery
-                .copy()
-                .applySort(sort, before, last, true)
-                .limit(1)
-                .firstOrNull()
-                ?.let(selectValue),
+            if (needs.bounds) {
+                baseQuery
+                    .copy()
+                    .applySort(sort, before, last, true)
+                    .limit(1)
+                    .firstOrNull()
+                    ?.let(selectValue)
+            } else {
+                null
+            },
     )
 }
 
@@ -139,7 +174,8 @@ fun <T : OrderBy<*>, Id : Any> Query.applySortAndGetPaginationInfo(
     before: Cursor?,
     last: Int?,
     idColumn: Column<EntityID<Id>>,
-): PaginationInfo<Id> = applySortAndGetPaginationInfo(sort, before, last) { it?.get(idColumn)?.value }
+    needs: PaginationNeeds = PaginationNeeds.ALL,
+): PaginationInfo<Id> = applySortAndGetPaginationInfo(sort, before, last, needs) { it?.get(idColumn)?.value }
 
 @JvmName("greaterNotUniqueIntKey")
 fun <T : Comparable<T>> greaterNotUnique(
