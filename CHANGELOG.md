@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Add User Accounts
 
 ### Changed
-- 
+- (**GraphQL**) Resolve a manga's last read, latest read/fetched/uploaded, first unread and highest numbered chapter with one ranked query instead of loading all its chapters
 
 ### Fixed
 - 
