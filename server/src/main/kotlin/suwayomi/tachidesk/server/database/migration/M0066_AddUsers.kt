@@ -48,6 +48,8 @@ class M0066_AddUsers : Migration() {
         val mangaUserTable = "MANGAUSER".toSqlName()
         val chapterTable = "CHAPTER".toSqlName()
         val mangaTable = "MANGA".toSqlName()
+        val sourceTable = "SOURCE".toSqlName()
+        val trackSearchTable = "TRACKSEARCH".toSqlName()
 
         private val adminUserInsert =
             when (serverConfig.databaseType.value) {
@@ -400,28 +402,24 @@ class M0066_AddUsers : Migration() {
             ALTER TABLE $categoryTable ADD CONSTRAINT FK_CATEGORY_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             CREATE INDEX IDX_CATEGORY_USER_ID ON $categoryTable(USER_ID);
             ALTER TABLE $tractRecordTable ADD CONSTRAINT FK_TRACKRECORD_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            CREATE INDEX IDX_TRACKRECORD_USER_ID ON $tractRecordTable(USER_ID);
-            ALTER TABLE $tractRecordTable ADD CONSTRAINT UC_TRACKRECORD_UNIQUE UNIQUE (USER_ID, MANGA_ID);
+            ALTER TABLE $tractRecordTable ADD CONSTRAINT UC_TRACKRECORD_UNIQUE UNIQUE (USER_ID, MANGA_ID, SYNC_ID);
+            CREATE INDEX IDX_TRACKRECORD_ID_USER_ID ON $tractRecordTable(ID, USER_ID);
 
             -- Create default category marker
             ALTER TABLE $categoryTable ADD COLUMN IS_DEFAULT_CATEGORY BOOLEAN NOT NULL DEFAULT FALSE;
             UPDATE $categoryTable SET IS_DEFAULT_CATEGORY = TRUE WHERE ID = 0 AND USER_ID = 1;
             $categoryDefaultCategoryIndexDdl
+            CREATE INDEX IDX_CATEGORY_ID_USER_ID ON $categoryTable(ID, USER_ID);
             
             ALTER TABLE $categoryMangaTable ADD CONSTRAINT FK_CATEGORYMANGA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
             ALTER TABLE $categoryMangaTable DROP CONSTRAINT UC_CATEGORYMANGA;
             ALTER TABLE $categoryMangaTable ADD CONSTRAINT UC_CATEGORYMANGA_UNIQUE UNIQUE (USER_ID, CATEGORY, MANGA);
 
             ALTER TABLE $mangaMetaTable ADD CONSTRAINT FK_MANGAMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            CREATE INDEX IDX_MANGAMETA_USER_ID ON $mangaMetaTable(USER_ID);
             ALTER TABLE $chapterMetaTable ADD CONSTRAINT FK_CHAPTERMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            CREATE INDEX IDX_CHAPTERMETA_USER_ID ON $chapterMetaTable(USER_ID);
             ALTER TABLE $globalMetaTable ADD CONSTRAINT FK_GLOBALMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            CREATE INDEX IDX_GLOBALMETA_USER_ID ON $globalMetaTable(USER_ID);
             ALTER TABLE $categoryMetaTable ADD CONSTRAINT FK_CATEGORYMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            CREATE INDEX IDX_CATEGORYMETA_USER_ID ON $categoryMetaTable(USER_ID);
             ALTER TABLE $sourceMetaTable ADD CONSTRAINT FK_SOURCEMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            CREATE INDEX IDX_SOURCEMETA_USER_ID ON $sourceMetaTable(USER_ID);
 
 
             ALTER TABLE $categoryTable
@@ -450,6 +448,10 @@ class M0066_AddUsers : Migration() {
 
             -- Add User ID to Meta Tables unique index
             $metaTableMigrations
+            
+            -- Indexes unrelated but useful
+            ALTER TABLE $sourceTable ADD CONSTRAINT UC_SOURCE_ID UNIQUE (ID);
+            ALTER TABLE $trackSearchTable ADD CONSTRAINT UC_TRACKSEARCH_TRACKER_ID_REMOTE_ID UNIQUE (TRACKER_ID, REMOTE_ID);
 
             -- Step 4: Backfill the CHAPTERUSER and MANGAUSER tables with existing data,
             -- including the syncyomi (VERSION, IS_SYNCING, LAST_MODIFIED_AT) and per-user
@@ -529,7 +531,7 @@ class M0066_AddUsers : Migration() {
     }
 
     private object UserPermissionsTable : Table() {
-        val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE).index()
+        val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val permission = varchar("permission", 128)
 
         init {
@@ -538,7 +540,7 @@ class M0066_AddUsers : Migration() {
     }
 
     private object UserRolesTable : Table() {
-        val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE).index()
+        val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val role = varchar("role", 24)
 
         init {
@@ -562,7 +564,7 @@ class M0066_AddUsers : Migration() {
     }
 
     private object UserCodePermissionsTable : Table() {
-        val userCode = reference("user_code_id", UserCodeTable, ReferenceOption.CASCADE).index()
+        val userCode = reference("user_code_id", UserCodeTable, ReferenceOption.CASCADE)
         val permission = varchar("permission", 128)
 
         init {
@@ -612,7 +614,7 @@ class M0066_AddUsers : Migration() {
     }
 
     private object UserSettingsTable : Table() {
-        val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE).index()
+        val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
         val key = varchar("key", 256)
         val value = varchar("value", 16384)
 

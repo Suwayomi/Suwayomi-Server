@@ -30,6 +30,10 @@ object CategoryTable : IntIdTable() {
     val lastModifiedAt = long("last_modified_at").default(0)
     val isSyncing = bool("is_syncing").default(false)
     val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
+
+    init {
+        index(false, id, user)
+    }
 }
 
 fun CategoryTable.toDataClass(categoryEntry: ResultRow) =

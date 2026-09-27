@@ -11,10 +11,10 @@ import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.Table
 
 object UserPermissionsTable : Table() {
-    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE).index()
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val permission = varchar("permission", 128)
 
     init {
-        index(isUnique = true, user, permission)
+        uniqueIndex(user, permission)
     }
 }

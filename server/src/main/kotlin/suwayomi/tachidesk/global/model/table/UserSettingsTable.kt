@@ -11,7 +11,7 @@ import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.Table
 
 object UserSettingsTable : Table() {
-    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE).index()
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val key = varchar("key", 256)
     val value = varchar("value", 16384)
 

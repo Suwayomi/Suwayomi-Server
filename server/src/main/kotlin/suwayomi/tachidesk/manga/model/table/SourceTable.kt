@@ -10,7 +10,7 @@ package suwayomi.tachidesk.manga.model.table
 import org.jetbrains.exposed.v1.core.dao.id.IdTable
 
 object SourceTable : IdTable<Long>() {
-    override val id = long("id").entityId()
+    override val id = long("id").entityId().uniqueIndex()
     val name = varchar("name", 128)
     val lang = varchar("lang", 32)
     val extension = reference("extension", ExtensionTable)

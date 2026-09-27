@@ -26,9 +26,10 @@ object TrackRecordTable : IntIdTable() {
     val startDate = long("start_date")
     val finishDate = long("finish_date")
     val private = bool("private").default(false)
-    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE).index()
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 
     init {
-        uniqueIndex(user, mangaId)
+        uniqueIndex(user, mangaId, trackerId)
+        index(isUnique = false, id, user)
     }
 }

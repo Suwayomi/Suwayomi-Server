@@ -18,7 +18,7 @@ object CategoryMetaTable : IntIdTable() {
     val key = varchar("meta_key", 256)
     val value = varchar("value", 4096)
     val ref = reference("category_ref", CategoryTable, ReferenceOption.CASCADE)
-    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE).index()
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 
     init {
         uniqueIndex(user, ref, key)
