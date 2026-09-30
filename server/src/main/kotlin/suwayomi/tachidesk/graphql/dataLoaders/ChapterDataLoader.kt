@@ -32,6 +32,7 @@ import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.queries.filter.coalesceDefault
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
@@ -230,7 +231,11 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
                     val lastReadChapterByMangaId =
-                        firstChapterPerManga(userId, ids, listOf(ChapterUserTable.lastReadAt to SortOrder.DESC))
+                        firstChapterPerManga(
+                            userId,
+                            ids,
+                            listOf(coalesceDefault(ChapterUserTable.lastReadAt, 0L) to SortOrder.DESC),
+                        )
                     ids.map { lastReadChapterByMangaId[it] }
                 }
             }
