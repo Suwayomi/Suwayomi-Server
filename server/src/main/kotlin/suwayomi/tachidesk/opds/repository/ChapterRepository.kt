@@ -358,7 +358,7 @@ object ChapterRepository {
         transaction {
             val baseQuery = ChapterTable.getWithUserData(userId).select(ChapterTable.id).where { ChapterTable.manga eq mangaId }
             val readCount = baseQuery.copy().andWhere { ChapterUserTable.isRead eq true }.count()
-            val unreadCount = baseQuery.copy().andWhere { ChapterUserTable.isRead eq false }.count()
+            val unreadCount = baseQuery.copy().andWhere { ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()) }.count()
             val allCount = baseQuery.copy().count()
 
             mapOf(
