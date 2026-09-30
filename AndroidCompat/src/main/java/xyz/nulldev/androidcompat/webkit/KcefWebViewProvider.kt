@@ -54,6 +54,9 @@ import android.webkit.WebViewRenderProcessClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.cef.CefClient
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
@@ -64,6 +67,7 @@ import org.cef.callback.CefCallback
 import org.cef.callback.CefMediaAccessCallback
 import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefDisplayHandlerAdapter
+import org.cef.handler.CefLifeSpanHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
@@ -98,7 +102,12 @@ import kotlin.reflect.jvm.javaMethod
 class KcefWebViewProvider(
     private val view: WebView,
 ) : WebViewProvider {
-    private val settings = KcefWebSettings()
+    private val settings =
+        KcefWebSettings {
+            browser?.let { applyUserAgent(it) }
+        }
+    private var pendingNavigation: (() -> Unit)? = null
+    private var navigationUrl: String? = null
     private var viewClient = WebViewClient()
     private var chromeClient = WebChromeClient()
     private val renderHandler = RenderHandler()
@@ -232,6 +241,7 @@ class KcefWebViewProvider(
             httpStatusCode: Int,
         ) {
             val url = frame.url ?: ""
+            if (url == "about:blank" && navigationUrl != "about:blank") return
             Log.v(TAG, "Load end $url")
             handler.post {
                 if (httpStatusCode == 404) {
@@ -278,6 +288,7 @@ class KcefWebViewProvider(
             frame: CefFrame,
             transitionType: CefRequest.TransitionType,
         ) {
+            if (frame.url == "about:blank" && navigationUrl != "about:blank") return
             Log.v(TAG, "Load start, pushing mappings")
             mappings.forEach {
                 val js =
@@ -528,6 +539,42 @@ class KcefWebViewProvider(
         }
     }
 
+    private fun applyUserAgent(
+        cefBrowser: CefBrowser,
+        onApplied: () -> Unit = {},
+    ) {
+        val client = cefBrowser.devToolsClient ?: return
+        val userAgent = settings.userAgentString.orEmpty()
+        val parameters = buildJsonObject { put("userAgent", JsonPrimitive(userAgent)) }.toString()
+        client.executeDevToolsMethod("Emulation.setUserAgentOverride", parameters).whenComplete { _, error ->
+            handler.post {
+                if (browser !== cefBrowser) return@post
+                if (error != null) {
+                    Log.e(TAG, "Failed to apply WebView User-Agent", error)
+                    viewClient.onReceivedError(view, WebViewClient.ERROR_UNKNOWN, "Failed to apply WebView User-Agent", cefBrowser.url)
+                } else if (settings.userAgentString.orEmpty() != userAgent) {
+                    applyUserAgent(cefBrowser, onApplied)
+                } else {
+                    onApplied()
+                }
+            }
+        }
+    }
+
+    private fun createBrowser(url: String) {
+        // Apply the per-WebView User-Agent before the first request or page script runs.
+        val created =
+            kcefClient!!.createBrowser(
+                "about:blank",
+                CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                false,
+            )
+        browser = created
+        navigationUrl = url
+        pendingNavigation = { created.loadURL(url) }
+        created.createImmediately()
+    }
+
     private class RenderHandler : CefRenderHandlerAdapter() {
         override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, 1280, 2856)
 
@@ -554,6 +601,18 @@ class KcefWebViewProvider(
                 CefHelper.createClient().apply {
                     addDisplayHandler(DisplayHandler())
                     addLoadHandler(LoadHandler())
+                    addLifeSpanHandler(
+                        object : CefLifeSpanHandlerAdapter() {
+                            override fun onAfterCreated(created: CefBrowser) {
+                                handler.post {
+                                    if (browser !== created) return@post
+                                    val navigation = pendingNavigation ?: return@post
+                                    pendingNavigation = null
+                                    applyUserAgent(created, navigation)
+                                }
+                            }
+                        },
+                    )
                     addRequestHandler(RequestHandler())
                     addPermissionHandler(PermissionHandler())
 
@@ -606,6 +665,7 @@ class KcefWebViewProvider(
         browser?.close(true)
         browser?.dispose()
         browser = null
+        pendingNavigation = null
         kcefClient?.disposeWithJsHandler()
         kcefClient = null
     }
@@ -634,16 +694,7 @@ class KcefWebViewProvider(
         browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         initialRequestData = InitialRequestData(additionalHttpHeaders = additionalHttpHeaders)
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    loadUrl,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        createBrowser(loadUrl)
         Log.d(TAG, "Page loaded at URL $loadUrl")
     }
 
@@ -659,16 +710,7 @@ class KcefWebViewProvider(
         browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         initialRequestData = InitialRequestData(myPostData = postData)
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    url,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        createBrowser(url)
         Log.d(TAG, "Page posted at URL $url")
     }
 
@@ -693,16 +735,7 @@ class KcefWebViewProvider(
         val url = baseUrl ?: "about:blank"
         urlHttpMapping[url.trimEnd('/')] = data
 
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    url,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        createBrowser(url)
         Log.d(TAG, "Page loaded from data at base URL $baseUrl")
     }
 
@@ -732,19 +765,19 @@ class KcefWebViewProvider(
     }
 
     override fun reload() {
-        browser!!.reload()
+        browser!!.let { applyUserAgent(it) { it.reload() } }
     }
 
     override fun canGoBack(): Boolean = browser!!.canGoBack()
 
     override fun goBack() {
-        browser!!.goBack()
+        browser!!.let { applyUserAgent(it) { it.goBack() } }
     }
 
     override fun canGoForward(): Boolean = browser!!.canGoForward()
 
     override fun goForward() {
-        browser!!.goForward()
+        browser!!.let { applyUserAgent(it) { it.goForward() } }
     }
 
     override fun canGoBackOrForward(steps: Int): Boolean = throw RuntimeException("Stub!")

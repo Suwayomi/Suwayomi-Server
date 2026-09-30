@@ -2,7 +2,9 @@ package xyz.nulldev.androidcompat.webkit
 
 import android.webkit.WebSettings
 
-class KcefWebSettings : WebSettings() {
+class KcefWebSettings(
+    private val onUserAgentChanged: () -> Unit = {},
+) : WebSettings() {
     // Boolean settings
     private var navDumps = false
     private var mediaPlaybackRequiresUserGesture = true
@@ -374,6 +376,7 @@ class KcefWebSettings : WebSettings() {
 
     override fun setUserAgentString(p0: String?) {
         userAgentString = p0
+        onUserAgentChanged()
     }
 
     override fun getUserAgentString() = userAgentString ?: defaultUserAgent()
