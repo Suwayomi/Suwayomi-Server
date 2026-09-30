@@ -26,5 +26,4 @@ class MangaUserType(
 
     fun firstUnreadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
         dataFetchingEnvironment.getValueFromDataLoader("FirstUnreadChapterForMangaDataLoader", mangaId)
-
 }
