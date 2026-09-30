@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Add User Accounts
 
 ### Changed
-- (**GraphQL**) Count a manga's chapters in SQL when `chapters { totalCount }` is its only selection
+- (**GraphQL**) Count the nodes of list fields (a manga's chapters, categories and track records, a category's or a source's manga, a tracker's track records, an extension store's extensions) in SQL when `totalCount` is their only selection
 
 ### Fixed
 - 

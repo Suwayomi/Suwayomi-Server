@@ -7,7 +7,6 @@ package suwayomi.tachidesk.graphql.types
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
@@ -15,6 +14,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.getNodeListFromDataLoaders
+import suwayomi.tachidesk.graphql.types.ExtensionNodeList.Companion.toNodeList
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import java.util.concurrent.CompletableFuture
 
@@ -40,7 +41,9 @@ class ExtensionStoreType(
     )
 
     fun extensions(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionNodeList> =
-        dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionNodeList>("ExtensionsForExtensionStore", indexUrl)
+        dataFetchingEnvironment.getNodeListFromDataLoaders("ExtensionsForExtensionStore", "ExtensionCountForExtensionStore", indexUrl) {
+            emptyList<ExtensionType>().toNodeList().copy(totalCount = it)
+        }
 }
 
 data class ExtensionStoreNodeList(
