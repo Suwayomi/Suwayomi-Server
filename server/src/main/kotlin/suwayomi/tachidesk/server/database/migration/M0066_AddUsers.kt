@@ -450,6 +450,7 @@ class M0066_AddUsers : Migration() {
             $metaTableMigrations
             
             -- Indexes unrelated but useful
+            DELETE FROM TRACKSEARCH WHERE ID NOT IN (SELECT MIN(ID) FROM TRACKSEARCH GROUP BY TRACKER_ID, REMOTE_ID); -- keep first entry of duplicates
             ALTER TABLE $sourceTable ADD CONSTRAINT UC_SOURCE_ID UNIQUE (ID);
             ALTER TABLE $trackSearchTable ADD CONSTRAINT UC_TRACKSEARCH_TRACKER_ID_REMOTE_ID UNIQUE (TRACKER_ID, REMOTE_ID);
 
