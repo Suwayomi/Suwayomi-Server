@@ -96,7 +96,7 @@ object TallImageSplitter {
 
                     val partCount = calculatePartCount(height, optimalImageHeight)
                     val partHeight = height / partCount
-                    val splitWriter = prepareWriter(reader.getImageTypes(0).next(), reader)
+                    val splitWriter = prepareWriter(reader.getImageTypes(0).next(), reader, originalFile.extension)
 
                     val splitFiles = mutableListOf<File>()
                     try {
@@ -147,17 +147,14 @@ object TallImageSplitter {
     private fun prepareWriter(
         typeSpecifier: ImageTypeSpecifier,
         reader: ImageReader,
+        sourceExtension: String,
     ): SplitWriter {
         val nativeWriters = ImageIO.getImageWriters(typeSpecifier, reader.formatName)
         if (nativeWriters.hasNext()) {
             val writer = nativeWriters.next()
-            val extension =
-                reader.originatingProvider
-                    ?.fileSuffixes
-                    ?.firstOrNull()
-                    ?.lowercase()
-                    ?: reader.formatName.lowercase()
-            return SplitWriter(writer, writer.fullQualityWriteParam(), extension, flattenAlpha = false)
+            // The source extension was picked by the server from the page's mime type; the reader's
+            // first suffix depends on which plugin read the file (TwelveMonkeys' WEBP reader lists "wbp")
+            return SplitWriter(writer, writer.fullQualityWriteParam(), sourceExtension.lowercase(), flattenAlpha = false)
         }
 
         val jpegWriter = ImageIO.getImageWritersByFormatName("jpg").next()
