@@ -21,6 +21,7 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -98,7 +99,7 @@ class ChapterFlagCountForMangaDataLoader : KotlinDataLoader<Int, MangaChapterSta
 
                     val unreadCount =
                         Case()
-                            .When(ChapterUserTable.isRead eq false, intLiteral(1))
+                            .When(ChapterUserTable.isRead neq true, intLiteral(1))
                             .Else(intLiteral(0))
                             .sum()
 
