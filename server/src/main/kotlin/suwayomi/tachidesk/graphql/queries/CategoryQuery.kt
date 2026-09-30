@@ -8,11 +8,13 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -92,6 +94,7 @@ class CategoryQuery {
         val order: Int? = null,
         val name: String? = null,
         val default: Boolean? = null,
+        val isDefaultCategory: Boolean? = null,
     ) : HasGetOp {
         override fun getOp(): Op<Boolean>? {
             val opAnd = OpAnd()
@@ -99,6 +102,7 @@ class CategoryQuery {
             opAnd.eq(order, CategoryTable.order)
             opAnd.eq(name, CategoryTable.name)
             opAnd.eq(default, CategoryTable.isDefault)
+            opAnd.eq(isDefaultCategory, CategoryTable.isDefaultCategory)
 
             return opAnd.op
         }
@@ -109,6 +113,7 @@ class CategoryQuery {
         val order: IntFilter? = null,
         val name: StringFilter? = null,
         val default: BooleanFilter? = null,
+        val isDefaultCategory: BooleanFilter? = null,
         override val and: List<CategoryFilter>? = null,
         override val or: List<CategoryFilter>? = null,
         override val not: CategoryFilter? = null,
@@ -119,11 +124,14 @@ class CategoryQuery {
                 andFilterWithCompare(CategoryTable.order, order),
                 andFilterWithCompareString(CategoryTable.name, name),
                 andFilterWithCompare(CategoryTable.isDefault, default),
+                andFilterWithCompare(CategoryTable.isDefaultCategory, isDefaultCategory),
             )
     }
 
     @RequireAuth
     fun categories(
+        @GraphQLIgnore
+        userId: Int,
         condition: CategoryCondition? = null,
         filter: CategoryFilter? = null,
         @GraphQLDeprecated(
@@ -145,7 +153,7 @@ class CategoryQuery {
     ): CategoryNodeList {
         val queryResults =
             transaction {
-                val res = CategoryTable.selectAll()
+                val res = CategoryTable.selectAll().where { CategoryTable.user eq userId }
 
                 res.applyOps(condition, filter)
 

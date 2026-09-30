@@ -65,6 +65,7 @@ open class SettingDelegate<T : Any>(
                         convertToGqlType = typeInfo?.convertToGqlType,
                         convertToInternalType = typeInfo?.convertToInternalType,
                         convertToBackupType = typeInfo?.convertToBackupType,
+                        restoreLegacy = typeInfo?.restoreLegacy,
                     ),
                 defaultValue = defaultValue,
                 validator =
@@ -176,8 +177,12 @@ class MigratedConfigValue<T : Any>(
                     SettingsRegistry.TypeInfo(
                         type = typeInfo?.type ?: defaultValue::class,
                         specificType = typeInfo?.specificType,
+                        interfaceType = typeInfo?.interfaceType,
                         backupType = typeInfo?.backupType,
                         imports = typeInfo?.imports,
+                        convertToGqlType = typeInfo?.convertToGqlType,
+                        convertToInternalType = typeInfo?.convertToInternalType,
+                        convertToBackupType = typeInfo?.convertToBackupType,
                         restoreLegacy = typeInfo?.restoreLegacy,
                     ),
                 defaultValue = defaultValue,

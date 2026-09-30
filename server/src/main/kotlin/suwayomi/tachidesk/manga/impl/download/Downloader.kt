@@ -18,7 +18,10 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
@@ -36,6 +39,7 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PAUSED
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PROGRESS
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.STOPPED
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import java.util.concurrent.CopyOnWriteArrayList
 
 class Downloader(
@@ -165,7 +169,7 @@ class Downloader(
                 download.state = Downloading
                 step(PROGRESS, download, true)
 
-                val chapter = getChapterDownloadReadyById(download.chapterId)
+                val chapter = getChapterDownloadReadyById(0, download.chapterId)
 
                 if (chapter.pageCount <= 0) {
                     throw EmptyChapterException()
@@ -178,10 +182,28 @@ class Downloader(
                 }
                 download.state = Finished
                 transaction {
-                    ChapterTable.update(
-                        { (ChapterTable.id eq download.chapterId) },
-                    ) {
-                        it[isDownloaded] = true
+                    // Mark it as downloaded for those who requested it
+                    val requestingUserIds =
+                        ChapterUserTable
+                            .select(ChapterUserTable.user)
+                            .where {
+                                (ChapterUserTable.chapter eq download.chapterId) and
+                                    (ChapterUserTable.isDownloadRequested eq true)
+                            }.map { it[ChapterUserTable.user].value }
+
+                    if (requestingUserIds.isNotEmpty()) {
+                        ChapterTable.update({ (ChapterTable.id eq download.chapterId) }) {
+                            it[isDownloaded] = true
+                        }
+
+                        ChapterUserTable.update(
+                            {
+                                (ChapterUserTable.chapter eq download.chapterId) and
+                                    (ChapterUserTable.user inList requestingUserIds)
+                            },
+                        ) {
+                            it[ChapterUserTable.isDownloaded] = true
+                        }
                     }
                 }
                 finishDownload(downloadLogger, download)

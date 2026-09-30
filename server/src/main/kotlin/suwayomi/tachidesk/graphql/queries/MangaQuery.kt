@@ -8,14 +8,17 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.select
@@ -34,6 +37,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.queries.filter.coalesceDefault
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -48,6 +52,8 @@ import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import java.util.concurrent.CompletableFuture
 
 class MangaQuery {
@@ -62,7 +68,7 @@ class MangaQuery {
     ) : OrderBy<MangaType> {
         ID(MangaTable.id),
         TITLE(MangaTable.title),
-        IN_LIBRARY_AT(MangaTable.inLibraryAt),
+        IN_LIBRARY_AT(MangaUserTable.inLibraryAt),
         LAST_FETCHED_AT(MangaTable.lastFetchedAt),
         ;
 
@@ -70,7 +76,7 @@ class MangaQuery {
             when (this) {
                 ID -> MangaTable.id greater cursor.value.toInt()
                 TITLE -> greaterNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
-                IN_LIBRARY_AT -> greaterNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
+                IN_LIBRARY_AT -> greaterNotUnique(MangaUserTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
                 LAST_FETCHED_AT -> greaterNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
             }
 
@@ -78,7 +84,7 @@ class MangaQuery {
             when (this) {
                 ID -> MangaTable.id less cursor.value.toInt()
                 TITLE -> lessNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
-                IN_LIBRARY_AT -> lessNotUnique(MangaTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
+                IN_LIBRARY_AT -> lessNotUnique(MangaUserTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
                 LAST_FETCHED_AT -> lessNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
             }
 
@@ -131,8 +137,8 @@ class MangaQuery {
             opAnd.eq(description, MangaTable.description)
             opAnd.andWhereAll(genre) { MangaTable.genre like "%$it%" }
             opAnd.eq(status?.value, MangaTable.status)
-            opAnd.eq(inLibrary, MangaTable.inLibrary)
-            opAnd.eq(inLibraryAt, MangaTable.inLibraryAt)
+            opAnd.eq(inLibrary, coalesceDefault(MangaUserTable.inLibrary, false))
+            opAnd.eq(inLibraryAt, coalesceDefault(MangaUserTable.inLibraryAt, 0))
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
@@ -213,8 +219,8 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.description, description),
                 andFilterWithCompareString(MangaTable.genre, genre),
                 andFilterWithCompare(MangaTable.status, status?.asIntFilter()),
-                andFilterWithCompare(MangaTable.inLibrary, inLibrary),
-                andFilterWithCompare(MangaTable.inLibraryAt, inLibraryAt),
+                andFilterWithCompare(coalesceDefault(MangaUserTable.inLibrary, false), inLibrary),
+                andFilterWithCompare(coalesceDefault(MangaUserTable.inLibraryAt, 0), inLibraryAt),
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
@@ -230,6 +236,8 @@ class MangaQuery {
 
     @RequireAuth
     fun mangas(
+        @GraphQLIgnore
+        userId: Int,
         condition: MangaCondition? = null,
         filter: MangaFilter? = null,
         @GraphQLDeprecated(
@@ -253,16 +261,21 @@ class MangaQuery {
             transaction {
                 val mangaIdsQuery =
                     MangaTable
-                        .leftJoin(CategoryMangaTable)
-                        .select(MangaTable.id)
+                        .getWithUserData(userId)
+                        .leftJoin(
+                            CategoryMangaTable,
+                            onColumn = { MangaTable.id },
+                            otherColumn = { CategoryMangaTable.manga },
+                            additionalConstraint = { CategoryMangaTable.user eq userId },
+                        ).select(MangaTable.id)
                         .withDistinct()
                         .applyOps(condition, filter)
 
                 val res =
                     if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
-                        MangaTable.selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
+                        MangaTable.getWithUserData(userId).selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
                     } else {
-                        MangaTable.selectAll().applyOps(condition, filter)
+                        MangaTable.getWithUserData(userId).selectAll().applyOps(condition, filter)
                     }
 
                 val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))

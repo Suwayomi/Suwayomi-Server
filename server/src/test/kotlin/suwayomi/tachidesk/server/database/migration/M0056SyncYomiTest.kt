@@ -1,13 +1,14 @@
 package suwayomi.tachidesk.server.database
 
 import org.jetbrains.exposed.v1.jdbc.Database
+import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.server.database.migration.M0056_SyncYomi
 import suwayomi.tachidesk.test.ApplicationTest
 import java.util.UUID
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class M0056SyncYomiTest {
     companion object {
@@ -20,7 +21,23 @@ class M0056SyncYomiTest {
 
     @Test
     fun `resumes an interrupted H2 migration`() {
+        // Database.connect makes the scratch database the primary one for all bare `transaction {}` calls;
+        // save and restore the shared test database so tests running after this one are unaffected
+        val previousPrimaryDatabase = TransactionManager.primaryDatabase
+
         val database = Database.connect("jdbc:h2:mem:syncyomi-${UUID.randomUUID()};DB_CLOSE_DELAY=-1", "org.h2.Driver")
+        try {
+            runMigrationTest(database)
+        } finally {
+            if (previousPrimaryDatabase != null) {
+                TransactionManager.defaultDatabase = previousPrimaryDatabase
+            } else {
+                TransactionManager.closeAndUnregister(database)
+            }
+        }
+    }
+
+    private fun runMigrationTest(database: Database) {
         val migration = M0056_SyncYomi()
 
         transaction(database) {

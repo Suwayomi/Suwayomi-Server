@@ -14,37 +14,48 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
-import suwayomi.tachidesk.manga.impl.Manga.getManga
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import java.time.Instant
 
 object Library {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    suspend fun addMangaToLibrary(mangaId: Int) {
-        val manga = getManga(mangaId)
-        if (!manga.inLibrary) {
+    fun addMangaToLibrary(
+        userId: Int,
+        mangaId: Int,
+    ) {
+        val inLibrary =
+            transaction {
+                MangaUserTable
+                    .select(MangaUserTable.id)
+                    .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
+                    .any()
+            }
+        if (!inLibrary) {
             transaction {
                 val defaultCategories =
                     CategoryTable
                         .selectAll()
                         .where {
-                            (CategoryTable.isDefault eq true) and
-                                (CategoryTable.id neq Category.DEFAULT_CATEGORY_ID)
+                            CategoryTable.user eq userId and
+                                (CategoryTable.isDefault eq true) and
+                                (CategoryTable.isDefaultCategory eq false)
                         }.toList()
                 val existingCategories = CategoryMangaTable.selectAll().where { CategoryMangaTable.manga eq mangaId }.toList()
 
-                MangaTable.update({ MangaTable.id eq manga.id }) {
-                    it[inLibrary] = true
-                    it[inLibraryAt] = Instant.now().epochSecond
+                MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
+                    it[MangaUserTable.manga] = mangaId
+                    it[MangaUserTable.user] = userId
+                    it[MangaUserTable.inLibrary] = true
+                    it[MangaUserTable.inLibraryAt] = Instant.now().epochSecond
                 }
 
                 if (existingCategories.isEmpty()) {
@@ -52,32 +63,39 @@ object Library {
                         CategoryMangaTable.upsert(CategoryMangaTable.manga, CategoryMangaTable.category) {
                             it[CategoryMangaTable.category] = category[CategoryTable.id].value
                             it[CategoryMangaTable.manga] = mangaId
+                            it[CategoryMangaTable.user] = userId
                         }
                     }
                 }
             }.apply {
-                handleMangaThumbnail(mangaId, true)
+                handleMangaThumbnail(mangaId)
             }
         }
     }
 
-    suspend fun removeMangaFromLibrary(mangaId: Int) {
-        val manga = getManga(mangaId)
-        if (manga.inLibrary) {
+    fun removeMangaFromLibrary(
+        userId: Int,
+        mangaId: Int,
+    ) {
+        val inLibrary =
             transaction {
-                MangaTable.update({ MangaTable.id eq manga.id }) {
-                    it[inLibrary] = false
+                MangaUserTable
+                    .select(MangaUserTable.id)
+                    .where { MangaUserTable.manga eq mangaId and (MangaUserTable.user eq userId) and (MangaUserTable.inLibrary eq true) }
+                    .any()
+            }
+        if (inLibrary) {
+            transaction {
+                MangaUserTable.update({ MangaUserTable.user eq userId and (MangaUserTable.manga eq mangaId) }) {
+                    it[MangaUserTable.inLibrary] = false
                 }
             }.apply {
-                handleMangaThumbnail(mangaId, false)
+                handleMangaThumbnail(mangaId)
             }
         }
     }
 
-    fun handleMangaThumbnail(
-        mangaId: Int,
-        inLibrary: Boolean,
-    ) {
+    fun handleMangaThumbnail(mangaId: Int) {
         scope.launch {
             val sourceId =
                 transaction {
@@ -86,6 +104,13 @@ object Library {
                         .where { MangaTable.id eq mangaId }
                         .first()
                         .get(MangaTable.sourceReference)
+                }
+            val inLibrary =
+                transaction {
+                    MangaUserTable
+                        .select(MangaUserTable.id)
+                        .where { MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true) }
+                        .any()
                 }
 
             if (sourceId == LocalSource.ID) {

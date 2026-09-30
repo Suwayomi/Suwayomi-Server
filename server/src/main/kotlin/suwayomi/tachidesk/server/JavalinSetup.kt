@@ -30,6 +30,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
@@ -272,13 +273,13 @@ object JavalinSetup {
                 throw UnauthorizedResponse()
             }
 
-            ctx.setAttribute(Attribute.TachideskUser, getUserFromContext(ctx))
+            ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromContext(ctx) })
             ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
         }
 
         wsBefore {
             it.onConnect { ctx ->
-                ctx.setAttribute(Attribute.TachideskUser, getUserFromWsContext(ctx))
+                ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromWsContext(ctx) })
             }
         }
 

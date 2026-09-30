@@ -14,6 +14,7 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
@@ -26,6 +27,9 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
 import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.server.JavalinSetup
+import suwayomi.tachidesk.server.user.requireUser
 import java.util.concurrent.CompletableFuture
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownloadState
 
@@ -120,8 +124,16 @@ class DownloadType(
 
             ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
 
+            val userId = dataFetchingEnvironment.graphQlContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+
             return@thenApply transaction {
-                val resultRow = ChapterTable.selectAll().where { ChapterTable.id eq chapterId }.firstOrNull() ?: return@transaction it
+                val resultRow =
+                    ChapterTable
+                        .getWithUserData(userId)
+                        .selectAll()
+                        .where { ChapterTable.id eq chapterId }
+                        .firstOrNull()
+                        ?: return@transaction it
 
                 ChapterType(resultRow)
             }

@@ -9,8 +9,14 @@ package suwayomi.tachidesk.manga.model.table
 
 import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 
 object CategoryMangaTable : IntIdTable() {
     val category = reference("category", CategoryTable, ReferenceOption.CASCADE)
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
+
+    init {
+        uniqueIndex(user, category, manga)
+    }
 }

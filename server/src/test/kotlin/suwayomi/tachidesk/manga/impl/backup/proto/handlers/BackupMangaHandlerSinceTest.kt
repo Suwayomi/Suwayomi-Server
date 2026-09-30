@@ -1,14 +1,20 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.handlers
 
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import org.jetbrains.exposed.v1.jdbc.upsert
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createChapters
@@ -24,6 +30,7 @@ class BackupMangaHandlerSinceTest : ApplicationTest() {
             includeHistory = false,
             includeClientData = false,
             includeServerSettings = false,
+            includeUserSettings = false,
         )
 
     @AfterEach
@@ -36,11 +43,13 @@ class BackupMangaHandlerSinceTest : ApplicationTest() {
         at: Long,
     ) {
         transaction {
-            MangaTable.update({ MangaTable.id eq id }) {
-                it[lastModifiedAt] = at
-                it[isSyncing] = true
+            MangaUserTable.upsert(MangaUserTable.manga, MangaUserTable.user) {
+                it[MangaUserTable.manga] = id
+                it[MangaUserTable.user] = 1
+                it[MangaUserTable.lastModifiedAt] = at
+                it[MangaUserTable.isSyncing] = true
             }
-            MangaTable.update({ MangaTable.id eq id }) { it[isSyncing] = false }
+            MangaUserTable.update({ MangaUserTable.manga eq id }) { it[isSyncing] = false }
         }
     }
 
@@ -49,15 +58,24 @@ class BackupMangaHandlerSinceTest : ApplicationTest() {
         at: Long,
     ) {
         transaction {
-            ChapterTable.update({ ChapterTable.manga eq mangaId }) {
-                it[lastModifiedAt] = at
-                it[isSyncing] = true
-            }
-            ChapterTable.update({ ChapterTable.manga eq mangaId }) { it[isSyncing] = false }
+            val ids =
+                ChapterTable
+                    .select(ChapterTable.id)
+                    .where { ChapterTable.manga eq mangaId }
+                    .map { it[ChapterTable.id] }
+            val rows =
+                ChapterUserTable
+                    .batchUpsert(ids, ChapterUserTable.chapter, ChapterUserTable.user) {
+                        this[ChapterUserTable.chapter] = it
+                        this[ChapterUserTable.user] = 1
+                        this[ChapterUserTable.lastModifiedAt] = at
+                        this[ChapterUserTable.isSyncing] = true
+                    }.map { it[ChapterUserTable.id] }
+            ChapterUserTable.update({ ChapterUserTable.id inList rows }) { it[isSyncing] = false }
         }
     }
 
-    private fun titles(since: Long?) = BackupMangaHandler.backup(flags, since).map { it.title }.toSet()
+    private fun titles(since: Long?) = BackupMangaHandler.backup(1, flags, since).map { it.title }.toSet()
 
     @Test
     fun `loads only manga changed since the given time`() {
