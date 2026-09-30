@@ -13,9 +13,11 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.innerJoin
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
@@ -72,6 +74,36 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
                             .groupBy { it.first }
                             .mapValues { it.value.map { pair -> pair.second } }
                     ids.map { (itemsByRef[it] ?: emptyList()).toNodeList() }
+                }
+            }
+        }
+}
+
+/** The category totals of [CategoriesForMangaDataLoader], counted in SQL. */
+class CategoryCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
+    override val dataLoaderName = "CategoryCountForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val count = CategoryMangaTable.id.count()
+                    val countByMangaId =
+                        CategoryMangaTable
+                            .innerJoin(
+                                CategoryTable,
+                                onColumn = { CategoryMangaTable.category },
+                                otherColumn = { CategoryTable.id },
+                                additionalConstraint = { CategoryTable.user eq userId },
+                            ).select(CategoryMangaTable.manga, count)
+                            .where {
+                                CategoryMangaTable.manga inList ids and
+                                    (CategoryMangaTable.user eq userId)
+                            }.groupBy(CategoryMangaTable.manga)
+                            .associate { it[CategoryMangaTable.manga].value to it[count].toInt() }
+                    ids.map { countByMangaId[it] ?: 0 }
                 }
             }
         }

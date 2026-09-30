@@ -18,6 +18,10 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.getNodeListFromDataLoaders
+import suwayomi.tachidesk.graphql.types.CategoryNodeList.Companion.toNodeList
+import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
+import suwayomi.tachidesk.graphql.types.TrackRecordNodeList.Companion.toNodeList
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
@@ -135,27 +139,10 @@ class MangaType(
     fun highestNumberedChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
         dataFetchingEnvironment.getValueFromDataLoader("HighestNumberedChapterForMangaDataLoader", id)
 
-    fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> {
-        // A library list selects only the total: count instead of loading
-        // every chapter of every manga just to size the list.
-        val onlyTotal =
-            dataFetchingEnvironment.selectionSet.immediateFields.all {
-                it.name == "totalCount" || it.name == "__typename"
-            }
-        if (onlyTotal) {
-            return dataFetchingEnvironment
-                .getValueFromDataLoader<Int, Int>("ChapterCountForMangaDataLoader", id)
-                .thenApply { total ->
-                    ChapterNodeList(
-                        nodes = emptyList(),
-                        edges = emptyList(),
-                        pageInfo = PageInfo(hasNextPage = false, hasPreviousPage = false, startCursor = null, endCursor = null),
-                        totalCount = total,
-                    )
-                }
+    fun chapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterNodeList> =
+        dataFetchingEnvironment.getNodeListFromDataLoaders("ChaptersForMangaDataLoader", "ChapterCountForMangaDataLoader", id) {
+            emptyList<ChapterType>().toNodeList().copy(totalCount = it)
         }
-        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterNodeList>("ChaptersForMangaDataLoader", id)
-    }
 
     fun age(): Long? {
         if (lastFetchedAt == null) return null
@@ -172,13 +159,17 @@ class MangaType(
         dataFetchingEnvironment.getValueFromDataLoader<Int, List<MangaMetaType>>("MangaMetaDataLoader", id)
 
     fun categories(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<CategoryNodeList> =
-        dataFetchingEnvironment.getValueFromDataLoader<Int, CategoryNodeList>("CategoriesForMangaDataLoader", id)
+        dataFetchingEnvironment.getNodeListFromDataLoaders("CategoriesForMangaDataLoader", "CategoryCountForMangaDataLoader", id) {
+            emptyList<CategoryType>().toNodeList().copy(totalCount = it)
+        }
 
     fun source(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<SourceType?> =
         dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType?>("SourceDataLoader", sourceId)
 
     fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> =
-        dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForMangaIdDataLoader", id)
+        dataFetchingEnvironment.getNodeListFromDataLoaders("TrackRecordsForMangaIdDataLoader", "TrackRecordCountForMangaIdDataLoader", id) {
+            emptyList<TrackRecordType>().toNodeList().copy(totalCount = it)
+        }
 
     fun user(): MangaUserType =
         MangaUserType(

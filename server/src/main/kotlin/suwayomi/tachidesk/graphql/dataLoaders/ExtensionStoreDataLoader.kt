@@ -5,7 +5,9 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
+import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
@@ -51,6 +53,28 @@ class ExtensionsForExtensionStore : KotlinDataLoader<String, ExtensionNodeList> 
                             .map { ExtensionType(it) }
                             .groupBy { it.storeIndexUrl }
                     ids.map { (extensionByIndexUrl[it] ?: emptyList()).toNodeList() }
+                }
+            }
+        }
+}
+
+/** The extension totals of [ExtensionsForExtensionStore], counted in SQL. */
+class ExtensionCountForExtensionStore : KotlinDataLoader<String, Int> {
+    override val dataLoaderName = "ExtensionCountForExtensionStore"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, Int> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val count = ExtensionTable.id.count()
+                    val countByIndexUrl =
+                        ExtensionTable
+                            .select(ExtensionTable.storeIndexUrl, count)
+                            .where { ExtensionTable.storeIndexUrl inList ids }
+                            .groupBy(ExtensionTable.storeIndexUrl)
+                            .associate { it[ExtensionTable.storeIndexUrl] to it[count].toInt() }
+                    ids.map { countByIndexUrl[it] ?: 0 }
                 }
             }
         }
