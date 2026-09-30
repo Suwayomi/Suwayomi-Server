@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.util.storage
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import java.awt.Rectangle
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.IIOImage
@@ -24,8 +25,8 @@ import javax.imageio.ImageWriter
 object TallImageSplitter {
     private val logger = KotlinLogging.logger {}
 
-    /** Matches Mihon's `Bitmap.compress(JPEG, 100, ...)`, used only for the JPEG fallback path below */
-    private const val JPEG_QUALITY = 1.0f
+    /** Matches Mihon's `Bitmap.compress(JPEG, 100, ...)`, applied to every lossy output format */
+    private const val FULL_QUALITY = 1.0f
 
     /**
      * There's no device screen to size against on the server (Mihon targets `2 * screenHeight`),
@@ -62,10 +63,10 @@ object TallImageSplitter {
      * still image, replaces it with several `fileName.NNN` files stacked in reading order.
      *
      * Each part is written back in the exact same format as the source image whenever a writer
-     * for it is available on the classpath (PNG stays lossless, WEBP stays WEBP, etc.), using
-     * that format's own default encoding parameters. Only when no matching writer exists does
-     * this fall back to Mihon's own choice of JPEG at 100% quality - there's no reliable way to
-     * recover an arbitrary source JPEG's original quality setting either way.
+     * for it is available on the classpath (PNG stays PNG, WEBP stays WEBP, etc.). Lossy formats
+     * are written at full quality, like Mihon's JPEG at 100% - there's no reliable way to recover
+     * an arbitrary source image's original quality setting. Only when no matching writer exists
+     * does this fall back to JPEG.
      *
      * No-ops (and logs a warning) if anything goes wrong, leaving the original file untouched -
      * a failed split must never cause a page to go missing.
@@ -95,8 +96,7 @@ object TallImageSplitter {
 
                     val partCount = calculatePartCount(height, optimalImageHeight)
                     val partHeight = height / partCount
-                    val image = reader.read(0)
-                    val splitWriter = prepareWriter(image, reader)
+                    val splitWriter = prepareWriter(reader.getImageTypes(0).next(), reader)
 
                     val splitFiles = mutableListOf<File>()
                     try {
@@ -109,8 +109,14 @@ object TallImageSplitter {
                             }
 
                             val splitFile = File(directory, "$fileName.${"%03d".format(index + 1)}.${splitWriter.extension}")
-                            val subImage = image.getSubimage(0, topOffset, width, thisPartHeight)
-                            val outputImage = if (splitWriter.flattenAlpha) flattenToOpaqueRgb(subImage) else subImage
+                            // Decode only this part, like Mihon's BitmapRegionDecoder, so a whole
+                            // long strip never has to fit in memory at once
+                            val readParam =
+                                reader.defaultReadParam.apply {
+                                    sourceRegion = Rectangle(0, topOffset, width, thisPartHeight)
+                                }
+                            val part = reader.read(0, readParam)
+                            val outputImage = if (splitWriter.flattenAlpha) flattenToOpaqueRgb(part) else part
                             writePart(splitWriter, outputImage, splitFile)
                             splitFiles.add(splitFile)
                         }
@@ -139,10 +145,9 @@ object TallImageSplitter {
     )
 
     private fun prepareWriter(
-        image: BufferedImage,
+        typeSpecifier: ImageTypeSpecifier,
         reader: ImageReader,
     ): SplitWriter {
-        val typeSpecifier = ImageTypeSpecifier.createFromRenderedImage(image)
         val nativeWriters = ImageIO.getImageWriters(typeSpecifier, reader.formatName)
         if (nativeWriters.hasNext()) {
             val writer = nativeWriters.next()
@@ -152,18 +157,33 @@ object TallImageSplitter {
                     ?.firstOrNull()
                     ?.lowercase()
                     ?: reader.formatName.lowercase()
-            return SplitWriter(writer, writer.defaultWriteParam, extension, flattenAlpha = false)
+            return SplitWriter(writer, writer.fullQualityWriteParam(), extension, flattenAlpha = false)
         }
 
         val jpegWriter = ImageIO.getImageWritersByFormatName("jpg").next()
-        val jpegParam =
-            jpegWriter.defaultWriteParam.apply {
-                if (canWriteCompressed()) {
-                    compressionMode = ImageWriteParam.MODE_EXPLICIT
-                    compressionQuality = JPEG_QUALITY
+        return SplitWriter(jpegWriter, jpegWriter.fullQualityWriteParam(), "jpg", flattenAlpha = true)
+    }
+
+    /**
+     * Lossy writers default to a reduced quality (0.75 for both JPEG and WEBP), which would degrade
+     * every part, so they're pushed to full quality like Mihon. Lossless writers keep their
+     * defaults: for them the quality only trades file size for speed (e.g. PNG's deflate level).
+     */
+    private fun ImageWriter.fullQualityWriteParam(): ImageWriteParam {
+        val param = defaultWriteParam
+        if (!param.canWriteCompressed()) return param
+        val isLossy =
+            runCatching {
+                param.compressionMode = ImageWriteParam.MODE_EXPLICIT
+                // the WEBP writer offers "Lossy" and "Lossless" without preselecting either, encodes
+                // lossy when none is set, and doesn't override isCompressionLossless (always true)
+                if (param.compressionType == null && "Lossy" in param.compressionTypes.orEmpty()) {
+                    param.compressionType = "Lossy"
                 }
-            }
-        return SplitWriter(jpegWriter, jpegParam, "jpg", flattenAlpha = true)
+                param.compressionType == "Lossy" || !param.isCompressionLossless
+            }.getOrDefault(false)
+        if (!isLossy) return defaultWriteParam
+        return param.apply { compressionQuality = FULL_QUALITY }
     }
 
     private fun writePart(
