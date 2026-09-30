@@ -73,7 +73,7 @@ class PaginationNeedsTest : ApplicationTest() {
 
     @Test
     fun `a caller selecting everything still gets the total and bounds`() {
-        val (info, statements) = paginate(PaginationNeeds.ALL)
+        val (info, statements) = paginate(PaginationNeeds(total = true, bounds = true))
         assertEquals(3, statements.size)
         assertEquals(5, info.total)
         val ids = transaction { ChapterTable.selectAll().map { it[ChapterTable.id].value }.sorted() }

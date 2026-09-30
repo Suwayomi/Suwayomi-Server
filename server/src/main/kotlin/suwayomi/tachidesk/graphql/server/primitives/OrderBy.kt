@@ -115,12 +115,10 @@ data class PaginationInfo<T : Any>(
  * neither, such as a fixed window of nodes, shouldn't pay for them.
  */
 data class PaginationNeeds(
-    val total: Boolean = true,
-    val bounds: Boolean = true,
+    val total: Boolean,
+    val bounds: Boolean,
 ) {
     companion object {
-        val ALL = PaginationNeeds()
-
         fun of(dataFetchingEnvironment: DataFetchingEnvironment): PaginationNeeds {
             val selection = dataFetchingEnvironment.selectionSet
             return PaginationNeeds(
@@ -135,7 +133,7 @@ fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
     sort: List<Order<T>>,
     before: Cursor?,
     last: Int?,
-    needs: PaginationNeeds = PaginationNeeds.ALL,
+    needs: PaginationNeeds,
     selectValue: (resultRow: ResultRow?) -> V?,
 ): PaginationInfo<V> {
     val baseQuery = this.copy()
@@ -174,7 +172,7 @@ fun <T : OrderBy<*>, Id : Any> Query.applySortAndGetPaginationInfo(
     before: Cursor?,
     last: Int?,
     idColumn: Column<EntityID<Id>>,
-    needs: PaginationNeeds = PaginationNeeds.ALL,
+    needs: PaginationNeeds,
 ): PaginationInfo<Id> = applySortAndGetPaginationInfo(sort, before, last, needs) { it?.get(idColumn)?.value }
 
 @JvmName("greaterNotUniqueIntKey")
