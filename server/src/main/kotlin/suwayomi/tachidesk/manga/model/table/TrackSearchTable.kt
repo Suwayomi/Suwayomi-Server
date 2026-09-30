@@ -40,6 +40,10 @@ object TrackSearchTable : IntIdTable() {
     val private = bool("private").default(false)
     val authors = truncatingVarchar("authors", 256).nullable().default(null)
     val artists = truncatingVarchar("artists", 256).nullable().default(null)
+
+    init {
+        uniqueIndex(trackerId, remoteId)
+    }
 }
 
 fun List<TrackSearch>.insertAll(): List<ResultRow> {

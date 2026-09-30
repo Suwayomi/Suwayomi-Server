@@ -163,6 +163,7 @@ cronUtils = "com.cronutils:cron-utils:9.2.1"
 jcef = { module = "org.jetbrains.intellij.deps.jcef:jcef", version.ref = "jcef" }
 
 # User
+bcrypt = "at.favre.lib:bcrypt:0.10.2"
 jwt = "com.auth0:java-jwt:4.6.0"
 
 # lint - used for renovate to update ktlint version

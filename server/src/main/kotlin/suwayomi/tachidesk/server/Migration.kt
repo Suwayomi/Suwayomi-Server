@@ -2,9 +2,12 @@ package suwayomi.tachidesk.server
 
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.server.database.H2Migration
+import suwayomi.tachidesk.server.user.applyUserSettingsBackfillFile
+import suwayomi.tachidesk.server.user.saveUserSettingsBackfillFile
 import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
@@ -85,6 +88,71 @@ private fun migrateH2DatabaseToV24240(applicationDirs: ApplicationDirs) {
     )
 }
 
+private fun migrateSharedPrefsToUser1() {
+    val app = Injekt.get<Application>()
+
+    // 1. Koreader sync preferences
+    val koreaderPrefs = app.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+    migrateStringPref(koreaderPrefs, "server_address", "server_address_1", "https://sync.koreader.rocks/")
+    migrateStringPref(koreaderPrefs, "username", "username_1", "")
+    migrateStringPref(koreaderPrefs, "user_key", "user_key_1", "")
+    migrateStringPref(koreaderPrefs, "client_id", "client_id_1", "")
+
+    // 2. Sync preferences
+    val syncPrefs = app.getSharedPreferences("sync", Context.MODE_PRIVATE)
+    migrateLongPref(syncPrefs, "last_sync_timestamp", "last_sync_timestamp_1", 0L)
+    migrateLongPref(syncPrefs, "last_scheduled_sync", "last_scheduled_sync_1", 0L)
+    migrateStringPref(syncPrefs, "last_sync_etag", "last_sync_etag_1", "")
+
+    // 3. Tracker preferences
+    val trackerPrefs = app.getSharedPreferences("tracker", Context.MODE_PRIVATE)
+    migrateBooleanPref(trackerPrefs, "pref_auto_update_manga_sync_key", "pref_auto_update_manga_sync_1", true)
+
+    for (trackerId in listOf(1, 2, 3, 4, 5, 7)) {
+        migrateStringPref(trackerPrefs, "pref_mangasync_username_$trackerId", "pref_mangasync_username_1_$trackerId", "")
+        migrateStringPref(trackerPrefs, "pref_mangasync_password_$trackerId", "pref_mangasync_password_1_$trackerId", "")
+        migrateStringPref(trackerPrefs, "track_token_$trackerId", "track_token_1_$trackerId", "")
+        migrateBooleanPref(trackerPrefs, "track_token_expired_$trackerId", "track_token_expired_1_$trackerId", false)
+        migrateStringPref(trackerPrefs, "score_type_$trackerId", "score_type_1_$trackerId", "POINT_10")
+    }
+}
+
+private fun migrateStringPref(
+    prefs: SharedPreferences,
+    oldKey: String,
+    newKey: String,
+    default: String,
+) {
+    val value = prefs.getString(oldKey, default)
+    if (value != default) {
+        prefs.edit().putString(newKey, value).apply()
+    }
+}
+
+private fun migrateLongPref(
+    prefs: SharedPreferences,
+    oldKey: String,
+    newKey: String,
+    default: Long,
+) {
+    val value = prefs.getLong(oldKey, default)
+    if (value != default) {
+        prefs.edit().putLong(newKey, value).apply()
+    }
+}
+
+private fun migrateBooleanPref(
+    prefs: SharedPreferences,
+    oldKey: String,
+    newKey: String,
+    default: Boolean,
+) {
+    val value = prefs.getBoolean(oldKey, default)
+    if (value != default) {
+        prefs.edit().putBoolean(newKey, value).apply()
+    }
+}
+
 private enum class MigrationType {
     PRE_DB_STARTUP,
     POST_DB_STARTUP,
@@ -102,9 +170,18 @@ private val PRE_DB_STARTUP_MIGRATIONS =
         "MigrateH2DatabaseToV2.4.240" to { applicationDirs ->
             migrateH2DatabaseToV24240(applicationDirs)
         },
+        "SaveUserSettingsBackfillFile" to { applicationDirs ->
+            saveUserSettingsBackfillFile(applicationDirs)
+            migrateSharedPrefsToUser1()
+        },
     )
 
-private val POST_DB_MIGRATIONS = listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>()
+private val POST_DB_MIGRATIONS =
+    listOf<Pair<String, suspend (ApplicationDirs) -> Unit>>(
+        "MigrateUserSettingsToUser1" to { applicationDirs ->
+            applyUserSettingsBackfillFile(applicationDirs)
+        },
+    )
 
 private val MIGRATIONS =
     mapOf<Any, List<Pair<String, suspend (ApplicationDirs) -> Unit>>>(

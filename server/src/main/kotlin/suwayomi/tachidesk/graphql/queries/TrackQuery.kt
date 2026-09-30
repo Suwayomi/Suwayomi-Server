@@ -1,11 +1,13 @@
 package suwayomi.tachidesk.graphql.queries
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -131,6 +133,8 @@ class TrackQuery {
 
     @RequireAuth
     fun trackers(
+        @GraphQLIgnore
+        userId: Int,
         condition: TrackerCondition? = null,
         @GraphQLDeprecated(
             "Replaced with order",
@@ -151,7 +155,7 @@ class TrackQuery {
     ): TrackerNodeList {
         val (queryResults, resultsAsType) =
             run {
-                var res = TrackerManager.services.map { TrackerType(it) }
+                var res = TrackerManager.services.map { TrackerType(it, userId) }
 
                 if (condition != null) {
                     res =
@@ -408,6 +412,8 @@ class TrackQuery {
 
     @RequireAuth
     fun trackRecords(
+        @GraphQLIgnore
+        userId: Int,
         condition: TrackRecordCondition? = null,
         filter: TrackRecordFilter? = null,
         @GraphQLDeprecated(
@@ -429,7 +435,7 @@ class TrackQuery {
     ): TrackRecordNodeList {
         val queryResults =
             transaction {
-                val res = TrackRecordTable.selectAll()
+                val res = TrackRecordTable.selectAll().where { TrackRecordTable.user eq userId }
 
                 res.applyOps(condition, filter)
 
@@ -501,17 +507,21 @@ class TrackQuery {
     )
 
     @RequireAuth
-    fun searchTracker(input: SearchTrackerInput): CompletableFuture<SearchTrackerPayload> =
+    fun searchTracker(
+        @GraphQLIgnore
+        userId: Int,
+        input: SearchTrackerInput,
+    ): CompletableFuture<SearchTrackerPayload> =
         future {
             val tracker =
                 requireNotNull(TrackerManager.getTracker(input.trackerId)) {
                     "Tracker not found"
                 }
-            require(tracker.isLoggedIn) {
+            require(tracker.isLoggedIn(userId)) {
                 "Tracker needs to be logged-in to search"
             }
             SearchTrackerPayload(
-                tracker.search(input.query).insertAll().map {
+                tracker.search(userId, input.query).insertAll().map {
                     TrackSearchType(it)
                 },
             )

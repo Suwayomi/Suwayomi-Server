@@ -1,8 +1,8 @@
 package suwayomi.tachidesk.server.settings
 
-import com.typesafe.config.ConfigValue as TypeSafeConfigValue
 import com.typesafe.config.parser.ConfigDocument
 import kotlin.reflect.KClass
+import com.typesafe.config.ConfigValue as TypeSafeConfigValue
 
 /**
  * Registry to track all settings for automatic updating and validation

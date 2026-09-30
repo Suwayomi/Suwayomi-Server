@@ -134,11 +134,11 @@ enum class CategoryJobStatus {
 
 class MangaUpdateType(
     @get:GraphQLIgnore
-    val manga: MangaType,
+    val mangaId: Int,
     val status: MangaJobStatus,
 ) {
     constructor(job: UpdateJob) : this(
-        MangaType(job.manga),
+        job.manga.id,
         when (job.status) {
             JobStatus.PENDING -> MangaJobStatus.PENDING
             JobStatus.RUNNING -> MangaJobStatus.RUNNING
@@ -152,10 +152,10 @@ class MangaUpdateType(
         // Clearing the data loader cache here everytime should be fine, because a manga gets sent only once for each status
         val clearCache = status === MangaJobStatus.COMPLETE || status === MangaJobStatus.FAILED
         if (clearCache) {
-            MangaType.clearCacheFor(manga.id, dataFetchingEnvironment)
+            MangaType.clearCacheFor(mangaId, dataFetchingEnvironment)
         }
 
-        return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", manga.id)
+        return dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", mangaId)
     }
 }
 

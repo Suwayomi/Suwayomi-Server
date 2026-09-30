@@ -3,7 +3,9 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.server.ApplicationDirs
+import suwayomi.tachidesk.server.user.UserPermission
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.net.CookieHandler
@@ -24,6 +26,7 @@ class WebviewMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_CACHE)
     fun clearCookiesAndCache(input: ClearCookiesAndCacheInput? = null): ClearCookiesAndCachePayload {
         val cookieHandler = CookieHandler.getDefault() as java.net.CookieManager
         cookieHandler.cookieStore.removeAll()

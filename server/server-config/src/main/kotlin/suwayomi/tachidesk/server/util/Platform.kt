@@ -3,7 +3,6 @@ package suwayomi.tachidesk.server.util
 import suwayomi.tachidesk.graphql.types.JvmInfo
 import suwayomi.tachidesk.graphql.types.OSInfo
 import java.awt.GraphicsEnvironment
-import java.lang.System
 import kotlin.io.path.Path
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.readLines

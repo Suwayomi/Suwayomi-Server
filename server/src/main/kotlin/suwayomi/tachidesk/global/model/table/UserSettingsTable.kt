@@ -1,0 +1,21 @@
+package suwayomi.tachidesk.global.model.table
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+import org.jetbrains.exposed.v1.core.ReferenceOption
+import org.jetbrains.exposed.v1.core.Table
+
+object UserSettingsTable : Table() {
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
+    val key = varchar("key", 256)
+    val value = varchar("value", 16384)
+
+    init {
+        uniqueIndex(user, key)
+    }
+}

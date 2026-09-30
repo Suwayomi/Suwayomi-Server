@@ -80,8 +80,10 @@ internal class UpdateControllerTest : ApplicationTest() {
 //         clearTables(
 //             CategoryMangaTable,
 //             MangaTable,
-//             CategoryTable,
 //         )
+//         transaction {
+//             CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
+//         }
 //         val updater = Injekt.get<IUpdater>()
 //         runBlocking { updater.reset() }
 //     }
