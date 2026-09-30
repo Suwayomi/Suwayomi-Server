@@ -6,6 +6,8 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.imageio.ImageIO
+import javax.imageio.spi.IIORegistry
+import javax.imageio.spi.ImageReaderSpi
 import kotlin.io.path.createTempDirectory
 import kotlin.math.cos
 import kotlin.math.sin
@@ -186,6 +188,51 @@ class TallImageSplitterTest {
             } finally {
                 tmpDir.deleteRecursively()
             }
+        }
+    }
+
+    @Test
+    fun splitIfNeededKeepsTheSourceExtensionWhicheverPluginReadsIt() {
+        // Two plugins read WEBP and which one ImageIO tries first depends on the classpath order;
+        // TwelveMonkeys' lists "wbp" as its first suffix
+        val registry = IIORegistry.getDefaultInstance()
+        val webpReaders =
+            registry
+                .getServiceProviders(
+                    ImageReaderSpi::class.java,
+                    { (it as ImageReaderSpi).formatNames.any { name -> name.equals("webp", ignoreCase = true) } },
+                    true,
+                ).asSequence()
+                .toList()
+        assertTrue(webpReaders.isNotEmpty(), "expected a WEBP reader on the classpath")
+
+        try {
+            webpReaders.forEach { preferred ->
+                val others = webpReaders - preferred
+                others.forEach { registry.setOrdering(ImageReaderSpi::class.java, preferred, it) }
+                val tmpDir = createTempDirectory("split-test-extension").toFile()
+                try {
+                    ImageIO.write(
+                        detailedImage(width = 90, height = 1260, type = BufferedImage.TYPE_INT_RGB),
+                        "webp",
+                        File(tmpDir, "001.webp"),
+                    )
+
+                    TallImageSplitter.splitIfNeeded(tmpDir, "001")
+
+                    assertEquals(
+                        listOf("001.001.webp", "001.002.webp", "001.003.webp"),
+                        tmpDir.listFiles()!!.map { it.name }.sorted(),
+                        "parts read by ${preferred.javaClass.name}",
+                    )
+                } finally {
+                    others.forEach { registry.unsetOrdering(ImageReaderSpi::class.java, preferred, it) }
+                    tmpDir.deleteRecursively()
+                }
+            }
+        } finally {
+            // the registry is global: put its readers back in the order the other tests see
+            webpReaders.zipWithNext { first, second -> registry.setOrdering(ImageReaderSpi::class.java, first, second) }
         }
     }
 
