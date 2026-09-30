@@ -3,9 +3,13 @@ package suwayomi.tachidesk
 import suwayomi.tachidesk.manga.impl.util.storage.TallImageSplitter
 import java.awt.Color
 import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.io.path.createTempDirectory
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -131,6 +135,84 @@ class TallImageSplitterTest {
         } finally {
             tmpDir.deleteRecursively()
         }
+    }
+
+    @Test
+    fun splitIfNeededPartsMatchTheSourceBands() {
+        val tmpDir = createTempDirectory("split-test-bands").toFile()
+        try {
+            // 1261 doesn't divide into 3 parts, so the last one also has to absorb the remainder
+            val image = detailedImage(width = 90, height = 1261, type = BufferedImage.TYPE_INT_RGB)
+            ImageIO.write(image, "png", File(tmpDir, "001.png"))
+
+            TallImageSplitter.splitIfNeeded(tmpDir, "001")
+
+            var topOffset = 0
+            tmpDir.listFiles()!!.sortedBy { it.name }.forEach { partFile ->
+                val part = ImageIO.read(partFile)
+                val band = image.getRGB(0, topOffset, part.width, part.height, null, 0, part.width)
+                val actual = part.getRGB(0, 0, part.width, part.height, null, 0, part.width)
+                assertTrue(band.contentEquals(actual), "${partFile.name} should be the source rows starting at $topOffset")
+                topOffset += part.height
+            }
+            assertEquals(image.height, topOffset)
+        } finally {
+            tmpDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun splitIfNeededKeepsLossyPartsAtFullQuality() {
+        listOf("jpg", "webp").forEach { format ->
+            val tmpDir = createTempDirectory("split-test-quality-$format").toFile()
+            try {
+                val originalFile = File(tmpDir, "001.$format")
+                ImageIO.write(detailedImage(width = 90, height = 1260, type = BufferedImage.TYPE_INT_RGB), format, originalFile)
+
+                TallImageSplitter.splitIfNeeded(tmpDir, "001")
+
+                val splitFiles = tmpDir.listFiles()!!.sortedBy { it.name }
+                assertEquals(listOf("001.001.$format", "001.002.$format", "001.003.$format"), splitFiles.map { it.name })
+
+                splitFiles.forEach { partFile ->
+                    // at the writer's default quality (0.75) a part is about as big as the part re-encoded with it,
+                    // at full quality roughly twice as big or more
+                    val defaultQualitySize = encodedSize(ImageIO.read(partFile), format)
+                    assertTrue(
+                        partFile.length() > 1.5 * defaultQualitySize,
+                        "${partFile.name} is ${partFile.length()} bytes, $defaultQualitySize at the default quality",
+                    )
+                }
+            } finally {
+                tmpDir.deleteRecursively()
+            }
+        }
+    }
+
+    /** Smooth gradients plus noise, so that the encoding quality shows in the file size. */
+    private fun detailedImage(
+        width: Int,
+        height: Int,
+        type: Int,
+    ): BufferedImage {
+        val random = Random(1)
+        return BufferedImage(width, height, type).apply {
+            for (y in 0 until height) {
+                for (x in 0 until width) {
+                    val level = ((sin(x / 9.0) + cos(y / 7.0) + 2) * 55).toInt() + random.nextInt(30)
+                    setRGB(x, y, Color(level, (level + x) % 256, (level + y) % 256).rgb)
+                }
+            }
+        }
+    }
+
+    private fun encodedSize(
+        image: BufferedImage,
+        format: String,
+    ): Int {
+        val output = ByteArrayOutputStream()
+        ImageIO.write(image, format, output)
+        return output.size()
     }
 
     @Test
