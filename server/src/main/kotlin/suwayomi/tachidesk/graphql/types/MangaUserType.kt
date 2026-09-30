@@ -1,8 +1,11 @@
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.ResultRow
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import java.util.concurrent.CompletableFuture
 
 class MangaUserType(
     val inLibrary: Boolean,
@@ -14,4 +17,14 @@ class MangaUserType(
         row[MangaUserTable.inLibraryAt],
         row[MangaUserTable.manga].value,
     )
+
+    fun lastReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
+        dataFetchingEnvironment.getValueFromDataLoader("LastReadChapterForMangaDataLoader", mangaId)
+
+    fun latestReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
+        dataFetchingEnvironment.getValueFromDataLoader("LatestReadChapterForMangaDataLoader", mangaId)
+
+    fun firstUnreadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
+        dataFetchingEnvironment.getValueFromDataLoader("FirstUnreadChapterForMangaDataLoader", mangaId)
+
 }
