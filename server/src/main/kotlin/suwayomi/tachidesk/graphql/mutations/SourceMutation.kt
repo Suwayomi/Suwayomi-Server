@@ -7,6 +7,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
+import eu.kanade.tachiyomi.source.searchManga
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -265,7 +266,7 @@ class SourceMutation {
             val mangasPage =
                 when (type) {
                     FetchSourceMangaType.SEARCH -> {
-                        source.getSearchManga(
+                        source.searchManga(
                             page = page,
                             query = query.orEmpty(),
                             filters = updateFilterList(source, filters),

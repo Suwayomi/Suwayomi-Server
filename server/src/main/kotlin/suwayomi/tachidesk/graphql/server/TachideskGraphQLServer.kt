@@ -10,6 +10,8 @@ package suwayomi.tachidesk.graphql.server
 import com.expediagroup.graphql.generator.execution.FlowSubscriptionExecutionStrategy
 import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.execution.GraphQLServer
+import com.expediagroup.graphql.server.extensions.toGraphQLError
+import eu.kanade.tachiyomi.source.SearchNotSupportedException
 import graphql.ExceptionWhileDataFetching
 import graphql.GraphQL
 import graphql.execution.AsyncExecutionStrategy
@@ -58,8 +60,19 @@ class TachideskGraphQLServer(
                     val exception = handlerParameters.exception
                     val sourceLocation = handlerParameters.sourceLocation
                     val path = handlerParameters.path
+                    val searchNotSupported =
+                        generateSequence(exception) { it.cause }
+                            .filterIsInstance<SearchNotSupportedException>()
+                            .firstOrNull()
 
                     logger.error(exception) { "GraphQL execution failed due to" }
+
+                    if (searchNotSupported != null) {
+                        return@future DataFetcherExceptionHandlerResult
+                            .newResult()
+                            .error(searchNotSupported.toGraphQLError())
+                            .build()
+                    }
 
                     val error =
                         ExceptionWhileDataFetching(
