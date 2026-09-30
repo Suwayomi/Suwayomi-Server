@@ -10,7 +10,7 @@ import java.io.BufferedReader
 const val MainClass = "suwayomi.tachidesk.MainKt"
 
 // should be bumped with each stable release
-val getTachideskVersion = { "v2.3.${getCommitCount()}" }
+val getTachideskVersion = { "v2.4.${getCommitCount()}" }
 
 val webUIRevisionTag = "r3518"
 
