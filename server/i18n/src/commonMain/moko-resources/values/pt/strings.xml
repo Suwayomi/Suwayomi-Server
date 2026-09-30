@@ -124,4 +124,5 @@
     <string name="login_placeholder_password">Segredo...</string>
     <string name="opds_error_chapters_not_found">Nenhum capítulo encontrado ou a fonte está inacessível na página %1$d.</string>
     <string name="opds_chapter_title_fallback">Capítulo %1$s</string>
+    <string name="opds_chapter_title_oneshot">Oneshot</string>
 </resources>
