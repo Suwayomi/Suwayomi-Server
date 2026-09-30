@@ -99,16 +99,19 @@ class MangaType(
         row.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
     )
 
+    @GraphQLDeprecated("Use user.downloadCount instead")
     fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
             it.downloadCount
         }
 
+    @GraphQLDeprecated("Use user.unreadCount instead")
     fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
             it.unreadCount
         }
 
+    @GraphQLDeprecated("Use user.bookmarkCount instead")
     fun bookmarkCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
             it.bookmarkCount
