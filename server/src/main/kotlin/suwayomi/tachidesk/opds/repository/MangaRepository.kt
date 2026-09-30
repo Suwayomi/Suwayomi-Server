@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.lowerCase
@@ -87,7 +88,9 @@ fun Query.applyOpdsMangaFilter(
                 "unread" -> {
                     andWhere {
                         MangaTable.id inSubQuery
-                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isRead eq false }
+                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where {
+                                ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())
+                            }
                     }
                 }
 
@@ -152,7 +155,11 @@ object MangaRepository {
         filter: String?,
     ): OpdsLibraryFeedResult =
         transaction {
-            val unreadCountExpr = Case().When(ChapterUserTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+            val unreadCountExpr =
+                Case()
+                    .When(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()), intLiteral(1))
+                    .Else(intLiteral(0))
+                    .sum()
             val unreadCount = unreadCountExpr.alias("unread_count")
 
             // Base query with necessary joins for filtering and sorting
@@ -382,7 +389,11 @@ object MangaRepository {
         query: Query,
         sort: String?,
     ) {
-        val unreadCountExpr = Case().When(ChapterUserTable.isRead eq false, intLiteral(1)).Else(intLiteral(0)).sum()
+        val unreadCountExpr =
+            Case()
+                .When(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()), intLiteral(1))
+                .Else(intLiteral(0))
+                .sum()
         val lastReadAtExpr = ChapterUserTable.lastReadAt.max()
         val latestChapterDateExpr = ChapterTable.date_upload.max()
 
@@ -440,7 +451,9 @@ object MangaRepository {
                     .copy()
                     .andWhere {
                         MangaTable.id inSubQuery
-                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isRead eq false }
+                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where {
+                                ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())
+                            }
                     }.count()
             val downloadedCount =
                 baseQuery
