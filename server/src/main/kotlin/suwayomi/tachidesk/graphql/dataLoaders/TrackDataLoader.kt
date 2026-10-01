@@ -13,8 +13,10 @@ import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
@@ -112,6 +114,29 @@ class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeLi
         }
 }
 
+/** The track record totals of [TrackRecordsForMangaIdDataLoader], counted in SQL. */
+class TrackRecordCountForMangaIdDataLoader : KotlinDataLoader<Int, Int> {
+    override val dataLoaderName = "TrackRecordCountForMangaIdDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val count = TrackRecordTable.id.count()
+                    val countByMangaId =
+                        TrackRecordTable
+                            .select(TrackRecordTable.mangaId, count)
+                            .where { TrackRecordTable.mangaId inList ids and (TrackRecordTable.user eq userId) }
+                            .groupBy(TrackRecordTable.mangaId)
+                            .associate { it[TrackRecordTable.mangaId].value to it[count].toInt() }
+                    ids.map { countByMangaId[it] ?: 0 }
+                }
+            }
+        }
+}
+
 class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
     override val dataLoaderName = "DisplayScoreForTrackRecordDataLoader"
 
@@ -176,6 +201,29 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
                             .map { TrackRecordType(it) }
                             .groupBy { it.trackerId }
                     ids.map { (trackRecordsBySyncId[it] ?: emptyList()).toNodeList() }
+                }
+            }
+        }
+}
+
+/** The track record totals of [TrackRecordsForTrackerIdDataLoader], counted in SQL. */
+class TrackRecordCountForTrackerIdDataLoader : KotlinDataLoader<Int, Int> {
+    override val dataLoaderName = "TrackRecordCountForTrackerIdDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val count = TrackRecordTable.id.count()
+                    val countByTrackerId =
+                        TrackRecordTable
+                            .select(TrackRecordTable.trackerId, count)
+                            .where { TrackRecordTable.trackerId inList ids and (TrackRecordTable.user eq userId) }
+                            .groupBy(TrackRecordTable.trackerId)
+                            .associate { it[TrackRecordTable.trackerId] to it[count].toInt() }
+                    ids.map { countByTrackerId[it] ?: 0 }
                 }
             }
         }

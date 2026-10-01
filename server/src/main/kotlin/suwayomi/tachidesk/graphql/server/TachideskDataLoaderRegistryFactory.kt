@@ -9,14 +9,17 @@ package suwayomi.tachidesk.graphql.server
 
 import com.expediagroup.graphql.dataloader.KotlinDataLoaderRegistryFactory
 import suwayomi.tachidesk.graphql.dataLoaders.CategoriesForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.CategoryCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoryDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.CategoryMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChapterCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterFlagCountForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChapterMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ChaptersForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackRecordDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackSearchDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionCountForExtensionStore
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.ExtensionStoreDataLoader
@@ -29,6 +32,8 @@ import suwayomi.tachidesk.graphql.dataLoaders.LastReadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LatestFetchedChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LatestReadChapterForMangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.LatestUploadedChapterForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaCountForCategoryDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaCountForSourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaForCategoryDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.MangaForSourceDataLoader
@@ -38,6 +43,8 @@ import suwayomi.tachidesk.graphql.dataLoaders.RolesForUserDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourceDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourceMetaDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.SourcesForExtensionDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordCountForMangaIdDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordCountForTrackerIdDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordsForMangaIdDataLoader
 import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordsForTrackerIdDataLoader
@@ -54,6 +61,7 @@ class TachideskDataLoaderRegistryFactory {
                 MangaDataLoader(),
                 ChapterDataLoader(),
                 ChaptersForMangaDataLoader(),
+                ChapterCountForMangaDataLoader(),
                 ChapterFlagCountForMangaDataLoader(),
                 HasDuplicateChaptersForMangaDataLoader(),
                 LastReadChapterForMangaDataLoader(),
@@ -66,25 +74,31 @@ class TachideskDataLoaderRegistryFactory {
                 ChapterMetaDataLoader(),
                 MangaMetaDataLoader(),
                 MangaForCategoryDataLoader(),
+                MangaCountForCategoryDataLoader(),
                 MangaForSourceDataLoader(),
+                MangaCountForSourceDataLoader(),
                 CategoryDataLoader(),
                 CategoryMetaDataLoader(),
                 CategoriesForMangaDataLoader(),
+                CategoryCountForMangaDataLoader(),
                 SourceDataLoader(),
                 SourcesForExtensionDataLoader(),
                 SourceMetaDataLoader(),
                 ExtensionDataLoader(),
                 ExtensionForSourceDataLoader(),
                 ExtensionsForExtensionStore(),
+                ExtensionCountForExtensionStore(),
                 ExtensionStoreDataLoader(),
                 TrackerDataLoader(),
                 TrackerStatusesDataLoader(),
                 TrackerScoresDataLoader(),
                 TrackerTokenExpiredDataLoader(),
                 TrackRecordsForMangaIdDataLoader(),
+                TrackRecordCountForMangaIdDataLoader(),
                 DisplayScoreForTrackRecordDataLoader(),
                 DisplayScoreForTrackSearchDataLoader(),
                 TrackRecordsForTrackerIdDataLoader(),
+                TrackRecordCountForTrackerIdDataLoader(),
                 TrackRecordDataLoader(),
                 UserDataLoader(),
                 PermissionsForUserDataLoader(),
