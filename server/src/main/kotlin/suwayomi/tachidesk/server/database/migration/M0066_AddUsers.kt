@@ -113,8 +113,8 @@ class M0066_AddUsers : Migration() {
                 DatabaseType.H2 -> {
                     @Language("SQL")
                     """
-                    ALTER TABLE $categoryTable ADD COLUMN default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN USER_ID ELSE NULL END);
-                    CREATE UNIQUE INDEX ux_category_default_per_user ON $categoryTable (default_user_id);
+                    ALTER TABLE $categoryTable ADD COLUMN DEFAULT_USER_ID INT GENERATED ALWAYS AS (CASE WHEN IS_DEFAULT_CATEGORY THEN USER_ID ELSE NULL END);
+                    CREATE UNIQUE INDEX UX_CATEGORY_DEFAULT_PER_USER ON $categoryTable (DEFAULT_USER_ID);
                     """
                 }
 
@@ -140,7 +140,7 @@ class M0066_AddUsers : Migration() {
 
             return """
             ALTER TABLE $table
-                DROP CONSTRAINT UC_$table;
+                DROP CONSTRAINT IF EXISTS UC_$table;
 
             ALTER TABLE $table
                 ADD CONSTRAINT UC_${table}_UNIQUE UNIQUE ($groupBy);
@@ -409,10 +409,10 @@ class M0066_AddUsers : Migration() {
             ALTER TABLE $categoryTable ADD COLUMN IS_DEFAULT_CATEGORY BOOLEAN NOT NULL DEFAULT FALSE;
             UPDATE $categoryTable SET IS_DEFAULT_CATEGORY = TRUE WHERE ID = 0 AND USER_ID = 1;
             $categoryDefaultCategoryIndexDdl
-            CREATE INDEX IDX_CATEGORY_ID_USER_ID ON $categoryTable(ID, USER_ID);
+            CREATE INDEX IF NOT EXISTS IDX_CATEGORY_ID_USER_ID ON $categoryTable(ID, USER_ID);
             
             ALTER TABLE $categoryMangaTable ADD CONSTRAINT FK_CATEGORYMANGA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            ALTER TABLE $categoryMangaTable DROP CONSTRAINT UC_CATEGORYMANGA;
+            ALTER TABLE $categoryMangaTable DROP CONSTRAINT IF EXISTS UC_CATEGORYMANGA;
             ALTER TABLE $categoryMangaTable ADD CONSTRAINT UC_CATEGORYMANGA_UNIQUE UNIQUE (USER_ID, CATEGORY, MANGA);
 
             ALTER TABLE $mangaMetaTable ADD CONSTRAINT FK_MANGAMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
@@ -450,6 +450,7 @@ class M0066_AddUsers : Migration() {
             $metaTableMigrations
             
             -- Indexes unrelated but useful
+            DELETE FROM TRACKSEARCH WHERE ID NOT IN (SELECT MIN(ID) FROM TRACKSEARCH GROUP BY TRACKER_ID, REMOTE_ID); -- keep first entry of duplicates
             ALTER TABLE $sourceTable ADD CONSTRAINT UC_SOURCE_ID UNIQUE (ID);
             ALTER TABLE $trackSearchTable ADD CONSTRAINT UC_TRACKSEARCH_TRACKER_ID_REMOTE_ID UNIQUE (TRACKER_ID, REMOTE_ID);
 
