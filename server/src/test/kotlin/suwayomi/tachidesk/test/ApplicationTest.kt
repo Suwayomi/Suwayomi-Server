@@ -14,10 +14,12 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.ExperimentalKeywordApi
+import org.jetbrains.exposed.v1.core.Schema
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.junit.jupiter.api.BeforeAll
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.ServerConfig
@@ -166,11 +168,30 @@ open class ApplicationTest {
                     useNestedTransactions = true
                     @OptIn(ExperimentalKeywordApi::class)
                     preserveKeywordCasing = false
-                    defaultSchema = null
+                    defaultSchema =
+                        when (serverConfig.databaseType.value) {
+                            DatabaseType.POSTGRESQL -> Schema("suwayomi")
+                            DatabaseType.H2 -> null
+                        }
                 }
 
-            // in-memory database, don't discard database between connections/transactions
-            val db = Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver", databaseConfig = dbConfig)
+            val db =
+                when (serverConfig.databaseType.value) {
+                    DatabaseType.POSTGRESQL -> {
+                        Database.connect(
+                            "jdbc:${serverConfig.databaseUrl.value}",
+                            "org.postgresql.Driver",
+                            user = serverConfig.databaseUsername.value,
+                            password = serverConfig.databasePassword.value,
+                            databaseConfig = dbConfig,
+                        )
+                    }
+
+                    DatabaseType.H2 -> {
+                        // in-memory database, don't discard database between connections/transactions
+                        Database.connect("jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;", "org.h2.Driver", databaseConfig = dbConfig)
+                    }
+                }
 
             databaseUp(db)
 

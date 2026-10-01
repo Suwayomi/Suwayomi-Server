@@ -20,9 +20,13 @@ jobs:
         uses: gradle/actions/wrapper-validation@v5
 
   build:
-    name: Build pull request
+    name: Build and test (${{ matrix.database }})
     needs: check_wrapper
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [H2, POSTGRESQL]
     services:
       postgres:
         image: postgres
@@ -66,26 +70,22 @@ jobs:
           gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
           export LD_PRELOAD="$(pwd)/scripts/resources/catch_abort.so"
           JAR=$(ls ./server/build/*.jar| head -1)
+
+          DB_FLAGS=()
+          if [ "${{ matrix.database }}" = "POSTGRESQL" ]; then
+            DB_FLAGS=(
+              -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL
+              -Dsuwayomi.tachidesk.config.server.databaseUrl=postgresql://localhost:5432/postgres
+              -Dsuwayomi.tachidesk.config.server.databaseUsername=postgres
+              -Dsuwayomi.tachidesk.config.server.databasePassword=postgres
+            )
+          fi
+
           set +e
           timeout 30s java \
               -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
               -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
-              -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL \
-              -Dsuwayomi.tachidesk.config.server.databaseUrl=postgresql://localhost:5432/postgres \
-              -Dsuwayomi.tachidesk.config.server.databaseUsername=postgres \
-              -Dsuwayomi.tachidesk.config.server.databasePassword=postgres \
-              -jar "$JAR"
-
-          ecode="$?"
-          # if exit code is not 124 or 125, then error
-          if ! [ "$ecode" -eq 124 -o "$ecode" -eq 125 ]; then 
-            printf "exit code '%s' - exiting.\n" "$ecode"
-            exit "$ecode"
-          fi
-
-          timeout 30s java \
-              -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
-              -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
+              "${DB_FLAGS[@]}" \
               -jar "$JAR"
 
           ecode="$?"
@@ -98,7 +98,16 @@ jobs:
 
       - name: "Run tests"
         working-directory: master
-        run: ./gradlew test --stacktrace
+        run: |
+          if [ "${{ matrix.database }}" = "POSTGRESQL" ]; then
+            ./gradlew test --stacktrace \
+              -PtestDatabaseType=POSTGRESQL \
+              -PtestDatabaseUrl=postgresql://localhost:5432/postgres \
+              -PtestDatabaseUsername=postgres \
+              -PtestDatabasePassword=postgres
+          else
+            ./gradlew test --stacktrace
+          fi
 
   check_docs:
     name: Validate that all options are documented
@@ -121,4 +130,3 @@ jobs:
           if [ -n "$f" ]; then
             exit 1
           fi
-
