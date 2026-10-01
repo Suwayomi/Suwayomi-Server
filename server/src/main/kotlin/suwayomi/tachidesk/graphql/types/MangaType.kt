@@ -99,16 +99,19 @@ class MangaType(
         row.getOrNull(MangaUserTable.inLibraryAt) ?: 0,
     )
 
+    @GraphQLDeprecated("Use user.downloadCount instead")
     fun downloadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
             it.downloadCount
         }
 
+    @GraphQLDeprecated("Use user.unreadCount instead")
     fun unreadCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
             it.unreadCount
         }
 
+    @GraphQLDeprecated("Use user.bookmarkCount instead")
     fun bookmarkCount(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Int> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, MangaChapterStats>("ChapterFlagCountForMangaDataLoader", id).thenApply {
             it.bookmarkCount
@@ -117,9 +120,11 @@ class MangaType(
     fun hasDuplicateChapters(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
         dataFetchingEnvironment.getValueFromDataLoader("HasDuplicateChaptersForMangaDataLoader", id)
 
+    @GraphQLDeprecated("Use user.lastReadChapter instead")
     fun lastReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
         dataFetchingEnvironment.getValueFromDataLoader("LastReadChapterForMangaDataLoader", id)
 
+    @GraphQLDeprecated("Use user.latestReadChapter instead")
     fun latestReadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
         dataFetchingEnvironment.getValueFromDataLoader("LatestReadChapterForMangaDataLoader", id)
 
@@ -129,6 +134,7 @@ class MangaType(
     fun latestUploadedChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
         dataFetchingEnvironment.getValueFromDataLoader("LatestUploadedChapterForMangaDataLoader", id)
 
+    @GraphQLDeprecated("Use user.firstUnreadChapter instead")
     fun firstUnreadChapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType?> =
         dataFetchingEnvironment.getValueFromDataLoader("FirstUnreadChapterForMangaDataLoader", id)
 
