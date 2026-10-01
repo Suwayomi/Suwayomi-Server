@@ -207,8 +207,6 @@ tasks {
             showStandardStreams = true
             events("passed", "skipped", "failed")
         }
-        // Forward database settings to the test JVM so tests can run against
-        // Postgres (or any other configured database) in CI.
         listOf(
             "testDatabaseType" to "databaseType",
             "testDatabaseUrl" to "databaseUrl",
