@@ -1,9 +1,11 @@
 package suwayomi.tachidesk.graphql
 
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
@@ -28,6 +30,26 @@ class ChapterMutationTest : GraphQLTest() {
                 .first()[ChapterTable.id]
                 .value
         }
+
+    private fun lastPageReadOf(chapterId: Int): Int =
+        transaction {
+            ChapterUserTable
+                .selectAll()
+                .where { (ChapterUserTable.chapter eq chapterId) and (ChapterUserTable.user eq 1) }
+                .first()[ChapterUserTable.lastPageRead]
+        }
+
+    private fun setChapterPageCount(
+        chapterId: Int,
+        pageCount: Int,
+    ) {
+        transaction {
+            ChapterTable
+                .update({ ChapterTable.id eq chapterId }) {
+                    it[ChapterTable.pageCount] = pageCount
+                }
+        }
+    }
 
     @Test
     fun updateChapter() {
@@ -78,6 +100,63 @@ class ChapterMutationTest : GraphQLTest() {
 
         response.assertNoErrors()
         assertEquals(3, (response.dataPath("updateChapters", "chapters") as List<*>).size)
+    }
+
+    @Test
+    fun `updateChapter does not crash when the chapter page count is unknown`() {
+        // Regression test for the coerceIn crash in updateChapters.
+        //
+        // A chapter's pageCount defaults to -1 ("unknown") until its pages are fetched. The old
+        // code clamped lastPageRead with `it.coerceIn(0, pageCount ?: 0)`, which throws
+        // IllegalArgumentException when pageCount is -1 (minimum 0 > maximum -1). The fix uses
+        // coerceAtMost(...).coerceAtLeast(0), which never throws and clamps to 0 when the page
+        // count is unknown.
+        val mangaId = createLibraryManga("Manga")
+        createChapters(mangaId, 1, read = false) // pageCount stays at its -1 default
+        val chapterId = firstChapterId(mangaId)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: UpdateChapterInput!) {
+                    updateChapter(input: ${'$'}input) {
+                        chapter {
+                            id
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("id" to chapterId, "patch" to mapOf("lastPageRead" to 5))),
+            )
+
+        response.assertNoErrors()
+        assertEquals(chapterId, response.dataPath("updateChapter", "chapter", "id"))
+        assertEquals(0, lastPageReadOf(chapterId), "lastPageRead should clamp to 0 when the page count is unknown")
+    }
+
+    @Test
+    fun `updateChapter clamps lastPageRead to the chapter page count`() {
+        val mangaId = createLibraryManga("Manga")
+        createChapters(mangaId, 1, read = false)
+        val chapterId = firstChapterId(mangaId)
+        setChapterPageCount(chapterId, 10)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: UpdateChapterInput!) {
+                    updateChapter(input: ${'$'}input) {
+                        chapter {
+                            id
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("id" to chapterId, "patch" to mapOf("lastPageRead" to 15))),
+            )
+
+        response.assertNoErrors()
+        assertEquals(10, lastPageReadOf(chapterId), "lastPageRead should clamp to the chapter page count")
     }
 
     @Test

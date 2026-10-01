@@ -83,6 +83,36 @@ class CategoryMangaTest : ApplicationTest() {
     }
 
     @Test
+    fun `getCategoryMangaList query stays valid when user data columns are selected`() {
+        // Regression test for the GROUP BY / SELECT column mismatch in getCategoryMangaList.
+        //
+        // The query selects the joined user-data columns (MangaUserTable.*) alongside the
+        // MangaTable columns, so the GROUP BY must cover the full joined column set
+        // (MangaTable.getWithUserData(userId).columns). Grouping by only MangaTable.columns
+        // leaves the user-data columns ungrouped and non-aggregated, which Postgres rejects
+        // with "column ... must appear in the GROUP BY clause". H2 is lenient about this, so
+        // the failure only surfaces on a strict database — this test guards against the
+        // regression once Postgres-backed tests are available.
+        val mangaId = createLibraryManga("Vagabond")
+        createChapters(mangaId, 5, read = true)
+        createChapters(mangaId, 3, read = false, start = 6)
+
+        // Default-category branch: manga with a MangaUserTable row must be listed without error.
+        val defaultCategoryId = Category.getDefaultCategoryId(1)!!
+        val defaultList = CategoryManga.getCategoryMangaList(1, defaultCategoryId)
+        assertEquals(1, defaultList.size, "Default category should contain the library manga")
+        assertEquals(3, defaultList[0].unreadCount, "Unread count should reflect the unread chapters")
+        assertEquals(8, defaultList[0].chapterCount, "Chapter count should reflect all chapters")
+
+        // Named-category branch: same query shape, different join order, must also stay valid.
+        val categoryId = Category.createCategory(1, "Seinen")
+        CategoryManga.addMangaToCategory(1, mangaId, categoryId)
+        val namedList = CategoryManga.getCategoryMangaList(1, categoryId)
+        assertEquals(1, namedList.size, "Named category should contain the moved manga")
+        assertEquals(3, namedList[0].unreadCount, "Unread count should be preserved after moving")
+    }
+
+    @Test
     fun `duplicate manga-category pairing is rejected by the unique constraint`() {
         val mangaId = createLibraryManga("Naruto")
         val categoryId = Category.createCategory(1, "Shonen")
