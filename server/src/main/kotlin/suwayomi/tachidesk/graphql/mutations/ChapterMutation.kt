@@ -108,10 +108,7 @@ class ChapterMutation {
                     }
                     patch.lastPageRead?.also {
                         this[ChapterUserTable.lastPageRead] =
-                            it.coerceIn(
-                                0,
-                                chapterIdToPageCount[chapterId] ?: 0,
-                            )
+                            it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
                         this[ChapterUserTable.lastReadAt] = now
                     }
                 }
