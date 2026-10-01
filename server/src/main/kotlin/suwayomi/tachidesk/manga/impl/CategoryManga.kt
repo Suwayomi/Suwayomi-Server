@@ -78,8 +78,9 @@ object CategoryManga {
         dbTransaction {
             CategoryMangaTable.batchUpsert(
                 newMangaCategoryMappings,
-                CategoryMangaTable.manga,
+                CategoryMangaTable.user,
                 CategoryMangaTable.category,
+                CategoryMangaTable.manga,
             ) { (mangaId, categoryId) ->
                 this[CategoryMangaTable.manga] = mangaId
                 this[CategoryMangaTable.category] = categoryId
