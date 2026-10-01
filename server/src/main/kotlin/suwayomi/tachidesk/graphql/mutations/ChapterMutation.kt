@@ -100,9 +100,6 @@ class ChapterMutation {
                     this[ChapterUserTable.user] = userId
                     this[ChapterUserTable.chapter] = chapterId
 
-                    patch.isRead?.also {
-                        this[ChapterUserTable.isRead] = it
-                    }
                     patch.isBookmarked?.also {
                         this[ChapterUserTable.isBookmarked] = it
                     }
@@ -110,6 +107,13 @@ class ChapterMutation {
                         this[ChapterUserTable.lastPageRead] =
                             it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
                         this[ChapterUserTable.lastReadAt] = now
+                    }
+                    patch.isRead?.also {
+                        this[ChapterUserTable.isRead] = it
+                        if (!it) {
+                            this[ChapterUserTable.lastPageRead] = 0
+                            this[ChapterUserTable.lastReadAt] = 0
+                        }
                     }
                 }
             }
