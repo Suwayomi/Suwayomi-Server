@@ -629,18 +629,19 @@ class M0066_AddUsers : Migration() {
 
     override fun run() {
         with(TransactionManager.current()) {
-            SchemaUtils.createStatements(
-                UserAccountTable,
-                UserRolesTable,
-                UserPermissionsTable,
-                ChapterUserTable,
-                MangaUserTable,
-                UserSettingsTable,
-                UserCodeTable,
-                UserCodePermissionsTable,
-            ).forEach {
-                exec(it)
-            }
+            SchemaUtils
+                .createStatements(
+                    UserAccountTable,
+                    UserRolesTable,
+                    UserPermissionsTable,
+                    ChapterUserTable,
+                    MangaUserTable,
+                    UserSettingsTable,
+                    UserCodeTable,
+                    UserCodePermissionsTable,
+                ).forEach {
+                    exec(it)
+                }
             exec(sql)
             currentDialectMetadata.resetCaches()
         }
