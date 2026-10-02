@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Add User Accounts
 
 ### Changed
-- 
+- (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 
 ### Fixed
 - 
