@@ -354,7 +354,7 @@ class JavaSharedPreferences(
     }
 
     fun deleteAll(): Boolean {
-        preferences.clear()
+        save(listOf(Action.Clear))
         return true
     }
 }
