@@ -13,7 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 
 
 ### Fixed
-- (**Auth**) Stop reading the WebSocket subprotocol name as a token and logging routine expired-token rejections as errors
+- (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Thumbnails**) Refresh a manga's thumbnail URL when its image host no longer resolves, and answer 424 Failed Dependency when a source host is unreachable
 - (**API**) Answer 424 Failed Dependency with a one-line warning, instead of a 500 with a stack trace, when a source answers with an HTTP error
 
