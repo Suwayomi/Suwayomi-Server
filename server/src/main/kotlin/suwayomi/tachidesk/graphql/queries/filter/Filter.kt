@@ -550,6 +550,11 @@ fun <T : String, S : T?> andFilterWithCompareString(
 class OpAnd(
     var op: Op<Boolean>? = null,
 ) {
+    fun andWhere(expr: Op<Boolean>?) {
+        expr ?: return
+        op = if (op == null) expr else (op!! and expr)
+    }
+
     fun <T> andWhere(
         value: T?,
         andPart: (T & Any) -> Op<Boolean>,
