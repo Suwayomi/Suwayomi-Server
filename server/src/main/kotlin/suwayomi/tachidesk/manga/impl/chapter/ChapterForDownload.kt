@@ -17,6 +17,7 @@ import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -25,6 +26,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.storage.SplitPageLayout
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
@@ -82,6 +84,51 @@ private fun clampLastPageReads(
                 it[ChapterUserTable.lastPageRead] = row[ChapterUserTable.lastPageRead].coerceAtMost(pageCount - 1).coerceAtLeast(0)
             }
         }
+}
+
+/**
+ * Switches a chapter whose download has split pages from its source pages to its downloaded pages:
+ * the page count and every reading position now refer to the downloaded pages.
+ */
+fun useDownloadedPageIndices(
+    chapterId: Int,
+    layout: SplitPageLayout,
+) {
+    if (!layout.hasSplitPages) return
+    remapPageIndices(chapterId, layout.downloadedPageCount, layout::toDownloadedIndex)
+}
+
+/**
+ * Switches a chapter whose download has split pages back from its downloaded pages to its source
+ * pages, before the download is deleted: the page count and every reading position now refer to the
+ * source pages.
+ */
+fun useSourcePageIndices(
+    chapterId: Int,
+    layout: SplitPageLayout,
+) {
+    if (!layout.hasSplitPages) return
+    remapPageIndices(chapterId, layout.sourcePageCount, layout::toSourceIndex)
+}
+
+private fun remapPageIndices(
+    chapterId: Int,
+    pageCount: Int,
+    remap: (Int) -> Int,
+) {
+    transaction {
+        ChapterTable.update({ ChapterTable.id eq chapterId }) {
+            it[ChapterTable.pageCount] = pageCount
+        }
+        ChapterUserTable
+            .selectAll()
+            .where { ChapterUserTable.chapter eq chapterId and (ChapterUserTable.lastPageRead greater 0) }
+            .forEach { row ->
+                ChapterUserTable.update({ ChapterUserTable.id eq row[ChapterUserTable.id] }) {
+                    it[ChapterUserTable.lastPageRead] = remap(row[ChapterUserTable.lastPageRead])
+                }
+            }
+    }
 }
 
 suspend fun refreshChapterPageList(

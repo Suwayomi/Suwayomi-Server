@@ -11,7 +11,9 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import libcore.net.MimeUtils
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -24,6 +26,8 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
+import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
+import suwayomi.tachidesk.manga.impl.util.storage.TallImageSplitter
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -195,61 +199,80 @@ object Page {
                 index = index,
                 progressFlow = progressFlow,
             )
-        val conversions = serverConfig.downloadConversions.value
-        if (conversions.isEmpty() || !downloadCacheFolder.exists()) {
-            inputStream.close()
-            return
-        }
-        val defaultConversion = conversions["default"]
-        val conversion =
-            conversions[mime]
-                ?: defaultConversion
-        if (conversion == null) {
-            inputStream.close()
-            return
-        }
 
-        try {
-            val converted =
+        // A separate, sequential lock phase from the one getPageImage()/getImageResponse() already took for the
+        // fetch above (Mutex isn't reentrant) - guards post-processing against a concurrent live read of this
+        // same page observing a half-written or half-split file.
+        val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
+        PageCacheCoordinator.withPageLock(cacheSaveDir, fileName) {
+            val conversions = serverConfig.downloadConversions.value
+            val defaultConversion = conversions["default"]
+            val conversion = conversions[mime] ?: defaultConversion
+
+            if (conversions.isEmpty() || !downloadCacheFolder.exists() || conversion == null) {
+                inputStream.close()
+            } else {
                 try {
-                    convertImageResponse(
-                        image = inputStream,
-                        mime = mime,
-                        conversion = conversion,
-                    )
+                    val converted =
+                        try {
+                            convertImageResponse(
+                                image = inputStream,
+                                mime = mime,
+                                conversion = conversion,
+                            )
+                        } catch (e: Exception) {
+                            throw e
+                        } finally {
+                            inputStream.close()
+                        }
+
+                    if (converted != null) {
+                        val (convertedStream, convertedMime) = converted
+                        val convertedExtension =
+                            MimeUtils.guessExtensionFromMimeType(convertedMime)
+                                ?: convertedMime.substringAfter('/')
+                        val convertedPage =
+                            File(
+                                downloadCacheFolder,
+                                "$fileName.$convertedExtension",
+                            )
+
+                        convertedPage.outputStream().use { outputStream ->
+                            convertedStream.use { it.copyTo(outputStream) }
+                        }
+
+                        val extension =
+                            MimeUtils.guessExtensionFromMimeType(mime)
+                                ?: mime.substringAfter('/')
+                        if (extension != convertedExtension) {
+                            File(
+                                downloadCacheFolder,
+                                "$fileName.$extension",
+                            ).delete()
+                        }
+                    }
                 } catch (e: Exception) {
-                    throw e
-                } finally {
-                    inputStream.close()
-                }
-
-            if (converted != null) {
-                val (convertedStream, convertedMime) = converted
-                val convertedExtension =
-                    MimeUtils.guessExtensionFromMimeType(convertedMime)
-                        ?: convertedMime.substringAfter('/')
-                val convertedPage =
-                    File(
-                        downloadCacheFolder,
-                        "$fileName.$convertedExtension",
-                    )
-
-                convertedPage.outputStream().use { outputStream ->
-                    convertedStream.use { it.copyTo(outputStream) }
-                }
-
-                val extension =
-                    MimeUtils.guessExtensionFromMimeType(mime)
-                        ?: mime.substringAfter('/')
-                if (extension != convertedExtension) {
-                    File(
-                        downloadCacheFolder,
-                        "$fileName.$extension",
-                    ).delete()
+                    logger.warn(e) { "Error while post-processing image" }
                 }
             }
-        } catch (e: Exception) {
-            logger.warn(e) { "Error while post-processing image" }
+
+            splitTallImageIfNeeded(downloadCacheFolder, fileName)
+
+            // marks that download-time post-processing has been attempted for this page, so a concurrent or
+            // later download run doesn't skip it just because the raw bytes happen to already be cached
+            // (see https://github.com/Suwayomi/Suwayomi-Server/issues/2193 and #2289)
+            PageCacheCoordinator.markProcessed(cacheSaveDir, fileName)
+        }
+    }
+
+    private suspend fun splitTallImageIfNeeded(
+        downloadCacheFolder: File,
+        fileName: String,
+    ) {
+        if (!serverConfig.splitTallImages.value) return
+        // decoding and encoding every part of a long strip is slow, blocking work
+        withContext(Dispatchers.IO) {
+            TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
         }
     }
 

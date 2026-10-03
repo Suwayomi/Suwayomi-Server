@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.Page
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
+import suwayomi.tachidesk.manga.impl.chapter.useDownloadedPageIndices
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.KoreaderHelper
 import suwayomi.tachidesk.manga.impl.util.createComicInfoFile
@@ -24,6 +25,8 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
+import suwayomi.tachidesk.manga.impl.util.storage.SplitPageLayout
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -90,6 +93,9 @@ abstract class ChaptersFilesProvider<Type : FileType>(
 
     suspend fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
 
+    suspend fun getSplitPageLayout(): SplitPageLayout =
+        SplitPageLayout(getImageFiles().map { it.getName() }.filter { it != COMIC_INFO_FILE }.sorted())
+
     override suspend fun getImage(): RetrieveFile1Args<Int> = RetrieveFile1Args(::getImageImpl)
 
     /**
@@ -141,8 +147,16 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
             val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
 
-            val doesPageAlreadyExist = pageExistsInFinalDownloadFolder || pageExistsInCacheDownloadFolder
-            if (doesPageAlreadyExist) {
+            // A page cached by a concurrent/prior live read has raw bytes but was never run through
+            // Page.getPageImageDownload()'s post-processing (conversion, splitting), so it must not be skipped
+            // just because a file exists - only a page from a previously *finished* download (final folder) or one
+            // already marked processed in this cache is truly done. See #2193 / #2289. A split page is done as well:
+            // only the post-processing splits, even if it was interrupted before marking the page processed.
+            val pageFullyProcessed =
+                pageExistsInFinalDownloadFolder ||
+                    (pageExistsInCacheDownloadFolder && PageCacheCoordinator.isProcessed(cacheChapterDir, fileName)) ||
+                    ImageResponse.hasSplitParts(cacheChapterDir, fileName)
+            if (pageFullyProcessed) {
                 continue
             }
 
@@ -176,6 +190,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             step(download, false)
         }
 
+        PageCacheCoordinator.clearProcessedMarkers(cacheChapterDir)
+
         createComicInfoFile(
             downloadCacheFolder.toPath(),
             transaction {
@@ -187,6 +203,9 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         )
 
         handleSuccessfulDownload()
+
+        // the chapter now serves its downloaded pages, which the split pages outnumber
+        useDownloadedPageIndices(chapterId, getSplitPageLayout())
 
         // Calculate and save Koreader hash for CBZ files
         val chapterFile = File(getChapterCbzPath(mangaId, chapterId))

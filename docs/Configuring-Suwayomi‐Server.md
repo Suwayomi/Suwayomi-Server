@@ -83,6 +83,7 @@ server.excludeEntryWithUnreadChapters = true
 server.autoDownloadNewChaptersLimit = 0
 server.autoDownloadIgnoreReUploads = false
 server.downloadConversions = {}
+server.splitTallImages = false
 ```
 - `server.downloadAsCbz = true` configures Suwayomi to automatically compress chapters into CBZ.
 - `server.downloadsPath = ""` the path where manga downloads will be stored, if the value is empty, the default directory `downloads` inside [the data directory](https://github.com/Suwayomi/Suwayomi-Server/wiki/The-Data-Directory) will be used. If you are on Windows the slashes `\` needs to be doubled(`\\`) or replaced with `/`
@@ -117,6 +118,7 @@ server.downloadConversions = {}
   
   This is an example curl command for what Suwayomi-Server will send to the conversion url: `curl -X POST "http://localhost:9999/convert" -F "image=@cat.png;type=image/png"`
 - `server.serveConversions = {}` configures optional image conversions before serving the image to the client. It follows the same format as `server.downloadConversions`. **Deprecated:** now per-user.
+- `server.splitTallImages = false` controls if Suwayomi should split overly tall "long strip" pages into several smaller images after downloading a chapter, to improve reader performance. A downloaded chapter with split pages has more pages than its source: Suwayomi moves the reading progress to the matching page when the download finishes or is deleted, and backups keep the progress as a source page. A client that kept its own page index from before the switch (e.g. a reader left open, or a copy saved to a device) will be off by the number of extra pages.
 
 
 ### Updater
@@ -261,7 +263,7 @@ server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
 server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 ```
-- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters. **Deprecated:** now per-user.
+- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters. FILENAME identifies a chapter the same way whether its tall pages are split or not (see `server.splitTallImages`), so the page synced may not match when KOReader and Suwayomi read different copies. **Deprecated:** now per-user.
 - `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read. **Deprecated:** now per-user.
 - `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local. **Deprecated:** now per-user.
 - `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local. **Deprecated:** now per-user.

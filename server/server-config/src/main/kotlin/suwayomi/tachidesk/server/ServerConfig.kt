@@ -1141,6 +1141,14 @@ class ServerConfig(
         defaultValue = BackupFlags.DEFAULT.includeUserSettings,
     )
 
+    val splitTallImages: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 99,
+        group = SettingGroup.DOWNLOADER,
+        privacySafe = true,
+        defaultValue = false,
+        description = "Split long images into smaller pages after downloading a chapter",
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/

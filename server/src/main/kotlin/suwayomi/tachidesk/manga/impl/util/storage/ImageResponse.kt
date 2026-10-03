@@ -22,15 +22,27 @@ object ImageResponse {
     fun findFileNameStartingWith(
         directoryPath: String,
         fileName: String,
+    ): String? = findFileNameStartingWith(directoryPath, fileName) { true }
+
+    private inline fun findFileNameStartingWith(
+        directoryPath: String,
+        fileName: String,
+        predicate: (String) -> Boolean,
     ): String? {
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
-            if (file.name.startsWith(target)) {
+            if (file.name.startsWith(target) && predicate(file.name)) {
                 return "$directoryPath/${file.name}"
             }
         }
         return null
     }
+
+    /** Whether the page [fileName] was split into several parts by [TallImageSplitter] */
+    fun hasSplitParts(
+        directoryPath: String,
+        fileName: String,
+    ): Boolean = findFileNameStartingWith(directoryPath, fileName) { SplitPageLayout.isSplitPartOf(it, fileName) } != null
 
     fun getCachedImageResponse(
         cachedFile: String,
@@ -39,7 +51,7 @@ object ImageResponse {
         val fileType = cachedFile.substringAfter("$filePath.")
         return Pair(
             pathToInputStream(cachedFile),
-            "image/$fileType",
+            MimeUtils.guessMimeTypeFromExtension(fileType) ?: "image/$fileType",
         )
     }
 
@@ -55,39 +67,54 @@ object ImageResponse {
         saveDir: String,
         fileName: String,
         fetcher: suspend () -> Response,
-    ): Pair<InputStream, String> {
-        File(saveDir).mkdirs()
+    ): Pair<InputStream, String> =
+        PageCacheCoordinator.withPageLock(saveDir, fileName) {
+            File(saveDir).mkdirs()
 
-        val cachedFile = findFileNameStartingWith(saveDir, fileName)
-        val filePath = "$saveDir/$fileName"
+            // a part of a page a download split isn't the page, so it's never served as one
+            val cachedFile = findFileNameStartingWith(saveDir, fileName) { !SplitPageLayout.isSplitPartOf(it, fileName) }
+            val filePath = "$saveDir/$fileName"
 
-        // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
-        if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
-            return getCachedImageResponse(cachedFile, filePath)
-        }
-
-        val response = fetcher()
-
-        try {
-            if (response.code == 200) {
-                val (actualSavePath, imageType) =
-                    saveImage(
-                        filePath,
-                        response.body.byteStream(),
-                        response.header("Content-Type"),
-                    )
-                return pathToInputStream(actualSavePath) to imageType
-            } else {
-                throw Exception("request error! ${response.code}")
+            // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
+            if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
+                return@withPageLock getCachedImageResponse(cachedFile, filePath)
             }
-        } catch (e: IOException) {
-            // make sure no partial download remains
-            clearCachedImage(saveDir, fileName)
-            throw e
-        } finally {
-            response.closeQuietly()
+
+            // The parts are the download's copy of this page: caching the whole page next to them would
+            // download it twice, so it's served without being cached until the download is finished
+            val isSplitByDownload = cachedFile == null && hasSplitParts(saveDir, fileName)
+
+            val response = fetcher()
+
+            try {
+                if (response.code == 200 && isSplitByDownload) {
+                    val bytes = response.body.bytes()
+                    val imageType =
+                        ImageUtil.findImageType { bytes.inputStream() }?.mime
+                            ?: response.header("Content-Type")?.takeIf { it.startsWith("image/") }
+                            ?: "image/jpeg"
+                    bytes.inputStream() to imageType
+                } else if (response.code == 200) {
+                    val (actualSavePath, imageType) =
+                        saveImage(
+                            filePath,
+                            response.body.byteStream(),
+                            response.header("Content-Type"),
+                        )
+                    pathToInputStream(actualSavePath) to imageType
+                } else {
+                    throw Exception("request error! ${response.code}")
+                }
+            } catch (e: IOException) {
+                // make sure no partial download remains, without touching the download's parts
+                if (!isSplitByDownload) {
+                    clearCachedImage(saveDir, fileName)
+                }
+                throw e
+            } finally {
+                response.closeQuietly()
+            }
         }
-    }
 
     /** Save image safely */
     fun saveImage(
