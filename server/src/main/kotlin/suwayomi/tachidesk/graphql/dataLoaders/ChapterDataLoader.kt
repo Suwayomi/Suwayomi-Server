@@ -21,7 +21,6 @@ import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.or
@@ -31,6 +30,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.firstRowPerPartition
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -55,7 +55,7 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
                         ChapterTable
                             .getWithUserData(userId)
                             .selectAll()
-                            .where { ChapterTable.id inList ids }
+                            .where { ChapterTable.id inIds ids }
                             .map { ChapterType(it) }
                             .associateBy { it.id }
                     ids.map { chapters[it] }
@@ -77,7 +77,7 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
                         ChapterTable
                             .getWithUserData(userId)
                             .selectAll()
-                            .where { ChapterTable.manga inList ids }
+                            .where { ChapterTable.manga inIds ids }
                             .map { ChapterType(it) }
                             .groupBy { it.mangaId }
                     ids.map { (chaptersByMangaId[it] ?: emptyList()).toNodeList() }
@@ -129,7 +129,7 @@ class ChapterFlagCountForMangaDataLoader : KotlinDataLoader<Int, MangaChapterSta
                                 downloadCount,
                                 bookmarkCount,
                             ).where {
-                                ChapterTable.manga inList ids
+                                ChapterTable.manga inIds ids
                             }.groupBy(ChapterTable.manga)
                             .associate {
                                 val mangaId = it[ChapterTable.manga].value
@@ -166,7 +166,7 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
                         ChapterTable
                             .select(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
                             .where {
-                                (ChapterTable.manga inList ids) and
+                                (ChapterTable.manga inIds ids) and
                                     (ChapterTable.chapter_number greaterEq 0f)
                             }.groupBy(ChapterTable.manga, ChapterTable.chapter_number)
                             .having { ChapterTable.chapter_number.count() greater 1 }
@@ -331,7 +331,7 @@ internal fun firstChapterPerManga(
     val chaptersWithUserData = ChapterTable.getWithUserData(userId)
     return chaptersWithUserData
         .firstRowPerPartition(
-            keys = MangaTable.select(MangaTable.id).where { MangaTable.id inList mangaIds },
+            keys = MangaTable.select(MangaTable.id).where { MangaTable.id inIds mangaIds },
             partitionBy = ChapterTable.manga,
             idColumn = ChapterTable.id,
             orderBy = orderBy,

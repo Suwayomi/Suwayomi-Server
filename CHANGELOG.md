@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
+- (**GraphQL**) Write the ids of a data loader batch into the SQL instead of binding them one by one, which H2 checks row by row
 
 ### Fixed
 - 
