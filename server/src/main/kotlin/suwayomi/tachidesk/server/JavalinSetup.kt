@@ -38,6 +38,7 @@ import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
@@ -292,6 +293,14 @@ object JavalinSetup {
             ctx.status(404)
         }
         exception(IOException::class.java) { e, ctx ->
+            if (e.isHostUnreachable()) {
+                // a source's host being down is not a server fault, and its stack trace says nothing
+                logger.warn { "Upstream host unreachable while handling ${ctx.path()}: ${e.message}" }
+                ctx.status(HttpStatus.BAD_GATEWAY)
+                ctx.result(e.message ?: "Bad Gateway")
+                return@exception
+            }
+
             logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
