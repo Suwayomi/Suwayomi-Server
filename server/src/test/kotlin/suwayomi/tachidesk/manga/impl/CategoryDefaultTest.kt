@@ -244,7 +244,6 @@ class CategoryDefaultTest : ApplicationTest() {
         )
     }
 
-    // flakey test
     @Test
     fun `sync delete protection keeps the default row and removes remote-absent landing category`() =
         runTest {
@@ -276,6 +275,9 @@ class CategoryDefaultTest : ApplicationTest() {
 
             mockkObject(SyncYomiSyncService)
             try {
+                // needsFullSync probes the SyncYomi host over HTTP once the sync schema preference is set, which a
+                // previous run leaves behind for the same user id: keep the sync off the network whatever the state
+                coEvery { SyncYomiSyncService.needsFullSync(any()) } returns true
                 // remote backup: the manga is up-to-date, but no categories at all
                 coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } returns
                     SyncYomiSyncService.SyncResult(
@@ -333,7 +335,12 @@ class CategoryDefaultTest : ApplicationTest() {
     internal fun tearDown() {
         createdUserIds.forEach { userId ->
             userSettings.resetAll(userId)
-            syncPreferences.edit().remove("last_sync_timestamp_$userId").apply()
+            syncPreferences
+                .edit()
+                .remove("last_sync_timestamp_$userId")
+                .remove("sync_schema_$userId")
+                .remove("last_pushed_at_$userId")
+                .apply()
         }
         transaction {
             if (createdUserIds.isNotEmpty()) {

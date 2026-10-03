@@ -48,6 +48,9 @@ open class ApplicationTest {
             if (!initializedTheApp) {
                 val dataRoot = File(BASE_PATH).absolutePath
                 System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
+                // The test data directory outlives a run: start from the reference config like CI does, so that
+                // settings an earlier run wrote to server.conf (setSettings, a settings restore) don't leak in.
+                File(dataRoot, "server.conf").delete()
 
                 testingSetup()
 
