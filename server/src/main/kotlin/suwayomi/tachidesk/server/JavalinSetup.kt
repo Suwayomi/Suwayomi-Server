@@ -7,6 +7,7 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.HttpException
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -284,6 +285,10 @@ object JavalinSetup {
             }
         }
 
+        defineExceptionHandlers()
+    }
+
+    fun RoutesConfig.defineExceptionHandlers() {
         exception(NullPointerException::class.java) { e, ctx ->
             logger.error(e) { "NullPointerException while handling the request" }
             ctx.status(404)
@@ -304,6 +309,14 @@ object JavalinSetup {
             logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
+        }
+
+        exception(HttpException::class.java) { e, ctx ->
+            // a source answering with an error (e.g. a manga it removed) is not a server fault, and the
+            // stack trace only shows the extension's obfuscated code
+            logger.warn { "Upstream answered HTTP ${e.code} while handling ${ctx.path()}" }
+            ctx.status(HttpStatus.BAD_GATEWAY)
+            ctx.result(e.message ?: "Bad Gateway")
         }
 
         exception(IllegalArgumentException::class.java) { e, ctx ->
