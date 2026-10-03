@@ -11,7 +11,9 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import libcore.net.MimeUtils
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -200,7 +202,7 @@ object Page {
 
         // A separate, sequential lock phase from the one getPageImage()/getImageResponse() already took for the
         // fetch above (Mutex isn't reentrant) - guards post-processing against a concurrent live read of this
-        // same page observing a half-written file.
+        // same page observing a half-written or half-split file.
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
         PageCacheCoordinator.withPageLock(cacheSaveDir, fileName) {
             val conversions = serverConfig.downloadConversions.value
@@ -263,12 +265,15 @@ object Page {
         }
     }
 
-    private fun splitTallImageIfNeeded(
+    private suspend fun splitTallImageIfNeeded(
         downloadCacheFolder: File,
         fileName: String,
     ) {
         if (!serverConfig.splitTallImages.value) return
-        TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
+        // decoding and encoding every part of a long strip is slow, blocking work
+        withContext(Dispatchers.IO) {
+            TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
+        }
     }
 
     private suspend fun convertImageResponse(
