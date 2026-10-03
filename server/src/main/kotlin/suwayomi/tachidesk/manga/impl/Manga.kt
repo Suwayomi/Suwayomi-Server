@@ -44,6 +44,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
 import suwayomi.tachidesk.manga.impl.util.network.await
+import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
@@ -424,6 +425,14 @@ object Manga {
                         522, // (Cloudflare) Connection timed out
                     ).contains(e.code)
             if (!tryToRefreshUrl) {
+                throw e
+            }
+
+            fetchHttpSourceMangaThumbnail(source, mangaEntry, refreshUrl = true)
+        } catch (e: IOException) {
+            // the source may have moved its images to another CDN, leaving the stored URL
+            // pointing at a host that no longer resolves
+            if (refreshUrl || !e.isHostUnreachable()) {
                 throw e
             }
 
