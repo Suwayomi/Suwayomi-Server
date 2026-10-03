@@ -63,8 +63,7 @@ object DBManager {
                     }
                 }
 
-                // Optimized for Raspberry Pi / Low memory environments
-                maximumPoolSize = 6 // Moderate pool for better concurrency
+                maximumPoolSize = serverConfig.hikariMaxPoolSize.value
                 minimumIdle = 2 // Keep 2 idle connections for responsiveness
                 connectionTimeout = 45.seconds.inWholeMilliseconds // more tolerance for slow devices
                 idleTimeout = 5.minutes.inWholeMilliseconds // close idle connections faster
