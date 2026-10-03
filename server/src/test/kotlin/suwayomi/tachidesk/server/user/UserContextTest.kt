@@ -2,6 +2,7 @@ package suwayomi.tachidesk.server.user
 
 import io.javalin.http.Context
 import io.javalin.http.Header
+import io.javalin.websocket.WsConnectContext
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -14,6 +15,7 @@ import suwayomi.tachidesk.test.GraphQLTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 /**
  * Tests the HTTP-level authentication seam: [getUserFromContext] parsing the bearer token (or
@@ -141,6 +143,36 @@ class UserContextTest : GraphQLTest() {
             val user = getUserFromContext(ctx.also { bearer(it, tokens.refreshToken) })
 
             assertIs<UserType.Visitor>(user)
+        }
+
+    @Test
+    fun webSocketProtocolNameIsNotTakenForAToken() {
+        assertNull(tokenFromWebSocketProtocol("graphql-transport-ws"))
+        assertNull(tokenFromWebSocketProtocol("graphql-ws, graphql-transport-ws"))
+        assertNull(tokenFromWebSocketProtocol(null))
+    }
+
+    @Test
+    fun webSocketProtocolTokenIsPickedAmongOfferedProtocols() {
+        assertEquals("a.b.c", tokenFromWebSocketProtocol("graphql-transport-ws, a.b.c"))
+        assertEquals("a.b.c", tokenFromWebSocketProtocol("Bearer a.b.c"))
+    }
+
+    @Test
+    fun webSocketCookieTokenIsReachedPastTheProtocolName() =
+        runTest {
+            val userId = createTestUser("wscookieuser")
+            val tokens = Jwt.generateJwt(userId)
+
+            val wsCtx = mockk<WsConnectContext>(relaxed = true)
+            every { wsCtx.header(Header.AUTHORIZATION) } returns null
+            every { wsCtx.header("Sec-WebSocket-Protocol") } returns "graphql-transport-ws"
+            every { wsCtx.cookie("suwayomi-server-token") } returns tokens.accessToken
+
+            val user = getUserFromWsContext(wsCtx)
+
+            assertIs<UserType.User>(user)
+            assertEquals(userId, user.id)
         }
 
     @Test

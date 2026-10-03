@@ -123,13 +123,28 @@ suspend fun getUserFromWsContext(ctx: WsConnectContext): UserType {
 
         AuthMode.UI_LOGIN -> {
             val authentication =
-                ctx.header(Header.AUTHORIZATION) ?: ctx.header("Sec-WebSocket-Protocol") ?: ctx.cookie("suwayomi-server-token")
+                ctx.header(Header.AUTHORIZATION)
+                    ?: tokenFromWebSocketProtocol(ctx.header("Sec-WebSocket-Protocol"))
+                    ?: ctx.cookie("suwayomi-server-token")
             val token = authentication?.substringAfter("Bearer ") ?: ctx.queryParam("token")
 
             getUserFromToken(token)
         }
     }
 }
+
+/**
+ * The JWT among the offered WebSocket subprotocols, if any.
+ *
+ * Clients list their real subprotocol there (e.g. `graphql-transport-ws`) and usually send
+ * their token in `connection_init` instead, so a protocol name must not be taken for a token:
+ * it would shadow the cookie and fail verification on every connect.
+ */
+internal fun tokenFromWebSocketProtocol(header: String?): String? =
+    header
+        ?.split(',')
+        ?.map { it.trim().removePrefix("Bearer ").trim() }
+        ?.firstOrNull { protocol -> protocol.count { it == '.' } == 2 }
 
 class UnauthorizedException : IllegalStateException("Unauthorized")
 
