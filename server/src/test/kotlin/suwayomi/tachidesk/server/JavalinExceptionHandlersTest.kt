@@ -32,7 +32,9 @@ class JavalinExceptionHandlersTest {
                     config.routes.get("/source-unreachable") {
                         throw IOException("cdn.example: Name or service not known", UnknownHostException("cdn.example"))
                     }
-                }.start(0)
+                }
+                // loopback only: listening on every interface makes the OS firewall ask to let Java in
+                .start("127.0.0.1", 0)
     }
 
     @AfterEach
@@ -53,7 +55,7 @@ class JavalinExceptionHandlersTest {
 
     private fun get(path: String): Pair<Int, String> =
         OkHttpClient()
-            .newCall(Request.Builder().url("http://localhost:${app.port()}$path").build())
+            .newCall(Request.Builder().url("http://127.0.0.1:${app.port()}$path").build())
             .execute()
             .use { it.code to it.body.string() }
 }
