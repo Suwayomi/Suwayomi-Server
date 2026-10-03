@@ -22,6 +22,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -32,6 +33,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 /**
  * A page a live read left in the chapter's cache was never post-processed, so downloading the
@@ -52,11 +54,23 @@ class LiveReadCachedPageDownloadTest : ApplicationTest() {
 
     @Test
     fun aPageCachedByALiveReadIsConvertedWhenDownloaded() {
+        assertEquals(listOf("001.jpg"), downloadWithCachedPage(alreadyProcessed = false))
+    }
+
+    @Test
+    fun aPageAlreadyProcessedBeforeARestartIsNotProcessedAgain() {
+        // the marker is on disk, so a download resumed after a restart still knows the page is done
+        // and doesn't run it through the conversions (e.g. an HTTP upscaler) a second time
+        assertEquals(listOf("001.png"), downloadWithCachedPage(alreadyProcessed = true))
+    }
+
+    /** Downloads a chapter whose only page is already cached as a PNG, with a PNG to JPEG conversion, and returns its pages */
+    private fun downloadWithCachedPage(alreadyProcessed: Boolean): List<String> {
         GetSource.registerSource(SOURCE_ID to CachedPagesSource())
         serverConfig.downloadConversions.value = mapOf("image/png" to DownloadConversion(target = "image/jpeg"))
 
         val (mangaId, chapterId) = createChapterWithOnePage()
-        runBlocking {
+        return runBlocking {
             // both folders are named after the manga and source, so clear what an earlier run left
             val cacheDir = File(getChapterCachePath(mangaId, chapterId)).apply { deleteRecursively() }
             val downloadDir = File(getChapterDownloadPath(mangaId, chapterId)).apply { deleteRecursively() }
@@ -65,6 +79,9 @@ class LiveReadCachedPageDownloadTest : ApplicationTest() {
             // what a live read of the not yet downloaded chapter leaves behind
             cacheDir.mkdirs()
             ImageIO.write(BufferedImage(10, 10, BufferedImage.TYPE_INT_RGB), "png", File(cacheDir, "001.png"))
+            if (alreadyProcessed) {
+                PageCacheCoordinator.markProcessed(cacheDir.path, "001")
+            }
 
             val downloaded =
                 FolderProvider(mangaId, chapterId)
@@ -72,13 +89,9 @@ class LiveReadCachedPageDownloadTest : ApplicationTest() {
                     .execute(DownloadQueueItem(chapterId, 1, mangaId, SOURCE_ID, pageCount = 1), this) { _, _ -> }
 
             assertEquals(true, downloaded)
-            val pages =
-                downloadDir
-                    .listFiles()
-                    .orEmpty()
-                    .map { it.name }
-                    .filter { it.startsWith("001.") }
-            assertEquals(listOf("001.jpg"), pages)
+            val files = downloadDir.listFiles().orEmpty().map { it.name }
+            assertFalse(PageCacheCoordinator.PROCESSED_MARKERS_DIR in files, "the processed markers must not be downloaded")
+            files.filter { it.startsWith("001.") }
         }
     }
 

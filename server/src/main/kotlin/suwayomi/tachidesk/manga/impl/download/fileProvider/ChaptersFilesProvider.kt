@@ -143,7 +143,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
 
             // A page cached by a concurrent/prior live read has raw bytes but was never run through
-            // Page.getPageImageDownload()'s post-processing (conversion, splitting), so it must not be skipped
+            // Page.getPageImageDownload()'s post-processing (format conversion), so it must not be skipped
             // just because a file exists - only a page from a previously *finished* download (final folder) or one
             // already marked processed in this cache is truly done. See #2193 / #2289.
             val pageFullyProcessed =
@@ -182,6 +182,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             download.progress = ((pageNum + 1).toFloat()) / pageCount
             step(download, false)
         }
+
+        PageCacheCoordinator.clearProcessedMarkers(cacheChapterDir)
 
         createComicInfoFile(
             downloadCacheFolder.toPath(),

@@ -199,7 +199,7 @@ object Page {
 
         // A separate, sequential lock phase from the one getPageImage()/getImageResponse() already took for the
         // fetch above (Mutex isn't reentrant) - guards post-processing against a concurrent live read of this
-        // same page observing a half-written/half-split file.
+        // same page observing a half-written file.
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
         PageCacheCoordinator.withPageLock(cacheSaveDir, fileName) {
             val conversions = serverConfig.downloadConversions.value
