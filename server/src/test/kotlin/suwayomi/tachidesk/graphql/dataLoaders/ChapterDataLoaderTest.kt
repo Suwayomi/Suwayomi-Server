@@ -125,6 +125,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = emptyList(),
+                    userId = 1,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                 )
             }
@@ -145,6 +146,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1, manga2),
+                    userId = 1,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                 )
             }
@@ -165,6 +167,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.DESC),
                 )
             }
@@ -183,6 +186,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     filter = ChapterUserTable.isRead eq true,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                 )
@@ -201,6 +205,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     filter = ChapterUserTable.isRead eq true,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                 )
@@ -217,6 +222,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                 )
             }
@@ -237,6 +243,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     orderBy = listOf(ChapterUserTable.lastReadAt to SortOrder.DESC),
                 )
             }
@@ -254,6 +261,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(mangaId),
+                    userId = 1,
                     orderBy =
                         listOf(
                             ChapterUserTable.lastReadAt to SortOrder.DESC,
@@ -275,6 +283,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(mangaId),
+                    userId = 1,
                     orderBy =
                         listOf(
                             ChapterUserTable.lastReadAt to SortOrder.DESC_NULLS_LAST,
@@ -299,6 +308,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     filter = ChapterUserTable.isRead eq true,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.DESC),
                 )
@@ -317,6 +327,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(mangaId),
+                    userId = 1,
                     filter = ChapterUserTable.isRead eq true,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.DESC),
                 )
@@ -338,6 +349,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     filter = ChapterUserTable.isRead eq false,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                 )
@@ -359,6 +371,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     orderBy = listOf(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
                 )
             }
@@ -380,6 +393,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     orderBy = listOf(ChapterTable.date_upload to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
                 )
             }
@@ -397,6 +411,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(mangaId),
+                    userId = 1,
                     orderBy = listOf(ChapterTable.date_upload to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
                 )
             }
@@ -417,6 +432,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1),
+                    userId = 1,
                     filter = ChapterTable.chapter_number greater 0f,
                     orderBy = listOf(ChapterTable.chapter_number to SortOrder.DESC_NULLS_LAST),
                 )
@@ -435,6 +451,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(mangaId),
+                    userId = 1,
                     filter = ChapterTable.chapter_number greater 0f,
                     orderBy =
                         listOf(
@@ -465,6 +482,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             transaction {
                 firstChapterPerManga(
                     mangaIds = listOf(manga1, manga2, manga3),
+                    userId = 1,
                     filter = ChapterUserTable.isRead eq false,
                     orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                 )

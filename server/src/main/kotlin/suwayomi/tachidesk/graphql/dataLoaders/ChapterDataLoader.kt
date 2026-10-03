@@ -12,10 +12,10 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.SortOrder
-import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
@@ -24,14 +24,13 @@ import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.isNull
-import org.jetbrains.exposed.v1.core.longLiteral
 import org.jetbrains.exposed.v1.core.or
-import org.jetbrains.exposed.v1.core.rowNumber
 import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.server.primitives.firstRowPerPartition
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
@@ -315,41 +314,25 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
         }
 }
 
+/**
+ * For each manga in [mangaIds], its first chapter by [orderBy] among those matching [filter], with
+ * [userId]'s chapter data. Shared by the chapter-per-manga data loaders below.
+ */
 internal fun firstChapterPerManga(
     mangaIds: List<Int>,
-    userId: Int = 1,
-    orderBy: List<Pair<org.jetbrains.exposed.v1.core.Column<*>, SortOrder>>,
+    userId: Int,
+    orderBy: List<Pair<Expression<*>, SortOrder>>,
     filter: Op<Boolean>? = null,
 ): Map<Int, ChapterType> {
     if (mangaIds.isEmpty()) return emptyMap()
 
-    val rn =
-        rowNumber()
-            .over()
-            .partitionBy(ChapterTable.manga)
-            .orderBy(*orderBy.toTypedArray())
-            .alias("rn")
-
-    val baseCondition = ChapterTable.manga inList mangaIds
-    val fullCondition = if (filter != null) baseCondition and filter else baseCondition
-    val chapterWithUserData = ChapterTable.getWithUserData(userId)
-    val ranked =
-        chapterWithUserData
-            .select(ChapterTable.id, rn)
-            .where { fullCondition }
-            .alias("ranked")
-
-    val targetIds =
-        ranked
-            .select(ranked[ChapterTable.id])
-            .where { ranked[rn] eq longLiteral(1) }
-            .map { it[ranked[ChapterTable.id]].value }
-
-    if (targetIds.isEmpty()) return emptyMap()
-
+    val inMangas = ChapterTable.manga inList mangaIds
     return ChapterTable
         .getWithUserData(userId)
-        .selectAll()
-        .where { ChapterTable.id inList targetIds }
-        .associate { it[ChapterTable.manga].value to ChapterType(it) }
+        .firstRowPerPartition(
+            partitionBy = ChapterTable.manga,
+            idColumn = ChapterTable.id,
+            orderBy = orderBy,
+            where = if (filter == null) inMangas else inMangas and filter,
+        ).associate { it[ChapterTable.manga].value to ChapterType(it) }
 }
