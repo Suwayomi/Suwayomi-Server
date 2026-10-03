@@ -300,9 +300,8 @@ object JavalinSetup {
         exception(IOException::class.java) { e, ctx ->
             if (e.isHostUnreachable()) {
                 // a source's host being down is not a server fault, and its stack trace says nothing
-                logger.warn { "Upstream host unreachable while handling ${ctx.path()}: ${e.message}" }
-                ctx.status(HttpStatus.BAD_GATEWAY)
-                ctx.result(e.message ?: "Bad Gateway")
+                logger.warn { "Source host unreachable while handling ${ctx.path()}: ${e.message}" }
+                ctx.sourceFailed(e.message)
                 return@exception
             }
 
@@ -314,9 +313,8 @@ object JavalinSetup {
         exception(HttpException::class.java) { e, ctx ->
             // a source answering with an error (e.g. a manga it removed) is not a server fault, and the
             // stack trace only shows the extension's obfuscated code
-            logger.warn { "Upstream answered HTTP ${e.code} while handling ${ctx.path()}" }
-            ctx.status(HttpStatus.BAD_GATEWAY)
-            ctx.result(e.message ?: "Bad Gateway")
+            logger.warn { "Source answered HTTP ${e.code} while handling ${ctx.path()}" }
+            ctx.sourceFailed(e.message)
         }
 
         exception(IllegalArgumentException::class.java) { e, ctx ->
@@ -360,6 +358,18 @@ object JavalinSetup {
         data object TachideskUser : Attribute<UserType>("user")
 
         data object TachideskBasic : Attribute<Boolean>("basicAuthValid")
+    }
+
+    /**
+     * Answers that the source this request depends on failed, while the server itself is fine.
+     *
+     * 424 Failed Dependency rather than 502 Bad Gateway: clients and reverse proxies read 502, 503
+     * and 504 as the server being unreachable through its proxy, and would pause or retry everything
+     * instead of failing this one request.
+     */
+    private fun Context.sourceFailed(message: String?) {
+        status(HttpStatus.FAILED_DEPENDENCY)
+        result(message ?: "Source request failed")
     }
 
     private fun <T : Any> Context.setAttribute(

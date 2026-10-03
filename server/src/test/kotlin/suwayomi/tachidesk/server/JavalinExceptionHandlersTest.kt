@@ -43,14 +43,15 @@ class JavalinExceptionHandlersTest {
     }
 
     @Test
-    fun aSourceAnsweringWithAnErrorIsABadGateway() {
-        // not a 500: the source answered, the server did nothing wrong
-        assertEquals(502 to "HTTP error 404", get("/source-error"))
+    fun aSourceAnsweringWithAnErrorIsAFailedDependency() {
+        // not a 500: the source answered, the server did nothing wrong. Not a 502 either, which
+        // clients read as the server being unreachable through its proxy
+        assertEquals(424 to "HTTP error 404", get("/source-error"))
     }
 
     @Test
-    fun anUnreachableSourceIsABadGateway() {
-        assertEquals(502, get("/source-unreachable").first)
+    fun anUnreachableSourceIsAFailedDependency() {
+        assertEquals(424, get("/source-unreachable").first)
     }
 
     private fun get(path: String): Pair<Int, String> =
