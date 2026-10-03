@@ -49,6 +49,10 @@ object TallImageSplitter {
         return (imageHeight - 1) / optimalImageHeight + 1
     }
 
+    /**
+     * Mihon's check, kept verbatim. With [computeOptimalHeight]'s target (about 4.7 times the width)
+     * the part count is what decides, the 3:1 ratio only matters for a target sized like Mihon's.
+     */
     internal fun shouldSplit(
         imageWidth: Int,
         imageHeight: Int,

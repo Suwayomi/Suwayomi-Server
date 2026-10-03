@@ -11,7 +11,9 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withContext
 import libcore.net.MimeUtils
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
@@ -198,7 +200,7 @@ object Page {
                 progressFlow = progressFlow,
             )
 
-        // Lock again, the fetch above released it: a live read must not see a half-converted page
+        // Lock again, the fetch above released it: a live read must not see a half-converted or half-split page
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
         PageCacheCoordinator.withPageLock(cacheSaveDir, fileName) {
             val conversions = serverConfig.downloadConversions.value
@@ -259,12 +261,15 @@ object Page {
         }
     }
 
-    private fun splitTallImageIfNeeded(
+    private suspend fun splitTallImageIfNeeded(
         downloadCacheFolder: File,
         fileName: String,
     ) {
         if (!serverConfig.splitTallImages.value) return
-        TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
+        // decoding and encoding every part of a long strip is slow, blocking work
+        withContext(Dispatchers.IO) {
+            TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
+        }
     }
 
     private suspend fun convertImageResponse(
