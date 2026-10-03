@@ -5,12 +5,14 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
+import suwayomi.tachidesk.manga.impl.chapter.useSourcePageIndices
 import suwayomi.tachidesk.manga.impl.download.fileProvider.ChaptersFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ArchiveProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.FolderProvider
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
+import suwayomi.tachidesk.manga.impl.util.storage.SplitPageLayout
 import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -35,7 +37,23 @@ object ChapterDownloadHelper {
     suspend fun delete(
         mangaId: Int,
         chapterId: Int,
-    ): Boolean = provider(mangaId, chapterId).delete()
+    ): Boolean {
+        val provider = provider(mangaId, chapterId)
+        // read before deleting: the split pages are only known from the downloaded file names
+        val layout = getSplitPageLayout(mangaId, chapterId)
+        val deleted = provider.delete()
+        if (deleted && layout != null) {
+            // the chapter serves its source pages again
+            useSourcePageIndices(chapterId, layout)
+        }
+        return deleted
+    }
+
+    /** The split pages of a downloaded chapter, null when it isn't downloaded */
+    suspend fun getSplitPageLayout(
+        mangaId: Int,
+        chapterId: Int,
+    ): SplitPageLayout? = runCatching { provider(mangaId, chapterId).getSplitPageLayout() }.getOrNull()
 
     /**
      * This function should never be called without calling [getChapterDownloadReady] beforehand.
