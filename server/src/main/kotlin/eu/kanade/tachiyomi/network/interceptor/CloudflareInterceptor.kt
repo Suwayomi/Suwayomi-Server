@@ -322,13 +322,7 @@ object CFClearance {
         onlyCookies: Boolean,
     ): FlareSolverResponse {
         val timeout = serverConfig.flareSolverrTimeout.value.seconds
-        val socksProxy =
-            buildSocksProxyUrl(
-                serverConfig.socksProxyEnabled.value,
-                serverConfig.socksProxyVersion.value,
-                serverConfig.socksProxyHost.value,
-                serverConfig.socksProxyPort.value,
-            )
+        val socksProxy = buildSocksProxyUrl()
 
         return with(json) {
             mutex.withLock {

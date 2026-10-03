@@ -8,14 +8,14 @@ package suwayomi.tachidesk.server.util
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import okhttp3.HttpUrl
+import suwayomi.tachidesk.server.serverConfig
 
-internal fun buildSocksProxyUrl(
-    enabled: Boolean,
-    version: Int,
-    host: String,
-    port: String,
-): String? {
-    if (!enabled) return null
+internal fun buildSocksProxyUrl(): String? {
+    if (!serverConfig.socksProxyEnabled.value) return null
+
+    val version = serverConfig.socksProxyVersion.value
+    val host = serverConfig.socksProxyHost.value
+    val port = serverConfig.socksProxyPort.value
 
     val scheme =
         when (version) {
