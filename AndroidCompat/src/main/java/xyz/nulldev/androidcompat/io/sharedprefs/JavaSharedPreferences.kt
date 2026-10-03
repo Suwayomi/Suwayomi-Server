@@ -170,7 +170,18 @@ class JavaSharedPreferences(
                     }
 
                     Action.Clear -> {
+                        val keys = preferences.keys
+
                         preferences.clear()
+
+                        keys.forEach { key ->
+                            notify(key)
+
+                            val isSetKey = key.endsWith(".size")
+                            if (isSetKey) {
+                                notify(key.removeSuffix(".size"))
+                            }
+                        }
                     }
                 }
             }
