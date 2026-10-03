@@ -5,11 +5,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PageCacheCoordinatorTest {
@@ -52,16 +55,43 @@ class PageCacheCoordinatorTest {
     }
 
     @Test
-    fun isProcessedTracksMarkProcessedPerKey() {
-        val saveDir = "some/dir"
-        val fileName = "001"
-        val otherFileName = "002"
+    fun locksAreDroppedOnceReleased() {
+        runBlocking(Dispatchers.Default) {
+            (1..20)
+                .map { index ->
+                    async {
+                        PageCacheCoordinator.withPageLock("dir", "page-${index % 3}") {
+                            delay(5)
+                        }
+                    }
+                }.awaitAll()
+        }
 
-        assertFalse(PageCacheCoordinator.isProcessed(saveDir, fileName))
+        assertEquals(0, PageCacheCoordinator.lockCount(), "no lock may outlive its last holder")
+    }
 
-        PageCacheCoordinator.markProcessed(saveDir, fileName)
+    @Test
+    fun isProcessedTracksMarkProcessedPerKeyOnDisk() {
+        val saveDir = createTempDirectory("page-cache").toFile()
+        try {
+            val fileName = "001"
+            val otherFileName = "002"
 
-        assertTrue(PageCacheCoordinator.isProcessed(saveDir, fileName))
-        assertFalse(PageCacheCoordinator.isProcessed(saveDir, otherFileName))
+            assertFalse(PageCacheCoordinator.isProcessed(saveDir.path, fileName))
+
+            PageCacheCoordinator.markProcessed(saveDir.path, fileName)
+
+            assertTrue(PageCacheCoordinator.isProcessed(saveDir.path, fileName))
+            assertFalse(PageCacheCoordinator.isProcessed(saveDir.path, otherFileName))
+            // kept out of the page lookups, which only match "<page>.*"
+            assertNull(ImageResponse.findFileNameStartingWith(saveDir.path, fileName))
+
+            PageCacheCoordinator.clearProcessedMarkers(saveDir.path)
+
+            assertFalse(PageCacheCoordinator.isProcessed(saveDir.path, fileName))
+            assertEquals(emptyList(), saveDir.listFiles().orEmpty().toList())
+        } finally {
+            saveDir.deleteRecursively()
+        }
     }
 }
