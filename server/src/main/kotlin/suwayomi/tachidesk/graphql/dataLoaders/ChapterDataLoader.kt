@@ -36,6 +36,7 @@ import suwayomi.tachidesk.graphql.types.ChapterNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -238,6 +239,7 @@ class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType
                             mangaIds = ids,
                             userId = userId,
                             orderBy = listOf(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
+                            rankOnUserData = false,
                         )
                     ids.map { chaptersByMangaId[it] }
                 }
@@ -259,6 +261,7 @@ class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTyp
                             mangaIds = ids,
                             userId = userId,
                             orderBy = listOf(ChapterTable.date_upload to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
+                            rankOnUserData = false,
                         )
                     ids.map { chaptersByMangaId[it] }
                 }
@@ -307,6 +310,7 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
                                     ChapterTable.chapter_number to SortOrder.DESC_NULLS_LAST,
                                     ChapterTable.sourceOrder to SortOrder.DESC,
                                 ),
+                            rankOnUserData = false,
                         )
                     ids.map { chaptersByMangaId[it] }
                 }
@@ -317,22 +321,27 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
 /**
  * For each manga in [mangaIds], its first chapter by [orderBy] among those matching [filter], with
  * [userId]'s chapter data. Shared by the chapter-per-manga data loaders below.
+ *
+ * [rankOnUserData] is false when [orderBy] and [filter] only read [ChapterTable]: the first chapters
+ * are then found without the user data join, which lets the database read the chapter index in order.
  */
 internal fun firstChapterPerManga(
     mangaIds: List<Int>,
     userId: Int,
     orderBy: List<Pair<Expression<*>, SortOrder>>,
     filter: Op<Boolean>? = null,
+    rankOnUserData: Boolean = true,
 ): Map<Int, ChapterType> {
     if (mangaIds.isEmpty()) return emptyMap()
 
-    val inMangas = ChapterTable.manga inList mangaIds
-    return ChapterTable
-        .getWithUserData(userId)
+    val chaptersWithUserData = ChapterTable.getWithUserData(userId)
+    return chaptersWithUserData
         .firstRowPerPartition(
+            keys = MangaTable.select(MangaTable.id).where { MangaTable.id inList mangaIds },
             partitionBy = ChapterTable.manga,
             idColumn = ChapterTable.id,
             orderBy = orderBy,
-            where = if (filter == null) inMangas else inMangas and filter,
+            where = filter,
+            rankedOn = if (rankOnUserData) chaptersWithUserData else ChapterTable,
         ).associate { it[ChapterTable.manga].value to ChapterType(it) }
 }

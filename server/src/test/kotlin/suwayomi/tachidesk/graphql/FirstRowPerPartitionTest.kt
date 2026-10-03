@@ -12,43 +12,80 @@ import org.jetbrains.exposed.v1.core.SqlLogger
 import org.jetbrains.exposed.v1.core.Transaction
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.core.statements.StatementContext
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.graphql.server.primitives.firstRowPerPartition
+import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
+import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 
-/** [firstRowPerPartition] isn't tied to chapters: here, the alphabetically last manga of each source. */
+/** [firstRowPerPartition] isn't tied to chapters: here, the alphabetically last manga of each category. */
 class FirstRowPerPartitionTest : ApplicationTest() {
+    private val createdCategories = mutableListOf<Int>()
+
+    private fun insertCategory(name: String): Int =
+        CategoryTable
+            .insertAndGetId {
+                it[CategoryTable.name] = name
+                it[user] = 1
+            }.value
+            .also { createdCategories += it }
+
     private fun insertManga(
         title: String,
-        sourceId: Long,
-    ): Int =
-        MangaTable
-            .insertAndGetId {
-                it[MangaTable.title] = title
-                it[url] = "$sourceId/$title"
-                it[sourceReference] = sourceId
-            }.value
+        categoryId: Int,
+    ): Int {
+        val mangaId =
+            MangaTable
+                .insertAndGetId {
+                    it[MangaTable.title] = title
+                    it[url] = "$categoryId/$title"
+                    it[sourceReference] = 1L
+                }.value
+        CategoryMangaTable.insert {
+            it[category] = categoryId
+            it[manga] = mangaId
+            it[user] = 1
+        }
+        return mangaId
+    }
+
+    private fun lastMangaPerCategory(categoryIds: List<Int>) =
+        CategoryMangaTable
+            .innerJoin(MangaTable)
+            .firstRowPerPartition(
+                keys = CategoryTable.select(CategoryTable.id).where { CategoryTable.id inList categoryIds },
+                partitionBy = CategoryMangaTable.category,
+                idColumn = MangaTable.id,
+                orderBy = listOf(MangaTable.title to SortOrder.DESC),
+            ).associate { it[CategoryMangaTable.category].value to it[MangaTable.id].value }
 
     @Test
     fun `picks the first row of each partition in a single query`() {
-        val (expected, sources) =
+        val (expected, categories) =
             transaction {
-                insertManga("Apple", SOURCE_A)
-                val lastOfA = insertManga("Zebra", SOURCE_A)
-                insertManga("Mango", SOURCE_A)
-                val onlyOfB = insertManga("Kiwi", SOURCE_B)
-                mapOf(SOURCE_A to lastOfA, SOURCE_B to onlyOfB) to listOf(SOURCE_A, SOURCE_B, SOURCE_WITHOUT_MANGA)
+                val categoryA = insertCategory("A")
+                val categoryB = insertCategory("B")
+                val empty = insertCategory("Empty")
+                insertManga("Apple", categoryA)
+                val lastOfA = insertManga("Zebra", categoryA)
+                insertManga("Mango", categoryA)
+                val onlyOfB = insertManga("Kiwi", categoryB)
+                mapOf(categoryA to lastOfA, categoryB to onlyOfB) to listOf(categoryA, categoryB, empty)
             }
 
         val statements = mutableListOf<String>()
-        val firstBySource =
+        val lastByCategory =
             transaction {
                 addLogger(
                     object : SqlLogger {
@@ -60,50 +97,56 @@ class FirstRowPerPartitionTest : ApplicationTest() {
                         }
                     },
                 )
-                MangaTable
-                    .firstRowPerPartition(
-                        partitionBy = MangaTable.sourceReference,
-                        idColumn = MangaTable.id,
-                        orderBy = listOf(MangaTable.title to SortOrder.DESC),
-                        where = MangaTable.sourceReference inList sources,
-                    ).associate { it[MangaTable.sourceReference] to it[MangaTable.id].value }
+                lastMangaPerCategory(categories)
             }
 
-        assertEquals(expected, firstBySource)
+        assertEquals(expected, lastByCategory)
         assertEquals(1, statements.size, "expected a single query, ran $statements")
     }
 
     @Test
     fun `ties go to the lowest id`() {
-        val firstId =
+        val (categoryId, firstId) =
             transaction {
-                val first = insertManga("Same", SOURCE_A)
-                insertManga("Same", SOURCE_A)
-                first
+                val categoryId = insertCategory("A")
+                val first = insertManga("Same", categoryId)
+                insertManga("Same", categoryId)
+                categoryId to first
             }
 
-        val firstBySource =
+        assertEquals(mapOf(categoryId to firstId), transaction { lastMangaPerCategory(listOf(categoryId)) })
+    }
+
+    @Test
+    fun `filters the rows of each partition`() {
+        val (categoryId, kiwi) =
             transaction {
-                MangaTable
+                val categoryId = insertCategory("A")
+                insertManga("Zebra", categoryId)
+                categoryId to insertManga("Kiwi", categoryId)
+            }
+
+        val lastWithoutZebra =
+            transaction {
+                CategoryMangaTable
+                    .innerJoin(MangaTable)
                     .firstRowPerPartition(
-                        partitionBy = MangaTable.sourceReference,
+                        keys = CategoryTable.select(CategoryTable.id).where { CategoryTable.id eq categoryId },
+                        partitionBy = CategoryMangaTable.category,
                         idColumn = MangaTable.id,
-                        orderBy = listOf(MangaTable.title to SortOrder.ASC),
-                        where = MangaTable.sourceReference eq SOURCE_A,
+                        orderBy = listOf(MangaTable.title to SortOrder.DESC),
+                        where = MangaTable.title neq "Zebra",
                     ).map { it[MangaTable.id].value }
             }
 
-        assertEquals(listOf(firstId), firstBySource)
+        assertEquals(listOf(kiwi), lastWithoutZebra)
     }
 
     @AfterEach
     internal fun tearDown() {
-        clearTables(MangaTable)
-    }
-
-    private companion object {
-        const val SOURCE_A = 4_000_001L
-        const val SOURCE_B = 4_000_002L
-        const val SOURCE_WITHOUT_MANGA = 4_000_003L
+        clearTables(CategoryMangaTable, MangaTable)
+        // other tests rely on each user's default category, so only these go
+        transaction { CategoryTable.deleteWhere { CategoryTable.id inList createdCategories } }
+        createdCategories.clear()
     }
 }

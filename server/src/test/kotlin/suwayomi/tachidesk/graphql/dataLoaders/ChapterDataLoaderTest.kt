@@ -161,6 +161,29 @@ class ChapterDataLoaderTest : ApplicationTest() {
     }
 
     @Test
+    fun `ranking without the user data join finds the same chapters with the user's data`() {
+        val manga1 = createLibraryManga("Manga 1")
+        val manga2 = createLibraryManga("Manga 2")
+        insertChapter(manga1, "Old", sourceOrder = 1, fetchedAt = 100L, read = true, lastReadAt = 5L)
+        insertChapter(manga1, "New", sourceOrder = 2, fetchedAt = 200L, read = true, lastReadAt = 7L)
+        insertChapter(manga2, "Same time, lower order", sourceOrder = 1, fetchedAt = 300L)
+        insertChapter(manga2, "Same time, higher order", sourceOrder = 2, fetchedAt = 300L, userId = null)
+
+        val orderBy = listOf(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
+        val (withJoin, withoutJoin) =
+            transaction {
+                firstChapterPerManga(listOf(manga1, manga2), 1, orderBy) to
+                    firstChapterPerManga(listOf(manga1, manga2), 1, orderBy, rankOnUserData = false)
+            }
+
+        assertEquals(withJoin.mapValues { it.value.id }, withoutJoin.mapValues { it.value.id })
+        assertEquals("New", withoutJoin[manga1]?.name)
+        assertEquals(true, withoutJoin[manga1]?.isRead)
+        assertEquals(7L, withoutJoin[manga1]?.lastReadAt)
+        assertEquals("Same time, higher order", withoutJoin[manga2]?.name)
+    }
+
+    @Test
     fun `returns one chapter per manga ordered by sourceOrder DESC`() {
         val manga1 = createLibraryManga("Manga 1")
         insertChapter(manga1, "Ch 1", sourceOrder = 1)
