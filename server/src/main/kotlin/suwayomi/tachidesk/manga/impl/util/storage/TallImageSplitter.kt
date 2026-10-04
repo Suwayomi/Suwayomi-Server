@@ -103,6 +103,8 @@ object TallImageSplitter {
                     val splitWriter = prepareWriter(reader.getImageTypes(0).next(), reader, originalFile.extension)
 
                     val splitFiles = mutableListOf<File>()
+                    // set once the reader turns out to decode the whole image whatever the region asked
+                    var wholeImage: BufferedImage? = null
                     try {
                         for (index in 0 until partCount) {
                             val topOffset = index * partHeight
@@ -113,13 +115,29 @@ object TallImageSplitter {
                             }
 
                             val splitFile = File(directory, "$fileName.${"%03d".format(index + 1)}.${splitWriter.extension}")
-                            // Decode only this part, like Mihon's BitmapRegionDecoder, so a whole
-                            // long strip never has to fit in memory at once
-                            val readParam =
-                                reader.defaultReadParam.apply {
-                                    sourceRegion = Rectangle(0, topOffset, width, thisPartHeight)
-                                }
-                            val part = reader.read(0, readParam)
+                            val region = Rectangle(0, topOffset, width, thisPartHeight)
+                            val part =
+                                wholeImage?.let { copyRegion(it, region) }
+                                    ?: run {
+                                        // Decode only this part, like Mihon's BitmapRegionDecoder, so a whole
+                                        // long strip never has to fit in memory at once
+                                        val decoded = reader.read(0, reader.defaultReadParam.apply { sourceRegion = region })
+                                        when {
+                                            decoded.width == width && decoded.height == thisPartHeight -> {
+                                                decoded
+                                            }
+
+                                            // usefulness' WEBP reader ignores the region: each part would be the whole page
+                                            decoded.width == width && decoded.height == height -> {
+                                                wholeImage = decoded
+                                                copyRegion(decoded, region)
+                                            }
+
+                                            else -> {
+                                                error("decoded ${decoded.width}x${decoded.height} for part $region of ${width}x$height")
+                                            }
+                                        }
+                                    }
                             val outputImage = if (splitWriter.flattenAlpha) flattenToOpaqueRgb(part) else part
                             writePart(splitWriter, outputImage, splitFile)
                             splitFiles.add(splitFile)
@@ -196,6 +214,20 @@ object TallImageSplitter {
             splitWriter.writer.output = output
             splitWriter.writer.write(null, IIOImage(image, null, null), splitWriter.param)
         }
+    }
+
+    /**
+     * A standalone copy of [region] of [image]: a sub image shares its parent's raster, which not every
+     * writer encodes from its own offset.
+     */
+    private fun copyRegion(
+        image: BufferedImage,
+        region: Rectangle,
+    ): BufferedImage {
+        val colorModel = image.colorModel
+        val raster = colorModel.createCompatibleWritableRaster(region.width, region.height)
+        image.getSubimage(region.x, region.y, region.width, region.height).copyData(raster)
+        return BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied, null)
     }
 
     private fun flattenToOpaqueRgb(image: BufferedImage): BufferedImage {
