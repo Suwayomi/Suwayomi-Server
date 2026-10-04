@@ -395,8 +395,9 @@ class M0066_AddUsers : Migration() {
             """
 
         // The backfill reads from CHAPTER/MANGA columns that are dropped later in this migration
-        // (Step 6). It only makes sense on the first run, so it is guarded on the source columns
-        // still existing; a re-run of the migration skips it.
+        // (Step 6). It is guarded two ways so a re-run is a no-op: on the source columns still
+        // existing (a completed run drops them), and on the target rows not already present (a run
+        // that failed after the backfill but before the column drop leaves them behind).
         private val chapterBackfillSql: String =
             if (columnExists("CHAPTER", "LAST_READ_AT")) {
                 """
@@ -404,14 +405,17 @@ class M0066_AddUsers : Migration() {
                 SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOADED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS CHAPTER, 1 AS USER_ID
                 FROM $chapterTable
                 WHERE
-                    READ <> FALSE
-                    OR BOOKMARK <> FALSE
-                    OR LAST_PAGE_READ <> 0
-                    OR LAST_READ_AT <> 0
-                    OR KOREADER_HASH IS NOT NULL
-                    OR IS_DOWNLOADED <> FALSE
-                    OR VERSION <> 0
-                    OR IS_SYNCING <> FALSE;
+                    (
+                        READ <> FALSE
+                        OR BOOKMARK <> FALSE
+                        OR LAST_PAGE_READ <> 0
+                        OR LAST_READ_AT <> 0
+                        OR KOREADER_HASH IS NOT NULL
+                        OR IS_DOWNLOADED <> FALSE
+                        OR VERSION <> 0
+                        OR IS_SYNCING <> FALSE
+                    )
+                    AND NOT EXISTS (SELECT 1 FROM $chapterUserTable cu WHERE cu.CHAPTER = $chapterTable.ID AND cu.USER_ID = 1);
                 """
             } else {
                 ""
@@ -424,13 +428,16 @@ class M0066_AddUsers : Migration() {
                 SELECT IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, ID AS MANGA, 1 AS USER_ID
                 FROM $mangaTable
                 WHERE
-                    IN_LIBRARY <> FALSE
-                    OR IN_LIBRARY_AT <> 0
-                    OR VERSION <> 0
-                    OR IS_SYNCING <> FALSE
-                    OR VIEWER <> 0
-                    OR VIEWER_FLAGS IS NOT NULL
-                    OR CHAPTER_FLAGS <> 0;
+                    (
+                        IN_LIBRARY <> FALSE
+                        OR IN_LIBRARY_AT <> 0
+                        OR VERSION <> 0
+                        OR IS_SYNCING <> FALSE
+                        OR VIEWER <> 0
+                        OR VIEWER_FLAGS IS NOT NULL
+                        OR CHAPTER_FLAGS <> 0
+                    )
+                    AND NOT EXISTS (SELECT 1 FROM $mangaUserTable mu WHERE mu.MANGA = $mangaTable.ID AND mu.USER_ID = 1);
                 """
             } else {
                 ""
