@@ -43,12 +43,9 @@ import javax.imageio.ImageIO
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * Downloading a chapter with tall image splitting on gives it more pages than its source, so every
- * page index stored for it has to follow when it switches between the two.
- */
+// A split chapter has more pages than its source: its page indices must follow when it switches
 class SplitPagesDownloadTest : ApplicationTest() {
-    /** Serves nothing: the pages are already cached, so downloading them must not reach the network. */
+    // The pages are already cached, so the download must not reach the network
     private class CachedPagesSource : HttpSource() {
         override val id = SOURCE_ID
         override val name = "Split pages"
@@ -225,7 +222,7 @@ class SplitPagesDownloadTest : ApplicationTest() {
         }
     }
 
-    /** What the downloader does once the download is finished */
+    // What the downloader does once the download is finished
     private fun markDownloaded(chapterId: Int) {
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) { it[isDownloaded] = true }

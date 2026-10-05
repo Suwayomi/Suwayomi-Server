@@ -257,10 +257,7 @@ class TallImageSplitterTest {
         }
     }
 
-    /**
-     * Runs [block] once with each reader of [format] on the classpath preferred: several plugins may
-     * read a format (two read WEBP) and which one ImageIO tries first depends on the classpath order.
-     */
+    // Two plugins read WEBP and ImageIO's pick depends on the classpath order: run with each one first
     private fun forEachReader(
         format: String,
         block: (reader: String) -> Unit,
@@ -292,7 +289,7 @@ class TallImageSplitterTest {
         }
     }
 
-    /** Smooth gradients plus noise, so that the encoding quality shows in the file size. */
+    // Gradients plus noise, so the encoding quality shows in the file size
     private fun detailedImage(
         width: Int,
         height: Int,
