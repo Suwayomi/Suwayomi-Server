@@ -37,8 +37,14 @@ import xyz.nulldev.androidcompat.androidCompatModule
 import xyz.nulldev.ts.config.CONFIG_PREFIX
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.configManagerModule
-import java.io.File
 import java.util.Locale
+import kotlin.io.path.Path
+import kotlin.io.path.absolutePathString
+import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.div
+import kotlin.io.path.exists
+import kotlin.io.path.outputStream
 
 open class ApplicationTest {
     companion object {
@@ -46,11 +52,10 @@ open class ApplicationTest {
         @JvmStatic
         fun beforeAll() {
             if (!initializedTheApp) {
-                val dataRoot = File(BASE_PATH).absolutePath
+                val dataRoot = Path(BASE_PATH).absolutePathString()
                 System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
-                // The test data directory outlives a run: start from the reference config like CI does, so that
-                // settings an earlier run wrote to server.conf (setSettings, a settings restore) don't leak in.
-                File(dataRoot, "server.conf").delete()
+                // Delete if previous config to restart from a fresh state
+                (Path(dataRoot) / "server.conf").deleteIfExists()
 
                 testingSetup()
 
@@ -78,14 +83,14 @@ open class ApplicationTest {
 
             // make dirs we need
             listOf(
-                applicationDirs.dataRoot,
-                applicationDirs.extensionsRoot,
-                applicationDirs.extensionsRoot + "/icon",
-                applicationDirs.tempThumbnailCacheRoot,
-                applicationDirs.downloadsRoot,
-                applicationDirs.localMangaRoot,
+                Path(applicationDirs.dataRoot),
+                Path(applicationDirs.extensionsRoot),
+                Path(applicationDirs.extensionsRoot) / "icon",
+                Path(applicationDirs.tempThumbnailCacheRoot),
+                Path(applicationDirs.downloadsRoot),
+                Path(applicationDirs.localMangaRoot),
             ).forEach {
-                File(it).mkdirs()
+                it.createDirectories()
             }
 
             // initialize Koin modules
@@ -113,7 +118,7 @@ open class ApplicationTest {
 
             // create conf file if doesn't exist
             try {
-                val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
+                val dataConfFile = Path(applicationDirs.dataRoot) / "server.conf"
                 if (!dataConfFile.exists()) {
                     JavalinSetup::class.java.getResourceAsStream("/server-reference.conf").use { input ->
                         dataConfFile.outputStream().use { output ->
@@ -127,7 +132,7 @@ open class ApplicationTest {
 
             // copy local source icon
             try {
-                val localSourceIconFile = File("${applicationDirs.extensionsRoot}/icon/localSource.png")
+                val localSourceIconFile = Path(applicationDirs.extensionsRoot) / "icon" / "localSource.png"
                 if (!localSourceIconFile.exists()) {
                     JavalinSetup::class.java.getResourceAsStream("/icon/localSource.png").use { input ->
                         localSourceIconFile.outputStream().use { output ->

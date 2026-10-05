@@ -275,8 +275,7 @@ class CategoryDefaultTest : ApplicationTest() {
 
             mockkObject(SyncYomiSyncService)
             try {
-                // needsFullSync probes the SyncYomi host over HTTP once the sync schema preference is set, which a
-                // previous run leaves behind for the same user id: keep the sync off the network whatever the state
+                // Keep the sync off the network, a previous run may leave the sync schema preference set
                 coEvery { SyncYomiSyncService.needsFullSync(any()) } returns true
                 // remote backup: the manga is up-to-date, but no categories at all
                 coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } returns

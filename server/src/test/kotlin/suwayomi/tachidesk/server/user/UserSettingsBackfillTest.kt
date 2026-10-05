@@ -133,8 +133,7 @@ class UserSettingsBackfillTest : ApplicationTest() {
 
     @Test
     fun saveSkipsUnsetSettings() {
-        // The global config is shared by every test of the run, and any of them may set any setting: save from
-        // a config where a single setting is set, so the others are known to be unset.
+        // Use custom config to not interfere with other tests
         val config = ConfigFactory.parseString("server.opdsMarkAsReadOnDownload = true")
 
         saveUserSettingsBackfillFile(applicationDirs, config)
