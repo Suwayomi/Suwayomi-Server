@@ -9,9 +9,7 @@ package suwayomi.tachidesk.server.database.migration
 
 import de.neonew.exposed.migrations.helpers.SQLMigration
 
-// The updates list sorts every library chapter by fetched_at DESC, source_order DESC, id ASC.
-// Without an index in that order the database reads and sorts the whole chapter table for
-// each page and for each pagination bound; with it, it walks the index and stops at the limit.
+// Lets the updates list walk the index instead of sorting every chapter
 @Suppress("ClassName", "unused")
 class M0067_AddChapterFetchedAtIndex : SQLMigration() {
     // language=sql

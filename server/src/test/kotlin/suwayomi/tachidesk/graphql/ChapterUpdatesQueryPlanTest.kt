@@ -36,8 +36,7 @@ class ChapterUpdatesQueryPlanTest : ApplicationTest() {
         clearTables(ChapterUserTable, ChapterTable, MangaUserTable, MangaTable)
     }
 
-    // Same shape as ChapterQuery.chapters for the updates list: library chapters ordered by
-    // FETCHED_AT DESC, SOURCE_ORDER DESC, then the ID tiebreaker.
+    // Same query as the updates list in ChapterQuery.chapters
     private fun updatesQuery(
         reverse: Boolean,
         userId: Int = 1,
@@ -64,7 +63,7 @@ class ChapterUpdatesQueryPlanTest : ApplicationTest() {
 
     @Test
     fun updatesPageAndBoundsWalkTheFetchedAtIndex() {
-        // The plan text is H2's; Postgres picks a sequential scan on a table this small anyway.
+        // The plan text is H2 specific
         Assumptions.assumeTrue(serverConfig.databaseType.value == DatabaseType.H2)
 
         repeat(5) { createChapters(createLibraryManga("Manga $it"), 20, read = false) }
