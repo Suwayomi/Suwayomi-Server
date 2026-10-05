@@ -40,11 +40,7 @@ abstract class Edge {
     abstract val node: Node
 }
 
-/**
- * Resolves a list field from [nodesLoader], which loads every node of the list, unless the caller
- * selected nothing but its `totalCount`, as a list showing counts does: then [totalLoader] counts
- * the nodes in SQL instead, and [withTotal] builds the list around that total.
- */
+// Counts the nodes with totalLoader instead of loading them when only totalCount is selected
 fun <K : Any, N : NodeList> DataFetchingEnvironment.getNodeListFromDataLoaders(
     nodesLoader: String,
     totalLoader: String,

@@ -79,7 +79,6 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
         }
 }
 
-/** The category totals of [CategoriesForMangaDataLoader], counted in SQL. */
 class CategoryCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "CategoryCountForMangaDataLoader"
 

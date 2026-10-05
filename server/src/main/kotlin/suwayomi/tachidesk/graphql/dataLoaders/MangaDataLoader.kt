@@ -100,7 +100,6 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
         }
 }
 
-/** The manga totals of [MangaForCategoryDataLoader], counted in SQL. */
 class MangaCountForCategoryDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "MangaCountForCategoryDataLoader"
 
@@ -163,7 +162,6 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
         }
 }
 
-/** The manga totals of [MangaForSourceDataLoader], counted in SQL. */
 class MangaCountForSourceDataLoader : KotlinDataLoader<Long, Int> {
     override val dataLoaderName = "MangaCountForSourceDataLoader"
 

@@ -23,9 +23,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** A list field counts its nodes in SQL when `totalCount` is all the caller selected, and loads them otherwise. */
 class NodeListTotalQueryTest : GraphQLTest() {
-    /** The chapters selection's result, and the SQL statements it took. */
     private fun queryChapters(selection: String): Pair<Map<*, *>, List<String>> {
         val mangaId = createLibraryManga("Manga")
         createChapters(mangaId, 3, read = false)

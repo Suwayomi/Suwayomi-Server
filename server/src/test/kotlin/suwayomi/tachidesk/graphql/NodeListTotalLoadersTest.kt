@@ -53,10 +53,7 @@ import suwayomi.tachidesk.test.ensureDefaultCategory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Each count DataLoader has to give the same totals as the DataLoader loading the nodes of the same
- * list field, which it stands in for when only `totalCount` is selected.
- */
+// Each count DataLoader must give the same totals as the DataLoader loading the nodes
 class NodeListTotalLoadersTest : GraphQLTest() {
     private var otherUserId = 0
     private lateinit var mangaIds: List<Int>

@@ -82,7 +82,6 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
         }
 }
 
-/** The chapter totals of [ChaptersForMangaDataLoader], counted in SQL. */
 class ChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "ChapterCountForMangaDataLoader"
 

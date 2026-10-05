@@ -114,7 +114,6 @@ class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeLi
         }
 }
 
-/** The track record totals of [TrackRecordsForMangaIdDataLoader], counted in SQL. */
 class TrackRecordCountForMangaIdDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "TrackRecordCountForMangaIdDataLoader"
 
@@ -206,7 +205,6 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
         }
 }
 
-/** The track record totals of [TrackRecordsForTrackerIdDataLoader], counted in SQL. */
 class TrackRecordCountForTrackerIdDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "TrackRecordCountForTrackerIdDataLoader"
 

@@ -58,7 +58,6 @@ class ExtensionsForExtensionStore : KotlinDataLoader<String, ExtensionNodeList> 
         }
 }
 
-/** The extension totals of [ExtensionsForExtensionStore], counted in SQL. */
 class ExtensionCountForExtensionStore : KotlinDataLoader<String, Int> {
     override val dataLoaderName = "ExtensionCountForExtensionStore"
 
