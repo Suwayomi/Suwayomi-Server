@@ -35,12 +35,9 @@ import javax.imageio.ImageIO
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
-/**
- * A page a live read left in the chapter's cache was never post-processed, so downloading the
- * chapter must still run it through the download conversions instead of skipping it.
- */
+// A page cached by a live read must still go through the download conversions
 class LiveReadCachedPageDownloadTest : ApplicationTest() {
-    /** Serves nothing: the page is already cached, so downloading it must not reach the network. */
+    // The page is already cached, so the download must not reach the network
     private class CachedPagesSource : HttpSource() {
         override val id = SOURCE_ID
         override val name = "Cached pages"
@@ -59,12 +56,10 @@ class LiveReadCachedPageDownloadTest : ApplicationTest() {
 
     @Test
     fun aPageAlreadyProcessedBeforeARestartIsNotProcessedAgain() {
-        // the marker is on disk, so a download resumed after a restart still knows the page is done
-        // and doesn't run it through the conversions (e.g. an HTTP upscaler) a second time
+        // The marker is on disk, so a download resumed after a restart doesn't convert the page again
         assertEquals(listOf("001.png"), downloadWithCachedPage(alreadyProcessed = true))
     }
 
-    /** Downloads a chapter whose only page is already cached as a PNG, with a PNG to JPEG conversion, and returns its pages */
     private fun downloadWithCachedPage(alreadyProcessed: Boolean): List<String> {
         GetSource.registerSource(SOURCE_ID to CachedPagesSource())
         serverConfig.downloadConversions.value = mapOf("image/png" to DownloadConversion(target = "image/jpeg"))
