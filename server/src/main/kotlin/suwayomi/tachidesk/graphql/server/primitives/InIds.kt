@@ -14,14 +14,8 @@ import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.QueryBuilder
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 
-/**
- * `column IN (1, 2, 3)` with the ids written into the SQL instead of bound one by one.
- *
- * A DataLoader batch can hold hundreds of ids. With `inList`, H2 compares every row the index
- * returns against each bound parameter, so the cost grows with rows × ids: a library of 360
- * series spent most of each chapter loader in that check. With literal values H2 checks a
- * constant set instead. The values are numbers, so writing them into the SQL is safe.
- */
+// Writes the ids into the SQL: H2 checks every row against each bound parameter, but against a literal list as a set.
+// Safe since the ids are numbers
 private class InIdsOp(
     private val column: Expression<*>,
     private val ids: List<Number>,
