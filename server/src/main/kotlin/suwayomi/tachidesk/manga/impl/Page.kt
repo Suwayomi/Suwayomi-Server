@@ -197,9 +197,7 @@ object Page {
                 progressFlow = progressFlow,
             )
 
-        // A separate, sequential lock phase from the one getPageImage()/getImageResponse() already took for the
-        // fetch above (Mutex isn't reentrant) - guards post-processing against a concurrent live read of this
-        // same page observing a half-written file.
+        // Lock again, the fetch above released it: a live read must not see a half-converted page
         val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
         PageCacheCoordinator.withPageLock(cacheSaveDir, fileName) {
             val conversions = serverConfig.downloadConversions.value
@@ -253,9 +251,7 @@ object Page {
                 }
             }
 
-            // marks that download-time post-processing has been attempted for this page, so a concurrent or
-            // later download run doesn't skip it just because the raw bytes happen to already be cached
-            // (see https://github.com/Suwayomi/Suwayomi-Server/issues/2193 and #2289)
+            // Even if the conversion failed, so the page isn't processed again
             PageCacheCoordinator.markProcessed(cacheSaveDir, fileName)
         }
     }

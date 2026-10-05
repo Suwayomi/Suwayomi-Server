@@ -142,10 +142,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
             val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
 
-            // A page cached by a concurrent/prior live read has raw bytes but was never run through
-            // Page.getPageImageDownload()'s post-processing (format conversion), so it must not be skipped
-            // just because a file exists - only a page from a previously *finished* download (final folder) or one
-            // already marked processed in this cache is truly done. See #2193 / #2289.
+            // A page cached by a live read isn't converted yet, so only skip a cached page once processed
             val pageFullyProcessed =
                 pageExistsInFinalDownloadFolder ||
                     (pageExistsInCacheDownloadFolder && PageCacheCoordinator.isProcessed(cacheChapterDir, fileName))
