@@ -667,8 +667,7 @@ class ChapterDataLoaderTest : ApplicationTest() {
             }
         }
 
-        // With the chapters leading the FROM (their user-data left join pins them there), H2
-        // re-scanned the ranking for every chapter: ~8s here, hours on a real library.
+        // With the chapters leading the FROM, H2 re-scans the ranking for every chapter
         val result =
             assertTimeout<Map<Int, ChapterType>>(Duration.ofSeconds(2)) {
                 transaction {

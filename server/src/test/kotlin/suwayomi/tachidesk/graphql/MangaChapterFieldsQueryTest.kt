@@ -22,12 +22,8 @@ import suwayomi.tachidesk.test.createLibraryManga
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * A chapter only gets a [ChapterUserTable] row once the user acts on it, so
- * freshly fetched chapters have none and read as NULL through the left join.
- */
+// Freshly fetched chapters have no ChapterUserTable row
 class MangaChapterFieldsQueryTest : GraphQLTest() {
-    /** Chapters as a source fetch stores them: without any user row. */
     private fun createFetchedChapters(
         mangaId: Int,
         amount: Int,

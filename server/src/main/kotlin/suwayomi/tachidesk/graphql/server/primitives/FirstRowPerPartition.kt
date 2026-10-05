@@ -23,25 +23,9 @@ import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.select
 
 /**
- * For each key of [keys], the first row of this column set whose [partitionBy] is that key, by
- * [orderBy] among the rows matching [where], ties going to the lowest [idColumn]: "the last read
- * chapter of each manga", "the alphabetically last manga of each category", ...
- *
- * [keys] selects one column, the key, from a table that isn't part of this column set (the manga
- * table for chapters per manga): each key's first row is a correlated `ORDER BY ... LIMIT 1`
- * subquery on it. With an index that starts with [partitionBy] and follows [orderBy], such as
- * `chapter (manga, fetched_at DESC, source_order DESC)`, the database reads the first entry of
- * each key and stops, instead of ranking every row of every key. Without such an index it still
- * only sorts one key's rows at a time.
- *
- * The first rows are found in [rankedOn], this column set by default. When [orderBy] and [where]
- * only read some of its tables, rank on those: a chapter's left join to its user data keeps H2
- * from reading the chapter index in order, about 4 times slower.
- *
- * It takes a single query, and the rows hold every column of this column set, a join included.
- * The first ids lead the `FROM` and this column set is joined to them, never the other way round:
- * H2 can't index a derived table, so with this column set first (a left join pins it there) it
- * would scan the whole table and re-scan the first ids for each row.
+ * For each key of [keys], the first row whose [partitionBy] is that key by [orderBy], ties going to the lowest
+ * [idColumn]. Each key is an `ORDER BY ... LIMIT 1` subquery, so an index on [partitionBy] then [orderBy] reads a
+ * single entry per key. Rank on fewer tables with [rankedOn] when possible: a left join keeps H2 off the index.
  */
 fun <ID : Any> ColumnSet.firstRowPerPartition(
     keys: Query,
@@ -61,6 +45,7 @@ fun <ID : Any> ColumnSet.firstRowPerPartition(
             .limit(1)
     val firstId = wrapAsExpression<EntityID<ID>>(firstOfKey).alias("first_id")
     val firstRows = keys.copy().adjustSelect { select(firstId) }.alias("first_rows")
+    // The first ids must lead the FROM: H2 can't index a derived table
     return firstRows
         .join(this, JoinType.INNER, onColumn = firstRows[firstId], otherColumn = idColumn)
         .select(columns)

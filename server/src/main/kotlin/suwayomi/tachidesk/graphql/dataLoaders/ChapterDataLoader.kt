@@ -318,13 +318,7 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
         }
 }
 
-/**
- * For each manga in [mangaIds], its first chapter by [orderBy] among those matching [filter], with
- * [userId]'s chapter data. Shared by the chapter-per-manga data loaders below.
- *
- * [rankOnUserData] is false when [orderBy] and [filter] only read [ChapterTable]: the first chapters
- * are then found without the user data join, which lets the database read the chapter index in order.
- */
+// Set rankOnUserData to false when orderBy and filter only read ChapterTable, so the chapter index is read in order
 internal fun firstChapterPerManga(
     mangaIds: List<Int>,
     userId: Int,

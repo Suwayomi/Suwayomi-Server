@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
 
 ### Changed
-- (**GraphQL**) Find the chapter of each chapter-per-manga data loader in SQL, through the per-manga chapter indexes, instead of grouping in memory
+- (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 
 ### Fixed
 - 
