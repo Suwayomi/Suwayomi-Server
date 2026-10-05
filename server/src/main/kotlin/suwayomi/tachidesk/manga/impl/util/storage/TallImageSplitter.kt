@@ -18,28 +18,21 @@ import javax.imageio.ImageTypeSpecifier
 import javax.imageio.ImageWriteParam
 import javax.imageio.ImageWriter
 
-/**
- * Splits overly tall "long strip" page images into several smaller images, similar to Mihon's
- * "split tall images" reader/downloader feature (see eu.kanade.tachiyomi's ImageUtil.splitTallImage).
- */
+// Splits tall long strip pages like Mihon's ImageUtil.splitTallImage
 object TallImageSplitter {
     private val logger = KotlinLogging.logger {}
 
-    /** Matches Mihon's `Bitmap.compress(JPEG, 100, ...)`, applied to every lossy output format */
+    // Like Mihon's Bitmap.compress(JPEG, 100), for every lossy format
     private const val FULL_QUALITY = 1.0f
 
-    /**
-     * There's no device screen to size against on the server (Mihon targets `2 * screenHeight`),
-     * so instead the target height is scaled off the image's own width: the height a very tall
-     * 21:9 screen of that width would have, doubled just like Mihon's "2 screens" heuristic.
-     */
+    // No screen on the server (Mihon uses 2 * screenHeight): use 2 screens of a 21:9 screen as wide as the image
     internal fun computeOptimalHeight(imageWidth: Int): Int {
         require(imageWidth > 0) { "imageWidth must be positive" }
         val singleScreenHeight = imageWidth * 21 / 9
         return singleScreenHeight * 2
     }
 
-    /** -1 so it doesn't try to split when imageHeight == optimalImageHeight */
+    // -1 so an image exactly optimalImageHeight tall isn't split
     internal fun calculatePartCount(
         imageHeight: Int,
         optimalImageHeight: Int,
@@ -49,10 +42,7 @@ object TallImageSplitter {
         return (imageHeight - 1) / optimalImageHeight + 1
     }
 
-    /**
-     * Mihon's check, kept verbatim. With [computeOptimalHeight]'s target (about 4.7 times the width)
-     * the part count is what decides, the 3:1 ratio only matters for a target sized like Mihon's.
-     */
+    // Mihon's check, kept verbatim
     internal fun shouldSplit(
         imageWidth: Int,
         imageHeight: Int,
@@ -62,19 +52,8 @@ object TallImageSplitter {
         return imageHeight > imageWidth * 3 && calculatePartCount(imageHeight, optimalImageHeight) > 1
     }
 
-    /**
-     * Looks for a page file named `fileName.*` inside [directory] and, if it's a tall enough
-     * still image, replaces it with several `fileName.NNN` files stacked in reading order.
-     *
-     * Each part is written back in the exact same format as the source image whenever a writer
-     * for it is available on the classpath (PNG stays PNG, WEBP stays WEBP, etc.). Lossy formats
-     * are written at full quality, like Mihon's JPEG at 100% - there's no reliable way to recover
-     * an arbitrary source image's original quality setting. Only when no matching writer exists
-     * does this fall back to JPEG.
-     *
-     * No-ops (and logs a warning) if anything goes wrong, leaving the original file untouched -
-     * a failed split must never cause a page to go missing.
-     */
+    // Replaces a tall page with `<fileName>.NNN` parts in its own format, or JPEG without a writer for it.
+    // A failed split leaves the page untouched
     fun splitIfNeeded(
         directory: File,
         fileName: String,
@@ -174,8 +153,7 @@ object TallImageSplitter {
         val nativeWriters = ImageIO.getImageWriters(typeSpecifier, reader.formatName)
         if (nativeWriters.hasNext()) {
             val writer = nativeWriters.next()
-            // The source extension was picked by the server from the page's mime type; the reader's
-            // first suffix depends on which plugin read the file (TwelveMonkeys' WEBP reader lists "wbp")
+            // Keep the server's extension, the reader's first suffix depends on the plugin (TwelveMonkeys lists "wbp")
             return SplitWriter(writer, writer.fullQualityWriteParam(), sourceExtension.lowercase(), flattenAlpha = false)
         }
 
@@ -183,11 +161,7 @@ object TallImageSplitter {
         return SplitWriter(jpegWriter, jpegWriter.fullQualityWriteParam(), "jpg", flattenAlpha = true)
     }
 
-    /**
-     * Lossy writers default to a reduced quality (0.75 for both JPEG and WEBP), which would degrade
-     * every part, so they're pushed to full quality like Mihon. Lossless writers keep their
-     * defaults: for them the quality only trades file size for speed (e.g. PNG's deflate level).
-     */
+    // Lossy writers default to 0.75 quality, so use full quality like Mihon. Lossless ones keep their defaults
     private fun ImageWriter.fullQualityWriteParam(): ImageWriteParam {
         val param = defaultWriteParam
         if (!param.canWriteCompressed()) return param
@@ -216,10 +190,7 @@ object TallImageSplitter {
         }
     }
 
-    /**
-     * A standalone copy of [region] of [image]: a sub image shares its parent's raster, which not every
-     * writer encodes from its own offset.
-     */
+    // A sub image shares its parent's raster, which not every writer encodes from its own offset
     private fun copyRegion(
         image: BufferedImage,
         region: Rectangle,

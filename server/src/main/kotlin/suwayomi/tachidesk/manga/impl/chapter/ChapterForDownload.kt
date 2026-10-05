@@ -86,10 +86,6 @@ private fun clampLastPageReads(
         }
 }
 
-/**
- * Switches a chapter whose download has split pages from its source pages to its downloaded pages:
- * the page count and every reading position now refer to the downloaded pages.
- */
 fun useDownloadedPageIndices(
     chapterId: Int,
     layout: SplitPageLayout,
@@ -98,11 +94,6 @@ fun useDownloadedPageIndices(
     remapPageIndices(chapterId, layout.downloadedPageCount, layout::toDownloadedIndex)
 }
 
-/**
- * Switches a chapter whose download has split pages back from its downloaded pages to its source
- * pages, before the download is deleted: the page count and every reading position now refer to the
- * source pages.
- */
 fun useSourcePageIndices(
     chapterId: Int,
     layout: SplitPageLayout,
