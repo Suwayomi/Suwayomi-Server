@@ -299,7 +299,7 @@ object JavalinSetup {
         }
         exception(IOException::class.java) { e, ctx ->
             if (e.isHostUnreachable()) {
-                // a source's host being down is not a server fault, and its stack trace says nothing
+                // A source host being down isn't a server fault
                 logger.warn { "Source host unreachable while handling ${ctx.path()}: ${e.message}" }
                 ctx.sourceFailed(e.message)
                 return@exception
@@ -311,8 +311,7 @@ object JavalinSetup {
         }
 
         exception(HttpException::class.java) { e, ctx ->
-            // a source answering with an error (e.g. a manga it removed) is not a server fault, and the
-            // stack trace only shows the extension's obfuscated code
+            // A source error isn't a server fault, and its stack trace only shows obfuscated extension code
             logger.warn { "Source answered HTTP ${e.code} while handling ${ctx.path()}" }
             ctx.sourceFailed(e.message)
         }
@@ -360,13 +359,7 @@ object JavalinSetup {
         data object TachideskBasic : Attribute<Boolean>("basicAuthValid")
     }
 
-    /**
-     * Answers that the source this request depends on failed, while the server itself is fine.
-     *
-     * 424 Failed Dependency rather than 502 Bad Gateway: clients and reverse proxies read 502, 503
-     * and 504 as the server being unreachable through its proxy, and would pause or retry everything
-     * instead of failing this one request.
-     */
+    // 424 rather than 502: clients and proxies read 502 to 504 as the server being down
     private fun Context.sourceFailed(message: String?) {
         status(HttpStatus.FAILED_DEPENDENCY)
         result(message ?: "Source request failed")

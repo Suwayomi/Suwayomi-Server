@@ -44,8 +44,6 @@ class JavalinExceptionHandlersTest {
 
     @Test
     fun aSourceAnsweringWithAnErrorIsAFailedDependency() {
-        // not a 500: the source answered, the server did nothing wrong. Not a 502 either, which
-        // clients read as the server being unreachable through its proxy
         assertEquals(424 to "HTTP error 404", get("/source-error"))
     }
 

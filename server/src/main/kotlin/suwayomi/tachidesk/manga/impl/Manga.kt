@@ -430,8 +430,7 @@ object Manga {
 
             fetchHttpSourceMangaThumbnail(source, mangaEntry, refreshUrl = true)
         } catch (e: IOException) {
-            // the source may have moved its images to another CDN, leaving the stored URL
-            // pointing at a host that no longer resolves
+            // The source may have moved its images to another CDN
             if (refreshUrl || !e.isHostUnreachable()) {
                 throw e
             }

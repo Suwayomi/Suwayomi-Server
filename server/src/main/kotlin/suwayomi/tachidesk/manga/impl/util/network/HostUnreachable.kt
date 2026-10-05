@@ -11,12 +11,7 @@ import java.net.ConnectException
 import java.net.NoRouteToHostException
 import java.net.UnknownHostException
 
-/**
- * Whether this failure, or one of its causes, is a remote host that could not be reached at all
- * (unknown name, refused or unroutable connection), as opposed to one that answered with an error.
- *
- * Causes are walked because [okhttp3.Call] awaits wrap the network error in a plain IOException.
- */
+// As opposed to a host that answered with an error. Walks the causes: Call.await wraps it in an IOException
 fun Throwable.isHostUnreachable(): Boolean =
     generateSequence(this) { it.cause }
         .take(MAX_CAUSE_DEPTH)
