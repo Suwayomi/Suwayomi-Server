@@ -595,11 +595,7 @@ object BackupMangaHandler {
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
 
-    /*
-     * Backups and syncs exchange reading positions as source pages, the pages every device and source
-     * sees: the split pages of a downloaded chapter only exist in this server's download.
-     */
-
+    // Backups exchange source pages: split pages only exist in this server's download
     private fun ResultRow.lastPageReadAsSourcePage(mangaId: Int): Int {
         val lastPageRead = getOrNull(ChapterUserTable.lastPageRead) ?: 0
         if (lastPageRead <= 0 || !this[ChapterTable.isDownloaded]) return lastPageRead

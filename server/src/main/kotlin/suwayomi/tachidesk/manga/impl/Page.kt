@@ -254,21 +254,15 @@ object Page {
                 }
             }
 
-            splitTallImageIfNeeded(downloadCacheFolder, fileName)
+            if (serverConfig.splitTallImages.value) {
+                // Decoding and encoding every part of a long strip is slow, blocking work
+                withContext(Dispatchers.IO) {
+                    TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
+                }
+            }
 
             // Even if the conversion failed, so the page isn't processed again
             PageCacheCoordinator.markProcessed(cacheSaveDir, fileName)
-        }
-    }
-
-    private suspend fun splitTallImageIfNeeded(
-        downloadCacheFolder: File,
-        fileName: String,
-    ) {
-        if (!serverConfig.splitTallImages.value) return
-        // decoding and encoding every part of a long strip is slow, blocking work
-        withContext(Dispatchers.IO) {
-            TallImageSplitter.splitIfNeeded(downloadCacheFolder, fileName)
         }
     }
 

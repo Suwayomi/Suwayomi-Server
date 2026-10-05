@@ -38,7 +38,6 @@ object ImageResponse {
         return null
     }
 
-    /** Whether the page [fileName] was split into several parts by [TallImageSplitter] */
     fun hasSplitParts(
         directoryPath: String,
         fileName: String,
@@ -80,8 +79,7 @@ object ImageResponse {
                 return@withPageLock getCachedImageResponse(cachedFile, filePath)
             }
 
-            // The parts are the download's copy of this page: caching the whole page next to them would
-            // download it twice, so it's served without being cached until the download is finished
+            // Serve without caching: the download's split parts already hold this page
             val isSplitByDownload = cachedFile == null && hasSplitParts(saveDir, fileName)
 
             val response = fetcher()
