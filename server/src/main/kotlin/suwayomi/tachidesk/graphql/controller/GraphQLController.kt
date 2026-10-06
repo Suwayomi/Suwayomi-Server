@@ -21,6 +21,11 @@ object GraphQLController {
 
     /** execute graphql query */
     fun execute(ctx: Context) {
+        if (ctx.contentType() != "application/json") {
+            ctx.status(400)
+            ctx.result("Invalid mime type")
+            return
+        }
         ctx.future {
             future {
                 server.execute(ctx)
