@@ -21,7 +21,11 @@ object GraphQLController {
 
     /** execute graphql query */
     fun execute(ctx: Context) {
-        if (ctx.contentType() != "application/json") {
+        val contentType = ctx.contentType()
+        val isFormContentType =
+            contentType?.contains("application/x-www-form-urlencoded") == true ||
+                contentType?.contains("multipart/form-data") == true
+        if (ctx.contentType()?.contains("application/json") != true && !isFormContentType) {
             ctx.status(400)
             ctx.result("Invalid mime type")
             return
