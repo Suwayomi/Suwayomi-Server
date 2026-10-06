@@ -277,6 +277,22 @@ object JavalinSetup {
             ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
         }
 
+        wsBeforeUpgrade { ctx ->
+            val authMode = serverConfig.authMode.value
+
+            fun credentialsValid(): Boolean {
+                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
+                val (username, password) = basicAuthCredentials
+                return username == serverConfig.authUsername.value &&
+                    password == serverConfig.authPassword.value
+            }
+
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+                ctx.header("WWW-Authenticate", "Basic")
+                throw UnauthorizedResponse()
+            }
+        }
+
         wsBefore {
             it.onConnect { ctx ->
                 ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromWsContext(ctx) })
