@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
 - (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
+- (**Chapter**) Add user setting to mark a chapter as read in case a chapter with the same number has already been read, e.g. the same chapter from a different scanlator
 
 ### Changed
 - (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection

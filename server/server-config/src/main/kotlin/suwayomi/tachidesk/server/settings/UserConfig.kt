@@ -336,6 +336,13 @@ class UserConfig {
         group = SettingGroup.SYNCYOMI,
         defaultValue = true,
     )
+
+    val markDuplicateReadChaptersAsRead: UserSetting<Boolean> = userSetting(
+        key = "markDuplicateReadChaptersAsRead",
+        protoNumber = 32,
+        group = SettingGroup.LIBRARY_UPDATES,
+        defaultValue = false,
+    )
 }
 
 val userConfig: UserConfig by lazy { UserConfig() }
