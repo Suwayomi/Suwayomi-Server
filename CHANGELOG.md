@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**API**) Add User Accounts
+- (**History/API**) Add `removeHistory` and `clearHistory` mutations to remove reading history without changing read state
 
 ### Changed
 - 

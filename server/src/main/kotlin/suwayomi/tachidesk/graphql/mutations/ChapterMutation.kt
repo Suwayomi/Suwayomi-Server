@@ -10,7 +10,9 @@ import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
@@ -18,6 +20,7 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
@@ -175,6 +178,84 @@ class ChapterMutation {
             clientMutationId = clientMutationId,
             chapters = chapters,
         )
+    }
+
+    data class RemoveHistoryInput(
+        val clientMutationId: String? = null,
+        val chapterIds: List<Int>? = null,
+        val mangaIds: List<Int>? = null,
+    )
+
+    data class RemoveHistoryPayload(
+        val clientMutationId: String?,
+        val chapters: List<ChapterType>,
+    )
+
+    @RequireAuth
+    fun removeHistory(
+        @GraphQLIgnore
+        userId: Int,
+        input: RemoveHistoryInput,
+    ): RemoveHistoryPayload? {
+        val (clientMutationId, chapterIds, mangaIds) = input
+
+        val chapters =
+            transaction {
+                val ids =
+                    ChapterUserTable
+                        .select(ChapterUserTable.chapter)
+                        .where {
+                            (ChapterUserTable.user eq userId) and
+                                (ChapterUserTable.lastReadAt greater 0L) and
+                                (
+                                    (ChapterUserTable.chapter inList chapterIds.orEmpty()) or
+                                        (
+                                            ChapterUserTable.chapter inSubQuery
+                                                ChapterTable
+                                                    .select(ChapterTable.id)
+                                                    .where { ChapterTable.manga inList mangaIds.orEmpty() }
+                                        )
+                                )
+                        }.map { it[ChapterUserTable.chapter].value }
+
+                ChapterUserTable.update({ (ChapterUserTable.user eq userId) and (ChapterUserTable.chapter inList ids) }) {
+                    it[ChapterUserTable.lastReadAt] = 0
+                }
+
+                ChapterTable
+                    .getWithUserData(userId)
+                    .selectAll()
+                    .where { ChapterTable.id inList ids }
+                    .map { ChapterType(it) }
+            }
+
+        return RemoveHistoryPayload(
+            clientMutationId = clientMutationId,
+            chapters = chapters,
+        )
+    }
+
+    data class ClearHistoryInput(
+        val clientMutationId: String? = null,
+    )
+
+    data class ClearHistoryPayload(
+        val clientMutationId: String?,
+    )
+
+    @RequireAuth
+    fun clearHistory(
+        @GraphQLIgnore
+        userId: Int,
+        input: ClearHistoryInput,
+    ): ClearHistoryPayload? {
+        transaction {
+            ChapterUserTable.update({ (ChapterUserTable.user eq userId) and (ChapterUserTable.lastReadAt greater 0L) }) {
+                it[ChapterUserTable.lastReadAt] = 0
+            }
+        }
+
+        return ClearHistoryPayload(clientMutationId = input.clientMutationId)
     }
 
     data class FetchChaptersInput(
