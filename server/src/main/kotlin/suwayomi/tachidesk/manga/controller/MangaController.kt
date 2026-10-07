@@ -532,7 +532,7 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, chapterId, markAsRead, opds ->
-                val userId = 
+                val userId =
                     if (opds == true) {
                         ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
                     } else {
