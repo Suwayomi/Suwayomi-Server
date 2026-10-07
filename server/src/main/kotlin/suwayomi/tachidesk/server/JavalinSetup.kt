@@ -23,6 +23,7 @@ import io.javalin.http.UnauthorizedResponse
 import io.javalin.json.JavalinJackson3
 import io.javalin.rendering.template.JavalinJte
 import io.javalin.websocket.WsContext
+import jakarta.servlet.ServletException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -32,6 +33,7 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import org.eclipse.jetty.http.HttpException
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -313,6 +315,17 @@ object JavalinSetup {
             logger.error(e) { "ForbiddenException while handling the request" }
             ctx.status(HttpStatus.FORBIDDEN)
             ctx.result(e.message ?: "Forbidden")
+        }
+
+        exception(ServletException::class.java) { e, ctx ->
+            logger.error(e) { "Jakarta Exception while handling the request" }
+            val rootCause = e.rootCause
+            if (rootCause is HttpException) {
+                ctx.status(rootCause.code)
+                ctx.result(rootCause.reason ?: "Forbidden")
+            } else {
+                ctx.status(500)
+            }
         }
     }
 
