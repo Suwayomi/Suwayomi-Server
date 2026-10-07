@@ -241,7 +241,7 @@ object OpdsEntryBuilder {
                 links.add(
                     OpdsLinkXml(
                         OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
-                        "/api/v1/chapter/${chapter.id}/download?markAsRead=${userConfig.opdsMarkAsReadOnDownload.value(userId)}",
+                        "/api/v1/chapter/${chapter.id}/download?markAsRead=${userConfig.opdsMarkAsReadOnDownload.value(userId)}&opds=true",
                         userConfig.opdsCbzMimetype.value(userId).mediaType,
                         MR.strings.opds_linktitle_download_cbz.localized(locale),
                         length = chapter.cbzFileSize,
@@ -456,7 +456,7 @@ object OpdsEntryBuilder {
             links.add(
                 OpdsLinkXml(
                     OpdsConstants.LINK_REL_ACQUISITION_OPEN_ACCESS,
-                    "/api/v1/chapter/${chapter.id}/download?markAsRead=${userConfig.opdsMarkAsReadOnDownload.value(userId)}",
+                    "/api/v1/chapter/${chapter.id}/download?markAsRead=${userConfig.opdsMarkAsReadOnDownload.value(userId)}&opds=true",
                     userConfig.opdsCbzMimetype.value(userId).mediaType,
                     MR.strings.opds_linktitle_download_cbz.localized(locale),
                     length = cbzFileSize,
