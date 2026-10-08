@@ -25,6 +25,7 @@ class DownloadSubscription {
         }
 
     data class DownloadChangedInput(
+        @GraphQLDeprecated("Removed - has no effect")
         @GraphQLDescription(
             "Sets a max number of updates that can be contained in a download update message." +
                 "Everything above this limit will be omitted and the \"downloadStatus\" should be re-fetched via the " +
@@ -36,28 +37,8 @@ class DownloadSubscription {
     )
 
     @RequireAuth
-    fun downloadStatusChanged(input: DownloadChangedInput): Flow<DownloadUpdates> {
-        val omitUpdates = input.maxUpdates != null
-        val maxUpdates = input.maxUpdates ?: 50
-
-        return DownloadManager.updates.map { downloadUpdates ->
-            val omittedUpdates = omitUpdates && downloadUpdates.updates.size > maxUpdates
-
-            // the graphql subscription execution strategy does not support data loader batching which causes the n+1 problem,
-            // thus, too many updates (e.g. on mass enqueue or dequeue) causes unresponsiveness of the server until the
-            // update has been handled
-            val actualDownloadUpdates =
-                if (omittedUpdates) {
-                    suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates(
-                        downloadUpdates.status,
-                        downloadUpdates.updates.subList(0, maxUpdates),
-                        downloadUpdates.initial,
-                    )
-                } else {
-                    downloadUpdates
-                }
-
-            DownloadUpdates(actualDownloadUpdates, omittedUpdates)
+    fun downloadStatusChanged(input: DownloadChangedInput): Flow<DownloadUpdates> =
+        DownloadManager.updates.map { downloadUpdates ->
+            DownloadUpdates(downloadUpdates)
         }
-    }
 }

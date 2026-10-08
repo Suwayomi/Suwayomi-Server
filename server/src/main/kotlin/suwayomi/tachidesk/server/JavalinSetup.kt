@@ -112,7 +112,8 @@ object JavalinSetup {
 
                 config.bundledPlugins.enableCors { cors ->
                     cors.addRule {
-                        it.allowCredentials = true
+                        it.path = ServerSubpath.maybeAddAsPrefix("api/*")
+                        it.allowCredentials = false
                         it.reflectClientOrigin = true
                     }
                 }
@@ -131,7 +132,7 @@ object JavalinSetup {
                         after { ctx ->
                             // If not matched, the request was for an invalid endpoint
                             // Return a 404 instead of redirecting to the UI for usability
-                            if (ctx.endpoints().lastHttpEndpoint()?.path == "*") {
+                            if (ctx.endpoints().lastHttpEndpoint()?.path == null || ctx.endpoints().lastHttpEndpoint()?.path == "*") {
                                 throw NotFoundResponse()
                             }
                         }
@@ -277,6 +278,22 @@ object JavalinSetup {
 
             ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromContext(ctx) })
             ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
+        }
+
+        wsBeforeUpgrade { ctx ->
+            val authMode = serverConfig.authMode.value
+
+            fun credentialsValid(): Boolean {
+                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
+                val (username, password) = basicAuthCredentials
+                return username == serverConfig.authUsername.value &&
+                    password == serverConfig.authPassword.value
+            }
+
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+                ctx.header("WWW-Authenticate", "Basic")
+                throw UnauthorizedResponse()
+            }
         }
 
         wsBefore {
