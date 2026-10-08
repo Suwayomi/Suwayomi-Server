@@ -27,6 +27,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.graphql.mutations.ChapterMutation
 import suwayomi.tachidesk.manga.impl.chapter.refreshChapterPageList
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
@@ -48,6 +49,83 @@ import kotlin.test.assertTrue
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ChapterTest : ApplicationTest() {
     private val source = StubSource(1L)
+
+    @Test
+    fun `marking a chapter unread clears its history and progress`() {
+        val mangaId = createLibraryManga("SINGLE_UNREAD_TEST")
+        val chapterId = createReadChapter(mangaId, 1)
+
+        Chapter.modifyChapter(
+            userId = 1,
+            mangaId = mangaId,
+            chapterIndex = 1,
+            isRead = false,
+            isBookmarked = null,
+            markPrevRead = null,
+            lastPageRead = null,
+        )
+
+        assertUnreadWithNoProgress(chapterId)
+    }
+
+    @Test
+    fun `batch marking chapters unread clears their history and progress`() =
+        runTest {
+            val mangaId = createLibraryManga("BATCH_UNREAD_TEST")
+            val chapterIds = listOf(createReadChapter(mangaId, 1), createReadChapter(mangaId, 2))
+
+            Chapter.modifyChapters(
+                userId = 1,
+                input =
+                    Chapter.MangaChapterBatchEditInput(
+                        chapterIds = chapterIds,
+                        change = Chapter.ChapterChange(isRead = false),
+                    ),
+            )
+
+            chapterIds.forEach(::assertUnreadWithNoProgress)
+        }
+
+    @Test
+    fun `marking previous chapters unread clears their history and progress`() {
+        val mangaId = createLibraryManga("PREVIOUS_UNREAD_TEST")
+        val previousChapterIds = listOf(createReadChapter(mangaId, 1), createReadChapter(mangaId, 2))
+        val currentChapterId = createReadChapter(mangaId, 3)
+
+        Chapter.modifyChapter(
+            userId = 1,
+            mangaId = mangaId,
+            chapterIndex = 3,
+            isRead = null,
+            isBookmarked = null,
+            markPrevRead = false,
+            lastPageRead = null,
+        )
+
+        previousChapterIds.forEach(::assertUnreadWithNoProgress)
+        assertReadWithProgress(currentChapterId)
+    }
+
+    @Test
+    fun `graphql unread status takes precedence over a simultaneous progress update`() {
+        val mangaId = createLibraryManga("GRAPHQL_UNREAD_TEST")
+        val chapterId = createReadChapter(mangaId, 1)
+
+        ChapterMutation().updateChapter(
+            userId = 1,
+            input =
+                ChapterMutation.UpdateChapterInput(
+                    id = chapterId,
+                    patch =
+                        ChapterMutation.UpdateChapterPatch(
+                            isRead = false,
+                            lastPageRead = 5,
+                        ),
+                ),
+        )
+
+        assertUnreadWithNoProgress(chapterId)
+    }
 
     @Test
     fun pageListRefreshPreservesEachUsersDownloadRequest() =
@@ -759,6 +837,59 @@ class ChapterTest : ApplicationTest() {
                 newCbzFile.delete()
             }
         }
+
+    private fun createReadChapter(
+        mangaId: Int,
+        chapterIndex: Int,
+    ): Int =
+        transaction {
+            val chapterId =
+                ChapterTable
+                    .insertAndGetId {
+                        it[url] = chapterIndex.toString()
+                        it[name] = chapterIndex.toString()
+                        it[sourceOrder] = chapterIndex
+                        it[pageCount] = 10
+                        it[manga] = mangaId
+                        it[memo] = JsonObject.EMPTY
+                    }.value
+
+            ChapterUserTable.batchInsert(listOf(1)) {
+                this[ChapterUserTable.chapter] = chapterId
+                this[ChapterUserTable.user] = 1
+                this[ChapterUserTable.isRead] = true
+                this[ChapterUserTable.lastPageRead] = 7
+                this[ChapterUserTable.lastReadAt] = 123L
+            }
+
+            chapterId
+        }
+
+    private fun assertUnreadWithNoProgress(chapterId: Int) {
+        transaction {
+            val chapter =
+                ChapterUserTable
+                    .selectAll()
+                    .where { (ChapterUserTable.chapter eq chapterId) and (ChapterUserTable.user eq 1) }
+                    .single()
+            assertEquals(false, chapter[ChapterUserTable.isRead])
+            assertEquals(0, chapter[ChapterUserTable.lastPageRead])
+            assertEquals(0L, chapter[ChapterUserTable.lastReadAt])
+        }
+    }
+
+    private fun assertReadWithProgress(chapterId: Int) {
+        transaction {
+            val chapter =
+                ChapterUserTable
+                    .selectAll()
+                    .where { (ChapterUserTable.chapter eq chapterId) and (ChapterUserTable.user eq 1) }
+                    .single()
+            assertEquals(true, chapter[ChapterUserTable.isRead])
+            assertEquals(7, chapter[ChapterUserTable.lastPageRead])
+            assertEquals(123L, chapter[ChapterUserTable.lastReadAt])
+        }
+    }
 
     private fun createChaptersForDownloadTest(
         mangaId: Int,

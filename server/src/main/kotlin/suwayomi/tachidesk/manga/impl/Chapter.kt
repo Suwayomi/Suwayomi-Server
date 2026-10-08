@@ -553,15 +553,19 @@ object Chapter {
                     ChapterUserTable.upsert(ChapterUserTable.user, ChapterUserTable.chapter) {
                         it[ChapterUserTable.chapter] = chapterIdValue
                         it[ChapterUserTable.user] = userId
-                        isRead?.also { isRead ->
-                            it[ChapterUserTable.isRead] = isRead
-                        }
                         isBookmarked?.also { isBookmarked ->
                             it[ChapterUserTable.isBookmarked] = isBookmarked
                         }
                         lastPageRead?.also { lastPageRead ->
                             it[ChapterUserTable.lastPageRead] = lastPageRead
                             it[ChapterUserTable.lastReadAt] = Instant.now().epochSecond
+                        }
+                        isRead?.also { isRead ->
+                            it[ChapterUserTable.isRead] = isRead
+                            if (!isRead) {
+                                it[ChapterUserTable.lastPageRead] = 0
+                                it[ChapterUserTable.lastReadAt] = 0
+                            }
                         }
                     }
                 }
@@ -577,6 +581,10 @@ object Chapter {
                         this[ChapterUserTable.user] = userId
                         this[ChapterUserTable.chapter] = chapterId
                         this[ChapterUserTable.isRead] = markPrevRead
+                        if (!markPrevRead) {
+                            this[ChapterUserTable.lastPageRead] = 0
+                            this[ChapterUserTable.lastReadAt] = 0
+                        }
                     }
                 }
                 chapterIdValue
@@ -683,15 +691,19 @@ object Chapter {
             ChapterUserTable.batchUpsert(chapters, ChapterUserTable.chapter, ChapterUserTable.user) { chapter ->
                 this[ChapterUserTable.user] = userId
                 this[ChapterUserTable.chapter] = chapter
-                isRead?.also {
-                    this[ChapterUserTable.isRead] = it
-                }
                 isBookmarked?.also {
                     this[ChapterUserTable.isBookmarked] = it
                 }
                 lastPageRead?.also {
                     this[ChapterUserTable.lastPageRead] = it
                     this[ChapterUserTable.lastReadAt] = now
+                }
+                isRead?.also {
+                    this[ChapterUserTable.isRead] = it
+                    if (!it) {
+                        this[ChapterUserTable.lastPageRead] = 0
+                        this[ChapterUserTable.lastReadAt] = 0
+                    }
                 }
             }
         }
