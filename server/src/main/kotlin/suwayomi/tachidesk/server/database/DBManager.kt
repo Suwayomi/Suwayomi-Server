@@ -96,7 +96,7 @@ object DBManager {
                 preserveKeywordCasing = false
                 defaultSchema =
                     when (serverConfig.databaseType.value) {
-                        DatabaseType.POSTGRESQL -> Schema("suwayomi")
+                        DatabaseType.POSTGRESQL -> Schema(serverConfig.databaseSchema.value)
                         DatabaseType.H2 -> null
                     }
             }
@@ -179,7 +179,7 @@ fun databaseUp(givenDb: Database? = null) {
             transaction {
                 val schema =
                     Schema(
-                        "suwayomi",
+                        serverConfig.databaseSchema.value,
                         serverConfig.databaseUsername.value.takeIf { it.isNotBlank() },
                     )
                 SchemaUtils.createSchema(schema)

@@ -1141,6 +1141,14 @@ class ServerConfig(
         defaultValue = BackupFlags.DEFAULT.includeUserSettings,
     )
 
+    val databaseSchema: MutableStateFlow<String> by StringSetting(
+        protoNumber = 100,
+        group = SettingGroup.DATABASE,
+        privacySafe = true,
+        defaultValue = "suwayomi",
+        minLength = 1
+    )
+
     /** ****************************************************************** **/
     /**                                                                    **/
     /**                          Renamed settings                          **/
