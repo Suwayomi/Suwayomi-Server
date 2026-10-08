@@ -20,6 +20,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.TrackRecordNodeList
 import suwayomi.tachidesk.graphql.types.TrackRecordNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.TrackRecordType
@@ -105,7 +106,7 @@ class TrackRecordsForMangaIdDataLoader : KotlinDataLoader<Int, TrackRecordNodeLi
                     val trackRecordsByMangaId =
                         TrackRecordTable
                             .selectAll()
-                            .where { TrackRecordTable.mangaId inList ids and (TrackRecordTable.user eq userId) }
+                            .where { TrackRecordTable.mangaId inIds ids and (TrackRecordTable.user eq userId) }
                             .map { TrackRecordType(it) }
                             .groupBy { it.mangaId }
                     ids.map { (trackRecordsByMangaId[it] ?: emptyList()).toNodeList() }
@@ -148,7 +149,7 @@ class DisplayScoreForTrackRecordDataLoader : KotlinDataLoader<Int, String> {
                     val trackRecords =
                         TrackRecordTable
                             .selectAll()
-                            .where { TrackRecordTable.id inList ids and (TrackRecordTable.user eq userId) }
+                            .where { TrackRecordTable.id inIds ids and (TrackRecordTable.user eq userId) }
                             .toList()
                             .map { it.toTrack() }
                             .associateBy { it.id!! }
@@ -172,7 +173,7 @@ class DisplayScoreForTrackSearchDataLoader : KotlinDataLoader<Int, String> {
                     val trackRecords =
                         TrackSearchTable
                             .selectAll()
-                            .where { TrackSearchTable.id inList ids }
+                            .where { TrackSearchTable.id inIds ids }
                             .toList()
                             .map { it.toTrackSearch() }
                             .associateBy { it.id!! }
@@ -196,7 +197,7 @@ class TrackRecordsForTrackerIdDataLoader : KotlinDataLoader<Int, TrackRecordNode
                     val trackRecordsBySyncId =
                         TrackRecordTable
                             .selectAll()
-                            .where { TrackRecordTable.trackerId inList ids and (TrackRecordTable.user eq userId) }
+                            .where { TrackRecordTable.trackerId inIds ids and (TrackRecordTable.user eq userId) }
                             .map { TrackRecordType(it) }
                             .groupBy { it.trackerId }
                     ids.map { (trackRecordsBySyncId[it] ?: emptyList()).toNodeList() }
@@ -239,7 +240,7 @@ class TrackRecordDataLoader : KotlinDataLoader<Int, TrackRecordType> {
                     val trackRecordsId =
                         TrackRecordTable
                             .selectAll()
-                            .where { TrackRecordTable.id inList ids and (TrackRecordTable.user eq userId) }
+                            .where { TrackRecordTable.id inIds ids and (TrackRecordTable.user eq userId) }
                             .map { TrackRecordType(it) }
                             .associateBy { it.id }
                     ids.map { trackRecordsId[it] }

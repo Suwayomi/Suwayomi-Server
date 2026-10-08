@@ -15,12 +15,12 @@ import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.CategoryNodeList
 import suwayomi.tachidesk.graphql.types.CategoryNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.CategoryType
@@ -42,7 +42,7 @@ class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
                     val categories =
                         CategoryTable
                             .selectAll()
-                            .where { CategoryTable.id inList ids and (CategoryTable.user eq userId) }
+                            .where { CategoryTable.id inIds ids and (CategoryTable.user eq userId) }
                             .associateBy { it[CategoryTable.id].value }
                     ids.map { categories[it]?.let { row -> CategoryType(row) } }
                 }
@@ -68,7 +68,7 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
                                 additionalConstraint = { CategoryTable.user eq userId },
                             ).selectAll()
                             .where {
-                                CategoryMangaTable.manga inList ids and
+                                CategoryMangaTable.manga inIds ids and
                                     (CategoryMangaTable.user eq userId)
                             }.map { Pair(it[CategoryMangaTable.manga].value, CategoryType(it)) }
                             .groupBy { it.first }

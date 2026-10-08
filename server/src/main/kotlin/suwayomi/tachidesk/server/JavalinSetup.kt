@@ -7,6 +7,7 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.HttpException
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -38,6 +39,7 @@ import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
@@ -110,7 +112,8 @@ object JavalinSetup {
 
                 config.bundledPlugins.enableCors { cors ->
                     cors.addRule {
-                        it.allowCredentials = true
+                        it.path = ServerSubpath.maybeAddAsPrefix("api/*")
+                        it.allowCredentials = false
                         it.reflectClientOrigin = true
                     }
                 }
@@ -129,7 +132,7 @@ object JavalinSetup {
                         after { ctx ->
                             // If not matched, the request was for an invalid endpoint
                             // Return a 404 instead of redirecting to the UI for usability
-                            if (ctx.endpoints().lastHttpEndpoint()?.path == "*") {
+                            if (ctx.endpoints().lastHttpEndpoint()?.path == null || ctx.endpoints().lastHttpEndpoint()?.path == "*") {
                                 throw NotFoundResponse()
                             }
                         }
@@ -277,12 +280,32 @@ object JavalinSetup {
             ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
         }
 
+        wsBeforeUpgrade { ctx ->
+            val authMode = serverConfig.authMode.value
+
+            fun credentialsValid(): Boolean {
+                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
+                val (username, password) = basicAuthCredentials
+                return username == serverConfig.authUsername.value &&
+                    password == serverConfig.authPassword.value
+            }
+
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+                ctx.header("WWW-Authenticate", "Basic")
+                throw UnauthorizedResponse()
+            }
+        }
+
         wsBefore {
             it.onConnect { ctx ->
                 ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromWsContext(ctx) })
             }
         }
 
+        defineExceptionHandlers()
+    }
+
+    fun RoutesConfig.defineExceptionHandlers() {
         exception(NullPointerException::class.java) { e, ctx ->
             logger.error(e) { "NullPointerException while handling the request" }
             ctx.status(404)
@@ -292,9 +315,22 @@ object JavalinSetup {
             ctx.status(404)
         }
         exception(IOException::class.java) { e, ctx ->
+            if (e.isHostUnreachable()) {
+                // A source host being down isn't a server fault
+                logger.warn { "Source host unreachable while handling ${ctx.path()}: ${e.message}" }
+                ctx.sourceFailed(e.message)
+                return@exception
+            }
+
             logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
             ctx.result(e.message ?: "Internal Server Error")
+        }
+
+        exception(HttpException::class.java) { e, ctx ->
+            // A source error isn't a server fault, and its stack trace only shows obfuscated extension code
+            logger.warn { "Source answered HTTP ${e.code} while handling ${ctx.path()}" }
+            ctx.sourceFailed(e.message)
         }
 
         exception(IllegalArgumentException::class.java) { e, ctx ->
@@ -338,6 +374,12 @@ object JavalinSetup {
         data object TachideskUser : Attribute<UserType>("user")
 
         data object TachideskBasic : Attribute<Boolean>("basicAuthValid")
+    }
+
+    // 424 rather than 502: clients and proxies read 502 to 504 as the server being down
+    private fun Context.sourceFailed(message: String?) {
+        status(HttpStatus.FAILED_DEPENDENCY)
+        result(message ?: "Source request failed")
     }
 
     private fun <T : Any> Context.setAttribute(

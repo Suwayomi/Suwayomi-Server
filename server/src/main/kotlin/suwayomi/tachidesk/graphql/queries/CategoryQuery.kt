@@ -34,6 +34,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
@@ -132,6 +133,7 @@ class CategoryQuery {
     fun categories(
         @GraphQLIgnore
         userId: Int,
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: CategoryCondition? = null,
         filter: CategoryFilter? = null,
         @GraphQLDeprecated(
@@ -161,7 +163,14 @@ class CategoryQuery {
                 val deprecatedSort = listOfNotNull(orderBy?.let { CategoryOrder(orderBy, orderByType) })
                 val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
-                val (total, firstResult, lastResult) = res.applySortAndGetPaginationInfo(actualSort, before, last, CategoryTable.id)
+                val (total, firstResult, lastResult) =
+                    res.applySortAndGetPaginationInfo(
+                        actualSort,
+                        before,
+                        last,
+                        CategoryTable.id,
+                        PaginationNeeds.of(dataFetchingEnvironment),
+                    )
 
                 res.applyBeforeAfter(
                     before = before,

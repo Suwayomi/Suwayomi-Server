@@ -15,7 +15,6 @@ import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.jdbc.andWhere
@@ -23,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -48,7 +48,7 @@ class MangaDataLoader : KotlinDataLoader<Int, MangaType> {
                         MangaTable
                             .getWithUserData(userId)
                             .selectAll()
-                            .where { MangaTable.id inList ids }
+                            .where { MangaTable.id inIds ids }
                             .map { MangaType(it) }
                             .associateBy { it.id }
                     ids.map { manga[it] }
@@ -89,7 +89,7 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                             CategoryMangaTable
                                 .innerJoin(MangaTable.getWithUserData(userId))
                                 .selectAll()
-                                .where { CategoryMangaTable.category inList ids and (CategoryMangaTable.user eq userId) }
+                                .where { CategoryMangaTable.category inIds ids and (CategoryMangaTable.user eq userId) }
                                 .map { Pair(it[CategoryMangaTable.category].value, MangaType(it)) }
                                 .groupBy { it.first }
                                 .mapValues { it.value.map { pair -> pair.second } }
@@ -153,7 +153,7 @@ class MangaForSourceDataLoader : KotlinDataLoader<Long, MangaNodeList> {
                         MangaTable
                             .getWithUserData(userId)
                             .selectAll()
-                            .where { MangaTable.sourceReference inList ids }
+                            .where { MangaTable.sourceReference inIds ids }
                             .map { MangaType(it) }
                             .groupBy { it.sourceId }
                     ids.map { (mangaBySourceId[it] ?: emptyList()).toNodeList() }
