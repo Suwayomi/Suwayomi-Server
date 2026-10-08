@@ -126,7 +126,7 @@ junrar = "com.github.junrar:junrar:8.1.1"
 bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.86"
 
 # AndroidX annotations
-android-annotations = "androidx.annotation:annotation:1.10.0"
+android-annotations = "androidx.annotation:annotation:1.11.0"
 
 # Substitute for duktape-android
 polyglot-core = { module = "org.graalvm.polyglot:polyglot", version.ref = "polyglot" }
