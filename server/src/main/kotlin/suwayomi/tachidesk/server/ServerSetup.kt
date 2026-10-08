@@ -133,6 +133,7 @@ data class DatabaseSettings(
     val databasePassword: String,
     val databaseSchema: String,
     val useHikariConnectionPool: Boolean,
+    val hikariMaxPoolSize: Int,
 )
 
 data class AuthSettings(
@@ -366,6 +367,7 @@ fun applicationSetup() {
             serverConfig.databasePassword,
             serverConfig.databaseSchema,
             serverConfig.useHikariConnectionPool,
+            serverConfig.hikariMaxPoolSize,
         ) { vargs ->
             DatabaseSettings(
                 databaseType = vargs[0] as DatabaseType,
@@ -374,11 +376,12 @@ fun applicationSetup() {
                 databasePassword = vargs[3] as String,
                 databaseSchema = vargs[4] as String,
                 useHikariConnectionPool = vargs[5] as Boolean,
+                hikariMaxPoolSize = vargs[6] as Int,
             )
         }.distinctUntilChanged(),
-        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, databaseSchema, hikariCp) ->
+        { (databaseType, databaseUrl, _databaseUsername, _databasePassword, databaseSchema, hikariCp, hikariMaxPoolSize) ->
             logger.info {
-                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], schema=$databaseSchema, hikaricp=$hikariCp"
+                "Database changed - type=$databaseType url=$databaseUrl, username=[REDACTED], password=[REDACTED], schema=$databaseSchema, hikaricp=$hikariCp, hikariMaxPoolSize=$hikariMaxPoolSize"
             }
             databaseUp()
 

@@ -1141,6 +1141,15 @@ class ServerConfig(
         defaultValue = BackupFlags.DEFAULT.includeUserSettings,
     )
 
+    val hikariMaxPoolSize: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 99,
+        group = SettingGroup.DATABASE,
+        privacySafe = true,
+        defaultValue = 6,
+        min = 1,
+        description = "the maximum number of actual connections to the database; see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
+    )
+
     val databaseSchema: MutableStateFlow<String> by StringSetting(
         protoNumber = 100,
         group = SettingGroup.DATABASE,
