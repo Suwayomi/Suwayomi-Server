@@ -524,14 +524,20 @@ object MangaController {
         handler(
             pathParam<Int>("chapterId"),
             queryParam<Boolean?>("markAsRead"),
+            queryParam<Boolean?>("opds"),
             documentWith = {
                 withOperation {
                     summary("Download chapter as CBZ")
                     description("Get the CBZ file of the specified chapter, or its metadata via a HEAD request.")
                 }
             },
-            behaviorOf = { ctx, chapterId, markAsRead ->
-                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+            behaviorOf = { ctx, chapterId, markAsRead, opds ->
+                val userId =
+                    if (opds == true) {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                    } else {
+                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                    }
                 ctx.disableCompression()
                 val contentType = userConfig.opdsCbzMimetype.value(userId).mediaType
                 if (ctx.method() == HandlerType.HEAD) {
