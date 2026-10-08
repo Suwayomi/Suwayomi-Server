@@ -1,6 +1,9 @@
 package suwayomi.tachidesk.graphql.server.primitives
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
+import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import graphql.schema.DataFetchingEnvironment
+import java.util.concurrent.CompletableFuture
 
 interface Node
 
@@ -35,4 +38,16 @@ abstract class Edge {
 
     @GraphQLDescription("The [T] at the end of the edge.")
     abstract val node: Node
+}
+
+// Counts the nodes with totalLoader instead of loading them when only totalCount is selected
+fun <K : Any, N : NodeList> DataFetchingEnvironment.getNodeListFromDataLoaders(
+    nodesLoader: String,
+    totalLoader: String,
+    key: K,
+    withTotal: (totalCount: Int) -> N,
+): CompletableFuture<N> {
+    val onlyTotal = selectionSet.immediateFields.all { it.name == "totalCount" || it.name == "__typename" }
+    if (!onlyTotal) return getValueFromDataLoader<K, N>(nodesLoader, key)
+    return getValueFromDataLoader<K, Int>(totalLoader, key).thenApply(withTotal)
 }

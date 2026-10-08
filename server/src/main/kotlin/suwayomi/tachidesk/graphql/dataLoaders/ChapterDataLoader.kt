@@ -86,6 +86,27 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
         }
 }
 
+class ChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
+    override val dataLoaderName = "ChapterCountForMangaDataLoader"
+
+    override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
+        DataLoaderFactory.newDataLoader { ids ->
+            future {
+                transaction {
+                    addLogger(Slf4jSqlDebugLogger)
+                    val count = ChapterTable.id.count()
+                    val countByMangaId =
+                        ChapterTable
+                            .select(ChapterTable.manga, count)
+                            .where { ChapterTable.manga inList ids }
+                            .groupBy(ChapterTable.manga)
+                            .associate { it[ChapterTable.manga].value to it[count].toInt() }
+                    ids.map { countByMangaId[it] ?: 0 }
+                }
+            }
+        }
+}
+
 data class MangaChapterStats(
     val unreadCount: Int,
     val downloadCount: Int,

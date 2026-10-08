@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
 
 ### Changed
+- (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection
 - (**Updates**) Index chapters by fetch time for the updates list
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
