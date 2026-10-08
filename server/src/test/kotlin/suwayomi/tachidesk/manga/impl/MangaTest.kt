@@ -27,7 +27,6 @@ import uy.kohesive.injekt.injectLazy
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -57,7 +56,7 @@ class MangaTest : ApplicationTest() {
         mangaId: Int,
         remoteThumbnailUrl: String?,
     ) {
-        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        val mangaEntry = getStoredManga(mangaId)
         val remoteManga =
             SManga.create().apply {
                 title = "COVER_TEST"
@@ -70,29 +69,34 @@ class MangaTest : ApplicationTest() {
 
     private fun getStoredManga(mangaId: Int) = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
 
+    private fun assertCoversKept(coverFiles: List<File>) {
+        coverFiles.forEach { assertTrue(it.exists(), "Cover ${it.path} should be kept") }
+        coverFiles.forEach { assertEquals("cover", it.readText()) }
+    }
+
     @Test
-    fun updateMangaDatabaseKeepsCoversWhenThumbnailUrlIsUnchanged() {
+    fun updateMangaDatabaseKeepsCoversAndRegistersTheFetchWhenThumbnailUrlIsUnchanged() {
         val (mangaId, coverFiles) = createMangaWithCachedCovers()
 
         updateMangaDatabaseWith(mangaId, originalThumbnailUrl)
 
-        coverFiles.forEach { assertTrue(it.exists(), "Cover ${it.path} should be kept when the thumbnail url did not change") }
+        assertCoversKept(coverFiles)
         val storedManga = getStoredManga(mangaId)
         assertEquals(originalThumbnailUrl, storedManga[MangaTable.thumbnail_url])
-        assertEquals(100L, storedManga[MangaTable.thumbnailUrlLastFetched], "Last fetched should not change when the url is unchanged")
+        assertTrue(storedManga[MangaTable.thumbnailUrlLastFetched] > 100L)
     }
 
     @Test
-    fun updateMangaDatabaseClearsCoversWhenThumbnailUrlChanged() {
+    fun updateMangaDatabaseKeepsCoversAndStoresTheNewUrlWhenThumbnailUrlChanged() {
         val (mangaId, coverFiles) = createMangaWithCachedCovers()
         val newThumbnailUrl = "https://example.com/cover-new.jpg"
 
         updateMangaDatabaseWith(mangaId, newThumbnailUrl)
 
-        coverFiles.forEach { assertFalse(it.exists(), "Cover ${it.path} should be cleared when the thumbnail url changed") }
+        assertCoversKept(coverFiles)
         val storedManga = getStoredManga(mangaId)
         assertEquals(newThumbnailUrl, storedManga[MangaTable.thumbnail_url])
-        assertTrue(storedManga[MangaTable.thumbnailUrlLastFetched] > 100L, "Last fetched should be updated when the url changed")
+        assertTrue(storedManga[MangaTable.thumbnailUrlLastFetched] > 100L)
     }
 
     @Test
@@ -101,7 +105,7 @@ class MangaTest : ApplicationTest() {
 
         updateMangaDatabaseWith(mangaId, null)
 
-        coverFiles.forEach { assertTrue(it.exists(), "Cover ${it.path} should be kept when the source returns no thumbnail url") }
+        assertCoversKept(coverFiles)
         val storedManga = getStoredManga(mangaId)
         assertEquals(originalThumbnailUrl, storedManga[MangaTable.thumbnail_url])
         assertEquals(100L, storedManga[MangaTable.thumbnailUrlLastFetched])
@@ -113,7 +117,7 @@ class MangaTest : ApplicationTest() {
 
         updateMangaDatabaseWith(mangaId, "")
 
-        coverFiles.forEach { assertTrue(it.exists(), "Cover ${it.path} should be kept when the source returns an empty thumbnail url") }
+        assertCoversKept(coverFiles)
         val storedManga = getStoredManga(mangaId)
         assertEquals(originalThumbnailUrl, storedManga[MangaTable.thumbnail_url])
         assertEquals(100L, storedManga[MangaTable.thumbnailUrlLastFetched])
