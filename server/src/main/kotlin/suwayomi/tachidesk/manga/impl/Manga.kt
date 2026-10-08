@@ -225,8 +225,10 @@ object Manga {
                 it[MangaTable.status] = sManga.status
                 if (!sManga.thumbnail_url.isNullOrEmpty()) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
-                    it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                    clearThumbnail(mangaId)
+                    if (sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
+                        it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                        clearThumbnail(mangaId)
+                    }
                 }
 
                 it[MangaTable.realUrl] =
