@@ -8,14 +8,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**API**) Add User Accounts
+- (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
+- (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
 
 ### Changed
+- (**Updates**) Index chapters by fetch time for the updates list
+- (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
 
 ### Fixed
-- 
+- (**Auth**) Stop logging routine expired-token rejections as errors
+- (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
+- (**API**) Answer 424 instead of 500 when a source fails
+- (**Local Source**) Fix detection of Synology metadata folders as local chapters
+- (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+
+### Deprecated
+- (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
 
 ## [v2.4.2366] + [WebUI: v20260929.01] - 2026-09-29
 
