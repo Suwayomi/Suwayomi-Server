@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 
 ### Changed
+- (**Updates**) Index chapters by fetch time for the updates list
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 
 ### Fixed
