@@ -16,6 +16,7 @@ class M0067_AddChapterIndexes : SQLMigration() {
         CREATE INDEX IF NOT EXISTS chapter_manga_source_order ON CHAPTER (manga, source_order);
         CREATE INDEX IF NOT EXISTS chapter_manga_fetched_at ON CHAPTER (manga, fetched_at DESC, source_order DESC);
         CREATE INDEX IF NOT EXISTS chapter_manga_date_upload ON CHAPTER (manga, date_upload DESC, source_order DESC);
+        CREATE INDEX IF NOT EXISTS chapter_fetched_at ON chapter (fetched_at DESC, source_order DESC, id);
         CREATE INDEX IF NOT EXISTS chapteruser_user_read_chapter ON CHAPTERUSER (user_id, READ, chapter);
         CREATE INDEX IF NOT EXISTS chapteruser_user_last_read_at_chapter ON CHAPTERUSER (user_id, last_read_at DESC, chapter);
         CREATE INDEX IF NOT EXISTS chapteruser_user_downloaded_chapter ON CHAPTERUSER (user_id, is_downloaded, chapter);
