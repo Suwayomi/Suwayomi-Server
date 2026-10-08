@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
 
 ### Fixed
+- (**Tracker**) Fix the possibility of attempting to insert multiple track searches
 - (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
 - (**API**) Answer 424 instead of 500 when a source fails
