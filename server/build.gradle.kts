@@ -207,6 +207,16 @@ tasks {
             showStandardStreams = true
             events("passed", "skipped", "failed")
         }
+        listOf(
+            "testDatabaseType" to "databaseType",
+            "testDatabaseUrl" to "databaseUrl",
+            "testDatabaseUsername" to "databaseUsername",
+            "testDatabasePassword" to "databasePassword",
+        ).forEach { (gradleProp, configProp) ->
+            project.findProperty(gradleProp)?.let {
+                systemProperty("suwayomi.tachidesk.config.server.$configProp", it)
+            }
+        }
     }
 
     withType<KotlinJvmCompile> {

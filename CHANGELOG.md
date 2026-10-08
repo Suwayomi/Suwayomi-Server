@@ -8,12 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**API**) Add User Accounts
+- (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
+- (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 
 ### Changed
 - 
 
 ### Fixed
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
+- (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+
+### Deprecated
+- (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
 
 ## [v2.4.2366] + [WebUI: v20260929.01] - 2026-09-29
 

@@ -57,7 +57,8 @@ class M0066_AddUsers : Migration() {
                     @Language("SQL")
                     """
                     INSERT INTO $userAccountTable(USERNAME, PASSWORD)
-                    SELECT '$adminUsername','$password';
+                    SELECT '$adminUsername','$password'
+                    WHERE NOT EXISTS (SELECT 1 FROM $userAccountTable WHERE ID = 1);
                     """
                 }
 
@@ -65,7 +66,8 @@ class M0066_AddUsers : Migration() {
                     @Language("SQL")
                     """
                     INSERT INTO $userAccountTable(ID, USERNAME, PASSWORD)
-                    SELECT 1,'$adminUsername','$password';
+                    SELECT 1,'$adminUsername','$password'
+                    WHERE NOT EXISTS (SELECT 1 FROM $userAccountTable WHERE ID = 1);
                     """
                 }
             }
@@ -113,16 +115,16 @@ class M0066_AddUsers : Migration() {
                 DatabaseType.H2 -> {
                     @Language("SQL")
                     """
-                    ALTER TABLE $categoryTable ADD COLUMN default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN USER_ID ELSE NULL END);
-                    CREATE UNIQUE INDEX ux_category_default_per_user ON $categoryTable (default_user_id);
+                    ALTER TABLE $categoryTable ADD COLUMN IF NOT EXISTS DEFAULT_USER_ID INT GENERATED ALWAYS AS (CASE WHEN IS_DEFAULT_CATEGORY THEN USER_ID ELSE NULL END);
+                    CREATE UNIQUE INDEX IF NOT EXISTS UX_CATEGORY_DEFAULT_PER_USER ON $categoryTable (DEFAULT_USER_ID);
                     """
                 }
 
                 DatabaseType.POSTGRESQL -> {
                     @Language("SQL")
                     """
-                    ALTER TABLE $categoryTable ADD COLUMN default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN user_id ELSE NULL END) STORED;
-                    CREATE UNIQUE INDEX ux_category_default_per_user ON $categoryTable (default_user_id);
+                    ALTER TABLE $categoryTable ADD COLUMN IF NOT EXISTS default_user_id INT GENERATED ALWAYS AS (CASE WHEN is_default_category THEN user_id ELSE NULL END) STORED;
+                    CREATE UNIQUE INDEX IF NOT EXISTS ux_category_default_per_user ON $categoryTable (default_user_id);
                     """
                 }
             }
@@ -140,7 +142,10 @@ class M0066_AddUsers : Migration() {
 
             return """
             ALTER TABLE $table
-                DROP CONSTRAINT UC_$table;
+                DROP CONSTRAINT IF EXISTS UC_$table;
+
+            ALTER TABLE $table
+                DROP CONSTRAINT IF EXISTS UC_${table}_UNIQUE;
 
             ALTER TABLE $table
                 ADD CONSTRAINT UC_${table}_UNIQUE UNIQUE ($groupBy);
@@ -228,6 +233,7 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS update_manga_user_version ON $mangaUserTable;
             CREATE TRIGGER update_manga_user_version
             BEFORE UPDATE ON $mangaUserTable
             FOR EACH ROW
@@ -250,6 +256,7 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS update_chapter_user_version ON $chapterUserTable;
             CREATE TRIGGER update_chapter_user_version
             BEFORE UPDATE ON $chapterUserTable
             FOR EACH ROW
@@ -278,6 +285,7 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS update_manga_user_last_modified_at ON $mangaUserTable;
             CREATE TRIGGER update_manga_user_last_modified_at
             BEFORE UPDATE OR INSERT ON $mangaUserTable
             FOR EACH ROW
@@ -303,6 +311,7 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS update_chapter_user_last_modified_at ON $chapterUserTable;
             CREATE TRIGGER update_chapter_user_last_modified_at
             BEFORE UPDATE OR INSERT ON $chapterUserTable
             FOR EACH ROW
@@ -324,6 +333,7 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS update_manga_bump_user_versions ON $mangaTable;
             CREATE TRIGGER update_manga_bump_user_versions
             AFTER UPDATE ON $mangaTable
             FOR EACH ROW
@@ -341,6 +351,7 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS insert_manga_category_update_version ON $categoryMangaTable;
             CREATE TRIGGER insert_manga_category_update_version
             AFTER INSERT ON $categoryMangaTable
             FOR EACH ROW
@@ -358,6 +369,7 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS delete_manga_category_update_version ON $categoryMangaTable;
             CREATE TRIGGER delete_manga_category_update_version
             AFTER DELETE ON $categoryMangaTable
             FOR EACH ROW
@@ -375,50 +387,157 @@ class M0066_AddUsers : Migration() {
             END;
             $$ LANGUAGE plpgsql;
 
+            DROP TRIGGER IF EXISTS trackrecord_update_manga_version ON $tractRecordTable;
             CREATE TRIGGER trackrecord_update_manga_version
             AFTER INSERT OR UPDATE OR DELETE ON $tractRecordTable
             FOR EACH ROW
             EXECUTE FUNCTION trackrecord_update_manga_version();
             """
 
+        // The backfill reads from CHAPTER/MANGA columns that are dropped later in this migration
+        // (Step 6). It is guarded two ways so a re-run is a no-op: on the source columns still
+        // existing (a completed run drops them), and on the target rows not already present (a run
+        // that failed after the backfill but before the column drop leaves them behind).
+        private val chapterBackfillSql: String =
+            if (columnExists("CHAPTER", "LAST_READ_AT")) {
+                """
+                INSERT INTO $chapterUserTable (LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, CHAPTER, USER_ID)
+                SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOADED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS CHAPTER, 1 AS USER_ID
+                FROM $chapterTable
+                WHERE
+                    (
+                        READ <> FALSE
+                        OR BOOKMARK <> FALSE
+                        OR LAST_PAGE_READ <> 0
+                        OR LAST_READ_AT <> 0
+                        OR KOREADER_HASH IS NOT NULL
+                        OR IS_DOWNLOADED <> FALSE
+                        OR VERSION <> 0
+                        OR IS_SYNCING <> FALSE
+                    )
+                    AND NOT EXISTS (SELECT 1 FROM $chapterUserTable cu WHERE cu.CHAPTER = $chapterTable.ID AND cu.USER_ID = 1);
+                """
+            } else {
+                ""
+            }
+
+        private val mangaBackfillSql: String =
+            if (columnExists("MANGA", "IN_LIBRARY")) {
+                """
+                INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, MANGA, USER_ID)
+                SELECT IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, ID AS MANGA, 1 AS USER_ID
+                FROM $mangaTable
+                WHERE
+                    (
+                        IN_LIBRARY <> FALSE
+                        OR IN_LIBRARY_AT <> 0
+                        OR VERSION <> 0
+                        OR IS_SYNCING <> FALSE
+                        OR VIEWER <> 0
+                        OR VIEWER_FLAGS IS NOT NULL
+                        OR CHAPTER_FLAGS <> 0
+                    )
+                    AND NOT EXISTS (SELECT 1 FROM $mangaUserTable mu WHERE mu.MANGA = $mangaTable.ID AND mu.USER_ID = 1);
+                """
+            } else {
+                ""
+            }
+
+        // SOURCE uses application-generated snowflake IDs (IdTable<Long>), so rows can share an
+        // ID. The UC_SOURCE_ID unique constraint added below fails on such duplicates; drop all
+        // but one row per ID first. The engines expose the internal row identifier differently
+        // (H2: _ROWID_, PostgreSQL: ctid), and neither supports deleting from a CTE.
+        private val sourceDuplicateCleanupSql: String =
+            when (serverConfig.databaseType.value) {
+                DatabaseType.H2 -> {
+                    @Language("SQL")
+                    """
+                    DELETE FROM $sourceTable t1
+                    WHERE t1._ROWID_ > (
+                        SELECT MIN(t2._ROWID_)
+                        FROM $sourceTable t2
+                        WHERE t2.ID = t1.ID
+                    );
+                    """
+                }
+
+                DatabaseType.POSTGRESQL -> {
+                    @Language("SQL")
+                    """
+                    DELETE FROM $sourceTable a
+                    USING $sourceTable b
+                    WHERE a.ID = b.ID AND a.ctid < b.ctid;
+                    """
+                }
+            }
+
+        private fun columnExists(
+            table: String,
+            column: String,
+        ): Boolean {
+            val (properTable, properColumn) =
+                TransactionManager.current().db.identifierManager.let {
+                    it.inProperCase(table) to it.inProperCase(column)
+                }
+            return (
+                TransactionManager.current().exec(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '$properTable' AND COLUMN_NAME = '$properColumn'",
+                ) { rs ->
+                    rs.next()
+                    rs.getInt(1)
+                } ?: 0
+            ) > 0
+        }
+
         // language=h2
         val sql =
             """
             $adminUserInsert
             INSERT INTO $userRolesTable(USER_ID, ROLE)
-            SELECT 1, 'ADMIN';
+            SELECT 1, 'ADMIN'
+            WHERE NOT EXISTS (SELECT 1 FROM $userRolesTable WHERE USER_ID = 1 AND ROLE = 'ADMIN');
 
             -- Step 1: Add USER_ID column to tables CATEGORY, MANGAMETA, CHAPTERMETA, CATEGORYMANGA, GLOBALMETA, and CATEGORYMETA
-            ALTER TABLE $categoryTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
-            ALTER TABLE $tractRecordTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
-            ALTER TABLE $mangaMetaTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
-            ALTER TABLE $chapterMetaTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
-            ALTER TABLE $categoryMangaTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
-            ALTER TABLE $globalMetaTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
-            ALTER TABLE $categoryMetaTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
-            ALTER TABLE $sourceMetaTable ADD COLUMN USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $categoryTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $tractRecordTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $mangaMetaTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $chapterMetaTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $categoryMangaTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $globalMetaTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $categoryMetaTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
+            ALTER TABLE $sourceMetaTable ADD COLUMN IF NOT EXISTS USER_ID INT NOT NULL DEFAULT 1;
 
             -- Add foreign key constraints to reference USER table
+            ALTER TABLE $categoryTable DROP CONSTRAINT IF EXISTS FK_CATEGORY_USER_ID;
             ALTER TABLE $categoryTable ADD CONSTRAINT FK_CATEGORY_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            CREATE INDEX IDX_CATEGORY_USER_ID ON $categoryTable(USER_ID);
+            CREATE INDEX IF NOT EXISTS IDX_CATEGORY_USER_ID ON $categoryTable(USER_ID);
+            ALTER TABLE $tractRecordTable DROP CONSTRAINT IF EXISTS FK_TRACKRECORD_USER_ID;
             ALTER TABLE $tractRecordTable ADD CONSTRAINT FK_TRACKRECORD_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
+            ALTER TABLE $tractRecordTable DROP CONSTRAINT IF EXISTS UC_TRACKRECORD_UNIQUE;
             ALTER TABLE $tractRecordTable ADD CONSTRAINT UC_TRACKRECORD_UNIQUE UNIQUE (USER_ID, MANGA_ID, SYNC_ID);
-            CREATE INDEX IDX_TRACKRECORD_ID_USER_ID ON $tractRecordTable(ID, USER_ID);
+            CREATE INDEX IF NOT EXISTS IDX_TRACKRECORD_ID_USER_ID ON $tractRecordTable(ID, USER_ID);
 
             -- Create default category marker
-            ALTER TABLE $categoryTable ADD COLUMN IS_DEFAULT_CATEGORY BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE $categoryTable ADD COLUMN IF NOT EXISTS IS_DEFAULT_CATEGORY BOOLEAN NOT NULL DEFAULT FALSE;
             UPDATE $categoryTable SET IS_DEFAULT_CATEGORY = TRUE WHERE ID = 0 AND USER_ID = 1;
             $categoryDefaultCategoryIndexDdl
-            CREATE INDEX IDX_CATEGORY_ID_USER_ID ON $categoryTable(ID, USER_ID);
+            CREATE INDEX IF NOT EXISTS IDX_CATEGORY_ID_USER_ID ON $categoryTable(ID, USER_ID);
             
+            ALTER TABLE $categoryMangaTable DROP CONSTRAINT IF EXISTS FK_CATEGORYMANGA_USER_ID;
             ALTER TABLE $categoryMangaTable ADD CONSTRAINT FK_CATEGORYMANGA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
-            ALTER TABLE $categoryMangaTable DROP CONSTRAINT UC_CATEGORYMANGA;
+            ALTER TABLE $categoryMangaTable DROP CONSTRAINT IF EXISTS UC_CATEGORYMANGA;
+            ALTER TABLE $categoryMangaTable DROP CONSTRAINT IF EXISTS UC_CATEGORYMANGA_UNIQUE;
             ALTER TABLE $categoryMangaTable ADD CONSTRAINT UC_CATEGORYMANGA_UNIQUE UNIQUE (USER_ID, CATEGORY, MANGA);
 
+            ALTER TABLE $mangaMetaTable DROP CONSTRAINT IF EXISTS FK_MANGAMETA_USER_ID;
             ALTER TABLE $mangaMetaTable ADD CONSTRAINT FK_MANGAMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
+            ALTER TABLE $chapterMetaTable DROP CONSTRAINT IF EXISTS FK_CHAPTERMETA_USER_ID;
             ALTER TABLE $chapterMetaTable ADD CONSTRAINT FK_CHAPTERMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
+            ALTER TABLE $globalMetaTable DROP CONSTRAINT IF EXISTS FK_GLOBALMETA_USER_ID;
             ALTER TABLE $globalMetaTable ADD CONSTRAINT FK_GLOBALMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
+            ALTER TABLE $categoryMetaTable DROP CONSTRAINT IF EXISTS FK_CATEGORYMETA_USER_ID;
             ALTER TABLE $categoryMetaTable ADD CONSTRAINT FK_CATEGORYMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
+            ALTER TABLE $sourceMetaTable DROP CONSTRAINT IF EXISTS FK_SOURCEMETA_USER_ID;
             ALTER TABLE $sourceMetaTable ADD CONSTRAINT FK_SOURCEMETA_USER_ID FOREIGN KEY (USER_ID) REFERENCES $userAccountTable(ID) ON DELETE CASCADE;
 
 
@@ -450,36 +569,18 @@ class M0066_AddUsers : Migration() {
             $metaTableMigrations
             
             -- Indexes unrelated but useful
+            DELETE FROM TRACKSEARCH WHERE ID NOT IN (SELECT MIN(ID) FROM TRACKSEARCH GROUP BY TRACKER_ID, REMOTE_ID); -- keep first entry of duplicates
+            $sourceDuplicateCleanupSql
+            ALTER TABLE $sourceTable DROP CONSTRAINT IF EXISTS UC_SOURCE_ID;
             ALTER TABLE $sourceTable ADD CONSTRAINT UC_SOURCE_ID UNIQUE (ID);
+            ALTER TABLE $trackSearchTable DROP CONSTRAINT IF EXISTS UC_TRACKSEARCH_TRACKER_ID_REMOTE_ID;
             ALTER TABLE $trackSearchTable ADD CONSTRAINT UC_TRACKSEARCH_TRACKER_ID_REMOTE_ID UNIQUE (TRACKER_ID, REMOTE_ID);
 
             -- Step 4: Backfill the CHAPTERUSER and MANGAUSER tables with existing data,
             -- including the syncyomi (VERSION, IS_SYNCING, LAST_MODIFIED_AT) and per-user
-            -- download (IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED) columns.
-            INSERT INTO $chapterUserTable (LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, CHAPTER, USER_ID)
-            SELECT LAST_READ_AT, LAST_PAGE_READ, BOOKMARK, READ, KOREADER_HASH, IS_DOWNLOADED, IS_DOWNLOADED, VERSION, IS_SYNCING, LAST_MODIFIED_AT, ID AS CHAPTER, 1 AS USER_ID
-            FROM $chapterTable
-            WHERE
-                READ <> FALSE
-                OR BOOKMARK <> FALSE
-                OR LAST_PAGE_READ <> 0
-                OR LAST_READ_AT <> 0
-                OR KOREADER_HASH IS NOT NULL
-                OR IS_DOWNLOADED <> FALSE
-                OR VERSION <> 0
-                OR IS_SYNCING <> FALSE;
-
-            INSERT INTO $mangaUserTable (IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, MANGA, USER_ID)
-            SELECT IN_LIBRARY, IN_LIBRARY_AT, VERSION, IS_SYNCING, LAST_MODIFIED_AT, VIEWER, VIEWER_FLAGS, CHAPTER_FLAGS, ID AS MANGA, 1 AS USER_ID
-            FROM $mangaTable
-            WHERE
-                IN_LIBRARY <> FALSE
-                OR IN_LIBRARY_AT <> 0
-                OR VERSION <> 0
-                OR IS_SYNCING <> FALSE
-                OR VIEWER <> 0
-                OR VIEWER_FLAGS IS NOT NULL
-                OR CHAPTER_FLAGS <> 0;
+            -- download (IS_DOWNLOADED, IS_DOWNLOAD_REQUESTED) columns. Guarded so a re-run is a no-op.
+            $chapterBackfillSql
+            $mangaBackfillSql
 
             -- Step 5: Drop the old single-user syncyomi triggers before the columns they
             -- reference are removed (PostgreSQL refuses to drop referenced columns)
@@ -487,38 +588,38 @@ class M0066_AddUsers : Migration() {
 
             -- Step 6: Remove the extracted columns from the CHAPTER and MANGA tables
             ALTER TABLE $chapterTable
-            DROP COLUMN LAST_READ_AT;
+            DROP COLUMN IF EXISTS LAST_READ_AT;
             ALTER TABLE $chapterTable
-            DROP COLUMN LAST_PAGE_READ;
+            DROP COLUMN IF EXISTS LAST_PAGE_READ;
             ALTER TABLE $chapterTable
-            DROP COLUMN BOOKMARK;
+            DROP COLUMN IF EXISTS BOOKMARK;
             ALTER TABLE $chapterTable
-            DROP COLUMN READ;
+            DROP COLUMN IF EXISTS READ;
             ALTER TABLE $chapterTable
-            DROP COLUMN KOREADER_HASH;
+            DROP COLUMN IF EXISTS KOREADER_HASH;
             ALTER TABLE $chapterTable
-            DROP COLUMN VERSION;
+            DROP COLUMN IF EXISTS VERSION;
             ALTER TABLE $chapterTable
-            DROP COLUMN IS_SYNCING;
+            DROP COLUMN IF EXISTS IS_SYNCING;
             ALTER TABLE $chapterTable
-            DROP COLUMN LAST_MODIFIED_AT;
+            DROP COLUMN IF EXISTS LAST_MODIFIED_AT;
 
             ALTER TABLE $mangaTable
-            DROP COLUMN IN_LIBRARY;
+            DROP COLUMN IF EXISTS IN_LIBRARY;
             ALTER TABLE $mangaTable
-            DROP COLUMN IN_LIBRARY_AT;
+            DROP COLUMN IF EXISTS IN_LIBRARY_AT;
             ALTER TABLE $mangaTable
-            DROP COLUMN VIEWER;
+            DROP COLUMN IF EXISTS VIEWER;
             ALTER TABLE $mangaTable
-            DROP COLUMN VIEWER_FLAGS;
+            DROP COLUMN IF EXISTS VIEWER_FLAGS;
             ALTER TABLE $mangaTable
-            DROP COLUMN CHAPTER_FLAGS;
+            DROP COLUMN IF EXISTS CHAPTER_FLAGS;
             ALTER TABLE $mangaTable
-            DROP COLUMN VERSION;
+            DROP COLUMN IF EXISTS VERSION;
             ALTER TABLE $mangaTable
-            DROP COLUMN IS_SYNCING;
+            DROP COLUMN IF EXISTS IS_SYNCING;
             ALTER TABLE $mangaTable
-            DROP COLUMN LAST_MODIFIED_AT;
+            DROP COLUMN IF EXISTS LAST_MODIFIED_AT;
 
             $syncYomiTriggerDdl
             """.trimIndent()
@@ -623,23 +724,22 @@ class M0066_AddUsers : Migration() {
         }
     }
 
-    val sql by lazy {
-        UserSql().sql
-    }
-
     override fun run() {
         with(TransactionManager.current()) {
-            SchemaUtils.create(
-                UserAccountTable,
-                UserRolesTable,
-                UserPermissionsTable,
-                ChapterUserTable,
-                MangaUserTable,
-                UserSettingsTable,
-                UserCodeTable,
-                UserCodePermissionsTable,
-            )
-            exec(sql)
+            SchemaUtils
+                .createStatements(
+                    UserAccountTable,
+                    UserRolesTable,
+                    UserPermissionsTable,
+                    ChapterUserTable,
+                    MangaUserTable,
+                    UserSettingsTable,
+                    UserCodeTable,
+                    UserCodePermissionsTable,
+                ).forEach {
+                    exec(it)
+                }
+            exec(UserSql().sql)
             currentDialectMetadata.resetCaches()
         }
     }

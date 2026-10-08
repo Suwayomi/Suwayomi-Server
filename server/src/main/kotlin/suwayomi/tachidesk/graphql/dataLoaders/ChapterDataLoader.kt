@@ -21,6 +21,8 @@ import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.intLiteral
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -98,7 +100,7 @@ class ChapterFlagCountForMangaDataLoader : KotlinDataLoader<Int, MangaChapterSta
 
                     val unreadCount =
                         Case()
-                            .When(ChapterUserTable.isRead eq false, intLiteral(1))
+                            .When(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()), intLiteral(1))
                             .Else(intLiteral(0))
                             .sum()
 
@@ -273,8 +275,10 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> 
                         ChapterTable
                             .getWithUserData(userId)
                             .selectAll()
-                            .where { (ChapterTable.manga inList ids) and (ChapterUserTable.isRead eq false) }
-                            .orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
+                            .where {
+                                (ChapterTable.manga inList ids) and
+                                    (ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()))
+                            }.orderBy(ChapterTable.sourceOrder to SortOrder.ASC)
                             .groupBy { it[ChapterTable.manga].value }
                     ids.map { id -> firstUnreadChaptersByMangaId[id]?.let { chapters -> ChapterType(chapters.first()) } }
                 }

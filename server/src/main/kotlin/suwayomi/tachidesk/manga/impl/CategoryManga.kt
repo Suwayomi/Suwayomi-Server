@@ -78,8 +78,9 @@ object CategoryManga {
         dbTransaction {
             CategoryMangaTable.batchUpsert(
                 newMangaCategoryMappings,
-                CategoryMangaTable.manga,
+                CategoryMangaTable.user,
                 CategoryMangaTable.category,
+                CategoryMangaTable.manga,
             ) { (mangaId, categoryId) ->
                 this[CategoryMangaTable.manga] = mangaId
                 this[CategoryMangaTable.category] = categoryId
@@ -140,7 +141,8 @@ object CategoryManga {
 
         val chapterCount = ChapterTable.id.count().alias("chapter_count")
         val lastReadAt = ChapterUserTable.lastReadAt.max().alias("last_read_at")
-        val selectedColumns = MangaTable.getWithUserData(userId).columns + unreadCount + downloadedCount + chapterCount + lastReadAt
+        val mangaWithUser = MangaTable.getWithUserData(userId)
+        val selectedColumns = mangaWithUser.columns + unreadCount + downloadedCount + chapterCount + lastReadAt
 
         val transform: (ResultRow) -> MangaDataClass = {
             // Map the data from the result row to the MangaDataClass
@@ -158,8 +160,7 @@ object CategoryManga {
             // Fetch data from the MangaTable and join with the CategoryMangaTable, if a category is specified
             val query =
                 if (categoryId == Category.getDefaultCategoryId(userId)) {
-                    MangaTable
-                        .getWithUserData(userId)
+                    mangaWithUser
                         .leftJoin(
                             ChapterTable.getWithUserData(userId),
                             { MangaTable.id },
@@ -175,8 +176,7 @@ object CategoryManga {
                                 CategoryMangaTable.category.isNull()
                         }
                 } else {
-                    MangaTable
-                        .getWithUserData(userId)
+                    mangaWithUser
                         .leftJoin(
                             CategoryMangaTable,
                             onColumn = { MangaTable.id },
@@ -191,7 +191,7 @@ object CategoryManga {
                 }
 
             // Join with the ChapterTable to fetch the last read chapter for each manga
-            query.groupBy(*MangaTable.columns.toTypedArray()).map(transform)
+            query.groupBy(*mangaWithUser.columns.toTypedArray()).map(transform)
         }
     }
 

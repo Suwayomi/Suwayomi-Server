@@ -3,8 +3,11 @@ package suwayomi.tachidesk.server.database
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.junit.jupiter.api.Assumptions
 import org.junit.jupiter.api.BeforeAll
+import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.server.database.migration.M0056_SyncYomi
+import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.test.ApplicationTest
 import java.util.UUID
 import kotlin.test.Test
@@ -21,6 +24,11 @@ class M0056SyncYomiTest {
 
     @Test
     fun `resumes an interrupted H2 migration`() {
+        // This test exercises the H2-specific migration path against a scratch H2 database, so it
+        // only applies when the suite is running against H2 (the migration branches on the global
+        // database type, which is POSTGRESQL on the Postgres CI leg).
+        Assumptions.assumeTrue(serverConfig.databaseType.value == DatabaseType.H2)
+
         // Database.connect makes the scratch database the primary one for all bare `transaction {}` calls;
         // save and restore the shared test database so tests running after this one are unaffected
         val previousPrimaryDatabase = TransactionManager.primaryDatabase
