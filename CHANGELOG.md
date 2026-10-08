@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
 - (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
+- (**Downloader**) Add option to split tall images
 
 ### Changed
 - (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection
@@ -26,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Answer 424 instead of 500 when a source fails
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+- (**Downloader**) Convert the pages a live read already cached when downloading a chapter
+- (**Downloader**) Fix live reads and downloads of a chapter racing on the page cache
 
 ### Deprecated
 - (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching

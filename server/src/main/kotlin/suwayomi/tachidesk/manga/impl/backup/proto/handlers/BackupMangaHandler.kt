@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.Op
@@ -30,6 +31,7 @@ import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
+import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
@@ -42,6 +44,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupTracking
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrack
 import suwayomi.tachidesk.manga.impl.track.tracker.model.toTrackRecordDataClass
+import suwayomi.tachidesk.manga.impl.util.storage.SplitPageLayout
 import suwayomi.tachidesk.manga.model.dataclass.TrackRecordDataClass
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
@@ -141,7 +144,7 @@ object BackupMangaHandler {
                                     scanlator = it[ChapterTable.scanlator],
                                     read = it.getOrNull(ChapterUserTable.isRead) ?: false,
                                     bookmark = it.getOrNull(ChapterUserTable.isBookmarked) ?: false,
-                                    lastPageRead = it.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
+                                    lastPageRead = it.lastPageReadAsSourcePage(mangaId),
                                     dateFetch = it[ChapterTable.fetchedAt].seconds.inWholeMilliseconds,
                                     dateUpload = it[ChapterTable.date_upload],
                                     chapterNumber = it[ChapterTable.chapter_number],
@@ -474,14 +477,16 @@ object BackupMangaHandler {
                 if (flags.includeChapters) {
                     if (syncMode == SyncRestoreMode.ADOPT) {
                         this[ChapterUserTable.isRead] = backupChapter.read
-                        this[ChapterUserTable.lastPageRead] = backupChapter.lastPageRead.coerceAtLeast(0)
+                        this[ChapterUserTable.lastPageRead] = backupChapter.lastPageReadAsDownloadedPage(mangaId, dbChapter)
                         this[ChapterUserTable.isBookmarked] = backupChapter.bookmark
                     } else {
                         this[ChapterUserTable.isRead] =
                             backupChapter.read || (userData?.get(ChapterUserTable.isRead) ?: false)
                         this[ChapterUserTable.lastPageRead] =
-                            max(backupChapter.lastPageRead, userData?.get(ChapterUserTable.lastPageRead) ?: 0)
-                                .coerceAtLeast(0)
+                            max(
+                                backupChapter.lastPageReadAsDownloadedPage(mangaId, dbChapter),
+                                userData?.get(ChapterUserTable.lastPageRead) ?: 0,
+                            ).coerceAtLeast(0)
                         this[ChapterUserTable.isBookmarked] =
                             backupChapter.bookmark || (userData?.get(ChapterUserTable.isBookmarked) ?: false)
                     }
@@ -589,4 +594,27 @@ object BackupMangaHandler {
     }
 
     private fun TrackRecordDataClass.forComparison() = this.copy(id = 0, mangaId = 0)
+
+    // Backups exchange source pages: split pages only exist in this server's download
+    private fun ResultRow.lastPageReadAsSourcePage(mangaId: Int): Int {
+        val lastPageRead = getOrNull(ChapterUserTable.lastPageRead) ?: 0
+        if (lastPageRead <= 0 || !this[ChapterTable.isDownloaded]) return lastPageRead
+        return splitPageLayout(mangaId, this[ChapterTable.id].value)?.toSourceIndex(lastPageRead) ?: lastPageRead
+    }
+
+    private fun BackupChapter.lastPageReadAsDownloadedPage(
+        mangaId: Int,
+        dbChapter: ResultRow,
+    ): Int {
+        val lastPageRead = lastPageRead.coerceAtLeast(0)
+        if (lastPageRead == 0 || !dbChapter[ChapterTable.isDownloaded]) return lastPageRead
+        return splitPageLayout(mangaId, dbChapter[ChapterTable.id].value)?.toDownloadedIndex(lastPageRead) ?: lastPageRead
+    }
+
+    private fun splitPageLayout(
+        mangaId: Int,
+        chapterId: Int,
+    ): SplitPageLayout? =
+        runBlocking { ChapterDownloadHelper.getSplitPageLayout(mangaId, chapterId) }
+            ?.takeIf { it.hasSplitPages }
 }
