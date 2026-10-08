@@ -6,6 +6,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
+import com.auth0.jwt.exceptions.TokenExpiredException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -147,8 +148,12 @@ object Jwt {
                     roles = roles,
                 )
             }
+        } catch (e: TokenExpiredException) {
+            // routine: clients present their last token and refresh once it is rejected
+            logger.debug { "Received expired token: ${e.message}" }
+            return UserType.Visitor
         } catch (e: JWTVerificationException) {
-            logger.warn(e) { "Received invalid token" }
+            logger.warn { "Received invalid token: ${e.message}" }
             return UserType.Visitor
         } catch (e: Exception) {
             // verifyJwt runs on every request; fail closed (logged out) rather than
