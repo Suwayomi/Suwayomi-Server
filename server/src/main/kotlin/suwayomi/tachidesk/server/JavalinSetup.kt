@@ -34,7 +34,6 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
-import org.eclipse.jetty.http.HttpException
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -61,6 +60,7 @@ import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
+import org.eclipse.jetty.http.HttpException as JettyHttpException
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
@@ -356,7 +356,7 @@ object JavalinSetup {
         exception(ServletException::class.java) { e, ctx ->
             logger.error(e) { "Jakarta Exception while handling the request" }
             val rootCause = e.rootCause
-            if (rootCause is HttpException) {
+            if (rootCause is JettyHttpException) {
                 ctx.status(rootCause.code)
                 ctx.result(rootCause.reason ?: "Forbidden")
             } else {
