@@ -55,7 +55,7 @@ class NodeListTotalQueryTest : GraphQLTest() {
 
     private fun List<String>.loadsChapterRows() = any { "CHAPTER.URL" in it || "chapter.url" in it }
 
-    private fun List<String>.countsChapters() = any { "COUNT(CHAPTER.ID)" in it || "COUNT(chapter.id)" in it  }
+    private fun List<String>.countsChapters() = any { "COUNT(CHAPTER.ID)" in it || "COUNT(chapter.id)" in it }
 
     @Test
     fun onlyTotalCountIsCounted() {
