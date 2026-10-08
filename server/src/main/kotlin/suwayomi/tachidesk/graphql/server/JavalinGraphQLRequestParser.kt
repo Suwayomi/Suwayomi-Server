@@ -28,8 +28,8 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
             val contentType = context.contentType()
             val formParam =
                 if (
-                    contentType?.contains("application/x-www-form-urlencoded") == true ||
-                    contentType?.contains("multipart/form-data") == true
+                    contentType?.contains("application/x-www-form-urlencoded", true) == true ||
+                    contentType?.contains("multipart/form-data", true) == true
                 ) {
                     context.formParam("operations")
                         ?: throw IllegalArgumentException("Cannot find 'operations' body")
