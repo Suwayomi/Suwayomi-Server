@@ -42,6 +42,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
@@ -200,6 +201,7 @@ class UserQuery {
     @RequireAuth
     @RequirePermissions(UserPermission.MANAGE_USERS)
     fun users(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: UserCondition? = null,
         filter: UserFilter? = null,
         order: List<UserOrder>? = null,
@@ -218,7 +220,14 @@ class UserQuery {
                 val baseSort = listOf(UserOrder(UserOrderBy.ID, SortOrder.ASC))
                 val actualSort = (order.orEmpty() + baseSort)
 
-                val (total, firstResult, lastResult) = res.applySortAndGetPaginationInfo(actualSort, before, last, UserAccountTable.id)
+                val (total, firstResult, lastResult) =
+                    res.applySortAndGetPaginationInfo(
+                        actualSort,
+                        before,
+                        last,
+                        UserAccountTable.id,
+                        PaginationNeeds.of(dataFetchingEnvironment),
+                    )
 
                 res.applyBeforeAfter(
                     before = before,
