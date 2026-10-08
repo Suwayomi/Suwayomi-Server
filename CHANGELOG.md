@@ -10,10 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Add User Accounts
 - (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
 - (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
+- (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
 
 ### Changed
 - (**Updates**) Index chapters by fetch time for the updates list
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
+- (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 
 ### Fixed
 - (**Auth**) Stop logging routine expired-token rejections as errors
