@@ -130,7 +130,7 @@ class MangaCountForCategoryDataLoader : KotlinDataLoader<Int, Int> {
                             CategoryMangaTable
                                 .innerJoin(MangaTable.getWithUserData(userId))
                                 .select(CategoryMangaTable.category, count)
-                                .where { CategoryMangaTable.category inList ids and (CategoryMangaTable.user eq userId) }
+                                .where { CategoryMangaTable.category inIds ids and (CategoryMangaTable.user eq userId) }
                                 .groupBy(CategoryMangaTable.category)
                                 .associate { it[CategoryMangaTable.category].value to it[count].toInt() }
 
@@ -174,7 +174,7 @@ class MangaCountForSourceDataLoader : KotlinDataLoader<Long, Int> {
                     val countBySourceId =
                         MangaTable
                             .select(MangaTable.sourceReference, count)
-                            .where { MangaTable.sourceReference inList ids }
+                            .where { MangaTable.sourceReference inIds ids }
                             .groupBy(MangaTable.sourceReference)
                             .associate { it[MangaTable.sourceReference] to it[count].toInt() }
                     ids.map { countBySourceId[it] ?: 0 }

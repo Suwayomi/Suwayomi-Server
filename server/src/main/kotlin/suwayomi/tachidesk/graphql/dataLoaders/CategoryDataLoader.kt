@@ -98,7 +98,7 @@ class CategoryCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
                                 additionalConstraint = { CategoryTable.user eq userId },
                             ).select(CategoryMangaTable.manga, count)
                             .where {
-                                CategoryMangaTable.manga inList ids and
+                                CategoryMangaTable.manga inIds ids and
                                     (CategoryMangaTable.user eq userId)
                             }.groupBy(CategoryMangaTable.manga)
                             .associate { it[CategoryMangaTable.manga].value to it[count].toInt() }

@@ -98,7 +98,7 @@ class ChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
                     val countByMangaId =
                         ChapterTable
                             .select(ChapterTable.manga, count)
-                            .where { ChapterTable.manga inList ids }
+                            .where { ChapterTable.manga inIds ids }
                             .groupBy(ChapterTable.manga)
                             .associate { it[ChapterTable.manga].value to it[count].toInt() }
                     ids.map { countByMangaId[it] ?: 0 }
