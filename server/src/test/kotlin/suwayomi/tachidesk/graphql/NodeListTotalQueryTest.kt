@@ -53,9 +53,9 @@ class NodeListTotalQueryTest : GraphQLTest() {
         return response.dataPath("manga", "chapters") as Map<*, *> to appender.list.map { it.formattedMessage }
     }
 
-    private fun List<String>.loadsChapterRows() = any { "CHAPTER.URL" in it }
+    private fun List<String>.loadsChapterRows() = any { "CHAPTER.URL" in it || "chapter.url" in it }
 
-    private fun List<String>.countsChapters() = any { "COUNT(CHAPTER.ID)" in it }
+    private fun List<String>.countsChapters() = any { "COUNT(CHAPTER.ID)" in it || "COUNT(chapter.id)" in it  }
 
     @Test
     fun onlyTotalCountIsCounted() {
