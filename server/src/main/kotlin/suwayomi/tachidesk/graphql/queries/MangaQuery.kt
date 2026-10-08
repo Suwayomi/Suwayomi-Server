@@ -12,12 +12,15 @@ import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Join
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
@@ -261,9 +264,22 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults =
             transaction {
+                // starting from MangaUserTable is cheaper if thats all we need
+                fun baseQuery(): Join =
+                    if (condition?.inLibrary == true) {
+                        MangaUserTable
+                            .innerJoin(
+                                MangaTable,
+                                onColumn = { MangaUserTable.manga },
+                                otherColumn = { MangaTable.id },
+                                additionalConstraint = { MangaUserTable.user eq userId and (MangaUserTable.inLibrary eq true) },
+                            )
+                    } else {
+                        MangaTable.getWithUserData(userId)
+                    }
+
                 val mangaIdsQuery =
-                    MangaTable
-                        .getWithUserData(userId)
+                    baseQuery()
                         .leftJoin(
                             CategoryMangaTable,
                             onColumn = { MangaTable.id },
@@ -275,9 +291,9 @@ class MangaQuery {
 
                 val res =
                     if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
-                        MangaTable.getWithUserData(userId).selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
+                        baseQuery().selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
                     } else {
-                        MangaTable.getWithUserData(userId).selectAll().applyOps(condition, filter)
+                        baseQuery().selectAll().applyOps(condition, filter)
                     }
 
                 val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))

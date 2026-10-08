@@ -15,9 +15,9 @@ import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.isNull
 import org.jetbrains.exposed.v1.core.leftJoin
-import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -69,16 +69,19 @@ class MangaForCategoryDataLoader : KotlinDataLoader<Int, MangaNodeList> {
                     val defaultCategoryId = Category.getDefaultCategoryId(userId)!!
                     val itemsByRef =
                         if (ids.contains(defaultCategoryId)) {
-                            MangaTable
-                                .getWithUserData(userId)
-                                .leftJoin(
+                            MangaUserTable
+                                .innerJoin(
+                                    MangaTable,
+                                    onColumn = { MangaUserTable.manga },
+                                    otherColumn = { MangaTable.id },
+                                    additionalConstraint = { MangaUserTable.user eq userId and (MangaUserTable.inLibrary eq true) },
+                                ).leftJoin(
                                     CategoryMangaTable,
                                     onColumn = { MangaTable.id },
                                     otherColumn = { CategoryMangaTable.manga },
                                     additionalConstraint = { CategoryMangaTable.user eq userId },
                                 ).selectAll()
-                                .where { MangaUserTable.inLibrary eq true }
-                                .andWhere { CategoryMangaTable.manga.isNull() }
+                                .where { CategoryMangaTable.manga.isNull() }
                                 .map { MangaType(it) }
                                 .let {
                                     mapOf(defaultCategoryId to it)
@@ -113,16 +116,19 @@ class MangaCountForCategoryDataLoader : KotlinDataLoader<Int, Int> {
                     val count = MangaTable.id.count()
                     val countByRef =
                         if (ids.contains(defaultCategoryId)) {
-                            MangaTable
-                                .getWithUserData(userId)
-                                .leftJoin(
+                            MangaUserTable
+                                .innerJoin(
+                                    MangaTable,
+                                    onColumn = { MangaUserTable.manga },
+                                    otherColumn = { MangaTable.id },
+                                    additionalConstraint = { MangaUserTable.user eq userId and (MangaUserTable.inLibrary eq true) },
+                                ).leftJoin(
                                     CategoryMangaTable,
                                     onColumn = { MangaTable.id },
                                     otherColumn = { CategoryMangaTable.manga },
                                     additionalConstraint = { CategoryMangaTable.user eq userId },
                                 ).select(count)
-                                .where { MangaUserTable.inLibrary eq true }
-                                .andWhere { CategoryMangaTable.manga.isNull() }
+                                .where { CategoryMangaTable.manga.isNull() }
                                 .let { mapOf(defaultCategoryId to it.single()[count].toInt()) }
                         } else {
                             emptyMap()
