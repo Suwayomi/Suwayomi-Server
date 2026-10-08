@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.getChapterDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -141,8 +142,11 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
             val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
 
-            val doesPageAlreadyExist = pageExistsInFinalDownloadFolder || pageExistsInCacheDownloadFolder
-            if (doesPageAlreadyExist) {
+            // A page cached by a live read isn't converted yet, so only skip a cached page once processed
+            val pageFullyProcessed =
+                pageExistsInFinalDownloadFolder ||
+                    (pageExistsInCacheDownloadFolder && PageCacheCoordinator.isProcessed(cacheChapterDir, fileName))
+            if (pageFullyProcessed) {
                 continue
             }
 
@@ -175,6 +179,8 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             download.progress = ((pageNum + 1).toFloat()) / pageCount
             step(download, false)
         }
+
+        PageCacheCoordinator.clearProcessedMarkers(cacheChapterDir)
 
         createComicInfoFile(
             downloadCacheFolder.toPath(),
