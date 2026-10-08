@@ -272,6 +272,7 @@ server.databaseType = H2 # H2, POSTGRESQL
 server.databaseUrl = "postgresql://localhost:5432/suwayomi"
 server.databaseUsername = ""
 server.databasePassword = ""
+server.databaseSchema = "suwayomi"
 server.useHikariConnectionPool = true
 server.hikariMaxPoolSize = 6
 ```
@@ -279,6 +280,7 @@ server.hikariMaxPoolSize = 6
 - `server.databaseUrl` the URL where to find the PostgreSQL server, including the database name.
 - `server.databaseUsername` the username with which to authenticate at the PostgreSQL instance.
 - `server.databasePassword` the username with which to authenticate at the PostgreSQL instance.
+- `server.databaseSchema` the name of the database schema that is going to be used
 - `server.useHikariConnectionPool` use Hikari Connection Pool to connect to the database.
 - `server.hikariMaxPoolSize` the maximum number of actual connections to the database; see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing 
 

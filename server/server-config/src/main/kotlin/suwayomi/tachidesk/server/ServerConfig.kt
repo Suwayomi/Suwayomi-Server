@@ -1147,7 +1147,15 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = 6,
         min = 1,
-        description = "the maximum number of actual connections to the database; see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"
+        description = "the maximum number of actual connections to the database; see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
+    )
+
+    val databaseSchema: MutableStateFlow<String> by StringSetting(
+        protoNumber = 100,
+        group = SettingGroup.DATABASE,
+        privacySafe = true,
+        defaultValue = "suwayomi",
+        minLength = 1
     )
 
     /** ****************************************************************** **/
