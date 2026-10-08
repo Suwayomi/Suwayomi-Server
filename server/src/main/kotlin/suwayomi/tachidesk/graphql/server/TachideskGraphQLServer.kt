@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionProtocolHandler
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.ForbiddenException
+import suwayomi.tachidesk.server.user.UnauthorizedException
 import tools.jackson.module.kotlin.jacksonObjectMapper
 
 class TachideskGraphQLServer(
@@ -59,7 +61,16 @@ class TachideskGraphQLServer(
                     val sourceLocation = handlerParameters.sourceLocation
                     val path = handlerParameters.path
 
-                    logger.error(exception) { "GraphQL execution failed due to" }
+                    when (exception) {
+                        // expected rejections (e.g. an expired token), not server faults
+                        is UnauthorizedException, is ForbiddenException -> {
+                            logger.debug { "GraphQL field $path rejected: ${exception.message}" }
+                        }
+
+                        else -> {
+                            logger.error(exception) { "GraphQL execution failed due to" }
+                        }
+                    }
 
                     val error =
                         ExceptionWhileDataFetching(

@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.server.user
 
+import com.typesafe.config.ConfigFactory
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
@@ -132,9 +133,10 @@ class UserSettingsBackfillTest : ApplicationTest() {
 
     @Test
     fun saveSkipsUnsetSettings() {
-        setConfigValues("server.opdsMarkAsReadOnDownload" to true)
+        // Use custom config to not interfere with other tests
+        val config = ConfigFactory.parseString("server.opdsMarkAsReadOnDownload = true")
 
-        saveUserSettingsBackfillFile(applicationDirs)
+        saveUserSettingsBackfillFile(applicationDirs, config)
 
         val content = backfillFile.readText()
         assertTrue(content.contains("\"opdsMarkAsReadOnDownload\""))

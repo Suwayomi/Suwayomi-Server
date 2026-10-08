@@ -207,6 +207,24 @@ tasks {
             showStandardStreams = true
             events("passed", "skipped", "failed")
         }
+        // Set before any test runs, a test may load the config before ApplicationTest sets it
+        systemProperty(
+            "suwayomi.tachidesk.config.server.rootDir",
+            layout.buildDirectory
+                .dir("tmp/TestDesk")
+                .get()
+                .asFile.absolutePath,
+        )
+        listOf(
+            "testDatabaseType" to "databaseType",
+            "testDatabaseUrl" to "databaseUrl",
+            "testDatabaseUsername" to "databaseUsername",
+            "testDatabasePassword" to "databasePassword",
+        ).forEach { (gradleProp, configProp) ->
+            project.findProperty(gradleProp)?.let {
+                systemProperty("suwayomi.tachidesk.config.server.$configProp", it)
+            }
+        }
     }
 
     withType<KotlinJvmCompile> {

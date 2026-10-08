@@ -12,6 +12,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
@@ -58,7 +59,7 @@ class ChapterMetaDataLoader : KotlinDataLoader<Int, List<ChapterMetaType>> {
                     val metasByRefId =
                         ChapterMetaTable
                             .selectAll()
-                            .where { ChapterMetaTable.ref inList ids and (ChapterMetaTable.user eq userId) }
+                            .where { ChapterMetaTable.ref inIds ids and (ChapterMetaTable.user eq userId) }
                             .map { ChapterMetaType(it) }
                             .groupBy { it.chapterId }
                     ids.map { metasByRefId[it].orEmpty() }
@@ -79,7 +80,7 @@ class MangaMetaDataLoader : KotlinDataLoader<Int, List<MangaMetaType>> {
                     val metasByRefId =
                         MangaMetaTable
                             .selectAll()
-                            .where { MangaMetaTable.ref inList ids and (MangaMetaTable.user eq userId) }
+                            .where { MangaMetaTable.ref inIds ids and (MangaMetaTable.user eq userId) }
                             .map { MangaMetaType(it) }
                             .groupBy { it.mangaId }
                     ids.map { metasByRefId[it].orEmpty() }
@@ -100,7 +101,7 @@ class CategoryMetaDataLoader : KotlinDataLoader<Int, List<CategoryMetaType>> {
                     val metasByRefId =
                         CategoryMetaTable
                             .selectAll()
-                            .where { CategoryMetaTable.ref inList ids and (CategoryMetaTable.user eq userId) }
+                            .where { CategoryMetaTable.ref inIds ids and (CategoryMetaTable.user eq userId) }
                             .map { CategoryMetaType(it) }
                             .groupBy { it.categoryId }
                     ids.map { metasByRefId[it].orEmpty() }
@@ -121,7 +122,7 @@ class SourceMetaDataLoader : KotlinDataLoader<Long, List<SourceMetaType>> {
                     val metasByRefId =
                         SourceMetaTable
                             .selectAll()
-                            .where { SourceMetaTable.ref inList ids and (SourceMetaTable.user eq userId) }
+                            .where { SourceMetaTable.ref inIds ids and (SourceMetaTable.user eq userId) }
                             .map { SourceMetaType(it) }
                             .groupBy { it.sourceId }
                     ids.map { metasByRefId[it].orEmpty() }
