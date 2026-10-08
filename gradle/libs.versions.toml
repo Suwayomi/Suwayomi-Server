@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 coroutines = "1.11.0"
 serialization = "1.11.0"
 jvmTarget = "21"
@@ -11,7 +11,7 @@ exposed = "1.4.0"
 dex2jar = "2.4.38"
 polyglot = "25.3.4.1"
 settings = "1.3.0"
-twelvemonkeys = "3.14.0"
+twelvemonkeys = "3.15.2"
 graphqlkotlin = "10.2.2"
 xmlserialization = "1.0.2"
 ktlint = "1.8.0"
@@ -38,7 +38,7 @@ serialization-xml-core = { module = "io.github.pdvrieze.xmlutil:core", version.r
 serialization-xml = { module = "io.github.pdvrieze.xmlutil:serialization-jvm", version.ref = "xmlserialization" }
 
 # Logging
-slf4japi = "org.slf4j:slf4j-api:2.0.18"
+slf4japi = "org.slf4j:slf4j-api:2.0.20"
 logback = "ch.qos.logback:logback-classic:1.6.3"
 kotlinlogging = "io.github.oshai:kotlin-logging-jvm:8.0.4"
 
@@ -48,7 +48,7 @@ okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.
 okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version.ref = "okhttp" }
 okhttp-brotli = { module = "com.squareup.okhttp3:okhttp-brotli", version.ref = "okhttp" }
 okhttp-zstd = { module = "com.squareup.okhttp3:okhttp-zstd", version.ref = "okhttp" }
-okio = "com.squareup.okio:okio:3.18.1"
+okio = "com.squareup.okio:okio:3.18.2"
 
 # Javalin api
 javalin-core = { module = "io.javalin:javalin", version.ref = "javalin" }
@@ -123,7 +123,7 @@ commonscompress = "org.apache.commons:commons-compress:1.28.0"
 junrar = "com.github.junrar:junrar:8.1.1"
 
 # AES/CBC/PKCS7Padding Cypher provider
-bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.85.2"
+bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.86"
 
 # AndroidX annotations
 android-annotations = "androidx.annotation:annotation:1.10.0"
@@ -164,7 +164,7 @@ jcef = { module = "org.jetbrains.intellij.deps.jcef:jcef", version.ref = "jcef" 
 
 # User
 bcrypt = "at.favre.lib:bcrypt:0.10.2"
-jwt = "com.auth0:java-jwt:4.6.0"
+jwt = "com.auth0:java-jwt:4.6.1"
 
 # lint - used for renovate to update ktlint version
 ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
@@ -182,7 +182,7 @@ kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref 
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version = "14.2.0"}
 
 # Build config
-buildconfig = { id = "com.github.gmazzo.buildconfig", version = "6.0.10"}
+buildconfig = { id = "com.github.gmazzo.buildconfig", version = "6.1.2"}
 
 # Download
 download = { id = "de.undercouch.download", version = "5.7.0"}
