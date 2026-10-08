@@ -33,4 +33,6 @@ interface IUpdater {
     fun reset()
 
     fun getStatus(): UpdateUpdates
+
+    fun getLastUpdateErrors(): List<UpdateError>
 }
