@@ -13,6 +13,10 @@ private val logger = KotlinLogging.logger {}
 object CefHelper {
     val cefApp = MutableStateFlow<Result<CefApp?>>(Result.success(null))
 
+    /** Set by the server to start CEF the first time something waits for it */
+    @Volatile
+    var requestStart: () -> Unit = {}
+
     suspend fun createClient(): CefClient {
         val app = waitForInit().first()
         val client = app.createClient()
@@ -22,6 +26,7 @@ object CefHelper {
 
     fun waitForInit() =
         callbackFlow {
+            requestStart()
             val app = cefApp.first { it.isFailure || it.getOrThrow() != null }.getOrThrow()!!
             app.onInitialization {
                 logger.debug { "CEF: Initialization state $it" }
