@@ -14,11 +14,11 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.BufferedOutputStream
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.InputStream
+import java.io.OutputStream
 import java.util.zip.Deflater
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -84,28 +84,7 @@ class FolderProvider(
             throw IllegalArgumentException("Invalid folder to create CBZ for chapter ID: $chapterId")
         }
 
-        val byteArrayOutputStream = ByteArrayOutputStream()
-        ZipArchiveOutputStream(BufferedOutputStream(byteArrayOutputStream)).use { zipOutputStream ->
-            zipOutputStream.setMethod(ZipArchiveOutputStream.DEFLATED)
-            zipOutputStream.setLevel(Deflater.DEFAULT_COMPRESSION)
-
-            chapterDir
-                .listFiles()
-                ?.filter { it.isFile }
-                ?.sortedBy { it.name }
-                ?.forEach { imageFile ->
-                    FileInputStream(imageFile).use { fileInputStream ->
-                        val zipEntry = ZipArchiveEntry(imageFile.name)
-                        zipEntry.time = 0L
-                        zipOutputStream.putArchiveEntry(zipEntry)
-                        fileInputStream.copyTo(zipOutputStream)
-                        zipOutputStream.closeArchiveEntry()
-                    }
-                }
-        }
-
-        val zipData = byteArrayOutputStream.toByteArray()
-        return ByteArrayInputStream(zipData) to zipData.size.toLong()
+        return archiveToTempFile(chapterDir, chapterId)
     }
 
     override suspend fun getArchiveSize(): Long {
@@ -113,5 +92,61 @@ class FolderProvider(
         if (!chapterDir.exists() || !chapterDir.isDirectory) return 0L
         // Approximation: actual CBZ size is slightly larger due to ZIP metadata, but sufficient for Content-Length header.
         return chapterDir.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
+    }
+
+    companion object {
+        /**
+         * Builds the archive in a temp file deleted once the returned stream is closed, so a chapter is never held in memory.
+         * KOReader's binary checksum hashes these bytes, so they must stay the same.
+         */
+        internal fun archiveToTempFile(
+            chapterDir: File,
+            chapterId: Int,
+        ): Pair<InputStream, Long> {
+            val archiveFile = File.createTempFile("chapter-$chapterId-", ".cbz")
+            try {
+                writeArchive(chapterDir, BufferedOutputStream(FileOutputStream(archiveFile)))
+            } catch (e: Exception) {
+                archiveFile.delete()
+                throw e
+            }
+
+            val inputStream =
+                object : FileInputStream(archiveFile) {
+                    override fun close() {
+                        try {
+                            super.close()
+                        } finally {
+                            archiveFile.delete()
+                        }
+                    }
+                }
+            return inputStream to archiveFile.length()
+        }
+
+        // a stream rather than a file so the entries keep their data descriptors, as when the archive was built in memory
+        private fun writeArchive(
+            chapterDir: File,
+            outputStream: OutputStream,
+        ) {
+            ZipArchiveOutputStream(outputStream).use { zipOutputStream ->
+                zipOutputStream.setMethod(ZipArchiveOutputStream.DEFLATED)
+                zipOutputStream.setLevel(Deflater.DEFAULT_COMPRESSION)
+
+                chapterDir
+                    .listFiles()
+                    ?.filter { it.isFile }
+                    ?.sortedBy { it.name }
+                    ?.forEach { imageFile ->
+                        FileInputStream(imageFile).use { fileInputStream ->
+                            val zipEntry = ZipArchiveEntry(imageFile.name)
+                            zipEntry.time = 0L
+                            zipOutputStream.putArchiveEntry(zipEntry)
+                            fileInputStream.copyTo(zipOutputStream)
+                            zipOutputStream.closeArchiveEntry()
+                        }
+                    }
+            }
+        }
     }
 }
