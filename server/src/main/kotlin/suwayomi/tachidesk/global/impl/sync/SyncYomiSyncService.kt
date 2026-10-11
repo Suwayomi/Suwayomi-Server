@@ -17,6 +17,9 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
@@ -28,6 +31,7 @@ import suwayomi.tachidesk.server.settings.value
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
 import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
@@ -53,6 +57,11 @@ object SyncYomiSyncService {
         val message: String? = null,
     )
 
+    @Serializable
+    private data class DeletedChapters(
+        val deletedChapters: List<String>,
+    )
+
     data class SyncResult(
         val backup: Backup?,
         val changed: Boolean,
@@ -65,6 +74,7 @@ object SyncYomiSyncService {
     private const val PREF_FULL_REQUESTED = "full_sync_requested"
     private const val PREF_LAST_FULL_SYNC = "last_full_sync"
     private const val PREF_PENDING_DELETED_CATEGORIES = "pending_deleted_category_uids"
+    private const val PREF_PENDING_DELETED_CHAPTERS = "pending_deleted_chapter_keys"
     private const val PREF_V2_PROBED_HOST = "v2_probed_host"
     private const val PREF_V2_SUPPORTED = "server_supports_v2"
     private val fullSyncInterval = 24.hours
@@ -154,6 +164,8 @@ object SyncYomiSyncService {
         val backup = syncData.backup ?: return SyncResult(null, changed = false, protocolV2 = true)
         val host = userConfig.syncYomiHost.value(userId)
         val apiKey = userConfig.syncYomiApiKey.value(userId)
+
+        submitDeletedChapters(userId, host, apiKey)
 
         val pendingDeleted = pendingDeletedCategories(userId)
         val headers =
@@ -265,6 +277,58 @@ object SyncYomiSyncService {
 
     private fun pendingDeletedCategories(userId: Int): Set<String> =
         syncPreferences.getStringSet("${PREF_PENDING_DELETED_CATEGORIES}_$userId", emptySet()).orEmpty().toSet()
+
+    fun recordChapterListChange(
+        removedKeys: Collection<String>,
+        addedKeys: Collection<String>,
+    ) {
+        if (removedKeys.isEmpty() && addedKeys.isEmpty()) return
+        val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value } }
+        val editor = syncPreferences.edit()
+        userIds.forEach { userId ->
+            val pending = pendingDeletedChapters(userId)
+            val tracked = if (userConfig.syncYomiEnabled.value(userId)) pending + removedKeys else pending
+            val updated = tracked - addedKeys.toSet()
+            if (updated != pending) editor.putStringSet("${PREF_PENDING_DELETED_CHAPTERS}_$userId", updated)
+        }
+        editor.apply()
+    }
+
+    internal fun pendingDeletedChapters(userId: Int): Set<String> =
+        syncPreferences.getStringSet("${PREF_PENDING_DELETED_CHAPTERS}_$userId", emptySet()).orEmpty().toSet()
+
+    private suspend fun submitDeletedChapters(
+        userId: Int,
+        host: String,
+        apiKey: String,
+    ) {
+        val sent = pendingDeletedChapters(userId)
+        if (sent.isEmpty()) return
+
+        val body =
+            Json
+                .encodeToString(DeletedChapters.serializer(), DeletedChapters(sent.toList()))
+                .toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = POST(url = "$host/api/sync/v2/deletions", headers = baseHeaders(apiKey, userId).build(), body = body)
+        val response =
+            try {
+                syncClient().newCall(request).await()
+            } catch (e: IOException) {
+                logger.warn { "SyncYomi v2 chapter deletions not sent: ${e.message}" }
+                return
+            }
+        response.use {
+            if (!it.isSuccessful) {
+                logger.warn { "SyncYomi v2 chapter deletions not applied: ${it.code}" }
+                return
+            }
+        }
+        syncPreferences
+            .edit()
+            .putStringSet("${PREF_PENDING_DELETED_CHAPTERS}_$userId", pendingDeletedChapters(userId) - sent)
+            .apply()
+        logger.debug { "SyncYomi v2 chapter deletions applied: ${sent.size} keys" }
+    }
 
     private fun baseHeaders(
         apiKey: String,
