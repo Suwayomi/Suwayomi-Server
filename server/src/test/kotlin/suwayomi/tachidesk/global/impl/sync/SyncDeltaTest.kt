@@ -1,5 +1,8 @@
 package suwayomi.tachidesk.global.impl.sync
 
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
@@ -60,5 +63,22 @@ class SyncDeltaTest {
 
         val empty = ProtoBuf.decodeFromByteArray(Backup.serializer(), ByteArray(0))
         assertTrue(empty.backupManga.isEmpty())
+    }
+
+    @Test
+    fun chapterTombstoneKeyMatchesTheServerKey() {
+        val key = chapterTombstoneKey(sourceId = 9999999999, mangaUrl = "/manga/01", chapterUrl = "/manga/01/ch01")
+
+        assertEquals("9999999999|/manga/01\u001f/manga/01/ch01", key)
+    }
+
+    @Test
+    fun chapterTombstoneKeySurvivesTheJsonBody() {
+        val key = chapterTombstoneKey(sourceId = 7, mangaUrl = "/manga/t\"a\u0001", chapterUrl = "/c/x\n\t—")
+        val serializer = ListSerializer(String.serializer())
+
+        val decoded = Json.decodeFromString(serializer, Json.encodeToString(serializer, listOf(key)))
+
+        assertEquals(listOf(key), decoded)
     }
 }
