@@ -23,6 +23,8 @@ import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.test.ApplicationTest
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -77,5 +79,17 @@ class SyncYomiChapterTombstoneTest : ApplicationTest() {
         SyncYomiSyncService.recordChapterListChange(removedKeys = emptyList(), addedKeys = listOf("a"))
 
         assertEquals(setOf("b"), SyncYomiSyncService.pendingDeletedChapters(syncingUser))
+    }
+
+    @Test
+    fun concurrentRemovalsAreAllKept() {
+        val keys = (1..200).map { "k$it" }
+        val pool = Executors.newFixedThreadPool(8)
+
+        keys.forEach { key -> pool.execute { SyncYomiSyncService.recordChapterListChange(listOf(key), emptyList()) } }
+        pool.shutdown()
+        pool.awaitTermination(30, TimeUnit.SECONDS)
+
+        assertEquals(keys.toSet(), SyncYomiSyncService.pendingDeletedChapters(syncingUser))
     }
 }

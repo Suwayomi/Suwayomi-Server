@@ -78,6 +78,7 @@ object SyncYomiSyncService {
     private const val PREF_V2_PROBED_HOST = "v2_probed_host"
     private const val PREF_V2_SUPPORTED = "server_supports_v2"
     private val fullSyncInterval = 24.hours
+    private val pendingDeletionsLock = Any()
 
     @Serializable
     private enum class SyncEventStatus {
@@ -284,14 +285,16 @@ object SyncYomiSyncService {
     ) {
         if (removedKeys.isEmpty() && addedKeys.isEmpty()) return
         val userIds = transaction { UserAccountTable.selectAll().map { it[UserAccountTable.id].value } }
-        val editor = syncPreferences.edit()
-        userIds.forEach { userId ->
-            val pending = pendingDeletedChapters(userId)
-            val tracked = if (userConfig.syncYomiEnabled.value(userId)) pending + removedKeys else pending
-            val updated = tracked - addedKeys.toSet()
-            if (updated != pending) editor.putStringSet("${PREF_PENDING_DELETED_CHAPTERS}_$userId", updated)
+        synchronized(pendingDeletionsLock) {
+            val editor = syncPreferences.edit()
+            userIds.forEach { userId ->
+                val pending = pendingDeletedChapters(userId)
+                val tracked = if (userConfig.syncYomiEnabled.value(userId)) pending + removedKeys else pending
+                val updated = tracked - addedKeys.toSet()
+                if (updated != pending) editor.putStringSet("${PREF_PENDING_DELETED_CHAPTERS}_$userId", updated)
+            }
+            editor.apply()
         }
-        editor.apply()
     }
 
     internal fun pendingDeletedChapters(userId: Int): Set<String> =
@@ -323,10 +326,12 @@ object SyncYomiSyncService {
                 return
             }
         }
-        syncPreferences
-            .edit()
-            .putStringSet("${PREF_PENDING_DELETED_CHAPTERS}_$userId", pendingDeletedChapters(userId) - sent)
-            .apply()
+        synchronized(pendingDeletionsLock) {
+            syncPreferences
+                .edit()
+                .putStringSet("${PREF_PENDING_DELETED_CHAPTERS}_$userId", pendingDeletedChapters(userId) - sent)
+                .apply()
+        }
         logger.debug { "SyncYomi v2 chapter deletions applied: ${sent.size} keys" }
     }
 
