@@ -212,8 +212,13 @@ object SyncYomiSyncService {
             .edit()
             .putLong("${PREF_CURSOR}_$userId", cursor)
             .putBoolean("${PREF_FULL_REQUESTED}_$userId", fullRequested)
-            .putStringSet("${PREF_PENDING_DELETED_CATEGORIES}_$userId", pendingDeletedCategories(userId) - pendingDeleted)
             .apply()
+        synchronized(pendingDeletionsLock) {
+            syncPreferences
+                .edit()
+                .putStringSet("${PREF_PENDING_DELETED_CATEGORIES}_$userId", pendingDeletedCategories(userId) - pendingDeleted)
+                .apply()
+        }
         if (full) {
             syncPreferences.edit().putLong("${PREF_LAST_FULL_SYNC}_$userId", startDate.toEpochMilliseconds()).apply()
         }
@@ -270,10 +275,12 @@ object SyncYomiSyncService {
         uid: Long,
     ) {
         if (uid == 0L || !userConfig.syncYomiEnabled.value(userId)) return
-        syncPreferences
-            .edit()
-            .putStringSet("${PREF_PENDING_DELETED_CATEGORIES}_$userId", pendingDeletedCategories(userId) + uid.toString())
-            .apply()
+        synchronized(pendingDeletionsLock) {
+            syncPreferences
+                .edit()
+                .putStringSet("${PREF_PENDING_DELETED_CATEGORIES}_$userId", pendingDeletedCategories(userId) + uid.toString())
+                .apply()
+        }
     }
 
     private fun pendingDeletedCategories(userId: Int): Set<String> =
