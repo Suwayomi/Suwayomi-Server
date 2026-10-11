@@ -352,21 +352,30 @@ object DownloadManager {
 
         val chapterIds =
             transaction {
-                ChapterUserTable.batchUpsert(chapterIds, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
+                val isDownloadedById =
+                    ChapterTable
+                        .select(ChapterTable.id, ChapterTable.isDownloaded)
+                        .where { ChapterTable.id inList chapterIds }
+                        .associate { it[ChapterTable.id].value to it[ChapterTable.isDownloaded] }
+
+                // a client can still hold the ids of chapters that a chapter list refresh replaced, which must not fail the others
+                val missingChapterIds = chapterIds.filter { it !in isDownloadedById }
+                if (missingChapterIds.isNotEmpty()) {
+                    logger.info { "Skipping the download of chapters that don't exist: $missingChapterIds" }
+                }
+                val existingChapterIds = chapterIds.filter { it in isDownloadedById }
+                if (existingChapterIds.isEmpty()) return@transaction emptyList()
+
+                ChapterUserTable.batchUpsert(existingChapterIds, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
                     this[ChapterUserTable.user] = userId
                     this[ChapterUserTable.chapter] = chapterId
                     this[ChapterUserTable.isDownloadRequested] = true
                 }
 
-                val chapterIdsToEnqueue =
-                    ChapterTable
-                        .select(ChapterTable.id)
-                        .where { (ChapterTable.id inList chapterIds) and (ChapterTable.isDownloaded eq false) }
-                        .map { it[ChapterTable.id].value }
-                        .toSet()
+                val chapterIdsToEnqueue = existingChapterIds.filter { isDownloadedById[it] == false }.toSet()
 
                 // the shared download already exists, so it counts as downloaded for the user right away
-                val chapterIdsAlreadyDownloaded = chapterIds.filter { it !in chapterIdsToEnqueue }
+                val chapterIdsAlreadyDownloaded = existingChapterIds.filter { it !in chapterIdsToEnqueue }
                 if (chapterIdsAlreadyDownloaded.isNotEmpty()) {
                     ChapterUserTable.update({
                         (ChapterUserTable.user eq userId) and
