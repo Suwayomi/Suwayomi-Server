@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.types
 
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLDescription
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
@@ -187,13 +188,14 @@ data class UpdaterUpdates(
     @GraphQLDescription("The current update status at the time of sending the initial message. Is null for all following messages")
     val initial: LibraryUpdateStatus?,
     val jobsInfo: UpdaterJobsInfoType,
+    @GraphQLDeprecated("Removed - has no effect anymore, is always false")
     @GraphQLDescription(
         "Indicates whether updates have been omitted based on the \"maxUpdates\" subscription variable. " +
             "In case updates have been omitted, the \"updateStatus\" query should be re-fetched.",
     )
-    val omittedUpdates: Boolean,
+    val omittedUpdates: Boolean = false,
 ) {
-    constructor(updates: UpdateUpdates, omittedUpdates: Boolean) : this(
+    constructor(updates: UpdateUpdates) : this(
         categoryUpdates = updates.categoryUpdates.map(::CategoryUpdateType),
         mangaUpdates = updates.mangaUpdates.map(::MangaUpdateType),
         initial = updates.initial?.let { LibraryUpdateStatus(updates.initial) },
@@ -205,6 +207,5 @@ data class UpdaterUpdates(
                 skippedCategoriesCount = updates.skippedCategoriesCount,
                 skippedMangasCount = updates.skippedMangasCount,
             ),
-        omittedUpdates = omittedUpdates,
     )
 }

@@ -443,6 +443,34 @@ class M0066_AddUsers : Migration() {
                 ""
             }
 
+        // SOURCE uses application-generated snowflake IDs (IdTable<Long>), so rows can share an
+        // ID. The UC_SOURCE_ID unique constraint added below fails on such duplicates; drop all
+        // but one row per ID first. The engines expose the internal row identifier differently
+        // (H2: _ROWID_, PostgreSQL: ctid), and neither supports deleting from a CTE.
+        private val sourceDuplicateCleanupSql: String =
+            when (serverConfig.databaseType.value) {
+                DatabaseType.H2 -> {
+                    @Language("SQL")
+                    """
+                    DELETE FROM $sourceTable t1
+                    WHERE t1._ROWID_ > (
+                        SELECT MIN(t2._ROWID_)
+                        FROM $sourceTable t2
+                        WHERE t2.ID = t1.ID
+                    );
+                    """
+                }
+
+                DatabaseType.POSTGRESQL -> {
+                    @Language("SQL")
+                    """
+                    DELETE FROM $sourceTable a
+                    USING $sourceTable b
+                    WHERE a.ID = b.ID AND a.ctid < b.ctid;
+                    """
+                }
+            }
+
         private fun columnExists(
             table: String,
             column: String,
@@ -542,6 +570,7 @@ class M0066_AddUsers : Migration() {
             
             -- Indexes unrelated but useful
             DELETE FROM TRACKSEARCH WHERE ID NOT IN (SELECT MIN(ID) FROM TRACKSEARCH GROUP BY TRACKER_ID, REMOTE_ID); -- keep first entry of duplicates
+            $sourceDuplicateCleanupSql
             ALTER TABLE $sourceTable DROP CONSTRAINT IF EXISTS UC_SOURCE_ID;
             ALTER TABLE $sourceTable ADD CONSTRAINT UC_SOURCE_ID UNIQUE (ID);
             ALTER TABLE $trackSearchTable DROP CONSTRAINT IF EXISTS UC_TRACKSEARCH_TRACKER_ID_REMOTE_ID;

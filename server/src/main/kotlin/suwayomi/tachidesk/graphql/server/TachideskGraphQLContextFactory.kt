@@ -45,11 +45,15 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<Context> {
  * Create a [GraphQLContext] from [this] map
  * @return a new [GraphQLContext]
  */
-fun Map<*, Any?>.toGraphQLContext(): GraphQLContext = GraphQLContext.of(this)
+fun Map<*, Any>.toGraphQLContext(): GraphQLContext = GraphQLContext.of(this)
 
-fun <T : Any> GraphQLContext.getAttribute(attribute: Attribute<T>): T = get(attribute)
+fun <T : Any> GraphQLContext.getAttribute(attribute: Attribute<T>): T =
+    get(attribute)
+        ?: throw NullPointerException("Missing attribute ${attribute.name}")
 
-fun <T : Any> DataFetchingEnvironment.getAttribute(attribute: Attribute<T>): T = graphQlContext.get(attribute)
+fun <T : Any> DataFetchingEnvironment.getAttribute(attribute: Attribute<T>): T =
+    graphQlContext.get(attribute)
+        ?: throw NullPointerException("Missing attribute ${attribute.name}")
 
 val BatchLoaderEnvironment.graphQlContext: GraphQLContext
     get() = keyContextsList.filterIsInstance<GraphQLContext>().first()

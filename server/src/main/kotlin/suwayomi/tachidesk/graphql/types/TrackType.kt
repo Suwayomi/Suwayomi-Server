@@ -8,6 +8,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.getNodeListFromDataLoaders
+import suwayomi.tachidesk.graphql.types.TrackRecordNodeList.Companion.toNodeList
 import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
@@ -52,7 +54,13 @@ class TrackerType(
         dataFetchingEnvironment.getValueFromDataLoader<Int, List<String>>("TrackerScoresDataLoader", id)
 
     fun trackRecords(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<TrackRecordNodeList> =
-        dataFetchingEnvironment.getValueFromDataLoader<Int, TrackRecordNodeList>("TrackRecordsForTrackerIdDataLoader", id)
+        dataFetchingEnvironment.getNodeListFromDataLoaders(
+            "TrackRecordsForTrackerIdDataLoader",
+            "TrackRecordCountForTrackerIdDataLoader",
+            id,
+        ) {
+            emptyList<TrackRecordType>().toNodeList().copy(totalCount = it)
+        }
 
     fun isTokenExpired(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<Boolean> =
         dataFetchingEnvironment.getValueFromDataLoader<Int, Boolean>("TrackerTokenExpiredDataLoader", id)

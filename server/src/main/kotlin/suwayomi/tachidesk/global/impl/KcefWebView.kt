@@ -14,17 +14,13 @@ import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.browser.CefRendering
 import org.cef.handler.CefDisplayHandlerAdapter
+import org.cef.handler.CefLifeSpanHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
-import org.cef.handler.CefRequestHandlerAdapter
-import org.cef.handler.CefResourceRequestHandler
-import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.input.CefTouchEvent
-import org.cef.misc.BoolRef
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
-import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import xyz.nulldev.androidcompat.webkit.dispose
@@ -127,6 +123,25 @@ class KcefWebView {
         val content: String,
     ) : Event()
 
+    private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
+        override fun onAfterCreated(browser: CefBrowser) {
+            val ua = System.getProperty("http.agent")
+            logger.debug { "Setting user agent $ua" }
+            val args = """
+            {
+                "userAgent": ${Json.encodeToString(ua)}
+            }
+            """
+            browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args).whenComplete { res, ex ->
+                if (ex != null) {
+                    logger.error(ex) { "Failed to set user agent" }
+                } else {
+                    logger.debug { "Successfully set user agent: $res" }
+                }
+            }
+        }
+    }
+
     private inner class DisplayHandler : CefDisplayHandlerAdapter() {
         override fun onConsoleMessage(
             browser: CefBrowser,
@@ -194,34 +209,6 @@ class KcefWebView {
         }
     }
 
-    private inner class ResourceRequestHandler : CefResourceRequestHandlerAdapter() {
-        override fun onBeforeResourceLoad(
-            browser: CefBrowser?,
-            frame: CefFrame?,
-            request: CefRequest,
-        ): Boolean {
-            val ua = System.getProperty("http.agent")
-            request.setHeaderByName("user-agent", ua, true)
-            logger.trace { "Using user-agent $ua" }
-            return false
-        }
-    }
-
-    private inner class RequestHandler : CefRequestHandlerAdapter() {
-        override fun getResourceRequestHandler(
-            browser: CefBrowser,
-            frame: CefFrame,
-            request: CefRequest,
-            isNavigation: Boolean,
-            isDownload: Boolean,
-            requestInitiator: String,
-            disableDefaultHandling: BoolRef,
-        ): CefResourceRequestHandler? {
-            logger.trace { "Load resource: ${frame.name} - ${request.url}" }
-            return ResourceRequestHandler()
-        }
-    }
-
     // Loosely based on
     // https://github.com/JetBrains/jcef/blob/main/java/org/cef/browser/CefBrowserOsr.java
     private inner class RenderHandler : CefRenderHandlerAdapter() {
@@ -267,9 +254,9 @@ class KcefWebView {
         kcefClient =
             runBlocking {
                 CefHelper.createClient().apply {
+                    addLifeSpanHandler(LifeSpanHandler())
                     addDisplayHandler(DisplayHandler())
                     addLoadHandler(LoadHandler())
-                    addRequestHandler(RequestHandler())
                 }
             }
 

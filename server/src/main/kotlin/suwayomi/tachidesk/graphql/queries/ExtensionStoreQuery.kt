@@ -25,6 +25,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
@@ -107,6 +108,7 @@ class ExtensionStoreQuery {
 
     @RequireAuth
     fun extensionStores(
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: ExtensionStoreCondition? = null,
         filter: ExtensionStoreFilter? = null,
         order: List<ExtensionStoreOrder>? = null,
@@ -133,9 +135,10 @@ class ExtensionStoreQuery {
                     }
                 }
 
-                val total = res.count()
-                val firstResult = res.firstOrNull()?.get(ExtensionStoreTable.indexUrl)
-                val lastResult = res.lastOrNull()?.get(ExtensionStoreTable.indexUrl)
+                val needs = PaginationNeeds.of(dataFetchingEnvironment)
+                val total = if (needs.total) res.count() else 0
+                val firstResult = if (needs.bounds) res.firstOrNull()?.get(ExtensionStoreTable.indexUrl) else null
+                val lastResult = if (needs.bounds) res.lastOrNull()?.get(ExtensionStoreTable.indexUrl) else null
 
                 res.applyBeforeAfter(
                     before = before,

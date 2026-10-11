@@ -102,9 +102,9 @@ object Library {
                     MangaTable
                         .select(MangaTable.sourceReference)
                         .where { MangaTable.id eq mangaId }
-                        .first()
-                        .get(MangaTable.sourceReference)
-                }
+                        .firstOrNull()
+                        ?.get(MangaTable.sourceReference)
+                } ?: return@launch // the manga was deleted in the meantime
             val inLibrary =
                 transaction {
                     MangaUserTable

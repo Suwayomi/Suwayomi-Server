@@ -33,7 +33,9 @@ open class GraphQLSubscriptionHandler(
         val input = graphQLRequest.toExecutionInput(graphQLContext, dataLoaderRegistry)
 
         val res = graphQL.execute(input)
-        val data = res.getData<Flow<ExecutionResult>>()
+        val data =
+            res.getData<Flow<ExecutionResult>>()
+                ?: throw NullPointerException("Failed to get Flow<ExecutionResult>")
         val mapped = data.map { result -> result.toGraphQLResponse() }
         return mapped.catch { throwable ->
             val error = throwable.toGraphQLError()

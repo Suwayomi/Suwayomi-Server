@@ -310,6 +310,7 @@ class LocalSource(
             // Only keep supported formats
             .filterNot { it.name.orEmpty().startsWith('.') }
             .filter { it.isDirectory || Archive.isSupported(it) }
+            .filterNot { it.name.equals("@eaDir") }
             .map { chapterFile ->
                 SChapter.create().apply {
                     url = "${manga.url}/${chapterFile.name}"

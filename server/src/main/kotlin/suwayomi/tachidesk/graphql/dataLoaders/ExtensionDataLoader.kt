@@ -15,6 +15,7 @@ import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -52,7 +53,7 @@ class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType> {
                         ExtensionTable
                             .innerJoin(SourceTable)
                             .selectAll()
-                            .where { SourceTable.id inList ids }
+                            .where { SourceTable.id inIds ids }
                             .toList()
                             .map { Triple(it[SourceTable.id].value, it[ExtensionTable.pkgName], it) }
                             .let { triples ->

@@ -37,6 +37,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
@@ -206,6 +207,7 @@ class ExtensionQuery {
     fun extensions(
         @GraphQLIgnore
         permissions: List<UserPermission>,
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: ExtensionCondition? = null,
         filter: ExtensionFilter? = null,
         @GraphQLDeprecated(
@@ -243,7 +245,9 @@ class ExtensionQuery {
                 val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
                 val (total, firstResult, lastResult) =
-                    res.applySortAndGetPaginationInfo(actualSort, before, last) { it?.get(ExtensionTable.pkgName) }
+                    res.applySortAndGetPaginationInfo(actualSort, before, last, PaginationNeeds.of(dataFetchingEnvironment)) {
+                        it?.get(ExtensionTable.pkgName)
+                    }
 
                 res.applyBeforeAfter(
                     before = before,

@@ -12,13 +12,13 @@ import graphql.GraphQLContext
 import org.dataloader.DataLoader
 import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.global.model.table.UserPermissionsTable
 import suwayomi.tachidesk.global.model.table.UserRolesTable
 import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.UserType
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -44,7 +44,7 @@ class UserDataLoader : KotlinDataLoader<Int, UserType> {
                     val users =
                         UserAccountTable
                             .selectAll()
-                            .where { UserAccountTable.id inList ids }
+                            .where { UserAccountTable.id inIds ids }
                             .map { UserType(it) }
                             .associateBy { it.id }
                     ids.map { users[it] }
@@ -69,7 +69,7 @@ class PermissionsForUserDataLoader : KotlinDataLoader<Int, List<UserPermission>>
                     val permissionsByUserId =
                         UserPermissionsTable
                             .selectAll()
-                            .where { UserPermissionsTable.user inList ids }
+                            .where { UserPermissionsTable.user inIds ids }
                             .map {
                                 val permission =
                                     it[UserPermissionsTable.permission]
@@ -107,7 +107,7 @@ class RolesForUserDataLoader : KotlinDataLoader<Int, List<UserRole>> {
                     val rolesByUserId =
                         UserRolesTable
                             .selectAll()
-                            .where { UserRolesTable.user inList ids }
+                            .where { UserRolesTable.user inIds ids }
                             .map {
                                 val role =
                                     it[UserRolesTable.role]

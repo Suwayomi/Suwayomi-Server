@@ -31,6 +31,7 @@ import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
@@ -112,6 +113,7 @@ class MetaQuery {
     fun metas(
         @GraphQLIgnore
         userId: Int,
+        dataFetchingEnvironment: DataFetchingEnvironment,
         condition: MetaCondition? = null,
         filter: MetaFilter? = null,
         @GraphQLDeprecated(
@@ -146,6 +148,7 @@ class MetaQuery {
                         actualSort,
                         before,
                         last,
+                        PaginationNeeds.of(dataFetchingEnvironment),
                     ) { it?.get(GlobalMetaTable.key) }
 
                 res.applyBeforeAfter(

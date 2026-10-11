@@ -29,6 +29,7 @@ class UpdateSubscription {
         }
 
     data class LibraryUpdateStatusChangedInput(
+        @GraphQLDeprecated("Removed - has no effect")
         @GraphQLDescription(
             "Sets a max number of updates that can be contained in a updater update message." +
                 "Everything above this limit will be omitted and the \"updateStatus\" should be re-fetched via the " +
@@ -40,38 +41,19 @@ class UpdateSubscription {
     )
 
     @RequireAuth
-    fun libraryUpdateStatusChanged(input: LibraryUpdateStatusChangedInput): Flow<UpdaterUpdates> {
-        val omitUpdates = input.maxUpdates != null
-        val maxUpdates = input.maxUpdates ?: 50
-
-        return updater.updates.map { updates ->
-            val categoryUpdatesCount = updates.categoryUpdates.size
-            val mangaUpdatesCount = updates.mangaUpdates.size
-            val totalUpdatesCount = categoryUpdatesCount + mangaUpdatesCount
-
-            val needToOmitUpdates = omitUpdates && totalUpdatesCount > maxUpdates
-            if (!needToOmitUpdates) {
-                return@map UpdaterUpdates(updates, omittedUpdates = false)
-            }
-
-            val maxUpdatesAfterCategoryUpdates = (maxUpdates - categoryUpdatesCount).coerceAtLeast(0)
-
-            // the graphql subscription execution strategy does not support data loader batching which causes the n+1 problem,
-            // thus, too many updates (e.g. on mass enqueue or dequeue) causes unresponsiveness of the server until the
-            // update has been handled
+    fun libraryUpdateStatusChanged(input: LibraryUpdateStatusChangedInput): Flow<UpdaterUpdates> =
+        updater.updates.map { updates ->
             UpdaterUpdates(
                 UpdateUpdates(
                     updates.isRunning,
-                    updates.categoryUpdates.take(maxUpdates),
-                    updates.mangaUpdates.take(maxUpdatesAfterCategoryUpdates),
+                    updates.categoryUpdates,
+                    updates.mangaUpdates,
                     updates.totalJobs,
                     updates.finishedJobs,
                     updates.skippedCategoriesCount,
                     updates.skippedMangasCount,
                     updates.initial,
                 ),
-                omittedUpdates = true,
             )
         }
-    }
 }

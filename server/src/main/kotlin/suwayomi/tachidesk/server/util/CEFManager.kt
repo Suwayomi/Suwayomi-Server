@@ -128,6 +128,7 @@ object CEFManager {
                                     "--change-stack-guard-on-fork=disable",
                                 ),
                             )
+                            buildSocksProxyUrl()?.let { appArgsAsList.add("--proxy-server=$it") }
                             cefSettings.apply {
                                 windowless_rendering_enabled = true
                                 cache_path = (Path(applicationDirs.cacheDir) / "kcef").absolutePathString()

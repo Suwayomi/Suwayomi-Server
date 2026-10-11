@@ -64,6 +64,7 @@ import org.cef.callback.CefCallback
 import org.cef.callback.CefMediaAccessCallback
 import org.cef.callback.CefQueryCallback
 import org.cef.handler.CefDisplayHandlerAdapter
+import org.cef.handler.CefLifeSpanHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefMessageRouterHandlerAdapter
@@ -121,6 +122,36 @@ class KcefWebViewProvider(
 
     interface InitBrowserHandler {
         fun init(provider: KcefWebViewProvider): Unit
+    }
+
+    private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
+        override fun onAfterCreated(browser: CefBrowser) {
+            val ua = settings.userAgentString
+            val args =
+                settings.getUserAgentMetadata()?.let {
+                    Log.d(TAG, "Using user-agent $ua with metadata $it")
+                    """
+                {
+                    "userAgent": ${Json.encodeToString(ua)},
+                    "userAgentMetadata": ${Json.encodeToString(it)}
+                }
+                """
+                } ?: run {
+                    Log.d(TAG, "Using user-agent $ua without metadata")
+                    """
+                {
+                    "userAgent": ${Json.encodeToString(ua)}
+                }
+                """
+                }
+            browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args).whenComplete { res, ex ->
+                if (ex != null) {
+                    Log.e(TAG, "Failed to set user agent", ex)
+                } else {
+                    Log.v(TAG, "Successfully set user agent: $res")
+                }
+            }
+        }
     }
 
     private data class InitialRequestData(
@@ -435,8 +466,6 @@ class KcefWebViewProvider(
         ): Boolean {
             initialRequestData?.apply(request)
             initialRequestData = null
-            request.setHeaderByName("user-agent", settings.userAgentString, true)
-            Log.v(TAG, "Using user-agent ${settings.userAgentString}")
 
             // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
             // thus if a client tried to use WebView#loadUrl as the docs suggest, this fails
@@ -552,6 +581,7 @@ class KcefWebViewProvider(
         kcefClient =
             runBlocking {
                 CefHelper.createClient().apply {
+                    addLifeSpanHandler(LifeSpanHandler())
                     addDisplayHandler(DisplayHandler())
                     addLoadHandler(LoadHandler())
                     addRequestHandler(RequestHandler())

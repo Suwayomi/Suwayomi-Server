@@ -22,6 +22,8 @@ import suwayomi.tachidesk.graphql.server.primitives.Edge
 import suwayomi.tachidesk.graphql.server.primitives.Node
 import suwayomi.tachidesk.graphql.server.primitives.NodeList
 import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.getNodeListFromDataLoaders
+import suwayomi.tachidesk.graphql.types.MangaNodeList.Companion.toNodeList
 import suwayomi.tachidesk.manga.impl.Source.getSourcePreferencesRaw
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
@@ -69,7 +71,9 @@ class SourceType(
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaNodeList> =
-        dataFetchingEnvironment.getValueFromDataLoader<Long, MangaNodeList>("MangaForSourceDataLoader", id)
+        dataFetchingEnvironment.getNodeListFromDataLoaders("MangaForSourceDataLoader", "MangaCountForSourceDataLoader", id) {
+            emptyList<MangaType>().toNodeList().copy(totalCount = it)
+        }
 
     fun extension(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ExtensionType> =
         dataFetchingEnvironment.getValueFromDataLoader<Long, ExtensionType>("ExtensionForSourceDataLoader", id)

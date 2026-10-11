@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.server.user
 
+import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
 import com.typesafe.config.ConfigRenderOptions
@@ -42,8 +43,10 @@ private fun allUserSettings(): Map<String, UserSetting<*>> {
  * Only settings with a user-set value in the config are captured; settings the user never set are skipped,
  * their static default matches the old global default.
  */
-fun saveUserSettingsBackfillFile(applicationDirs: ApplicationDirs) {
-    val config = GlobalConfigManager.config
+fun saveUserSettingsBackfillFile(
+    applicationDirs: ApplicationDirs,
+    config: Config = GlobalConfigManager.config,
+) {
     val serverConfig = config.getConfig(SERVER_CONFIG_MODULE_NAME)
 
     val entries = mutableMapOf<String, String>()
