@@ -23,6 +23,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.cef.CefApp
 import org.cef.CefSettings.LogSeverity
 import org.cef.SystemBootstrap
+import sun.misc.Signal
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -63,6 +64,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.setPosixFilePermissions
 import kotlin.io.path.writeText
 import kotlin.streams.asSequence
+import kotlin.system.exitProcess
 
 private val logger = KotlinLogging.logger {}
 
@@ -176,11 +178,28 @@ object CEFManager {
             logger.debug { "CEF app created" }
 
             CefHelper.waitForInit().first()
+            restoreShutdownSignalHandlers()
             return
         } catch (e: Throwable) {
             logger.error(e) { "Failed to set up CEF" }
             CefHelper.cefApp.value = Result.failure(e)
         }
+
+    /**
+     * Chromium replaces the JVM's handlers of these signals with its own, which only close its browsers and let a second
+     * signal kill the process, so the server no longer shut down on them and none of its shutdown hooks ran (#2158).
+     * Exits like the JVM's own handler does, which runs the shutdown hooks, CEF's included.
+     */
+    private fun restoreShutdownSignalHandlers() {
+        listOf("TERM", "INT", "HUP").forEach { name ->
+            try {
+                Signal.handle(Signal(name)) { signal -> exitProcess(128 + signal.number) }
+            } catch (e: IllegalArgumentException) {
+                // the signal doesn't exist on this OS, or the JVM leaves it alone (-Xrs)
+                logger.debug(e) { "Could not restore the handler of SIG$name" }
+            }
+        }
+    }
 
     internal fun isInstallationValid(releaseFile: Path): Boolean {
         if (!releaseFile.exists() || !releaseFile.isRegularFile()) return false
