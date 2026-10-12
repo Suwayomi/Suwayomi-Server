@@ -3,6 +3,8 @@ package xyz.nulldev.androidcompat.webkit
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import org.cef.CefClient
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -17,9 +19,16 @@ import kotlin.random.Random
 private val logger = KotlinLogging.logger {}
 private val jsHandler: MutableMap<CefClient, JsHandler> = Collections.synchronizedMap(WeakHashMap())
 
+/** Evaluates [expression] and passes its result to [cb]: a string's content, null, or JSON for other values */
 fun CefBrowser.evaluateJavaScript(
     expression: String,
     cb: (String?) -> Unit,
+) = evaluateJavaScriptAsJson(expression) { cb(JsHandler.plainValue(it)) }
+
+/** Evaluates [expression] and passes its result to [cb] serialized as JSON, like Android's `WebView.evaluateJavascript` */
+fun CefBrowser.evaluateJavaScriptAsJson(
+    expression: String,
+    cb: (String) -> Unit,
 ) = jsHandler[this.client]!!.eval(this, expression, cb)
 
 fun CefBrowser.dispose() {
@@ -34,7 +43,7 @@ fun CefClient.disposeWithJsHandler() {
 }
 
 class JsHandler : CefMessageRouterHandlerAdapter {
-    private val handler = ConcurrentHashMap<String, (String?) -> Unit>()
+    private val handler = ConcurrentHashMap<String, (String) -> Unit>()
 
     constructor(client: CefClient) {
         val config = CefMessageRouter.CefMessageRouterConfig()
@@ -47,7 +56,7 @@ class JsHandler : CefMessageRouterHandlerAdapter {
     fun eval(
         frame: CefFrame,
         expression: String,
-        cb: (String?) -> Unit,
+        cb: (String) -> Unit,
     ) {
         val id = Random.nextBytes(48).toHexString()
         handler[id] = cb
@@ -57,7 +66,7 @@ class JsHandler : CefMessageRouterHandlerAdapter {
     fun eval(
         browser: CefBrowser,
         expression: String,
-        cb: (String?) -> Unit,
+        cb: (String) -> Unit,
     ) {
         val id = Random.nextBytes(48).toHexString()
         handler[id] = cb
@@ -77,7 +86,7 @@ class JsHandler : CefMessageRouterHandlerAdapter {
         if (request != null) {
             val invoke =
                 try {
-                    Json.decodeFromString<FunctionCall>(request)
+                    decodeQuery(request)
                 } catch (e: Exception) {
                     logger.warn(e) { "Invalid request received" }
                     return false
@@ -92,9 +101,10 @@ class JsHandler : CefMessageRouterHandlerAdapter {
     }
 
     @Serializable
-    private data class FunctionCall(
+    internal data class FunctionCall(
         val id: String,
-        val result: String? = null,
+        // The result serialized as JSON
+        val result: String,
     )
 
     companion object {
@@ -117,17 +127,28 @@ class JsHandler : CefMessageRouterHandlerAdapter {
                 }
             }
 
-        private fun String.toCode(id: String): String =
+        /** Turns a JSON result back into the plain value: a string's content, null, or the JSON text otherwise */
+        internal fun plainValue(json: String): String? =
+            when (val element = Json.parseToJsonElement(json)) {
+                is JsonNull -> null
+                is JsonPrimitive -> if (element.isString) element.content else json
+                else -> json
+            }
+
+        internal fun decodeQuery(request: String): FunctionCall = Json.decodeFromString<FunctionCall>(request)
+
+        internal fun String.toCode(id: String): String =
             """
             function payload() {
               ${this.asFunctionBody()}
             }
 
             try {
-              var result = payload();
+              // Like Android's WebView, hand back the result serialized as JSON
+              var result = JSON.stringify(payload());
 
               window.${QUERY_FN}({
-                  request: JSON.stringify({ id: "$id", result }),
+                  request: JSON.stringify({ id: "$id", result: result === undefined ? "null" : result }),
                   onSuccess: function (response) {},
                   onFailure: function (error_code, error_message) {}
               });
