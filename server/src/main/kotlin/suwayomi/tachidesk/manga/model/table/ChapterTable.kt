@@ -32,6 +32,8 @@ object ChapterTable : IntIdTable() {
 
     val pageCount = integer("page_count").default(-1)
 
+    val koreaderHash = varchar("koreader_hash", 32).nullable()
+
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 
     val memo = jsonObject("memo")
