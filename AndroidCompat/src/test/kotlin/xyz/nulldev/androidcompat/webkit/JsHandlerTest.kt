@@ -1,7 +1,7 @@
 package xyz.nulldev.androidcompat.webkit
 
+import kotlinx.serialization.json.Json
 import org.graalvm.polyglot.Context
-import xyz.nulldev.androidcompat.webkit.JsHandler.Companion.decodeQuery
 import xyz.nulldev.androidcompat.webkit.JsHandler.Companion.toCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,9 +9,10 @@ import kotlin.test.assertEquals
 class JsHandlerTest {
     /**
      * Runs the script [JsHandler] injects into the browser in a plain JS engine, with the CEF
-     * message router replaced by a stub, and returns the result that reaches Kotlin.
+     * message router replaced by a stub, and returns the result of the last [expressions] that
+     * reaches Kotlin. The expressions run one after another in the same page.
      */
-    private fun evaluate(expression: String): String? =
+    private fun evaluate(vararg expressions: String): String =
         Context.create("js").use { context ->
             context.eval(
                 "js",
@@ -23,9 +24,9 @@ class JsHandlerTest {
                 };
                 """.trimIndent(),
             )
-            context.eval("js", expression.toCode("test-id"))
+            expressions.forEach { context.eval("js", it.toCode("test-id")) }
             val request = context.getBindings("js").getMember("captured").asString()
-            val call = decodeQuery(request)
+            val call = Json.decodeFromString<JsHandler.FunctionCall>(request)
             assertEquals("test-id", call.id)
             call.result
         }
@@ -47,6 +48,13 @@ class JsHandlerTest {
         assertEquals("true", evaluate("true"))
         assertEquals("null", evaluate("null"))
         assertEquals("null", evaluate("undefined"))
+    }
+
+    @Test
+    fun `a script that throws or cannot be serialized yields null, as on Android`() {
+        assertEquals("null", evaluate("missing.property"))
+        assertEquals("null", evaluate("(function () { var a = {}; a.self = a; return a; })()"))
+        assertEquals("null", evaluate("'earlier result'", "missing.property"))
     }
 
     @Test

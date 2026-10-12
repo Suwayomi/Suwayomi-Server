@@ -19,13 +19,12 @@ import kotlin.random.Random
 private val logger = KotlinLogging.logger {}
 private val jsHandler: MutableMap<CefClient, JsHandler> = Collections.synchronizedMap(WeakHashMap())
 
-/** Evaluates [expression] and passes its result to [cb]: a string's content, null, or JSON for other values */
 fun CefBrowser.evaluateJavaScript(
     expression: String,
     cb: (String?) -> Unit,
 ) = evaluateJavaScriptAsJson(expression) { cb(JsHandler.plainValue(it)) }
 
-/** Evaluates [expression] and passes its result to [cb] serialized as JSON, like Android's `WebView.evaluateJavascript` */
+// Passes the result serialized as JSON, like Android's WebView.evaluateJavascript
 fun CefBrowser.evaluateJavaScriptAsJson(
     expression: String,
     cb: (String) -> Unit,
@@ -86,7 +85,7 @@ class JsHandler : CefMessageRouterHandlerAdapter {
         if (request != null) {
             val invoke =
                 try {
-                    decodeQuery(request)
+                    Json.decodeFromString<FunctionCall>(request)
                 } catch (e: Exception) {
                     logger.warn(e) { "Invalid request received" }
                     return false
@@ -127,7 +126,7 @@ class JsHandler : CefMessageRouterHandlerAdapter {
                 }
             }
 
-        /** Turns a JSON result back into the plain value: a string's content, null, or the JSON text otherwise */
+        // A string's content, null, or the JSON text for any other value
         internal fun plainValue(json: String): String? =
             when (val element = Json.parseToJsonElement(json)) {
                 is JsonNull -> null
@@ -135,31 +134,25 @@ class JsHandler : CefMessageRouterHandlerAdapter {
                 else -> json
             }
 
-        internal fun decodeQuery(request: String): FunctionCall = Json.decodeFromString<FunctionCall>(request)
-
         internal fun String.toCode(id: String): String =
             """
             function payload() {
               ${this.asFunctionBody()}
             }
 
+            // Like Android's WebView, hand back the result serialized as JSON, and "null" when the script fails
+            var result = undefined;
             try {
-              // Like Android's WebView, hand back the result serialized as JSON
-              var result = JSON.stringify(payload());
-
-              window.${QUERY_FN}({
-                  request: JSON.stringify({ id: "$id", result: result === undefined ? "null" : result }),
-                  onSuccess: function (response) {},
-                  onFailure: function (error_code, error_message) {}
-              });
+              result = JSON.stringify(payload());
             } catch (e) {
               console.error("Failed to eval $id", e)
-              window.${QUERY_CANCEL_FN}({
-                  request: JSON.stringify({ id: "$id", error: ""+e }),
-                  onSuccess: function (response) {},
-                  onFailure: function (error_code, error_message) {}
-              });
             }
+
+            window.${QUERY_FN}({
+                request: JSON.stringify({ id: "$id", result: result === undefined ? "null" : result }),
+                onSuccess: function (response) {},
+                onFailure: function (error_code, error_message) {}
+            });
             """.trimIndent()
     }
 }
