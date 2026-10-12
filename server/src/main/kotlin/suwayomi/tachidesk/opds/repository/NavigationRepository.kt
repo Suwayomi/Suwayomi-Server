@@ -505,9 +505,12 @@ object NavigationRepository {
                     OpdsLanguageNavEntry(
                         id = langCode,
                         title =
-                            Locale.forLanguageTag(langCode).getDisplayName(locale).replaceFirstChar { char ->
-                                if (char.isLowerCase()) char.titlecase(locale) else char.toString()
-                            },
+                            Locale
+                                .forLanguageTag(langCode)
+                                .getDisplayName(locale)
+                                .replaceFirstChar { char ->
+                                    if (char.isLowerCase()) char.titlecase(locale) else char.toString()
+                                }.ifEmpty { langCode },
                         mangaCount = it[mangaCount],
                     )
                 }
