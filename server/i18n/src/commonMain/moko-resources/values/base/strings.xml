@@ -38,7 +38,6 @@
     <string name="opds_feeds_genre_specific_title">Genre: %1$s</string>
     <string name="opds_feeds_status_specific_title">Status: %1$s</string>
     <string name="opds_feeds_language_specific_title">Language: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Source: %1$s</string>
     <string name="opds_feeds_library_source_specific_title">Library - Source: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">Source: %1$s - Popular</string>
     <string name="opds_feeds_source_specific_latest_title">Source: %1$s - Latest</string>
@@ -50,7 +49,6 @@
     <!-- OPDS errors -->
     <string name="opds_error_manga_not_found">Series with ID %1$d not found.</string>
     <string name="opds_error_chapter_not_found">Chapter with index %1$d not found.</string>
-    <string name="opds_error_chapters_not_found">No chapters found or the source is unreachable on page %1$d.</string>
 
     <!-- OPDS facets (Filters and Sorting) -->
     <string name="opds_facetgroup_sort_order">Sort Order</string>
@@ -109,12 +107,6 @@
     <string name="opds_linktitle_view_chapter_details">View Chapter Details &amp; Get Pages</string>
 
     <!-- OPDS summary and details -->
-    <string name="opds_chapter_status_read">✅ </string>
-    <string name="opds_chapter_status_in_progress">⌛ </string>
-    <string name="opds_chapter_status_unread">⭕ </string>
-    <string name="opds_chapter_status_downloaded">⬇️ </string>
-    <string name="opds_chapter_status_synced">🌐 </string>
-
     <string name="opds_chapter_details_base">Series: %1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator"> | By %1$s</string>
     <string name="opds_chapter_details_progress"> | Progress: %1$d of %2$d</string>

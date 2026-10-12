@@ -4,11 +4,9 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import org.jetbrains.exposed.v1.core.SortOrder
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.Manga
-import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.opds.constants.OpdsConstants
-import suwayomi.tachidesk.opds.dto.OpdsMangaDetails
 import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.dto.PrimaryFilterType
@@ -53,17 +51,24 @@ object OpdsFeedBuilder {
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
             )
         builder.totalResults = navItems.size.toLong()
+        val updated = currentFormattedTime()
+        val languageTag = locale.toLanguageTag()
         builder.entries.addAll(
             navItems.map { item ->
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:root:${item.id}",
                     title = item.title,
-                    updated = currentFormattedTime(),
+                    updated = updated,
                     link =
                         listOf(
                             OpdsLinkXml(
-                                rel = OpdsConstants.LINK_REL_SUBSECTION,
-                                href = "$baseUrl/${item.id}?lang=${locale.toLanguageTag()}",
+                                rel =
+                                    if (item.id == "library-updates") {
+                                        OpdsConstants.LINK_REL_SORT_NEW
+                                    } else {
+                                        OpdsConstants.LINK_REL_SUBSECTION
+                                    },
+                                href = "$baseUrl/${item.id}?lang=$languageTag",
                                 type = item.linkType,
                                 title = item.title,
                             ),
@@ -101,18 +106,17 @@ object OpdsFeedBuilder {
             )
         builder.totalResults = total
         val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        if (skipMetadata) OpdsChapterPrefetcher.prefetchPageCounts(historyItems.map { it.chapter })
         val syncResults =
             if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, historyItems.map { it.chapter.id }) else emptyMap()
         builder.entries.addAll(
             historyItems.map { item ->
-                val mangaDetails =
-                    OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
                 OpdsEntryBuilder.createChapterListEntry(
                     userId,
                     baseUrl,
                     locale,
                     item.chapter,
-                    mangaDetails,
+                    item.manga,
                     true,
                     skipMetadata,
                     syncResults[item.chapter.id],
@@ -254,7 +258,7 @@ object OpdsFeedBuilder {
         builder.totalResults = result.totalCount
 
         // Add all library facets (sort, filter, and cross-filtering)
-        OpdsEntryBuilder.addLibraryFacets(userId, builder, baseUrl, locale, criteria)
+        builder.facets.addAll(OpdsFacetBuilder.getLibraryFacets(userId, baseUrl, locale, criteria))
 
         builder.entries.addAll(result.mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(baseUrl, locale, it) })
 
@@ -288,18 +292,22 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
+        val updated = currentFormattedTime()
+        val languageTag = locale.toLanguageTag()
         builder.entries.addAll(
             sourceNavEntries.map { entry ->
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:sources:${entry.id}",
                     title = entry.name,
-                    updated = currentFormattedTime(),
+                    updated = updated,
+                    content = OpdsContentXml(value = MR.strings.opds_feeds_source_specific_popular_title.localized(locale, entry.name)),
                     link =
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/explore/source/${entry.id}?sort=popular&lang=${locale.toLanguageTag()}",
+                                "$baseUrl/explore/source/${entry.id}?sort=popular&lang=$languageTag",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                                entry.name,
                             ),
                         ),
                 )
@@ -333,17 +341,20 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
+        val updated = currentFormattedTime()
+        val languageTag = locale.toLanguageTag()
         builder.entries.addAll(
             sourceNavEntries.map { entry ->
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:library:sources:${entry.id}",
                     title = entry.name,
-                    updated = currentFormattedTime(),
+                    updated = updated,
+                    content = OpdsContentXml(value = MR.strings.opds_feeds_library_source_specific_title.localized(locale, entry.name)),
                     link =
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/source/${entry.id}?lang=${locale.toLanguageTag()}",
+                                "$baseUrl/source/${entry.id}?lang=$languageTag",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                 entry.name,
                                 thrCount = entry.mangaCount?.toInt(),
@@ -406,7 +417,7 @@ object OpdsFeedBuilder {
             }
         builder.isLastPageKnown = !hasNextPage
         builder.icon = sourceInfo?.second
-        OpdsEntryBuilder.addSourceSortFacets(builder, "$baseUrl/explore/source/$sourceId", locale, sort)
+        builder.facets.addAll(OpdsFacetBuilder.getSourceSortFacets("$baseUrl/explore/source/$sourceId", locale, sort))
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(baseUrl, locale, it) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -436,17 +447,20 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
+        val updated = currentFormattedTime()
+        val languageTag = locale.toLanguageTag()
         builder.entries.addAll(
             categoryNavEntries.map { entry ->
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:categories:${entry.id}",
                     title = entry.name,
-                    updated = currentFormattedTime(),
+                    updated = updated,
+                    content = OpdsContentXml(value = MR.strings.opds_feeds_category_specific_title.localized(locale, entry.name)),
                     link =
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/category/${entry.id}?lang=${locale.toLanguageTag()}",
+                                "$baseUrl/category/${entry.id}?lang=$languageTag",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                 entry.name,
                                 thrCount = entry.mangaCount.toInt(),
@@ -483,17 +497,20 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
+        val updated = currentFormattedTime()
+        val languageTag = locale.toLanguageTag()
         builder.entries.addAll(
             genreNavEntries.map { entry ->
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:genres:${entry.id}",
                     title = entry.title,
-                    updated = currentFormattedTime(),
+                    updated = updated,
+                    content = OpdsContentXml(value = MR.strings.opds_feeds_genre_specific_title.localized(locale, entry.title)),
                     link =
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/genre/${entry.id}?lang=${locale.toLanguageTag()}",
+                                "$baseUrl/genre/${entry.id}?lang=$languageTag",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                 entry.title,
                                 thrCount = entry.mangaCount.toInt(),
@@ -530,17 +547,20 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
+        val updated = currentFormattedTime()
+        val languageTag = locale.toLanguageTag()
         builder.entries.addAll(
             statuses.map { entry ->
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:status:${entry.id}",
                     title = entry.title,
-                    updated = currentFormattedTime(),
+                    updated = updated,
+                    content = OpdsContentXml(value = MR.strings.opds_feeds_status_specific_title.localized(locale, entry.title)),
                     link =
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/status/${entry.id}?lang=${locale.toLanguageTag()}",
+                                "$baseUrl/status/${entry.id}?lang=$languageTag",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                 entry.title,
                                 thrCount = entry.mangaCount.toInt(),
@@ -577,17 +597,20 @@ object OpdsFeedBuilder {
                 pageNum = pageNum,
             )
         builder.totalResults = total
+        val updated = currentFormattedTime()
+        val languageTag = locale.toLanguageTag()
         builder.entries.addAll(
             languages.map { entry ->
                 OpdsEntryXml(
                     id = "urn:suwayomi:navigation:language:${entry.id}",
                     title = entry.title,
-                    updated = currentFormattedTime(),
+                    updated = updated,
+                    content = OpdsContentXml(value = MR.strings.opds_feeds_language_specific_title.localized(locale, entry.title)),
                     link =
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/language/${entry.id}?lang=${locale.toLanguageTag()}",
+                                "$baseUrl/language/${entry.id}?lang=$languageTag",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                 entry.title,
                                 thrCount = entry.mangaCount.toInt(),
@@ -625,18 +648,17 @@ object OpdsFeedBuilder {
             )
         builder.totalResults = total
         val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        if (skipMetadata) OpdsChapterPrefetcher.prefetchPageCounts(updateItems.map { it.chapter })
         val syncResults =
             if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, updateItems.map { it.chapter.id }) else emptyMap()
         builder.entries.addAll(
             updateItems.map { item ->
-                val mangaDetails =
-                    OpdsMangaDetails(item.mangaId, item.mangaTitle, item.mangaThumbnailUrl, item.mangaAuthor, item.mangaTotalChapters)
                 OpdsEntryBuilder.createChapterListEntry(
                     userId,
                     baseUrl,
                     locale,
                     item.chapter,
-                    mangaDetails,
+                    item.manga,
                     true,
                     skipMetadata,
                     syncResults[item.chapter.id],
@@ -684,7 +706,6 @@ object OpdsFeedBuilder {
             }
         val currentFilter =
             filterParam?.lowercase() ?: if (userConfig.opdsShowOnlyUnreadChapters.value(userId)) "unread" else "all"
-        val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
         var (chapterEntries, totalChapters) =
             ChapterRepository.getChaptersForManga(
                 userId,
@@ -693,19 +714,7 @@ object OpdsFeedBuilder {
                 currentSortOrder,
                 currentFilter,
                 pageNum,
-                skipMetadata,
             )
-
-        // Return a not-found feed if all available chapters are filtered out as unreachable
-        if (skipMetadata && chapterEntries.isEmpty() && totalChapters > 0L) {
-            return buildNotFoundFeed(
-                userId = userId,
-                baseUrl = baseUrl,
-                locale = locale,
-                idPath = "series/$mangaId/chapters",
-                title = MR.strings.opds_error_chapters_not_found.localized(locale, pageNum),
-            )
-        }
 
         // If no chapters are found in the database, attempt to fetch them from the source.
         if (chapterEntries.isEmpty() && totalChapters == 0L) {
@@ -721,7 +730,6 @@ object OpdsFeedBuilder {
                         currentSortOrder,
                         currentFilter,
                         pageNum,
-                        skipMetadata,
                     )
                 chapterEntries = refetchedChapters
                 totalChapters = refetchedTotal
@@ -751,19 +759,22 @@ object OpdsFeedBuilder {
                 currentFilter = currentFilter,
             )
         builder.totalResults = totalChapters
-        mangaDetails.thumbnailUrl?.let { proxyThumbnailUrl(mangaDetails.id) }?.also {
+        mangaDetails.thumbnailUrl?.let { OpdsEntryBuilder.thumbnailUrl(mangaDetails.id) }?.also {
             builder.icon = it
             builder.links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE, it, OpdsConstants.TYPE_IMAGE_JPEG))
             builder.links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE_THUMBNAIL, it, OpdsConstants.TYPE_IMAGE_JPEG))
         }
-        OpdsEntryBuilder.addChapterSortAndFilterFacets(
-            builder,
-            "$baseUrl/$feedUrl",
-            locale,
-            actualSortParamForLinks,
-            currentFilter,
-            filterCounts,
+        builder.facets.addAll(
+            OpdsFacetBuilder.getChapterSortAndFilterFacets(
+                "$baseUrl/$feedUrl",
+                locale,
+                actualSortParamForLinks,
+                currentFilter,
+                filterCounts,
+            ),
         )
+        val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        if (skipMetadata) OpdsChapterPrefetcher.prefetchPageCounts(chapterEntries)
         val syncResults =
             if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, chapterEntries.map { it.id }) else emptyMap()
         builder.entries.addAll(
@@ -828,7 +839,7 @@ object OpdsFeedBuilder {
                 pageNum = null,
             )
 
-        mangaDetails.thumbnailUrl?.let { proxyThumbnailUrl(mangaDetails.id) }?.also {
+        mangaDetails.thumbnailUrl?.let { OpdsEntryBuilder.thumbnailUrl(mangaDetails.id) }?.also {
             builder.icon = it
             builder.links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE, it, OpdsConstants.TYPE_IMAGE_JPEG))
             builder.links.add(OpdsLinkXml(OpdsConstants.LINK_REL_IMAGE_THUMBNAIL, it, OpdsConstants.TYPE_IMAGE_JPEG))
