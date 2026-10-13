@@ -77,6 +77,7 @@ These clients are built-in options, and the server can keep them automatically u
 - [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): Web app, PWA
 
 ##### Other clients (potentially inactive or abandoned)
+- [Kaori](https://github.com/riyaniii/Kaori): A comic reader for GNOME, with a beautiful libadwaita UI, and natural touchpad gestures.
 - [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): Desktop app (windows, linux, mac); UI in the browser, manages its own suwayomi server instance
 - [Moku](https://github.com/Youwes09/Moku): Desktop app (windows, linux, mac), can manage its own suwayomi server instance
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): Desktop app (windows, linux, mac); can manage its own suwayomi server instance
