@@ -740,12 +740,12 @@ class KcefWebViewProvider(
         script: String,
         resultCallback: ValueCallback<String>?,
     ) {
-        browser!!.evaluateJavaScript(
+        browser!!.evaluateJavaScriptAsJson(
             script.removePrefix("javascript:"),
         )
             {
                 Log.v(TAG, "JS returned: $it")
-                it?.let { handler.post { resultCallback?.onReceiveValue(it) } }
+                handler.post { resultCallback?.onReceiveValue(it) }
             }
     }
 

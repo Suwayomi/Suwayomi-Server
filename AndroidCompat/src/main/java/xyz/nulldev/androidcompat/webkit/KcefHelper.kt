@@ -3,6 +3,8 @@ package xyz.nulldev.androidcompat.webkit
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import org.cef.CefClient
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -20,6 +22,12 @@ private val jsHandler: MutableMap<CefClient, JsHandler> = Collections.synchroniz
 fun CefBrowser.evaluateJavaScript(
     expression: String,
     cb: (String?) -> Unit,
+) = evaluateJavaScriptAsJson(expression) { cb(JsHandler.plainValue(it)) }
+
+// Passes the result serialized as JSON, like Android's WebView.evaluateJavascript
+fun CefBrowser.evaluateJavaScriptAsJson(
+    expression: String,
+    cb: (String) -> Unit,
 ) = jsHandler[this.client]!!.eval(this, expression, cb)
 
 fun CefBrowser.dispose() {
@@ -34,7 +42,7 @@ fun CefClient.disposeWithJsHandler() {
 }
 
 class JsHandler : CefMessageRouterHandlerAdapter {
-    private val handler = ConcurrentHashMap<String, (String?) -> Unit>()
+    private val handler = ConcurrentHashMap<String, (String) -> Unit>()
 
     constructor(client: CefClient) {
         val config = CefMessageRouter.CefMessageRouterConfig()
@@ -47,7 +55,7 @@ class JsHandler : CefMessageRouterHandlerAdapter {
     fun eval(
         frame: CefFrame,
         expression: String,
-        cb: (String?) -> Unit,
+        cb: (String) -> Unit,
     ) {
         val id = Random.nextBytes(48).toHexString()
         handler[id] = cb
@@ -57,7 +65,7 @@ class JsHandler : CefMessageRouterHandlerAdapter {
     fun eval(
         browser: CefBrowser,
         expression: String,
-        cb: (String?) -> Unit,
+        cb: (String) -> Unit,
     ) {
         val id = Random.nextBytes(48).toHexString()
         handler[id] = cb
@@ -92,9 +100,10 @@ class JsHandler : CefMessageRouterHandlerAdapter {
     }
 
     @Serializable
-    private data class FunctionCall(
+    internal data class FunctionCall(
         val id: String,
-        val result: String? = null,
+        // The result serialized as JSON
+        val result: String,
     )
 
     companion object {
@@ -117,28 +126,33 @@ class JsHandler : CefMessageRouterHandlerAdapter {
                 }
             }
 
-        private fun String.toCode(id: String): String =
+        // A string's content, null, or the JSON text for any other value
+        internal fun plainValue(json: String): String? =
+            when (val element = Json.parseToJsonElement(json)) {
+                is JsonNull -> null
+                is JsonPrimitive -> if (element.isString) element.content else json
+                else -> json
+            }
+
+        internal fun String.toCode(id: String): String =
             """
             function payload() {
               ${this.asFunctionBody()}
             }
 
+            // Like Android's WebView, hand back the result serialized as JSON, and "null" when the script fails
+            var result = undefined;
             try {
-              var result = payload();
-
-              window.${QUERY_FN}({
-                  request: JSON.stringify({ id: "$id", result }),
-                  onSuccess: function (response) {},
-                  onFailure: function (error_code, error_message) {}
-              });
+              result = JSON.stringify(payload());
             } catch (e) {
               console.error("Failed to eval $id", e)
-              window.${QUERY_CANCEL_FN}({
-                  request: JSON.stringify({ id: "$id", error: ""+e }),
-                  onSuccess: function (response) {},
-                  onFailure: function (error_code, error_message) {}
-              });
             }
+
+            window.${QUERY_FN}({
+                request: JSON.stringify({ id: "$id", result: result === undefined ? "null" : result }),
+                onSuccess: function (response) {},
+                onFailure: function (error_code, error_message) {}
+            });
             """.trimIndent()
     }
 }
