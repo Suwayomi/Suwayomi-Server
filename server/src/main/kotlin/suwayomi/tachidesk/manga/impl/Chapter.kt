@@ -23,6 +23,7 @@ import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.notExists
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
@@ -178,6 +179,9 @@ object Chapter {
 
         // new chapters after they have been added to the database for auto downloads
         val insertedChapterIds = mutableListOf<Int>()
+        // new chapters after they have been added to the database for marking the duplicates of already read chapters
+        val addedChapters = mutableListOf<ChapterDataClass>()
+        val chapterIdsMarkedAsReadByUserId = mutableMapOf<Int, Set<Int>>()
 
         val chaptersToInsert = mutableListOf<ChapterDataClass>() // do not yet have an ID from the database
         val chaptersToUpdate = mutableListOf<ChapterDataClass>()
@@ -268,6 +272,8 @@ object Chapter {
             }
         }
 
+        val readKeptChapterIdsByUserId = getReadKeptChapterIdsByUserId(mangaEntry[MangaTable.id].value, chaptersToUpdate)
+
         suspendTransaction {
             // we got some clean up due
             if (chaptersIdsToDelete.isNotEmpty()) {
@@ -303,6 +309,7 @@ object Chapter {
                         }.map { ChapterTable.toDataClass(it) }
 
                 insertedChapters.forEach { insertedChapterIds.add(it.id) }
+                addedChapters.addAll(insertedChapters)
 
                 val chaptersToPreserveDownload =
                     insertedChapters.filter { chapter ->
@@ -402,6 +409,10 @@ object Chapter {
                 }
             }
 
+            chapterIdsMarkedAsReadByUserId.putAll(
+                markDuplicatesOfReadChaptersAsRead(readKeptChapterIdsByUserId, chaptersToUpdate, addedChapters),
+            )
+
             MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id].value }) {
                 it[chaptersLastFetchedAt] = Instant.now().epochSecond
             }
@@ -424,17 +435,98 @@ object Chapter {
                     )
                 }
             inLibraryUserIds.forEach { userId ->
+                val chapterIdsMarkedAsRead = chapterIdsMarkedAsReadByUserId[userId].orEmpty()
+
                 downloadNewChapters(
                     userId,
                     mangaEntry[MangaTable.id].value,
                     currentLatestChapterNumber,
                     numberOfCurrentChapters,
-                    insertedChapters,
+                    // a duplicate of an already read chapter is nothing the user still has to read
+                    insertedChapters.filterNot { it.id in chapterIdsMarkedAsRead },
                 )
             }
         }
 
         return uniqueChapters
+    }
+
+    /**
+     * Returns the ids of the kept chapters of the manga that each user has already read, only for the users that
+     * enabled [suwayomi.tachidesk.server.settings.UserConfig.markDuplicateReadChaptersAsRead]
+     */
+    private fun getReadKeptChapterIdsByUserId(
+        mangaId: Int,
+        keptChapters: List<ChapterDataClass>,
+    ): Map<Int, Set<Int>> {
+        // the setting is disabled by default, thus, checking it first saves the query for almost every update
+        val userIds =
+            transaction { UserAccountTable.select(UserAccountTable.id).map { it[UserAccountTable.id].value } }
+                .filter { userId -> userConfig.markDuplicateReadChaptersAsRead.value(userId) }
+
+        if (userIds.isEmpty() || keptChapters.isEmpty()) {
+            return emptyMap()
+        }
+
+        val keptChapterIds = keptChapters.map { it.id }.toSet()
+
+        return transaction {
+            ChapterUserTable
+                .innerJoin(ChapterTable, onColumn = { ChapterUserTable.chapter }, otherColumn = { ChapterTable.id })
+                .select(ChapterUserTable.user, ChapterUserTable.chapter)
+                .where {
+                    (ChapterTable.manga eq mangaId) and
+                        (ChapterUserTable.user inList userIds) and
+                        (ChapterUserTable.isRead eq true)
+                }.map { it[ChapterUserTable.user].value to it[ChapterUserTable.chapter].value }
+        }.filter { (_, chapterId) -> chapterId in keptChapterIds }
+            .groupBy({ (userId) -> userId }, { (_, chapterId) -> chapterId })
+            .mapValues { (_, chapterIds) -> chapterIds.toSet() }
+    }
+
+    /**
+     * Marks a chapter as read for a user in case the user has already read a kept chapter with the same number, e.g.
+     * the same chapter from a different scanlator.
+     *
+     * Covers newly added chapters as well as kept ones, so that duplicates that were already in the database before the
+     * setting got enabled get cleaned up as well.
+     *
+     * Returns the ids of the chapters that got marked as read by user.
+     */
+    private fun markDuplicatesOfReadChaptersAsRead(
+        readKeptChapterIdsByUserId: Map<Int, Set<Int>>,
+        keptChapters: List<ChapterDataClass>,
+        addedChapters: List<ChapterDataClass>,
+    ): Map<Int, Set<Int>> {
+        // the chapter number of a kept chapter can change during this update, thus, the new one has to be used
+        val keptChapterNumberById = keptChapters.associate { it.id to it.chapterNumber }
+
+        val chapterIdsToMarkAsReadByUserId =
+            readKeptChapterIdsByUserId
+                .mapValues { (_, readChapterIds) ->
+                    val readChapterNumbers =
+                        readChapterIds.mapNotNull { keptChapterNumberById[it] }.filter { it >= 0f }.toSet()
+
+                    // already read chapters are skipped to not touch, and thus, bump the sync version of every chapter
+                    // on every update
+                    (keptChapters + addedChapters)
+                        .filter { it.id !in readChapterIds && it.chapterNumber in readChapterNumbers }
+                        .map { it.id }
+                        .toSet()
+                }.filterValues { it.isNotEmpty() }
+
+        val chapterUsersToMarkAsRead =
+            chapterIdsToMarkAsReadByUserId.flatMap { (userId, chapterIds) -> chapterIds.map { it to userId } }
+
+        if (chapterUsersToMarkAsRead.isNotEmpty()) {
+            ChapterUserTable.batchUpsert(chapterUsersToMarkAsRead, ChapterUserTable.chapter, ChapterUserTable.user) { (chapterId, userId) ->
+                this[ChapterUserTable.chapter] = EntityID(chapterId, ChapterTable)
+                this[ChapterUserTable.user] = EntityID(userId, UserAccountTable)
+                this[ChapterUserTable.isRead] = true
+            }
+        }
+
+        return chapterIdsToMarkAsReadByUserId
     }
 
     private fun downloadNewChapters(
