@@ -9,8 +9,6 @@ package suwayomi.tachidesk.manga.controller
 
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -403,7 +401,7 @@ object MangaController {
 
                 // Sync with KoreaderSync when progress is updated
                 if (lastPageRead != null || read == true) {
-                    GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
+                    KoreaderSyncService.schedulePushProgress(userId, chapterId)
                 }
 
                 ctx.status(200)
@@ -508,7 +506,7 @@ object MangaController {
                             val chapterId = Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
                             // Sync progress with KoreaderSync if chapter update was successful
                             if (chapterId != -1) {
-                                GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
+                                KoreaderSyncService.schedulePushProgress(userId, chapterId)
                             }
                         }
                     }
