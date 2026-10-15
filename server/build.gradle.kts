@@ -198,6 +198,24 @@ tasks {
             // META-INF/services files are still merged by mergeServiceFiles.
             exclude(dependency("org.graalvm.js:js-community:.*"))
             exclude(dependency("org.graalvm.js:js:.*"))
+            // Re-added below minus the classes AndroidCompat implements for real;
+            // the skeletal stub copies would otherwise shadow them at runtime.
+            exclude(dependency("com.github.Suwayomi:android-jar:.*"))
+        }
+        from({
+            project.configurations.runtimeClasspath
+                .get()
+                .filter { it.name.startsWith("android-jar-") && it.extension == "jar" }
+                .also { jars ->
+                    require(jars.files.isNotEmpty()) { "android-jar stub artifact not found on runtime classpath" }
+                }.map(::zipTree)
+        }) {
+            exclude(
+                "android/net/Network.class",
+                "android/net/NetworkCapabilities.class",
+                "android/net/NetworkRequest.class",
+                "android/net/NetworkRequest\$Builder.class",
+            )
         }
     }
 
