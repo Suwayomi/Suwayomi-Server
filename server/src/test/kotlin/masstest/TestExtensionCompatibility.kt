@@ -23,6 +23,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.koin.core.context.stopKoin
+import org.koin.mp.KoinPlatformTools
 import suwayomi.tachidesk.manga.impl.Source.getSourceList
 import suwayomi.tachidesk.manga.impl.extension.Extension.installExtension
 import suwayomi.tachidesk.manga.impl.extension.Extension.uninstallExtension
@@ -33,10 +34,12 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.applicationSetup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
+import suwayomi.tachidesk.server.util.AppMutex
 import suwayomi.tachidesk.test.BASE_PATH
 import suwayomi.tachidesk.test.setLoggingEnabled
 import xyz.nulldev.ts.config.CONFIG_PREFIX
 import java.io.File
+import java.util.Collections
 import java.util.concurrent.atomic.AtomicInteger
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -45,11 +48,20 @@ class TestExtensionCompatibility {
     private lateinit var extensions: List<ExtensionDataClass>
     private lateinit var sources: List<HttpSource>
 
-    private val mangaToFetch = mutableListOf<Pair<HttpSource, SManga>>()
-    private val failedToFetch = mutableListOf<Pair<HttpSource, Exception>>()
-    private val mangaFailedToFetch = mutableListOf<Triple<HttpSource, SManga, Exception>>()
-    private val chaptersToFetch = mutableListOf<Triple<HttpSource, SManga, SChapter>>()
-    private val chaptersPageListFailedToFetch = mutableListOf<Triple<HttpSource, Pair<SManga, SChapter>, Exception>>()
+    // populated by the collection stages and drained by the report writers below; the stages
+    // run on Dispatchers.Default under a Semaphore(10), so plain mutableListOf would race —
+    // every list here is wrapped in a synchronized view
+    private val mangaToFetch = Collections.synchronizedList(mutableListOf<Pair<HttpSource, SManga>>())
+    private val failedToFetch = Collections.synchronizedList(mutableListOf<Pair<HttpSource, Exception>>())
+    private val mangaFailedToFetch =
+        Collections.synchronizedList(mutableListOf<Triple<HttpSource, SManga, Exception>>())
+    private val chaptersToFetch =
+        Collections.synchronizedList(mutableListOf<Triple<HttpSource, SManga, SChapter>>())
+    private val chaptersPageListFailedToFetch =
+        Collections.synchronizedList(mutableListOf<Triple<HttpSource, Pair<SManga, SChapter>, Exception>>())
+
+    // true only when this class brought the shared runtime up itself — see setup()/teardown()
+    private var startedKoinHere = false
 
     val repos = listOf<String>()
 
@@ -57,9 +69,25 @@ class TestExtensionCompatibility {
     fun setup() {
         val dataRoot = File(BASE_PATH).absolutePath
         System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
-        Looper.clearMainLooperForTest()
-        SettingsRegistry.clear()
-        applicationSetup()
+
+        // masstest shares the fork with the regular suite when run with -Pmasstest. If a
+        // Koin application is already running, an earlier test class owns it: applicationSetup
+        // would call startKoin again, and the SettingsRegistry/Looper resets below would rip
+        // the config out from under that runtime — so only boot (and later only tear down)
+        // when we started it ourselves
+        if (KoinPlatformTools.defaultContext().getOrNull() == null) {
+            startedKoinHere = true
+            Looper.clearMainLooperForTest()
+            SettingsRegistry.clear()
+            // masstest boots the production applicationSetup, which runs the real
+            // app-mutex probe — any listener on the configured port (e.g. a dev
+            // server on :4567) would trigger shutdownApp -> exitProcess and kill
+            // the Gradle test worker; short-circuit the probe exactly like
+            // ApplicationTest.testingSetup does
+            AppMutex.bypassForTests = true
+            applicationSetup()
+        }
+
         repos.forEach {
             val store =
                 runBlocking {
@@ -104,7 +132,12 @@ class TestExtensionCompatibility {
 
     @AfterAll
     fun teardown() {
-        stopKoin()
+        // symmetric with setup(): only stop the runtime when this class started it —
+        // otherwise the regular suite's ApplicationTest-owned Koin would be stopped mid-run
+        if (startedKoinHere) {
+            stopKoin()
+            startedKoinHere = false
+        }
     }
 
     @Test
@@ -146,7 +179,13 @@ class TestExtensionCompatibility {
                         semaphore.withPermit {
                             logger.info { "${mangaCount.getAndIncrement()} - Now fetching manga from $source" }
                             try {
-                                repeat { source.getMangaUpdate(manga, emptyList(), true, true) }
+                                val update =
+                                    repeat { source.getMangaUpdate(manga, emptyList(), true, true) }
+                                // feed the page-list stage below — it used to iterate an
+                                // empty list, making the whole third stage dead code
+                                update.chapters.firstOrNull()?.let { chapter ->
+                                    chaptersToFetch += Triple(source, update.manga, chapter)
+                                }
                             } catch (e: Exception) {
                                 logger.warn {
                                     "Failed to fetch manga info and chapters from $source for ${manga.title} (${source.getMangaUrl(
@@ -165,7 +204,7 @@ class TestExtensionCompatibility {
                         " ${exception.message}"
                 },
             )
-            logger.info { "Now fetching manga chapters from ${mangaToFetch.size} sources" }
+            logger.info { "Now fetching manga chapters from ${chaptersToFetch.size} sources" }
 
             val pageListCount = AtomicInteger(1)
             chaptersToFetch

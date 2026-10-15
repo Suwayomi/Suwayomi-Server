@@ -15,6 +15,7 @@ import io.javalin.websocket.WsContext
 import org.dataloader.BatchLoaderEnvironment
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UnauthorizedException
 import suwayomi.tachidesk.server.user.UserType
 
 /**
@@ -32,13 +33,13 @@ class TachideskGraphQLContextFactory : GraphQLContextFactory<Context> {
         request: WsContext,
     ): Map<*, Any> =
         mapOf(
-            Context::class to request,
+            // a WsContext is not an http Context; it gets its own key so nobody can
+            // accidentally read a wrongly-typed Context::class entry
+            WsContext::class to request,
             Attribute.TachideskUser to user,
         )
 
     private fun <T : Any> Context.getPair(attribute: Attribute<T>) = attribute to getAttribute(attribute)
-
-    private fun <T : Any> WsContext.getPair(attribute: Attribute<T>) = attribute to getAttribute(attribute)
 }
 
 /**
@@ -49,13 +50,16 @@ fun Map<*, Any>.toGraphQLContext(): GraphQLContext = GraphQLContext.of(this)
 
 fun <T : Any> GraphQLContext.getAttribute(attribute: Attribute<T>): T =
     get(attribute)
-        ?: throw NullPointerException("Missing attribute ${attribute.name}")
+        // a missing attribute means the connection was never authenticated properly
+        ?: throw UnauthorizedException()
 
 fun <T : Any> DataFetchingEnvironment.getAttribute(attribute: Attribute<T>): T =
     graphQlContext.get(attribute)
-        ?: throw NullPointerException("Missing attribute ${attribute.name}")
+        ?: throw UnauthorizedException()
 
 val BatchLoaderEnvironment.graphQlContext: GraphQLContext
-    get() = keyContextsList.filterIsInstance<GraphQLContext>().first()
+    get() =
+        keyContextsList.filterIsInstance<GraphQLContext>().firstOrNull()
+            ?: throw IllegalStateException("No GraphQLContext found in the data loader environment")
 
 fun <T : Any> BatchLoaderEnvironment.getAttribute(attribute: Attribute<T>): T = graphQlContext.getAttribute(attribute)

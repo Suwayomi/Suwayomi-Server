@@ -358,7 +358,8 @@ public final class UserHandle implements Parcelable {
         return 0;
     }
     public void writeToParcel(Parcel out, int flags) {
-        out.writeInt(mHandle);
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
     /**
      * Write a UserHandle to a Parcel, handling null pointers.  Must be
@@ -389,8 +390,8 @@ public final class UserHandle implements Parcelable {
      * @see #writeToParcel(UserHandle, Parcel)
      */
     public static UserHandle readFromParcel(Parcel in) {
-        int h = in.readInt();
-        return h != USER_NULL ? new UserHandle(h) : null;
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
     
     public static final Parcelable.Creator<UserHandle> CREATOR
@@ -413,6 +414,7 @@ public final class UserHandle implements Parcelable {
      * positioned at the location in the buffer where it was written.
      */
     public UserHandle(Parcel in) {
-        mHandle = in.readInt();
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
 }

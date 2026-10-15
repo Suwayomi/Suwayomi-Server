@@ -51,7 +51,8 @@ public class Build {
     }
 
     public static String getRadioVersion() {
-        throw new RuntimeException("Stub!");
+        // No radio/modem in this environment.
+        return UNKNOWN;
     }
 
     public static class VERSION_CODES {
@@ -84,19 +85,19 @@ public class Build {
     }
 
     public static class VERSION {
-        public static final String BASE_OS = null;
-        public static final String CODENAME = null;
-        public static final String INCREMENTAL = null;
+        public static final String BASE_OS = "";
+        public static final String CODENAME = "REL";
+        public static final String INCREMENTAL = "";
         public static final int PREVIEW_SDK_INT = 0;
-        public static final String RELEASE = null;
+        public static final String RELEASE = "15";
         /** @deprecated */
         @Deprecated
-        public static final String SDK = null;
-        public static final int SDK_INT = 0;
-        public static final String SECURITY_PATCH = null;
+        public static final String SDK = "35";
+        /** The emulated API level reported to extensions. */
+        public static final int SDK_INT = 35;
+        public static final String SECURITY_PATCH = "";
 
         public VERSION() {
-            throw new RuntimeException("Stub!");
         }
     }
 }

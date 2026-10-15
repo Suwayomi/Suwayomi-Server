@@ -68,7 +68,9 @@ fun BackupTracking.toTrack(mangaId: Int): Track =
     Track.create(syncId).also {
         it.id = -1
         it.manga_id = mangaId
-        it.remote_id = mediaId
+        // 1.x backups only fill the deprecated int field 3; fall back to it when the
+        // long field 100 is unset so their remote ids survive the restore
+        it.remote_id = mediaId.takeIf { id -> id != 0L } ?: mediaIdInt.toLong()
         it.library_id = libraryId
         it.title = title
         it.last_chapter_read = lastChapterRead.toDouble()

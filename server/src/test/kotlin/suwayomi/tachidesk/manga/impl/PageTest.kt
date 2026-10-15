@@ -9,10 +9,10 @@ package suwayomi.tachidesk.manga.impl
 
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.impl.Page.getPageName
-import suwayomi.tachidesk.test.ApplicationTest
 import kotlin.test.assertEquals
 
-class PageTest : ApplicationTest() {
+// pure string helper — no ApplicationTest fixture needed
+class PageTest {
     @Test
     fun testGetPageName() {
         val tests = listOf(0 to 5, 1 to 5, 2 to 5, 100 to 100, 998 to 1000, 1400 to 1500)

@@ -76,9 +76,10 @@ class ProtoBackupExportTest : ApplicationTest() {
 
         assertEquals(2, files.size)
 
-        // user 1 is seeded with the username "admin"
-        val user1File = files.single { it.name.startsWith("org.suwayomi.tachidesk.auto.admin_") }
-        val user2File = files.single { it.name.startsWith("org.suwayomi.tachidesk.auto.backup_user2_") }
+        // names embed the userId so users whose usernames sanitize to the same string
+        // cannot overwrite each other ("…​.auto.<userId>.<username>_…​")
+        val user1File = files.single { it.name.startsWith("org.suwayomi.tachidesk.auto.1.admin_") }
+        val user2File = files.single { it.name.startsWith("org.suwayomi.tachidesk.auto.$userId2.backup_user2_") }
 
         val user1Backup = decodeBackup(user1File)
         val user2Backup = decodeBackup(user2File)
@@ -91,17 +92,23 @@ class ProtoBackupExportTest : ApplicationTest() {
     fun cleanupAutomatedBackupsDeletesExpiredPerUserFilesAndKeepsFreshOnes() {
         serverConfig.backupTTL.value = 1
 
-        val expiredFile = File(backupRoot, "org.suwayomi.tachidesk.auto.admin_${dateString()}.tachibk")
+        val expiredFile = File(backupRoot, "org.suwayomi.tachidesk.auto.1.admin_${dateString()}.tachibk")
         expiredFile.writeText("expired")
         assertTrue(expiredFile.setLastModified(Date().time - 2.days.inWholeMilliseconds))
 
-        val freshFile = File(backupRoot, "org.suwayomi.tachidesk.auto.backup_user2_${dateString()}.tachibk")
+        val freshFile = File(backupRoot, "org.suwayomi.tachidesk.auto.2.backup_user2_${dateString()}.tachibk")
         freshFile.writeText("fresh")
+
+        // a manual backup merely starting with "auto" must survive the TTL sweep
+        val manualFile = File(backupRoot, "org.suwayomi.tachidesk.autobackup_${dateString()}.tachibk")
+        manualFile.writeText("manual")
+        assertTrue(manualFile.setLastModified(Date().time - 200.days.inWholeMilliseconds))
 
         ProtoBackupExport.cleanupAutomatedBackups()
 
         assertTrue(!expiredFile.exists())
         assertTrue(freshFile.exists())
+        assertTrue(manualFile.exists(), "manual backups are not subject to the automated-backup TTL")
     }
 
     private fun dateString(): String = SimpleDateFormat("yyyy-MM-dd_HH-mm").format(Date())

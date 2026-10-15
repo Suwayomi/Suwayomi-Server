@@ -39,6 +39,9 @@ public class Preference {
     @JsonIgnore
     public OnPreferenceChangeListener onChangeListener;
 
+    @JsonIgnore
+    public OnPreferenceClickListener onClickListener;
+
     public Preference(Context context) {
         this.context = context;
     }
@@ -52,7 +55,7 @@ public class Preference {
     }
 
     public void setOnPreferenceClickListener(OnPreferenceClickListener onPreferenceClickListener) {
-        throw new RuntimeException("Stub!");
+        this.onClickListener = onPreferenceClickListener;
     }
 
     public CharSequence getTitle() {
@@ -101,7 +104,7 @@ public class Preference {
 
     /** Tachidesk specific API */
     public String getDefaultValueType() {
-        return defaultValue.getClass().getSimpleName();
+        return defaultValue == null ? "Object" : defaultValue.getClass().getSimpleName();
     }
 
     /** Tachidesk specific API */
@@ -133,7 +136,7 @@ public class Preference {
     /** Tachidesk specific API */
     @SuppressWarnings("unchecked")
     public Object getCurrentValue() {
-        if (key == null) {
+        if (key == null || sharedPreferences == null) {
             return Objects.requireNonNullElseGet(defaultValue, () -> switch (getDefaultValueType()) {
                 case "String" -> "";
                 case "Boolean" -> false;
@@ -152,7 +155,7 @@ public class Preference {
     /** Tachidesk specific API */
     @SuppressWarnings("unchecked")
     public void saveNewValue(Object value) {
-        if (key == null) {
+        if (key == null || sharedPreferences == null) {
             return;
         }
         switch (getDefaultValueType()) {

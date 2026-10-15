@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.server.util
 
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.Handler
 import io.javalin.http.HttpStatus
@@ -15,6 +16,14 @@ fun <T> getSimpleParamItem(
         else -> throw IllegalStateException("Invalid param")
     }
 
+private fun invalidParam(
+    key: String,
+    rawValue: String,
+    expected: String,
+): BadRequestResponse = BadRequestResponse("Invalid value '$rawValue' for parameter '$key': expected $expected")
+
+private fun missingParam(key: String): BadRequestResponse = BadRequestResponse("Missing required parameter '$key'")
+
 @Suppress("UNCHECKED_CAST")
 fun <T> getParam(
     ctx: Context,
@@ -22,15 +31,36 @@ fun <T> getParam(
 ): T {
     if (param is Param.QueryParams<*, *>) {
         val item = ctx.queryParams(param.key).filter(String::isNotBlank)
+        // a present-but-unparsable element is a client error (400), not "absent"/"skipped"
         val typedItem: List<Any?> =
             when (param.clazz) {
-                String::class.java, java.lang.String::class.java -> item
-                Int::class.java, java.lang.Integer::class.java -> item.map { it.toIntOrNull() }
-                Long::class.java, java.lang.Long::class.java -> item.map { it.toLongOrNull() }
-                Boolean::class.java, java.lang.Boolean::class.java -> item.map { it.toBoolean() }
-                Float::class.java, java.lang.Float::class.java -> item.map { it.toFloatOrNull() }
-                Double::class.java, java.lang.Double::class.java -> item.map { it.toDoubleOrNull() }
-                else -> throw IllegalStateException("Unknown class ${param.clazz.simpleName}")
+                String::class.java, java.lang.String::class.java -> {
+                    item
+                }
+
+                Int::class.java, java.lang.Integer::class.java -> {
+                    item.map { it.toIntOrNull() ?: throw invalidParam(param.key, it, "an integer") }
+                }
+
+                Long::class.java, java.lang.Long::class.java -> {
+                    item.map { it.toLongOrNull() ?: throw invalidParam(param.key, it, "a long") }
+                }
+
+                Boolean::class.java, java.lang.Boolean::class.java -> {
+                    item.map { it.toBoolean() }
+                }
+
+                Float::class.java, java.lang.Float::class.java -> {
+                    item.map { it.toFloatOrNull() ?: throw invalidParam(param.key, it, "a float") }
+                }
+
+                Double::class.java, java.lang.Double::class.java -> {
+                    item.map { it.toDoubleOrNull() ?: throw invalidParam(param.key, it, "a double") }
+                }
+
+                else -> {
+                    throw IllegalStateException("Unknown class ${param.clazz.simpleName}")
+                }
             }.let {
                 if (param.nullable) {
                     it
@@ -40,30 +70,45 @@ fun <T> getParam(
             }.ifEmpty { param.defaultValue }
         return typedItem as T
     }
+
+    val rawItem = getSimpleParamItem(ctx, param)
     val typedItem: Any? =
         when (val clazz = param.clazz as Class<T>) {
             String::class.java, java.lang.String::class.java -> {
-                getSimpleParamItem(ctx, param) ?: param.defaultValue
+                rawItem ?: param.defaultValue
             }
 
-            Int::class.java, java.lang.Integer::class.java -> {
-                getSimpleParamItem(ctx, param)?.toIntOrNull() ?: param.defaultValue
-            }
+            Int::class.java, java.lang.Integer::class.java,
+            Long::class.java, java.lang.Long::class.java,
+            Float::class.java, java.lang.Float::class.java,
+            Double::class.java, java.lang.Double::class.java,
+            -> {
+                // distinguish "not provided" (fall back to the default) from "provided but
+                // unparsable" (400): e.g. ?categoryId=abc must not silently trigger the
+                // categoryId==null code path; an empty value counts as "not provided"
+                rawItem?.takeIf(String::isNotEmpty)?.let {
+                    when (clazz) {
+                        Int::class.java, java.lang.Integer::class.java -> {
+                            it.toIntOrNull() ?: throw invalidParam(param.key, it, "an integer")
+                        }
 
-            Long::class.java, java.lang.Long::class.java -> {
-                getSimpleParamItem(ctx, param)?.toLongOrNull() ?: param.defaultValue
+                        Long::class.java, java.lang.Long::class.java -> {
+                            it.toLongOrNull() ?: throw invalidParam(param.key, it, "a long")
+                        }
+
+                        Float::class.java, java.lang.Float::class.java -> {
+                            it.toFloatOrNull() ?: throw invalidParam(param.key, it, "a float")
+                        }
+
+                        else -> {
+                            it.toDoubleOrNull() ?: throw invalidParam(param.key, it, "a double")
+                        }
+                    }
+                } ?: param.defaultValue
             }
 
             Boolean::class.java, java.lang.Boolean::class.java -> {
-                getSimpleParamItem(ctx, param)?.toBoolean() ?: param.defaultValue
-            }
-
-            Float::class.java, java.lang.Float::class.java -> {
-                getSimpleParamItem(ctx, param)?.toFloatOrNull() ?: param.defaultValue
-            }
-
-            Double::class.java, java.lang.Double::class.java -> {
-                getSimpleParamItem(ctx, param)?.toDoubleOrNull() ?: param.defaultValue
+                rawItem?.takeIf(String::isNotEmpty)?.toBoolean() ?: param.defaultValue
             }
 
             else -> {
@@ -88,7 +133,9 @@ fun <T> getParam(
     return if (param.nullable) {
         typedItem as T
     } else {
-        typedItem!! as T
+        // a missing required parameter is a client error (400), not a missing resource (404);
+        // the previous `typedItem!!` surfaced as an NPE mapped to 404
+        (typedItem ?: throw missingParam(param.key)) as T
     }
 }
 

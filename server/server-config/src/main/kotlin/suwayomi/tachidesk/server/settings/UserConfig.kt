@@ -26,6 +26,9 @@ import kotlin.time.Duration.Companion.seconds
  * @param defaultValue the default value
  * @param validator optional value validator
  * @param typeInfo optional GQL/backup type conversion info (needed for non-primitive types)
+ * @param excludeFromBackup when true the setting is written as null into backups and never
+ * restored (mirrors [SettingsRegistry.SettingMetadata.excludeFromBackup] for global settings);
+ * use for credentials or instance-local values that must not travel between servers
  */
 class UserSetting<T : Any>(
     val key: String,
@@ -37,6 +40,7 @@ class UserSetting<T : Any>(
     val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     val internalType: String? = null,
     val typeArguments: Map<String, ClassContainer> = emptyMap(),
+    val excludeFromBackup: Boolean = false,
 )
 
 /**
@@ -69,6 +73,7 @@ private inline fun <reified T : Any> userSetting(
     noinline validator: ((T) -> String?)? = null,
     typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     internalType: String? = null,
+    excludeFromBackup: Boolean = false,
 ): UserSetting<T> {
     val kType = typeOf<T>()
     val setting = UserSetting(
@@ -88,7 +93,8 @@ private inline fun <reified T : Any> userSetting(
         internalType = internalType,
         typeArguments = T::class.typeParameters.mapIndexed { index, parameter ->
             parameter.name to ClassContainer(kType.arguments[index].type?.classifier as KClass<*>)
-        }.toMap()
+        }.toMap(),
+        excludeFromBackup = excludeFromBackup,
     )
     UserSettingsRegistry.register(setting)
     return setting
@@ -293,6 +299,7 @@ class UserConfig {
         protoNumber = 25,
         group = SettingGroup.SYNCYOMI,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val syncYomiApiKey: UserSetting<String> = userSetting(
@@ -300,6 +307,7 @@ class UserConfig {
         protoNumber = 26,
         group = SettingGroup.SYNCYOMI,
         defaultValue = "",
+        excludeFromBackup = true,
     )
 
     val syncDataManga: UserSetting<Boolean> = userSetting(

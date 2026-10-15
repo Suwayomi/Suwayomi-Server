@@ -5,41 +5,53 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel an in-flight run: a new push queues instead. Cancelling midway
+  # could kill the release job inside its push index.json → push → tag →
+  # gh-release sequence and leave a partially published state.
+  cancel-in-progress: false
 
 jobs:
   check_wrapper:
     name: Validate Gradle Wrapper
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Clone repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v5
+        uses: gradle/actions/wrapper-validation@0723195856401067f7a2779048b490ace7a47d7c # v5
 
   build:
     name: Build Jar
     needs: check_wrapper
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      release_tag: ${{ steps.build_jar.outputs.release_tag }}
     steps:
       - name: Checkout master branch
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: master
           path: master
           fetch-depth: 0
 
       - name: Set up JDK
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           java-version: 25
           distribution: 'zulu'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
 
       - name: Copy CI gradle.properties
         run: |
@@ -48,20 +60,29 @@ jobs:
           cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
 
       - name: Build Jar
+        id: build_jar
         env:
           ProductBuildType: "Preview"
         working-directory: master
-        run: ./gradlew :server:shadowJar --stacktrace
+        # Releases must pass at least the PR gate (ktlintCheck + :server:test).
+        # WebUI is only bundled for stable releases (publish.yml); preview
+        # builds intentionally ship without it (see 7d2f542f).
+        run: |
+          ./gradlew ktlintCheck :server:test :server:shadowJar --stacktrace
+          JAR_NAME="$(basename "$(ls server/build/*.jar | head -1)")"
+          TAG="${JAR_NAME#Suwayomi-Server-}"
+          TAG="${TAG%.jar}"
+          echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Upload Jar
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: jar
           path: master/server/build/*.jar
           if-no-files-found: error
 
       - name: Upload icons
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: icon
           path: master/server/src/main/resources/icon
@@ -71,7 +92,7 @@ jobs:
         run: tar -cvzf scripts.tar.gz -C master/ scripts/
 
       - name: Upload scripts.tar.gz
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: scripts
           path: scripts.tar.gz
@@ -79,6 +100,7 @@ jobs:
 
   jlink:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       matrix:
         include:
@@ -94,7 +116,7 @@ jobs:
 
     steps:
       - name: Set up JDK
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
         with:
           java-version: 25
           distribution: 'zulu'
@@ -103,7 +125,7 @@ jobs:
         run: jlink --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.naming,java.prefs,java.scripting,java.se,java.security.jgss,java.security.sasl,java.sql,java.transaction.xa,java.xml,jdk.attach,jdk.crypto.ec,jdk.jdi,jdk.management,jdk.net,jdk.unsupported,jdk.unsupported.desktop,jdk.zipfs,jdk.accessibility --output suwa --strip-debug --no-man-pages --no-header-files --compress=2
 
       - name: Upload JRE package
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ${{ matrix.name }}-jre
           path: suwa
@@ -114,11 +136,9 @@ jobs:
       matrix:
         include:
           - name: debian-all
-            jre: linux-x64
           - name: appimage
             jre: linux-x64
           - name: linux-assets
-            jre: linux-assets
           - name: linux-x64
             jre: linux-x64
           - name: macOS-x64
@@ -132,28 +152,29 @@ jobs:
     name: Make ${{ matrix.name }} release
     needs: [build, jlink]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Download Jar
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: jar
           path: server/build
 
       - name: Download JRE
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         if: matrix.name != 'linux-assets' && matrix.name != 'debian-all'
         with:
           name: ${{ matrix.jre }}-jre
           path: jre
 
       - name: Download icons
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: icon
           path: server/src/main/resources/icon
 
       - name: Download scripts.tar.gz
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: scripts
 
@@ -164,68 +185,67 @@ jobs:
           scripts/bundler.sh -o upload/ ${{ matrix.name }}
 
       - name: Upload ${{ matrix.name }} release
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: ${{ matrix.name }}
           path: upload/*
           if-no-files-found: error
 
   release:
-    needs: bundle
+    needs: [bundle, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      # The push index.json → push main → tag → gh-release sequence is not
+      # atomic; cancelling it midway leaves a partially published state.
+      group: ${{ github.workflow }}-release-${{ github.ref }}
+      cancel-in-progress: false
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: jar
           path: release
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: debian-all
           path: release
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: appimage
           path: release
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: linux-assets
           path: release
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: linux-x64
           path: release
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: macOS-x64
           path: release
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: macOS-arm64
           path: release
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: windows-x64
           path: release
 
       - name: Checkout Preview branch
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: "Suwayomi/Suwayomi-Server-preview"
           ref: main
           path: preview
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
 
-      - name: Generate Tag Name
-        id: GenTagName
-        run: |
-          cd release
-          genTag=$(ls *.jar | sed -e's/Suwayomi-Server-\|.jar//g')
-          echo "$genTag"
-          echo "value=$genTag" >> $GITHUB_OUTPUT
-
       - name: Create Tag
+        env:
+          TAG: ${{ needs.build.outputs.release_tag }}
         run: |
-          TAG="${{ steps.GenTagName.outputs.value }}"
           echo "tag: $TAG"
           cd preview
           echo "{ \"latest\": \"$TAG\" }" > index.json
@@ -233,17 +253,25 @@ jobs:
           git config --global user.email \
             "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git commit -m "Updated to $TAG"
-          git push origin main
+          if git diff --cached --quiet; then
+            echo "index.json already up to date, skipping commit"
+          else
+            git commit -m "Updated to $TAG"
+            git push origin main
+          fi
 
-          git tag $TAG
-          git push origin $TAG
+          # Idempotent for re-runs: skip if the tag already exists on the remote
+          if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+            echo "tag $TAG already exists on remote, skipping"
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
 
       - name: Upload Preview Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           token: ${{ secrets.DEPLOY_PREVIEW_TOKEN }}
           repository: "Suwayomi/Suwayomi-Server-preview"
-          tag_name:  ${{ steps.GenTagName.outputs.value }}
+          tag_name: ${{ needs.build.outputs.release_tag }}
           files: release/*
-

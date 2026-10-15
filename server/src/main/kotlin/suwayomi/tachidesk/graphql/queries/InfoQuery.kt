@@ -28,6 +28,10 @@ class InfoQuery {
         val platformInfo: PlatformInfo,
     )
 
+    // intentionally unauthenticated (mirrors REST /about): a web UI needs the server
+    // version before it can log in. The payload does expose build fingerprints
+    // (buildTime/revision) to anonymous callers — an accepted information-disclosure
+    // trade-off for pre-auth version checks
     fun aboutServer(): AboutServerPayload =
         AboutServerPayload(
             BuildConfig.NAME,

@@ -35,7 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 #### Bug Squashing and Optimizations!
 This release focuses on fixing many bugs and optimizing startup time! 
 
-#### [Syncyomi]([SyncYomi](https://github.com/syncyomi/syncyomi)) v2 Support!
+#### [SyncYomi](https://github.com/syncyomi/syncyomi) v2 Support!
 Syncyomi has released its next version of syncing your library, optimizing the sync and squashing many bugs! 
 
 ### Added
@@ -448,7 +448,7 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 - added support for a equivalent page to Tachiyomi's Updates tab
 - fix launchers not working on macOS M1/arm64
 
-## [v0.5.2] + [WebUI: r807] - 20209-19
+## [v0.5.2] + [WebUI: r807] - 2021-09-19
 
 - Fixed Local source not working on Windows
 - Fixed Chapter names being shown incorrectly
@@ -549,12 +549,8 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 [WebUI: v20260929.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026092901-r3518---2026-09-29
 [WebUI: v20260509.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026050901-r3147---2026-05-09
 [WebUI: v20260508.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026050801-r3136---2026-05-08
-[WebUI: v20251230.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025123001-r2937---2025-12-30
-[WebUI: v20250801.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025080101-r2717---2025-08-01
-[WebUI: v20250731.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025073101-r2715---2025-07-31
 [WebUI: v20250703.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025070301-r2643---2025-07-03
 [WebUI: v1.5.1]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#151-r2467---2025-04-07
-[WebUI: v1.5.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#150-r2461---2025-04-05
 [WebUI: v1.1.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#110-r1689---2024-06-14
 [WebUI: v1.0.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#100-r1411---2024-02-23
 [WebUI: r983]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/7312e92d07215c6a184577dd2779dcb7d887f889...ad9a12b2ec76fba0658d45d2d6c280caeaf046f7
@@ -595,7 +591,6 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 [v0.6.2]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.4...v0.6.0
-[v0.5.4]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.4...v0.5.4
 [v0.5.4]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.3...v0.5.4
 [v0.5.3]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.2...v0.5.3
 [v0.5.2]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.1...v0.5.2

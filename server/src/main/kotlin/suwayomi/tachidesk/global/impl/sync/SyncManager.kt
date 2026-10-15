@@ -3,17 +3,25 @@ package suwayomi.tachidesk.global.impl.sync
 import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -57,6 +65,7 @@ import uy.kohesive.injekt.api.get
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 import kotlin.time.measureTime
@@ -92,6 +101,15 @@ object SyncManager {
     private val userConfigSubscriptions = ConcurrentHashMap<Int, Job>()
 
     private val NEW_USER_CHECK_INTERVAL = 60.seconds
+
+    // Upper bound for waiting on a restore's terminal state. Generous because large
+    // libraries take a while to restore; before the bound existed a missed terminal
+    // emission hung the wait forever and wedged the per-user sync mutex.
+    private val RESTORE_WAIT_TIMEOUT = 10.minutes
+
+    // Managed scope (instead of GlobalScope) so sync jobs are supervised and their
+    // lifecycle is owned by SyncManager
+    private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
      * The per-user sync state. Returns a [StateFlow] that is `null` until the user has (started) syncing.
@@ -236,7 +254,6 @@ object SyncManager {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun startSync(
         userId: Int,
         periodic: Boolean = false,
@@ -250,7 +267,7 @@ object SyncManager {
             return StartSyncResult.SYNC_IN_PROGRESS
         }
 
-        GlobalScope.launch {
+        syncScope.launch {
             try {
                 syncData(userId, periodic)
             } finally {
@@ -343,6 +360,9 @@ object SyncManager {
             val backupMangas =
                 BackupMangaHandler.backup(userId, backupFlags, since).let { if (since == null) it else changedSince(it, since) }
             val backupCategories =
+                // the wire model has no is-default flag, so the default category is
+                // excluded by name (a user category literally named "Default" would be
+                // excluded too — known limitation of the wire contract)
                 BackupCategoryHandler.backup(userId, backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
             toWireCategoryOrders(backupCategories, backupMangas)
             val backup =
@@ -364,13 +384,9 @@ object SyncManager {
                 SyncYomiSyncService.doSync(userId, syncData, full, startInstant) {
                     setLastSyncState(userId, it)
                 }
-            val remoteBackup = result.backup
-
-            if (remoteBackup == null) {
-                logger.debug { "Skip restore due to network issues" }
-                finishWithError(userId, startInstant, "Network error", periodic)
-                return
-            }
+            // doSync only returns a null backup when the local backup was already null,
+            // which this function never produces — any real failure raises an exception
+            val remoteBackup = checkNotNull(result.backup) { "Sync result carried no backup" }
 
             if (!result.changed) {
                 logger.debug { "Skip restore, nothing new on the server" }
@@ -387,25 +403,14 @@ object SyncManager {
                     return
                 }
 
-                val isLibraryEmpty =
-                    transaction {
-                        MangaUserTable
-                            .selectAll()
-                            .where { MangaUserTable.user eq userId and (MangaUserTable.inLibrary eq true) }
-                            .empty()
-                    }
-
-                // Check if it's first sync based on lastSyncTimestamp
-                if (syncPreferences.getLong("last_sync_timestamp_$userId", 0) == 0L && !isLibraryEmpty) {
-                    // It's first sync no need to restore data. (just update remote data)
-                    finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
-                    return
-                }
+                // no first-sync early exit: a fresh device must restore the merged
+                // backup, otherwise remote-only entries are missing locally while the
+                // watermark advances — the next merge would infer them as deletions
             }
 
             val (filteredFavorites, nonFavorites) =
                 filterFavoritesAndNonFavorites(userId, remoteBackup, restoreAll = converge)
-            updateNonFavorites(userId, nonFavorites)
+            val nonFavoritesApplied = updateNonFavorites(userId, nonFavorites)
 
             val newSyncData =
                 backup.copy(
@@ -419,7 +424,10 @@ object SyncManager {
             val hasCategoryChanges = remoteBackup.backupCategories != backup.backupCategories
             val hasSourceChanges = remoteBackup.backupSources != backup.backupSources
 
-            if (!hasMangaChanges && !hasCategoryChanges && !hasSourceChanges) {
+            // nonFavoritesApplied writes rows with is_syncing set — leaving via the early
+            // exit would skip the restore whose cleanup clears the flag, so the rows would
+            // stay "syncing" until the next sync and swallow user edits in the window
+            if (!hasMangaChanges && !hasCategoryChanges && !hasSourceChanges && !nonFavoritesApplied) {
                 // update the sync timestamp
                 markSyncSchema(userId, converge)
                 finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
@@ -435,6 +443,7 @@ object SyncManager {
                         it.uid !in mergedUids && it.name !in mergedNames
                     }
                 if (categoriesToDelete.isNotEmpty()) {
+                    val mergeDeletedUids = categoriesToDelete.map { it.uid }.toSet()
                     transaction {
                         // the cascade delete of the category links must not bump the manga versions
                         val categoryIds = categoriesToDelete.map { it.id }
@@ -458,36 +467,74 @@ object SyncManager {
                             Category.removeCategory(userId, it.id)
                         }
                     }
+                    // removeCategory records each deletion as user-initiated; merge-driven
+                    // deletions must not be re-propagated as X-Sync-Deleted-Categories
+                    SyncYomiSyncService.forgetDeletedCategories(userId, mergeDeletedUids)
                 }
             }
 
-            val restoreId =
-                ProtoBackupImport.restore(
-                    userId = userId,
-                    backup = newSyncData,
-                    flags = backupFlags,
-                    syncMode = syncMode,
-                )
-            setLastSyncState(userId, SyncState.Restoring(startInstant, restoreId))
+            // notifyFlow has replay=0, so the subscription must be attached *before*
+            // the restore is triggered: a restore reaching its terminal state between
+            // restore() returning and .first collecting would be missed, the wait
+            // would run until the timeout, and the post-timeout state-map re-read can
+            // then hit the 60s cleanup window — reporting a successful restore as an
+            // error. The collector is started UNDISPATCHED so it is subscribed before
+            // restore() runs, re-reads the state map on every emission (emissions
+            // arriving before the restore id is known simply suspend on the deferred),
+            // and carries the terminal state out by value — the cleanup window then
+            // no longer matters.
+            val restoreState =
+                coroutineScope {
+                    val restoreIdDeferred = CompletableDeferred<String>()
+                    val terminalState =
+                        async(start = CoroutineStart.UNDISPATCHED) {
+                            ProtoBackupImport.notifyFlow
+                                .map {
+                                    ProtoBackupImport.getRestoreState(
+                                        userId,
+                                        restoreIdDeferred.await(),
+                                    )
+                                }.first { isTerminalRestoreState(it) }
+                        }
 
-            ProtoBackupImport.notifyFlow.first {
-                val restoreState = ProtoBackupImport.getRestoreState(restoreId)
+                    val restoreId =
+                        ProtoBackupImport.restore(
+                            userId = userId,
+                            backup = newSyncData,
+                            flags = backupFlags,
+                            syncMode = syncMode,
+                        )
+                    restoreIdDeferred.complete(restoreId)
+                    setLastSyncState(userId, SyncState.Restoring(startInstant, restoreId))
 
-                restoreState == ProtoBackupImport.BackupRestoreState.Success ||
-                    restoreState == ProtoBackupImport.BackupRestoreState.Failure
-            }
+                    // Bound the wait so a wedged restore cannot hold the per-user sync
+                    // mutex forever; a timeout leaves the watermarks untouched.
+                    val terminal = withTimeoutOrNull(RESTORE_WAIT_TIMEOUT) { terminalState.await() }
+                    terminalState.cancel() // release the collector on timeout (no-op if done)
+                    terminal
+                }
 
-            if (ProtoBackupImport.getRestoreState(restoreId) == ProtoBackupImport.BackupRestoreState.Success) {
+            if (restoreState == ProtoBackupImport.BackupRestoreState.Success) {
                 markSyncSchema(userId, converge)
+                // update the sync timestamp
+                finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
+            } else {
+                // A failed/timed-out restore must not advance the watermarks: the next
+                // merge would take remote entries that were never restored locally for
+                // deletions and propagate them to the server and every other device.
+                finishWithError(userId, startInstant, "Restore did not succeed (state: $restoreState)", periodic)
             }
-
-            // update the sync timestamp
-            finishWithSuccess(userId, startInstant, periodic, pushedAt = startInstant)
         } catch (e: Throwable) {
+            // cancellation is not a sync failure — let it propagate
+            if (e is CancellationException) throw e
             logger.error { "Error syncing: ${e.message}" }
             finishWithError(userId, startInstant, "${e::class.qualifiedName}: ${e.message}", periodic)
         }
     }
+
+    private fun isTerminalRestoreState(state: ProtoBackupImport.BackupRestoreState?): Boolean =
+        state == ProtoBackupImport.BackupRestoreState.Success ||
+            state == ProtoBackupImport.BackupRestoreState.Failure
 
     private fun finishWithSuccess(
         userId: Int,
@@ -497,7 +544,9 @@ object SyncManager {
     ) {
         syncPreferences
             .edit()
-            .putLong("last_sync_timestamp_$userId", Clock.System.now().toEpochMilliseconds())
+            // the watermark is the instant the merge ran (epoch milliseconds): changes a
+            // peer lands while this sync is still running belong to the next round
+            .putLong("last_sync_timestamp_$userId", startInstant.toEpochMilliseconds())
             .apply {
                 // everything modified before this instant reached the server; the next delta starts here
                 if (pushedAt != null) putLong("${PREF_LAST_PUSHED_AT}_$userId", pushedAt.epochSeconds)
@@ -558,7 +607,7 @@ object SyncManager {
         }
     }
 
-    private fun isMangaDifferent(
+    internal fun isMangaDifferent(
         userId: Int,
         localManga: MangaDataClass,
         remoteManga: BackupManga,
@@ -602,7 +651,15 @@ object SyncManager {
                     .map { it[CategoryTable.order] }
             }
 
-        return localCategories.toSet() != remoteManga.categories.toSet()
+        // local order values are 1-based (the default category holds 0) while the wire
+        // convention is the 0-based rank produced by toWireCategoryOrders — rebase before
+        // comparing or the sets never match and every sync restores needlessly
+        val localWireOrders =
+            localCategories
+                .mapNotNull { (it - 1).takeIf { order -> order >= 0 } }
+                .toSet()
+
+        return localWireOrders != remoteManga.categories.toSet()
     }
 
     private fun areChaptersDifferent(
@@ -679,10 +736,16 @@ object SyncManager {
         return Pair(favorites, nonFavorites)
     }
 
+    /**
+     * Mirror remote unfavorites into the local library rows. Returns whether any row was
+     * written — writes set `is_syncing`, which only the restore's cleanup clears, so the
+     * caller must not take the no-changes early exit when this returns true.
+     */
     private fun updateNonFavorites(
         userId: Int,
         nonFavorites: List<BackupManga>,
-    ) {
+    ): Boolean {
+        var applied = false
         nonFavorites.forEach { nonFavorite ->
             val localManga =
                 transaction {
@@ -722,9 +785,12 @@ object SyncManager {
                     }.apply {
                         handleMangaThumbnail(localManga.id)
                     }
+                    applied = true
                 }
             }
         }
+
+        return applied
     }
 
     sealed class SyncState(

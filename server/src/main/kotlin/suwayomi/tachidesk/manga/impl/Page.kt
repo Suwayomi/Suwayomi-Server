@@ -9,8 +9,10 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import libcore.net.MimeUtils
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -34,6 +36,7 @@ import suwayomi.tachidesk.util.ConversionUtil
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
@@ -109,15 +112,50 @@ object Page {
 
         // we treat Local source differently
         if (mangaEntry[MangaTable.sourceReference] == LocalSource.ID) {
-            // is of archive format
-            if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
-                val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
-                return pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg")
+            val chapterUrl = chapterEntry[ChapterTable.url]
+            val imageUrl = tachiyomiPage.imageUrl
+
+            if (imageUrl != null) {
+                // is of directory format: imageUrl resolves inside the local manga root
+                // (relative path; legacy entries may hold an absolute path)
+                val imageFile = LocalSource.resolvePageFile(imageUrl)
+                // sniff and serve on the same stream: the buffered stream supports
+                // mark/reset, so findImageType leaves it positioned at byte 0
+                val stream = imageFile.inputStream().buffered()
+                return stream to (ImageUtil.findImageType(stream)?.mime ?: "image/jpeg")
             }
 
-            // is of directory format
-            val imageFile = File(tachiyomiPage.imageUrl!!)
-            return imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg")
+            // is of archive format: page streams live in a bounded cache; rebuild the page
+            // list once on a miss (entry evicted, or never populated e.g. after a restart)
+            val pageStream =
+                LocalSource.getCachedPageStream(chapterUrl, index)
+                    ?: run {
+                        (getSourceOrNull(LocalSource.ID) as? LocalSource)
+                            ?.getPageList(SChapter.create().apply { url = chapterUrl })
+                        LocalSource.getCachedPageStream(chapterUrl, index)
+                    }
+            if (pageStream != null) {
+                // one extraction per request: invoking the provider twice would run two
+                // concurrent junrar extractor tasks on the same archive (which is not
+                // thread-safe) and corrupt the page; the buffered stream is sniffed via
+                // mark/reset instead, then handed to the caller at position 0
+                val stream =
+                    try {
+                        pageStream().buffered()
+                    } catch (e: IOException) {
+                        // the cache entry was evicted between the lookup above and the
+                        // stream opening; rebuild the page list once and retry
+                        (getSourceOrNull(LocalSource.ID) as? LocalSource)
+                            ?.getPageList(SChapter.create().apply { url = chapterUrl })
+                        LocalSource
+                            .getCachedPageStream(chapterUrl, index)
+                            ?.invoke()
+                            ?.buffered()
+                            ?: throw NoSuchElementException("Page $index of chapter $chapterUrl not found")
+                    }
+                return stream to (ImageUtil.findImageType(stream)?.mime ?: "image/jpeg")
+            }
+            throw NoSuchElementException("Page $index of chapter $chapterUrl not found")
         }
 
         val source = getSourceOrNull(mangaEntry[MangaTable.sourceReference])!!
@@ -138,7 +176,16 @@ object Page {
 
         // Note: don't care about invalidating cache because OS cache is not permanent
         return getImageResponse(cacheSaveDir, fileName) {
-            source.getImage(tachiyomiPage)
+            try {
+                source.getImage(tachiyomiPage)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                // HttpException/host-unreachable already map to source-failure statuses
+                throw e
+            } catch (e: Exception) {
+                throw e
+            }
         }
     }
 

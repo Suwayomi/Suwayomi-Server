@@ -45,9 +45,7 @@ public final class SQLiteStatement extends SQLiteProgram {
         acquireReference();
         try {
             B_setBindArgs();
-            getPreparedStatement().execute();
-        } catch (SQLException e) {
-            throw new SQLiteException("Failed to execute SQL statement!", e);
+            B_execute();
         } finally {
             releaseReference();
         }
@@ -65,10 +63,10 @@ public final class SQLiteStatement extends SQLiteProgram {
         acquireReference();
         try {
             B_setBindArgs();
-            getPreparedStatement().execute();
+            B_execute();
             return getPreparedStatement().getUpdateCount();
         } catch (SQLException e) {
-            throw new SQLiteException("Failed to execute SQL statement!", e);
+            throw toSQLiteException("Failed to execute SQL statement!", e);
         } finally {
             releaseReference();
         }
@@ -87,6 +85,7 @@ public final class SQLiteStatement extends SQLiteProgram {
         acquireReference();
         try {
             B_setBindArgs();
+            invalidateResultSet();
             getPreparedStatement().executeUpdate();
             ResultSet generated = getPreparedStatement().getGeneratedKeys();
             if(generated.next())
@@ -94,7 +93,7 @@ public final class SQLiteStatement extends SQLiteProgram {
             else
                 return -1;
         } catch (SQLException e) {
-            throw new SQLiteException("Failed to execute SQL statement!", e);
+            throw toSQLiteException("Failed to execute SQL statement!", e);
         } finally {
             releaseReference();
         }
@@ -112,13 +111,17 @@ public final class SQLiteStatement extends SQLiteProgram {
         acquireReference();
         try {
             B_setBindArgs();
-            getPreparedStatement().execute();
+            B_execute();
             if(getResultSet().next())
                 return getResultSet().getLong(1);
             else
                 throw new SQLiteDoneException();
-        } catch (SQLException e) {
-            throw new SQLiteException("Failed to execute SQL statement!", e);
+        } catch (android.database.SQLException e) {
+            // Already-mapped compat exceptions (SQLiteDoneException and the
+            // typed SQLite* subclasses) must reach the caller unwrapped.
+            throw e;
+        } catch (Exception e) {
+            throw toSQLiteException("Failed to execute SQL statement!", e instanceof SQLException ? (SQLException) e : new SQLException(e));
         } finally {
             releaseReference();
         }
@@ -136,13 +139,17 @@ public final class SQLiteStatement extends SQLiteProgram {
         acquireReference();
         try {
             B_setBindArgs();
-            getPreparedStatement().execute();
+            B_execute();
             if(getResultSet().next())
                 return getResultSet().getString(1);
             else
                 throw new SQLiteDoneException();
-        } catch (SQLException e) {
-            throw new SQLiteException("Failed to execute SQL statement!", e);
+        } catch (android.database.SQLException e) {
+            // Already-mapped compat exceptions (SQLiteDoneException and the
+            // typed SQLite* subclasses) must reach the caller unwrapped.
+            throw e;
+        } catch (Exception e) {
+            throw toSQLiteException("Failed to execute SQL statement!", e instanceof SQLException ? (SQLException) e : new SQLException(e));
         } finally {
             releaseReference();
         }

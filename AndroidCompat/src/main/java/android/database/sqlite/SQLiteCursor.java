@@ -34,7 +34,9 @@ import java.util.Map;
  */
 public class SQLiteCursor extends AbstractWindowedCursor {
     static final String TAG = "SQLiteCursor";
-    static final int NO_COUNT = -1;
+
+    /** Used to find out where a cursor was allocated in case it never got released. */
+    private final Throwable mStackTrace;
 
     /** The name of the table to edit */
     private final String mEditTable;
@@ -48,17 +50,8 @@ public class SQLiteCursor extends AbstractWindowedCursor {
     /** The compiled query this cursor came from */
     private final SQLiteCursorDriver mDriver;
 
-    /** The number of rows in the cursor */
-    private int mCount = NO_COUNT;
-
-    /** The number of rows that can fit in the cursor window, 0 if unknown */
-    private int mCursorWindowCapacity;
-
     /** A mapping of column names to column indices, to speed up lookups */
     private Map<String, Integer> mColumnNameMap;
-
-    /** Used to find out where a cursor was allocated in case it never got released. */
-    private final Throwable mStackTrace;
 
     /**
      * Execute a query and provide access to its result set through a Cursor
@@ -102,7 +95,7 @@ public class SQLiteCursor extends AbstractWindowedCursor {
 
         try {
             query.B_setBindArgs();
-            query.getPreparedStatement().execute();
+            query.B_execute();
 
             ResultSetMetaData metaData = query.getResultSet().getMetaData();
             mColumns = new String[metaData.getColumnCount()];
@@ -139,9 +132,8 @@ public class SQLiteCursor extends AbstractWindowedCursor {
     }
 
     private void fillWindow(int requiredPos) {
-        clearOrCreateWindow(mQuery.getResultSet());
-
         try {
+            clearOrCreateWindow(mQuery.getResultSet());
         } catch (RuntimeException ex) {
             // Close the cursor window if the query failed and therefore will
             // not produce any results.  This helps to avoid accidentally leaking
@@ -216,7 +208,11 @@ public class SQLiteCursor extends AbstractWindowedCursor {
                 mWindow.clear();
             }
             mPos = -1;
-            mCount = NO_COUNT;
+
+            // Re-execute the query so that changed selection arguments take
+            // effect and a fresh result set is materialized.
+            mQuery.B_setBindArgs();
+            mQuery.B_execute();
 
             mDriver.cursorRequeried(this);
         }
@@ -233,7 +229,6 @@ public class SQLiteCursor extends AbstractWindowedCursor {
     @Override
     public void setWindow(CursorWindow window) {
         super.setWindow(window);
-        mCount = NO_COUNT;
     }
 
     /**

@@ -11,7 +11,7 @@ class SystemConfigModule(
 
     val propertyPrefix = "properties."
 
-    fun getStringProperty(property: String) = getConfig().getString("$propertyPrefix$property")!!
+    fun getStringProperty(property: String) = getConfig().getString("$propertyPrefix$property")
 
     fun getIntProperty(property: String) = getConfig().getInt("$propertyPrefix$property")
 

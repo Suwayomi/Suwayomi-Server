@@ -66,7 +66,7 @@ public final class SQLiteDatabase extends SQLiteClosable {
     // Stores reference to all databases opened in the current process.
     // (The referent Object is not used at this time.)
     // INVARIANT: Guarded by sActiveDatabases.
-    private static WeakHashMap<SQLiteDatabase, Object> sActiveDatabases =
+    private static final WeakHashMap<SQLiteDatabase, Object> sActiveDatabases =
             new WeakHashMap<SQLiteDatabase, Object>();
 
     // The optional factory to use when creating new Cursors.  May be null.
@@ -270,7 +270,7 @@ public final class SQLiteDatabase extends SQLiteClosable {
 
         //Actually close DB connection
         try {
-            if(!connection.isClosed())
+            if(connection != null && !connection.isClosed())
                 connection.close();
         } catch (java.sql.SQLException ignored) {}
     }
@@ -500,7 +500,11 @@ public final class SQLiteDatabase extends SQLiteClosable {
     public boolean isDbLockedByCurrentThread() {
         acquireReference();
         try {
-            return true;
+            // Approximation of the original semantics: this single-connection
+            // implementation locks the database for the duration of a
+            // transaction, so holding the transaction lock means the current
+            // thread "holds the database lock".
+            return transactionLock.isHeldByCurrentThread();
         } finally {
             releaseReference();
         }
@@ -704,6 +708,21 @@ public final class SQLiteDatabase extends SQLiteClosable {
             final int oldOpenFlags = mConfigurationLocked.openFlags;
             mConfigurationLocked.openFlags = (mConfigurationLocked.openFlags & ~OPEN_READ_MASK)
                     | OPEN_READWRITE;
+
+            // Actually rebuild the connection with the new flags.
+            try {
+                if (connection != null && !connection.isClosed()) {
+                    connection.close();
+                }
+                connection = null;
+                B_openInner();
+            } catch (RuntimeException e) {
+                mConfigurationLocked.openFlags = oldOpenFlags;
+                throw e;
+            } catch (java.sql.SQLException e) {
+                mConfigurationLocked.openFlags = oldOpenFlags;
+                throw new SQLiteException("Failed to reopen database in read-write mode!", e);
+            }
         }
     }
 
@@ -1335,6 +1354,10 @@ public final class SQLiteDatabase extends SQLiteClosable {
             ContentValues initialValues, int conflictAlgorithm) {
         acquireReference();
         try {
+            if (conflictAlgorithm < 0 || conflictAlgorithm >= CONFLICT_VALUES.length) {
+                throw new IllegalArgumentException(
+                        "Invalid conflict algorithm: " + conflictAlgorithm);
+            }
             StringBuilder sql = new StringBuilder();
             sql.append("INSERT");
             sql.append(CONFLICT_VALUES[conflictAlgorithm]);
@@ -1393,7 +1416,11 @@ public final class SQLiteDatabase extends SQLiteClosable {
             SQLiteStatement statement =  new SQLiteStatement(this, "DELETE FROM " + table +
                     (!TextUtils.isEmpty(whereClause) ? " WHERE " + whereClause : ""), whereArgs);
             try {
-                return statement.executeUpdateDelete();
+                int affected = statement.executeUpdateDelete();
+                // Documented contract: the number of affected rows is only
+                // returned when a WHERE clause was provided (pass "1" to count
+                // a whole-table delete).
+                return TextUtils.isEmpty(whereClause) ? 0 : affected;
             } finally {
                 statement.close();
             }
@@ -1441,6 +1468,10 @@ public final class SQLiteDatabase extends SQLiteClosable {
 
         acquireReference();
         try {
+            if (conflictAlgorithm < 0 || conflictAlgorithm >= CONFLICT_VALUES.length) {
+                throw new IllegalArgumentException(
+                        "Invalid conflict algorithm: " + conflictAlgorithm);
+            }
             StringBuilder sql = new StringBuilder(120);
             sql.append("UPDATE ");
             sql.append(CONFLICT_VALUES[conflictAlgorithm]);
@@ -1555,7 +1586,12 @@ public final class SQLiteDatabase extends SQLiteClosable {
     private int executeSql(String sql, Object[] bindArgs) throws SQLException {
         acquireReference();
         try {
-            if (DatabaseUtils.getSqlStatementType(sql) == DatabaseUtils.STATEMENT_ATTACH) {
+            final int statementType = DatabaseUtils.getSqlStatementType(sql);
+            if (statementType == DatabaseUtils.STATEMENT_SELECT) {
+                throw new SQLiteException(
+                        "Queries that return result sets cannot be performed via execSQL(): " + sql);
+            }
+            if (statementType == DatabaseUtils.STATEMENT_ATTACH) {
                 boolean disableWal = false;
                 synchronized (mLock) {
                     if (!mHasAttachedDbsLocked) {
@@ -1566,6 +1602,29 @@ public final class SQLiteDatabase extends SQLiteClosable {
                 if (disableWal) {
                     disableWriteAheadLogging();
                 }
+            }
+
+            // Raw transaction-control statements must go through the
+            // transaction stack — sending them straight to JDBC would bypass
+            // B_beginTransaction/B_endTransaction and desynchronize the
+            // bookkeeping (autocommit, transactionStack, listeners).
+            switch (statementType) {
+                case DatabaseUtils.STATEMENT_BEGIN:
+                    B_beginTransaction(null, true);
+                    return 0;
+                case DatabaseUtils.STATEMENT_COMMIT:
+                    // "COMMIT"/"END" marks the transaction successful then
+                    // ends it (AOSP execSQL semantics).
+                    B_setTransactionSuccessful();
+                    B_endTransaction();
+                    return 0;
+                case DatabaseUtils.STATEMENT_ABORT:
+                    // "ROLLBACK" ends the transaction without marking it
+                    // successful.
+                    B_endTransaction();
+                    return 0;
+                default:
+                    break;
             }
 
             SQLiteStatement statement = new SQLiteStatement(this, sql, bindArgs);
@@ -1600,6 +1659,7 @@ public final class SQLiteDatabase extends SQLiteClosable {
      */
     public boolean isReadOnly() {
         synchronized (mLock) {
+            throwIfNotOpenLocked();
             return isReadOnlyLocked();
         }
     }
@@ -1627,11 +1687,16 @@ public final class SQLiteDatabase extends SQLiteClosable {
      */
     public boolean isOpen() {
         synchronized (mLock) {
-            try {
-                return !connection.isClosed();
-            } catch (java.sql.SQLException e) {
-                return false;
-            }
+            return isOpenLocked();
+        }
+    }
+
+    /** INVARIANT: Guarded by mLock. */
+    private boolean isOpenLocked() {
+        try {
+            return connection != null && !connection.isClosed();
+        } catch (java.sql.SQLException e) {
+            return false;
         }
     }
 
@@ -1908,6 +1973,27 @@ public final class SQLiteDatabase extends SQLiteClosable {
 
     private void collectDbStats(ArrayList<DbStats> dbStatsList) {
         synchronized (mLock) {
+            if (!isOpenLocked()) {
+                return;
+            }
+            long pageCount = 0;
+            long pageSize = 0;
+            // Best effort: PRAGMA page_count/page_size; unavailable values
+            // just report 0.
+            try (java.sql.Statement statement = connection.createStatement()) {
+                try (java.sql.ResultSet rs = statement.executeQuery("PRAGMA page_count")) {
+                    if (rs.next()) {
+                        pageCount = rs.getLong(1);
+                    }
+                }
+                try (java.sql.ResultSet rs = statement.executeQuery("PRAGMA page_size")) {
+                    if (rs.next()) {
+                        pageSize = rs.getLong(1);
+                    }
+                }
+            } catch (java.sql.SQLException ignored) {
+            }
+            dbStatsList.add(new DbStats(getPath(), pageCount, pageSize, 0, 0, 0, 0));
         }
     }
 
@@ -1929,6 +2015,9 @@ public final class SQLiteDatabase extends SQLiteClosable {
     public List<Pair<String, String>> getAttachedDbs() {
         ArrayList<Pair<String, String>> attachedDbs = new ArrayList<Pair<String, String>>();
         synchronized (mLock) {
+            if (!isOpenLocked()) {
+                return null;
+            }
             if (!mHasAttachedDbsLocked) {
                 // No attached databases.
                 // There is a small window where attached databases exist but this flag is not
@@ -2025,18 +2114,76 @@ public final class SQLiteDatabase extends SQLiteClosable {
         return "SQLiteDatabase: " + getPath();
     }
 
+    /** INVARIANT: Guarded by mLock. */
     private void throwIfNotOpenLocked() {
+        if (!isOpenLocked()) {
+            throw new IllegalStateException(
+                    "The database '" + getLabel() + "' is not open.");
+        }
     }
 
     private synchronized void B_openInner() {
         try {
-            File newDbFile = new File(getPath());
-            newDbFile.getParentFile().mkdirs();
-            connection = DriverManager.getConnection("jdbc:sqlite:" + newDbFile.getAbsolutePath());
-            B_reconfigureConnection();
+            final String path = getPath();
+            final boolean inMemory = mConfigurationLocked.isInMemoryDb();
+            final boolean readOnly = (mConfigurationLocked.openFlags & OPEN_READ_MASK) == OPEN_READONLY;
+
+            final String url;
+            final Properties properties = new Properties();
+            if (inMemory) {
+                // In-memory databases must not be persisted to a file named ":memory:".
+                url = "jdbc:sqlite::memory:";
+            } else {
+                if (path == null || path.isEmpty()) {
+                    throw new SQLiteCantOpenDatabaseException("Empty database path");
+                }
+                File dbFile = new File(path).getAbsoluteFile();
+                File parent = dbFile.getParentFile();
+                if (parent == null) {
+                    throw new SQLiteCantOpenDatabaseException(
+                            "Database path has no parent directory: " + path);
+                }
+                if (readOnly) {
+                    if (!dbFile.isFile()) {
+                        throw new SQLiteCantOpenDatabaseException(
+                                "Cannot open database file in read-only mode: " + path);
+                    }
+                    // SQLite JDBC open_mode flag: 1 == SQLITE_OPEN_READONLY
+                    properties.put("open_mode", "1");
+                } else if ((mConfigurationLocked.openFlags & CREATE_IF_NECESSARY) != 0) {
+                    // Only create the parent directory when explicitly requested;
+                    // callers must supply paths whose parents already exist otherwise.
+                    if (!parent.isDirectory() && !parent.mkdirs() && !parent.isDirectory()) {
+                        throw new SQLiteCantOpenDatabaseException(
+                                "Could not create database directory: " + parent);
+                    }
+                } else if (!parent.isDirectory()) {
+                    throw new SQLiteCantOpenDatabaseException(
+                            "Database directory does not exist: " + parent);
+                }
+                url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
+            }
+
+            connection = DriverManager.getConnection(url, properties);
+            try {
+                B_reconfigureConnection();
+            } catch (RuntimeException e) {
+                // A malformed database file often surfaces here (foreign_keys
+                // pragma) rather than at connect time; the mapped
+                // SQLiteException subclass (e.g. SQLiteDatabaseCorruptException)
+                // drives open()'s onCorruption recovery path.
+                try {
+                    connection.close();
+                } catch (java.sql.SQLException ignored) {
+                }
+                connection = null;
+                throw e;
+            }
         } catch (java.sql.SQLException e) {
-            //TODO Figure out how to detect corrupt databases
-            throw new SQLiteException("Failed to open database!", e);
+            // SQLITE_CORRUPT(11)/SQLITE_NOTADB(26) map to
+            // SQLiteDatabaseCorruptException so that open()'s corruption
+            // handler can delete & recreate the database.
+            throw SQLiteProgram.toSQLiteException("Failed to open database!", e);
         }
     }
 
@@ -2044,6 +2191,11 @@ public final class SQLiteDatabase extends SQLiteClosable {
     private static final String DRIVER_CLASS = "org.sqlite.JDBC";
 
     private Connection connection;
+    // NOTE: AOSP models transactions as per-thread sessions. This
+    // implementation uses a single JDBC connection with a single shared
+    // transaction stack — nested begin/endTransaction from DIFFERENT threads
+    // share one stack (documented limitation; cross-thread endTransaction
+    // logs a warning instead of throwing).
     private Deque<Transaction> transactionStack = new ArrayDeque<>();
     private boolean transactionStackInvalidated = false;
     private ReentrantLock transactionLock = new ReentrantLock();
@@ -2061,22 +2213,26 @@ public final class SQLiteDatabase extends SQLiteClosable {
             throw new IllegalStateException("Transaction in progress!");
 
         if (connection != null) {
-            try {
-                connection.createStatement()
-                        .execute("PRAGMA foreign_keys = " + (mConfigurationLocked.foreignKeyConstraintsEnabled ? "ON" : "OFF"));
+            try (java.sql.Statement statement = connection.createStatement()) {
+                statement.execute("PRAGMA foreign_keys = " + (mConfigurationLocked.foreignKeyConstraintsEnabled ? "ON" : "OFF"));
             } catch (java.sql.SQLException e) {
-                throw new SQLiteException("Failed to (re)configure connection!", e);
+                throw SQLiteProgram.toSQLiteException("Failed to (re)configure connection!", e);
             }
         }
     }
 
     public void B_validateSql(String sql, CancellationSignal cancellationSignal) {
-        try {
-            connection.prepareStatement(sql).close();
+        // Guard against a never-opened/failed connection instead of NPE-ing.
+        Connection conn = connection;
+        if (conn == null) {
+            throw new SQLiteException("Cannot validate SQL: database is not open");
+        }
+        try (java.sql.Statement ignored = conn.prepareStatement(sql)) {
+            // Compiling the statement is enough to validate it.
         } catch (java.sql.SQLException e) {
             throw new SQLiteException("Invalid SQL statement!", e);
         } finally {
-            if (cancellationSignal.isCanceled()) {
+            if (cancellationSignal != null && cancellationSignal.isCanceled()) {
                 throw new OperationCanceledException();
             }
         }
@@ -2105,7 +2261,8 @@ public final class SQLiteDatabase extends SQLiteClosable {
 
     private boolean B_inTransaction() {
         try {
-            return connection.getAutoCommit();
+            // Auto-commit being enabled means NO transaction is in progress.
+            return connection != null && !connection.getAutoCommit();
         } catch (java.sql.SQLException e) {
             throw new SQLiteException("Failed to get transaction status!", e);
         }
@@ -2113,6 +2270,8 @@ public final class SQLiteDatabase extends SQLiteClosable {
 
     private synchronized void B_setTransactionSuccessful() {
         Transaction currentTransaction = transactionStack.peek();
+        if(currentTransaction == null)
+            throw new IllegalStateException("No transaction in progress!");
         if(currentTransaction.successful)
             throw new IllegalStateException("Transaction already marked as successful!");
 
@@ -2124,27 +2283,66 @@ public final class SQLiteDatabase extends SQLiteClosable {
             throw new IllegalStateException("No transaction in progress!");
 
         Transaction thisTransaction = transactionStack.pop();
-        if(!thisTransaction.successful)
-            transactionStackInvalidated = true;
+        try {
+            if(!thisTransaction.successful)
+                transactionStackInvalidated = true;
 
-        if(transactionStack.isEmpty()) {
-            try {
-                if (!transactionStackInvalidated) {
-                    //If all transaction ended successfully, commit
-                    thisTransaction.listener.onCommit();
-                    connection.commit();
-                } else {
-                    //If a transaction failed, rollback
-                    thisTransaction.listener.onRollback();
-                    connection.rollback();
+            if(transactionStack.isEmpty()) {
+                java.sql.SQLException failure = null;
+                final boolean commit = !transactionStackInvalidated;
+                try {
+                    if (commit) {
+                        //If all transaction ended successfully, commit
+                        connection.commit();
+                    } else {
+                        //If a transaction failed, rollback
+                        connection.rollback();
+                    }
+                } catch(java.sql.SQLException e) {
+                    failure = e;
+                } finally {
+                    // Always restore auto-commit and clear the invalidation flag,
+                    // even if commit/rollback failed.
                     transactionStackInvalidated = false;
+                    try {
+                        connection.setAutoCommit(true);
+                    } catch (java.sql.SQLException e) {
+                        if (failure == null) {
+                            failure = e;
+                        } else {
+                            failure.addSuppressed(e);
+                        }
+                    }
                 }
-                connection.setAutoCommit(true);
-            } catch(java.sql.SQLException e) {
-                throw new SQLiteException("Failed to commit transaction!", e);
+                // AOSP order: the transaction listener callback fires AFTER
+                // the commit/rollback completed.
+                try {
+                    if (commit) {
+                        thisTransaction.listener.onCommit();
+                    } else {
+                        thisTransaction.listener.onRollback();
+                    }
+                } catch (RuntimeException e) {
+                    if (failure == null) {
+                        throw e;
+                    }
+                    Log.w(TAG, "Transaction listener threw after a failed commit/rollback", e);
+                }
+                if (failure != null)
+                    throw new SQLiteException("Failed to finish transaction!", failure);
+            }
+        } finally {
+            if (transactionLock.isHeldByCurrentThread()) {
+                // Never leak the transaction lock, even on commit/rollback failure.
+                transactionLock.unlock();
+            } else {
+                // Cross-thread endTransaction: AOSP models per-thread sessions;
+                // this single-connection implementation cannot support that, so
+                // warn instead of throwing an IllegalMonitorStateException that
+                // would mask the real transaction result.
+                Log.w(TAG, "endTransaction called from a thread that does not hold the transaction lock");
             }
         }
-        transactionLock.unlock();
     }
 
     //Do not synchronize this method as it conflicts with the transaction lock
@@ -2152,10 +2350,10 @@ public final class SQLiteDatabase extends SQLiteClosable {
                                   boolean exclusive) { //TODO Deal with "exclusive" arg
         transactionLock.lock();
 
-        if(transactionListener == null)
-            transactionListener = NoOpSQLiteTransactionListener.INSTANCE;
-
         try {
+            if(transactionListener == null)
+                transactionListener = NoOpSQLiteTransactionListener.INSTANCE;
+
             Transaction transaction = new Transaction();
             transaction.listener = transactionListener;
 
@@ -2165,11 +2363,18 @@ public final class SQLiteDatabase extends SQLiteClosable {
             }
 
             transactionStack.push(transaction);
-        } catch (java.sql.SQLException e) {
-            throw new SQLiteException("Failed to start transaction!", e);
-        }
 
-        transactionListener.onBegin();
+            transactionListener.onBegin();
+        } catch (java.sql.SQLException e) {
+            // Release the lock if the transaction could not be started.
+            transactionLock.unlock();
+            throw new SQLiteException("Failed to start transaction!", e);
+        } catch (RuntimeException e) {
+            // The transaction lock is held until endTransaction(); if anything
+            // fails here it must be released to avoid leaking it.
+            transactionLock.unlock();
+            throw e;
+        }
     }
 
     /**

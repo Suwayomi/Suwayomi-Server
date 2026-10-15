@@ -14,12 +14,15 @@ class FilesConfigModule(
     val dataDir: String by getConfig()
     val filesDir: String by getConfig()
     val noBackupFilesDir: String by getConfig()
-    val externalFilesDirs: MutableList<String> by getConfig()
-    val obbDirs: MutableList<String> by getConfig()
+
+    // Config values are immutable snapshots; MutableList would falsely imply
+    // mutating the returned list writes back to the config.
+    val externalFilesDirs: List<String> by getConfig()
+    val obbDirs: List<String> by getConfig()
     val cacheDir: String by getConfig()
     val codeCacheDir: String by getConfig()
-    val externalCacheDirs: MutableList<String> by getConfig()
-    val externalMediaDirs: MutableList<String> by getConfig()
+    val externalCacheDirs: List<String> by getConfig()
+    val externalMediaDirs: List<String> by getConfig()
     val rootDir: String by getConfig()
     val externalStorageDir: String by getConfig()
     val downloadCacheDir: String by getConfig()

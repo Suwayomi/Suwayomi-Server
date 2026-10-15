@@ -28,4 +28,44 @@ data class BackupChapter(
     @ProtoNumber(13) var memo: ByteArray = JsonObjectEmptyBytes,
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
-)
+) {
+    // memo is a ByteArray: the generated data class equals would compare it by reference,
+    // so equality is hand-rolled with contentEquals
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is BackupChapter) return false
+
+        return url == other.url &&
+            name == other.name &&
+            scanlator == other.scanlator &&
+            read == other.read &&
+            bookmark == other.bookmark &&
+            lastPageRead == other.lastPageRead &&
+            dateFetch == other.dateFetch &&
+            dateUpload == other.dateUpload &&
+            chapterNumber == other.chapterNumber &&
+            sourceOrder == other.sourceOrder &&
+            lastModifiedAt == other.lastModifiedAt &&
+            version == other.version &&
+            memo.contentEquals(other.memo) &&
+            meta == other.meta
+    }
+
+    override fun hashCode(): Int {
+        var result = url.hashCode()
+        result = 31 * result + name.hashCode()
+        result = 31 * result + (scanlator?.hashCode() ?: 0)
+        result = 31 * result + read.hashCode()
+        result = 31 * result + bookmark.hashCode()
+        result = 31 * result + lastPageRead
+        result = 31 * result + dateFetch.hashCode()
+        result = 31 * result + dateUpload.hashCode()
+        result = 31 * result + chapterNumber.hashCode()
+        result = 31 * result + sourceOrder
+        result = 31 * result + lastModifiedAt.hashCode()
+        result = 31 * result + version.hashCode()
+        result = 31 * result + memo.contentHashCode()
+        result = 31 * result + meta.hashCode()
+        return result
+    }
+}

@@ -20,7 +20,11 @@ class M0066AddUsersTest {
         @BeforeAll
         @JvmStatic
         fun beforeAll() {
-            ApplicationTest.testingSetup()
+            // idempotent shared bootstrap: a bare testingSetup() call would re-run the full
+            // app init (stopKoin/startKoin, SettingsRegistry.clear, AppMutex probe) when an
+            // ApplicationTest subclass already ran in this JVM, leaving later tests with a
+            // dead Koin app
+            ApplicationTest.ensureAppInitialized()
         }
     }
 

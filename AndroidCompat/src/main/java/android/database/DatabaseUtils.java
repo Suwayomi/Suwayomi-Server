@@ -355,13 +355,16 @@ public class DatabaseUtils {
         }
     }
     private static byte[] getCollationKeyInBytes(String name) {
-        if (mColl == null) {
-            mColl = Collator.getInstance();
-            mColl.setStrength(Collator.PRIMARY);
+        // Collator is not thread-safe; guard all access.
+        synchronized (mColl) {
+            return mColl.getCollationKey(name).toByteArray();
         }
-        return mColl.getCollationKey(name).toByteArray();
     }
-    private static Collator mColl = null;
+    private static final Collator mColl;
+    static {
+        mColl = Collator.getInstance();
+        mColl.setStrength(Collator.PRIMARY);
+    }
     /**
      * Prints the contents of a Cursor to System.out. The position is restored
      * after printing.
@@ -443,7 +446,7 @@ public class DatabaseUtils {
             String value;
             try {
                 value = cursor.getString(i);
-            } catch (SQLiteException e) {
+            } catch (RuntimeException e) {
                 // assume that if the getString threw this exception then the column is not
                 // representable by a string, e.g. it is a BLOB.
                 value = "<unprintable>";
@@ -466,7 +469,7 @@ public class DatabaseUtils {
             String value;
             try {
                 value = cursor.getString(i);
-            } catch (SQLiteException e) {
+            } catch (RuntimeException e) {
                 // assume that if the getString threw this exception then the column is not
                 // representable by a string, e.g. it is a BLOB.
                 value = "<unprintable>";
@@ -1232,7 +1235,7 @@ public class DatabaseUtils {
             return STATEMENT_OTHER;
         }
         String prefixSql = sql.substring(0, 3).toUpperCase(Locale.ROOT);
-        if (prefixSql.equals("SEL")) {
+        if (prefixSql.equals("SEL") || prefixSql.equals("WIT")) {
             return STATEMENT_SELECT;
         } else if (prefixSql.equals("INS") ||
                 prefixSql.equals("UPD") ||

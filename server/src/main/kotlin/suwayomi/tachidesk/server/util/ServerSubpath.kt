@@ -5,7 +5,17 @@ import suwayomi.tachidesk.server.serverConfig
 object ServerSubpath {
     fun isDefined(): Boolean = raw().isNotBlank()
 
-    private fun raw(): String = serverConfig.webUISubpath.value.trim('/')
+    /**
+     * The configured subpath without leading/trailing slashes and without pure `.`/`..`
+     * segments — those would escape the prefix during path normalization (a subpath of
+     * e.g. `foo/../..` could match requests meant for a different mount point).
+     */
+    private fun raw(): String =
+        serverConfig.webUISubpath.value
+            .trim('/')
+            .split('/')
+            .filter { it.isNotEmpty() && it != "." && it != ".." }
+            .joinToString("/")
 
     fun normalized(): String = "/${raw()}"
 

@@ -9,21 +9,29 @@ import java.io.File
 fun ApkMeta.toPackageInfo(apk: File): PackageInfo =
     PackageInfo().also {
         it.packageName = packageName
-        it.versionCode = versionCode.toInt()
+        // ApkMeta.versionCode is a Long; android.content.pm.PackageInfo
+        // exposes an int. Clamp instead of silently truncating (or throwing)
+        // on APKs declaring a version code outside the int range.
+        it.versionCode = versionCode.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
         it.versionName = versionName
 
         it.reqFeatures =
             usesFeatures
-                .map {
+                ?.map { feature ->
                     FeatureInfo().apply {
-                        name = it.name
+                        name = feature.name
                     }
-                }.toTypedArray()
+                }?.toTypedArray()
+                ?: emptyArray()
 
         it.applicationInfo =
             ApplicationInfo().apply {
                 packageName = it.packageName
                 nonLocalizedLabel = label
+                // The APK lives at <packageRoot>/package.apk, so the parent
+                // directory is the package's private data directory.
                 sourceDir = apk.absolutePath
+                publicSourceDir = apk.absolutePath
+                dataDir = apk.parentFile?.absolutePath ?: apk.absolutePath
             }
     }

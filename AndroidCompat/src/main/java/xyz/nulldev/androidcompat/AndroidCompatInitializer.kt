@@ -21,10 +21,10 @@ class AndroidCompatInitializer {
 
         WebView.setProviderFactory({ view: WebView -> KcefWebViewProvider(view) })
 
-        // Set some properties extensions use
-        System.setProperty(
-            "http.agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        )
+        // NOTE: we deliberately do NOT set the JVM-global "http.agent" system
+        // property here. The canonical default User-Agent lives in
+        // KcefWebSettings.DEFAULT_USER_AGENT and is consumed by the WebView
+        // provider; mutating a global system property would leak into
+        // unrelated HttpClients in this process.
     }
 }

@@ -219,12 +219,6 @@ interface ComparableScalarFilter<T : Comparable<T>?> : ScalarFilter<T> {
     val greaterThanOrEqualTo: T?
 }
 
-interface ListScalarFilter<T, R : List<T>> : ScalarFilter<T> {
-    val hasAny: List<T>?
-    val hasAll: List<T>?
-    val hasNone: List<T>?
-}
-
 data class LongFilter(
     override val isNull: Boolean? = null,
     override val equalTo: Long? = null,
@@ -277,7 +271,26 @@ data class IntFilter(
     override val lessThanOrEqualTo: Int? = null,
     override val greaterThan: Int? = null,
     override val greaterThanOrEqualTo: Int? = null,
-) : ComparableScalarFilter<Int>
+) : ComparableScalarFilter<Int> {
+    fun toLongFilter(): LongFilter =
+        LongFilter(
+            isNull = isNull,
+            equalTo = equalTo?.toLong(),
+            notEqualTo = notEqualTo?.toLong(),
+            notEqualToAll = notEqualToAll?.map { it.toLong() },
+            notEqualToAny = notEqualToAny?.map { it.toLong() },
+            distinctFrom = distinctFrom?.toLong(),
+            distinctFromAll = distinctFromAll?.map { it.toLong() },
+            distinctFromAny = distinctFromAny?.map { it.toLong() },
+            notDistinctFrom = notDistinctFrom?.toLong(),
+            `in` = `in`?.map { it.toLong() },
+            notIn = notIn?.map { it.toLong() },
+            lessThan = lessThan?.toLong(),
+            lessThanOrEqualTo = lessThanOrEqualTo?.toLong(),
+            greaterThan = greaterThan?.toLong(),
+            greaterThanOrEqualTo = greaterThanOrEqualTo?.toLong(),
+        )
+}
 
 data class FloatFilter(
     override val isNull: Boolean? = null,
@@ -442,25 +455,31 @@ data class StringFilter(
     val greaterThanOrEqualToInsensitive: String? = null,
 ) : ComparableScalarFilter<String>
 
-data class StringListFilter(
-    override val isNull: Boolean? = null,
-    override val equalTo: String? = null,
-    override val notEqualTo: String? = null,
-    override val notEqualToAll: List<String>? = null,
-    override val notEqualToAny: List<String>? = null,
-    override val distinctFrom: String? = null,
-    override val distinctFromAll: List<String>? = null,
-    override val distinctFromAny: List<String>? = null,
-    override val notDistinctFrom: String? = null,
-    override val `in`: List<String>? = null,
-    override val notIn: List<String>? = null,
-    override val hasAny: List<String>? = null,
-    override val hasAll: List<String>? = null,
-    override val hasNone: List<String>? = null,
-    val hasAnyInsensitive: List<String>? = null,
-    val hasAllInsensitive: List<String>? = null,
-    val hasNoneInsensitive: List<String>? = null,
-) : ListScalarFilter<String, List<String>>
+/** Escape char declared in every [LikePattern] built here so `\`, `%` and `_` can be escaped. */
+const val LIKE_ESCAPE_CHAR = '\\'
+
+/**
+ * Escapes `\`, `%` and `_` in a user-provided value so it can't act as a LIKE wildcard
+ * when embedded into a pattern. Always pair with a [LikePattern] whose escapeChar is
+ * [LIKE_ESCAPE_CHAR].
+ */
+fun escapeLikePattern(value: String): String =
+    value
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+
+/** A [LikePattern] from a raw [pattern], declaring [LIKE_ESCAPE_CHAR] as its escape char. */
+fun rawLikePattern(pattern: String): LikePattern = LikePattern(pattern, LIKE_ESCAPE_CHAR)
+
+/** LIKE pattern matching [value] literally as a substring. */
+fun containsLikePattern(value: String): LikePattern = rawLikePattern("%${escapeLikePattern(value)}%")
+
+/** LIKE pattern matching [value] literally as a prefix. */
+fun prefixLikePattern(value: String): LikePattern = rawLikePattern("${escapeLikePattern(value)}%")
+
+/** LIKE pattern matching [value] literally as a suffix. */
+fun suffixLikePattern(value: String): LikePattern = rawLikePattern("%${escapeLikePattern(value)}")
 
 @Suppress("UNCHECKED_CAST", "FINAL_UPPER_BOUND")
 fun <T : String, S : T?> andFilterWithCompareString(
@@ -479,8 +498,9 @@ fun <T : String, S : T?> andFilterWithCompareString(
         filter.distinctFromAny,
     ) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
-    if (!filter.`in`.isNullOrEmpty()) {
-        opAnd.andWhere(filter.`in`) { column inList it as List<S> }
+    // an explicitly empty `in` list matches nothing instead of silently degrading to no filter
+    if (filter.`in` != null) {
+        opAnd.andWhere(filter.`in`) { if (it.isEmpty()) Op.FALSE else column inList it as List<S> }
     }
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it as List<S> }
@@ -491,38 +511,44 @@ fun <T : String, S : T?> andFilterWithCompareString(
     opAnd.andWhere(filter.greaterThan) { column greater it }
     opAnd.andWhere(filter.greaterThanOrEqualTo) { column greaterEq it }
 
-    opAnd.andWhere(filter.includes, filter.includesAll, filter.includesAny) { column like "%$it%" }
-    opAnd.andNotWhere(filter.notIncludes, filter.notIncludesAll, filter.notIncludesAny) { column notLike "%$it%" }
+    // includes/startsWith/endsWith are substring matches: the user value is a literal,
+    // so `%`/`_`/`\` inside it must be escaped (unlike the raw `like*` pattern fields)
+    opAnd.andWhere(filter.includes, filter.includesAll, filter.includesAny) { column like containsLikePattern(it) }
+    opAnd.andNotWhere(filter.notIncludes, filter.notIncludesAll, filter.notIncludesAny) { column notLike containsLikePattern(it) }
     opAnd.andWhere(filter.includesInsensitive, filter.includesInsensitiveAll, filter.includesInsensitiveAny) {
-        ILikeEscapeOp.iLike(column, "%$it%")
+        ILikeEscapeOp.iLike(column, containsLikePattern(it))
     }
     opAnd.andNotWhere(filter.notIncludesInsensitive, filter.notIncludesInsensitiveAll, filter.notIncludesInsensitiveAny) {
-        ILikeEscapeOp.iNotLike(column, "%$it%")
+        ILikeEscapeOp.iNotLike(column, containsLikePattern(it))
     }
 
-    opAnd.andWhere(filter.startsWith, filter.startsWithAll, filter.startsWithAny) { column like "$it%" }
-    opAnd.andNotWhere(filter.notStartsWith, filter.notStartsWithAll, filter.notStartsWithAny) { column notLike "$it%" }
+    opAnd.andWhere(filter.startsWith, filter.startsWithAll, filter.startsWithAny) { column like prefixLikePattern(it) }
+    opAnd.andNotWhere(filter.notStartsWith, filter.notStartsWithAll, filter.notStartsWithAny) { column notLike prefixLikePattern(it) }
     opAnd.andWhere(filter.startsWithInsensitive, filter.startsWithInsensitiveAll, filter.startsWithInsensitiveAny) {
-        ILikeEscapeOp.iLike(column, "$it%")
+        ILikeEscapeOp.iLike(column, prefixLikePattern(it))
     }
     opAnd.andNotWhere(filter.notStartsWithInsensitive, filter.notStartsWithInsensitiveAll, filter.notStartsWithInsensitiveAny) {
-        ILikeEscapeOp.iNotLike(column, "$it%")
+        ILikeEscapeOp.iNotLike(column, prefixLikePattern(it))
     }
 
-    opAnd.andWhere(filter.endsWith, filter.endsWithAll, filter.endsWithAny) { column like "%$it" }
-    opAnd.andNotWhere(filter.notEndsWith, filter.notEndsWithAll, filter.notEndsWithAny) { column notLike "%$it" }
+    opAnd.andWhere(filter.endsWith, filter.endsWithAll, filter.endsWithAny) { column like suffixLikePattern(it) }
+    opAnd.andNotWhere(filter.notEndsWith, filter.notEndsWithAll, filter.notEndsWithAny) { column notLike suffixLikePattern(it) }
     opAnd.andWhere(filter.endsWithInsensitive, filter.endsWithInsensitiveAll, filter.endsWithInsensitiveAny) {
-        ILikeEscapeOp.iLike(column, "%$it")
+        ILikeEscapeOp.iLike(column, suffixLikePattern(it))
     }
     opAnd.andNotWhere(filter.notEndsWithInsensitive, filter.notEndsWithInsensitiveAll, filter.notEndsWithInsensitiveAny) {
-        ILikeEscapeOp.iNotLike(column, "%$it")
+        ILikeEscapeOp.iNotLike(column, suffixLikePattern(it))
     }
 
-    opAnd.andWhere(filter.like, filter.likeAll, filter.likeAny) { column like it }
-    opAnd.andNotWhere(filter.notLike, filter.notLikeAll, filter.notLikeAny) { column notLike it }
-    opAnd.andWhere(filter.likeInsensitive, filter.likeInsensitiveAll, filter.likeInsensitiveAny) { ILikeEscapeOp.iLike(column, it) }
+    // the `like*` fields take raw LIKE patterns (wildcards are the feature), the escape
+    // char is only declared so `\` sequences keep working consistently
+    opAnd.andWhere(filter.like, filter.likeAll, filter.likeAny) { column like rawLikePattern(it) }
+    opAnd.andNotWhere(filter.notLike, filter.notLikeAll, filter.notLikeAny) { column notLike rawLikePattern(it) }
+    opAnd.andWhere(filter.likeInsensitive, filter.likeInsensitiveAll, filter.likeInsensitiveAny) {
+        ILikeEscapeOp.iLike(column, rawLikePattern(it))
+    }
     opAnd.andNotWhere(filter.notLikeInsensitive, filter.notLikeInsensitiveAll, filter.notLikeInsensitiveAny) {
-        ILikeEscapeOp.iNotLike(column, it)
+        ILikeEscapeOp.iNotLike(column, rawLikePattern(it))
     }
 
     opAnd.andWhere(filter.distinctFromInsensitive, filter.distinctFromInsensitiveAll, filter.distinctFromInsensitiveAny) {
@@ -530,7 +556,9 @@ fun <T : String, S : T?> andFilterWithCompareString(
     }
     opAnd.andWhere(filter.notDistinctFromInsensitive) { DistinctFromOp.notDistinctFrom(column.upperCase(), it.uppercase()) }
 
-    opAnd.andWhere(filter.inInsensitive) { column.upperCase() inList (it.map { it.uppercase() }) }
+    opAnd.andWhere(filter.inInsensitive) {
+        if (it.isEmpty()) Op.FALSE else column.upperCase() inList (it.map { it.uppercase() })
+    }
     opAnd.andWhere(filter.notInInsensitive) { column.upperCase() notInList (it.map { it.uppercase() }) }
 
     opAnd.andWhere(filter.lessThanInsensitive) { column.upperCase() less it.uppercase() }
@@ -645,8 +673,8 @@ fun <T : Comparable<T>, S : T?> andFilterWithCompare(
     opAnd.andNotWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it as S }
     opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it as S) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it as S) }
-    if (!filter.`in`.isNullOrEmpty()) {
-        opAnd.andWhere(filter.`in`) { column inList it as List<S> }
+    if (filter.`in` != null) {
+        opAnd.andWhere(filter.`in`) { if (it.isEmpty()) Op.FALSE else column inList it as List<S> }
     }
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it as List<S> }
@@ -674,8 +702,8 @@ fun <T : Enum<T>> andFilterWithCompareEnum(
     opAnd.andNotWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it.ordinal }
     opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it.ordinal) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it.ordinal) }
-    if (!filter.`in`.isNullOrEmpty()) {
-        opAnd.andWhere(filter.`in`) { column inList it.map { it.ordinal } }
+    if (filter.`in` != null) {
+        opAnd.andWhere(filter.`in`) { if (it.isEmpty()) Op.FALSE else column inList it.map { it.ordinal } }
     }
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it.map { it.ordinal } }
@@ -698,8 +726,8 @@ fun <T : Enum<T>> andFilterEnum(
     opAnd.andNotWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it.name }
     opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it.name) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it.name) }
-    if (!filter.`in`.isNullOrEmpty()) {
-        opAnd.andWhere(filter.`in`) { column inList it.map { it.name } }
+    if (filter.`in` != null) {
+        opAnd.andWhere(filter.`in`) { if (it.isEmpty()) Op.FALSE else column inList it.map { it.name } }
     }
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it.map { it.name } }
@@ -726,8 +754,8 @@ fun <T : Comparable<T>> andFilterWithCompareEntity(
     opAnd.andNotWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { column neq it }
     opAnd.andWhere(filter.distinctFrom, filter.distinctFromAll, filter.distinctFromAny) { DistinctFromOp.distinctFrom(column, it) }
     opAnd.andWhere(filter.notDistinctFrom) { DistinctFromOp.notDistinctFrom(column, it) }
-    if (!filter.`in`.isNullOrEmpty()) {
-        opAnd.andWhere(filter.`in`) { column inList it }
+    if (filter.`in` != null) {
+        opAnd.andWhere(filter.`in`) { if (it.isEmpty()) Op.FALSE else column inList it }
     }
     if (!filter.notIn.isNullOrEmpty()) {
         opAnd.andWhere(filter.notIn) { column notInList it }
@@ -740,3 +768,41 @@ fun <T : Any> coalesceDefault(
     column: Column<T>,
     default: T,
 ): ExpressionWithColumnType<T> = coalesce(column, column.wrap(default))
+
+/**
+ * Applies a [BooleanFilter] to a *derived* boolean value — a [predicate] such as
+ * `contentWarning >= MIXED` that backs the `isNsfw` filter fields and is not a stored
+ * column. Equality predicates are evaluated against the predicate's truth value.
+ *
+ * The derived value is never NULL, so `isNull`/`notIn`/`in` behave accordingly
+ * (`isNull: true` matches nothing; `in: [true, false]` matches everything).
+ */
+fun andFilterWithDerivedBoolean(
+    predicate: Op<Boolean>,
+    filter: BooleanFilter?,
+): Op<Boolean>? {
+    filter ?: return null
+    val opAnd = OpAnd()
+
+    fun boolOp(value: Boolean): Op<Boolean> = if (value) predicate else not(predicate)
+
+    opAnd.andWhere(filter.isNull) { if (it) Op.FALSE else Op.TRUE }
+    opAnd.andWhere(filter.equalTo) { boolOp(it) }
+    opAnd.andNotWhere(filter.notEqualTo, filter.notEqualToAll, filter.notEqualToAny) { not(boolOp(it)) }
+    if (filter.`in` != null) {
+        opAnd.andWhere(filter.`in`) { values ->
+            if (values.isEmpty()) {
+                Op.FALSE
+            } else {
+                values.map { boolOp(it) }.reduce { acc, op -> acc or op }
+            }
+        }
+    }
+    if (!filter.notIn.isNullOrEmpty()) {
+        opAnd.andWhere(filter.notIn) { values ->
+            values.map { not(boolOp(it)) }.reduce { acc, op -> acc and op }
+        }
+    }
+
+    return opAnd.op
+}

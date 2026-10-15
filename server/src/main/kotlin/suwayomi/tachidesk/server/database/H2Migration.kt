@@ -6,7 +6,13 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.net.URLClassLoader
+import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.sql.DriverManager
+import java.sql.SQLException
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
 import kotlin.io.path.bufferedReader
@@ -17,6 +23,9 @@ import kotlin.io.path.deleteExisting
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.div
 import kotlin.io.path.exists
+import kotlin.io.path.fileSize
+import kotlin.io.path.inputStream
+import kotlin.io.path.moveTo
 import kotlin.io.path.name
 import kotlin.io.path.notExists
 import kotlin.io.path.outputStream
@@ -36,6 +45,16 @@ object H2Migration {
     private const val MAVEN_BASE =
         "https://repo1.maven.org/maven2/com/h2database/h2"
 
+    // Rough lower bounds for a plausible artifact: an HTTP error page or a truncated download
+    // is orders of magnitude smaller and must never be cached as a jar. Keep these below the
+    // real artifact sizes when bumping TOOL_VERSION / the h2 versions.
+    internal const val TOOL_JAR_MIN_SIZE_BYTES = 10L * 1024 * 1024 // ~10MB
+    internal const val H2_JAR_MIN_SIZE_BYTES = 2L * 1024 * 1024 // ~2MB
+
+    // The toolchain download is behind a var so tests can stub the network out.
+    internal var toolchainDownloader: (toolsDir: Path, libsDir: Path, h2Old: String, h2New: String) -> Unit =
+        ::downloadToolchain
+
     fun migrate(
         rootDir: String,
         h2Old: String,
@@ -48,16 +67,37 @@ object H2Migration {
             return
         }
 
+        // Self-probe: if the bundled (new) H2 driver can already open the store, the database
+        // is on the current format and must not be pushed through the migration chain again.
+        // The gate in Migration.kt only checks a preference, which is lost on a prefs reset,
+        // a data-dir restore, or a manually restored database file.
+        if (opensWithBundledDriver(dbBase)) {
+            logger.info { "H2 database already opens with the current driver. Skipping migration." }
+            return
+        }
+
         val script = Path("$dbBase.${h2Old.substringAfterLast('.')}.sql")
         script.deleteIfExists()
 
         val modifiedScript = Path("$dbBase.${h2Old.substringAfterLast('.')}.modified.sql")
         modifiedScript.deleteIfExists()
 
-        // Backup original database.
+        // Backup original database. Retention policy: keep two generations and never
+        // overwrite an existing backup — a crash while the migrated store is copied back can
+        // leave a truncated/corrupt database.mv.db behind, and then the previous backup is
+        // the only good copy left. `backup` is this run's snapshot, `backup.1` the previous
+        // run's. Both are kept indefinitely; a cleanup may only remove a backup once a newer
+        // successful migration has been running for more than one version cycle.
         val backup = Path("$dbBase.mv.db.${h2Old.substringAfterLast('.')}.backup")
-        mvStore.copyTo(backup, overwrite = true)
-        logger.info { "Created backup: ${backup.absolutePathString()}" }
+        val previousBackup = backup.resolveSibling("${backup.name}.1")
+        if (backup.exists() && previousBackup.notExists()) {
+            backup.moveTo(previousBackup)
+            logger.info { "Rotated previous backup to: ${previousBackup.absolutePathString()}" }
+        }
+        if (backup.notExists()) {
+            mvStore.copyTo(backup)
+            logger.info { "Created backup: ${backup.absolutePathString()}" }
+        }
 
         val toolsDir = Path(rootDir) / "bin" / "h2-migration-tools"
         val libsDir = toolsDir / "h2libs"
@@ -66,24 +106,32 @@ object H2Migration {
         // Download migration tool
         val migrationJar =
             toolsDir.resolve("H2MigrationTool-$TOOL_VERSION-all.jar")
-        downloadIfNeeded(
-            TOOL_URL,
-            migrationJar,
-        )
-        downloadIfNeeded(
-            "$MAVEN_BASE/$h2Old/h2-$h2Old.jar",
-            libsDir.resolve("h2-$h2Old.bin"),
-        )
-        downloadIfNeeded(
-            "$MAVEN_BASE/$h2New/h2-$h2New.jar",
-            libsDir.resolve("h2-$h2New.bin"),
+        toolchainDownloader(
+            toolsDir,
+            libsDir,
+            h2Old,
+            h2New,
         )
 
-        // Delete attempted migration if failed previously
+        // Delete attempted migration if failed previously — but first check whether a
+        // previous run already produced a store the bundled driver can open (e.g. it got
+        // as far as the migrated result and only failed copying it back over a corrupt
+        // mvStore). Deleting a valid result would rerun a doomed migration of the same
+        // broken input on every start.
         val newDatabase = Path(rootDir, "database.${h2New.substringAfterLast('.')}.mv.db")
-        newDatabase.deleteIfExists()
-
         val modifiedNewDatabase = Path(rootDir, "database.${h2Old.substringAfterLast('.')}.modified.${h2New.substringAfterLast('.')}.mv.db")
+        val priorResult =
+            listOf(modifiedNewDatabase, newDatabase).firstOrNull {
+                it.exists() && opensWithBundledDriver(it.absolutePathString().removeSuffix(".mv.db"))
+            }
+        if (priorResult != null) {
+            priorResult.copyTo(mvStore, overwrite = true)
+            newDatabase.deleteIfExists()
+            modifiedNewDatabase.deleteIfExists()
+            logger.info { "Reusable H2 migration result found, copied into place: ${priorResult.absolutePathString()}" }
+            return
+        }
+        newDatabase.deleteIfExists()
         modifiedNewDatabase.deleteIfExists()
 
         runMigrationTool(
@@ -109,13 +157,113 @@ object H2Migration {
         logger.info { "H2 migration completed successfully." }
     }
 
+    /**
+     * Returns true when the bundled H2 driver can open the store at [dbBase] (without the
+     * `.mv.db` suffix) — meaning the database is already on the current file format.
+     * `IFEXISTS=TRUE` prevents an accidental empty database from being created.
+     */
+    private fun opensWithBundledDriver(dbBase: String): Boolean =
+        try {
+            Class.forName("org.h2.Driver")
+            DriverManager.getConnection("jdbc:h2:$dbBase;IFEXISTS=TRUE").use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.execute("SELECT 1")
+                }
+            }
+            true
+        } catch (e: SQLException) {
+            // e.g. JdbcSQLNonTransientConnectionException on an old-format or unreadable store
+            logger.debug(e) { "H2 database cannot be opened with the bundled driver, migration is required." }
+            false
+        }
+
+    private fun downloadToolchain(
+        toolsDir: Path,
+        libsDir: Path,
+        h2Old: String,
+        h2New: String,
+    ) {
+        downloadIfNeeded(
+            TOOL_URL,
+            toolsDir.resolve("H2MigrationTool-$TOOL_VERSION-all.jar"),
+            TOOL_JAR_MIN_SIZE_BYTES,
+        )
+        for (h2Version in listOf(h2Old, h2New).distinct()) {
+            downloadIfNeeded(
+                "$MAVEN_BASE/$h2Version/h2-$h2Version.jar",
+                libsDir.resolve("h2-$h2Version.bin"),
+                H2_JAR_MIN_SIZE_BYTES,
+            )
+        }
+    }
+
+    /**
+     * Minimal plausibility check for a downloaded jar: zip magic bytes and a size floor,
+     * then a structural pass through [ZipFile]. Anything failing this (error pages,
+     * truncated transfers) is deleted and re-downloaded instead of being cached forever
+     * and crashing `loadClass` on every start.
+     *
+     * The magic-byte check alone cannot detect a mid-file truncation: the PK\x03\x04
+     * local-file header survives while the end-of-central-directory record at the tail
+     * is gone, so [ZipFile]'s open is what actually proves structure — it locates and
+     * parses the END record. Entry CRCs are verified in a second pass through a
+     * sequential [ZipInputStream] (ZipFile entry streams do not check CRCs), which
+     * catches corruption between the first bytes and an intact tail.
+     */
+    internal fun isPlausibleJar(
+        path: Path,
+        minSizeBytes: Long,
+    ): Boolean {
+        if (path.notExists() || path.fileSize() < minSizeBytes) {
+            return false
+        }
+        val hasZipMagic =
+            path.inputStream().use { input ->
+                input.readNBytes(4).contentEquals(byteArrayOf(0x50, 0x4B, 0x03, 0x04)) // PK\x03\x04
+            }
+        if (!hasZipMagic) {
+            return false
+        }
+        return try {
+            // Parses the END record and central directory: a truncated file fails here.
+            ZipFile(path.toFile()).use { zip ->
+                val entries = zip.entries()
+                if (!entries.hasMoreElements()) {
+                    return false
+                }
+                // consume the whole central directory so a malformed tail fails the check
+                while (entries.hasMoreElements()) {
+                    entries.nextElement()
+                }
+            }
+            // Reads every entry to EOF so a CRC mismatch or truncated data throws.
+            ZipInputStream(path.inputStream()).use { zip ->
+                val scratch = ByteArray(128 * 1024)
+                while (zip.nextEntry != null) {
+                    while (zip.read(scratch) != -1) {
+                        // discard — only EOF/CRC validation matters
+                    }
+                }
+            }
+            true
+        } catch (e: Exception) {
+            logger.warn { "Jar integrity check failed for ${path.name}: ${e.message}" }
+            false
+        }
+    }
+
     private fun downloadIfNeeded(
         url: String,
         output: Path,
+        minSizeBytes: Long,
     ) {
         if (output.exists()) {
-            logger.debug { "Already downloaded: ${output.name}" }
-            return
+            if (isPlausibleJar(output, minSizeBytes)) {
+                logger.debug { "Already downloaded: ${output.name}" }
+                return
+            }
+            logger.warn { "Cached file ${output.name} failed the integrity check; re-downloading." }
+            output.deleteIfExists()
         }
 
         client
@@ -131,11 +279,31 @@ object H2Migration {
                 }
 
                 val tmp = output.resolveSibling(output.name + ".tmp")
-                tmp.outputStream().use { out ->
-                    response.body.byteStream().copyTo(out)
+                try {
+                    tmp.outputStream().use { out ->
+                        response.body.byteStream().copyTo(out)
+                    }
+
+                    if (!isPlausibleJar(tmp, minSizeBytes)) {
+                        throw RuntimeException("Downloaded file from $url failed the integrity check")
+                    }
+
+                    val tmpSize = tmp.fileSize()
+                    try {
+                        tmp.moveTo(output, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+                    } catch (e: AtomicMoveNotSupportedException) {
+                        // the non-atomic fallback can leave a truncated output behind —
+                        // verify the copy and never let a half-written file be cached
+                        tmp.copyTo(output, overwrite = true)
+                        tmp.deleteExisting()
+                        if (output.fileSize() != tmpSize) {
+                            output.deleteIfExists()
+                            throw RuntimeException("Copying the file downloaded from $url produced a truncated file")
+                        }
+                    }
+                } finally {
+                    tmp.deleteIfExists()
                 }
-                tmp.copyTo(output)
-                tmp.deleteExisting()
             }
 
         logger.info { "Saved: ${output.absolutePathString()}" }

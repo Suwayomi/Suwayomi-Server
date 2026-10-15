@@ -7,7 +7,12 @@
 #include <signal.h>
 #include <pthread.h>
 #include <execinfo.h>
+#include <unistd.h>
 
+// NOTE: only backtrace_symbols_fd is async-signal-safe here; printf and
+// pthread_exit are not. That trade-off is deliberate: on SIGTRAP/SIGILL the
+// process is doomed anyway, and getting the backtrace out beats strictly
+// conforming to the signal-safety rules.
 void signalHandler(int signum, siginfo_t* si, void* uc) {
   void *retaddrs[64];
   int n = backtrace(retaddrs, sizeof(retaddrs) / sizeof(retaddrs[0]));

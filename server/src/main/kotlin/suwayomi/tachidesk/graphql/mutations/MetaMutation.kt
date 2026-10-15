@@ -3,7 +3,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
-import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -16,6 +15,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.queries.filter.prefixLikePattern
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import suwayomi.tachidesk.graphql.types.MetaInput
 
@@ -140,19 +140,25 @@ class MetaMutation {
             transaction {
                 val keyCondition: Op<Boolean>? = keys?.takeIf { it.isNotEmpty() }?.let { GlobalMetaTable.key inList it }
 
+                // empty prefixes can't form a meaningful LIKE pattern, and each prefix is
+                // escaped so a caller's '%', '_' or '\' can't act as a wildcard
                 val prefixCondition: Op<Boolean>? =
                     prefixes
                         ?.filter { it.isNotEmpty() }
-                        ?.map { (GlobalMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                        ?.map { (GlobalMetaTable.key like prefixLikePattern(it)) as Op<Boolean> }
                         ?.reduceOrNull { acc, op -> acc or op }
 
-                val finalCondition =
-                    (GlobalMetaTable.user eq userId) and
-                        if (keyCondition != null && prefixCondition != null) {
-                            keyCondition or prefixCondition
-                        } else {
-                            keyCondition ?: prefixCondition!!
-                        }
+                val matchCondition =
+                    if (keyCondition != null && prefixCondition != null) {
+                        keyCondition or prefixCondition
+                    } else {
+                        keyCondition ?: prefixCondition
+                    }
+                requireNotNull(matchCondition) {
+                    "At least one non-empty key or prefix is required"
+                }
+
+                val finalCondition = (GlobalMetaTable.user eq userId) and matchCondition
 
                 val metas =
                     GlobalMetaTable

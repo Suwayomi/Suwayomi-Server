@@ -181,7 +181,16 @@ object WebInterfaceManager {
             // Use canonical path to avoid Jetty alias issues
             staticFiles.directory = File(applicationDirs.webUIServe).canonicalPath
             staticFiles.location = Location.EXTERNAL
-            staticFiles.aliasCheck = AliasCheck { _, _ -> true }
+            // only serve aliases that resolve back inside the canonical docroot —
+            // an unrestricted check would serve any file a symlink/alias points at;
+            // unresolvable aliases fail closed
+            val canonicalServeRoot = File(applicationDirs.webUIServe).canonicalFile.toPath()
+            staticFiles.aliasCheck =
+                AliasCheck { _, alias ->
+                    runCatching {
+                        alias.toRealPath().startsWith(canonicalServeRoot)
+                    }.getOrDefault(false)
+                }
         }
 
         serveWebUI = {
@@ -544,6 +553,9 @@ object WebInterfaceManager {
 
     private fun getLocalMD5Sum(fileDir: String): String {
         var sum = ""
+        // Must stay content-only: the "expected" digest is published by the WebUI
+        // release and computed with this same algorithm — mixing in file paths makes
+        // every upstream WebUI permanently fail validation (infinite re-download).
         File(fileDir).walk().toList().sortedBy { it.path }.forEach { file ->
             if (file.isFile) {
                 val md5 = MessageDigest.getInstance("MD5")

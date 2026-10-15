@@ -40,6 +40,16 @@ class SyncDeltaTest {
     }
 
     @Test
+    fun doesNotMutateTheInputList() {
+        // the caller's backup object is not a scratch buffer: filtering happens on copies
+        val mangas = listOf(manga("/touched", 50, chapter("/touched/1", 10), chapter("/touched/2", 50)))
+
+        changedSince(mangas, since = 40)
+
+        assertEquals(listOf("/touched/1", "/touched/2"), mangas[0].chapters.map { it.url })
+    }
+
+    @Test
     fun everythingIsChangedSinceZero() {
         val mangas = listOf(manga("/a", 0, chapter("/a/1", 0)), manga("/b", 5))
         assertEquals(2, changedSince(mangas, since = 0).size)

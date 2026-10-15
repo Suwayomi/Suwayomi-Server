@@ -27,7 +27,7 @@
     <string name="opds_feeds_genre_specific_title">장르: %1$s</string>
     <string name="opds_feeds_status_specific_title">상태: %1$s</string>
     <string name="opds_feeds_language_specific_title">언어: %1$s</string>
-    <string name="opds_feeds_source_specific_title">소스: %1$s</string>
+
     <string name="opds_feeds_library_source_specific_title">라이브러리 - 소스: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">소스: %1$s - 인기</string>
     <string name="opds_feeds_source_specific_latest_title">소스: %1$s - 최신</string>
@@ -91,8 +91,8 @@
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">작품: %1$s | %2$s</string>
-    <string name="opds_chapter_details_scanlator">| 번역: %1$s</string>
-    <string name="opds_chapter_details_progress">| 진행률: %2$d 중 %1$d</string>
+    <string name="opds_chapter_details_scanlator"> | 번역: %1$s</string>
+    <string name="opds_chapter_details_progress"> | 진행률: %2$s 중 %1$d</string>
     <string name="opds_manga_summary_status">상태: %1$s</string>
     <string name="opds_manga_summary_source">소스: %1$s</string>
     <string name="opds_manga_summary_language">언어: %1$s</string>

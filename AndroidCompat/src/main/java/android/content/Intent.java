@@ -769,10 +769,8 @@ public class Intent implements Parcelable, Cloneable {
         public static final Parcelable.Creator<ShortcutIconResource> CREATOR =
             new Parcelable.Creator<ShortcutIconResource>() {
                 public ShortcutIconResource createFromParcel(Parcel source) {
-                    ShortcutIconResource icon = new ShortcutIconResource();
-                    icon.packageName = source.readString();
-                    icon.resourceName = source.readString();
-                    return icon;
+                    throw new UnsupportedOperationException(
+                            "Parcel is not supported in Suwayomi AndroidCompat");
                 }
                 public ShortcutIconResource[] newArray(int size) {
                     return new ShortcutIconResource[size];
@@ -785,8 +783,8 @@ public class Intent implements Parcelable, Cloneable {
             return 0;
         }
         public void writeToParcel(Parcel dest, int flags) {
-            dest.writeString(packageName);
-            dest.writeString(resourceName);
+            throw new UnsupportedOperationException(
+                    "Parcel is not supported in Suwayomi AndroidCompat");
         }
         @Override
         public String toString() {
@@ -7507,40 +7505,8 @@ public class Intent implements Parcelable, Cloneable {
         return (mExtras != null) ? mExtras.describeContents() : 0;
     }
     public void writeToParcel(Parcel out, int flags) {
-        out.writeString(mAction);
-        Uri.writeToParcel(out, mData);
-        out.writeString(mType);
-        out.writeInt(mFlags);
-        out.writeString(mPackage);
-        ComponentName.writeToParcel(mComponent, out);
-        if (mSourceBounds != null) {
-            out.writeInt(1);
-            mSourceBounds.writeToParcel(out, flags);
-        } else {
-            out.writeInt(0);
-        }
-        if (mCategories != null) {
-            final int N = mCategories.size();
-            out.writeInt(N);
-            for (int i=0; i<N; i++) {
-                out.writeString(mCategories.valueAt(i));
-            }
-        } else {
-            out.writeInt(0);
-        }
-        if (mSelector != null) {
-            out.writeInt(1);
-            mSelector.writeToParcel(out, flags);
-        } else {
-            out.writeInt(0);
-        }
-        if (mClipData != null) {
-            out.writeInt(1);
-            mClipData.writeToParcel(out, flags);
-        } else {
-            out.writeInt(0);
-        }
-        out.writeBundle(mExtras);
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
     public static final Parcelable.Creator<Intent> CREATOR
             = new Parcelable.Creator<Intent>() {
@@ -7556,29 +7522,8 @@ public class Intent implements Parcelable, Cloneable {
         readFromParcel(in);
     }
     public void readFromParcel(Parcel in) {
-        setAction(in.readString());
-        mData = Uri.CREATOR.createFromParcel(in);
-        mType = in.readString();
-        mFlags = in.readInt();
-        mPackage = in.readString();
-        mComponent = ComponentName.readFromParcel(in);
-        if (in.readInt() != 0) {
-            mSourceBounds = Rect.CREATOR.createFromParcel(in);
-        }
-        int N = in.readInt();
-        if (N > 0) {
-            mCategories = new ArraySet<String>();
-            int i;
-            for (i=0; i<N; i++) {
-                mCategories.add(in.readString().intern());
-            }
-        } else {
-            mCategories = null;
-        }
-        if (in.readInt() != 0) {
-            mSelector = new Intent(in);
-        }
-        mExtras = in.readBundle();
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
     /**
      * Normalize a MIME data type.

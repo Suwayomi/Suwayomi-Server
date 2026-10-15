@@ -8,8 +8,8 @@
     <string name="opds_linktitle_previous_page">முந்தைய பக்கம்</string>
     <string name="opds_linktitle_next_page">அடுத்த பக்கம்</string>
     <string name="manga_status_completed">முடிந்தது</string>
-    <string name="opds_chapter_details_scanlator">| %1$s மூலம்</string>
-    <string name="opds_chapter_details_progress">| முன்னேற்றம்: %1$d %2$d</string>
+    <string name="opds_chapter_details_scanlator"> | %1$s மூலம்</string>
+    <string name="opds_chapter_details_progress"> | முன்னேற்றம்: %1$d / %2$s</string>
     <string name="manga_status_on_hiatus">இடைவெளியில்</string>
     <string name="opds_feeds_categories_title">வகைகள்</string>
     <string name="opds_feeds_languages_title">மொழிகள்</string>
@@ -32,7 +32,7 @@
     <string name="opds_feeds_category_specific_title">வகை: %1$s</string>
     <string name="opds_feeds_language_specific_title">மொழி: %1$s</string>
     <string name="opds_feeds_status_specific_title">நிலை: %1$s</string>
-    <string name="opds_feeds_source_specific_title">ஆதாரம்: %1$s</string>
+
     <string name="opds_error_manga_not_found">அடையாளம் %1$d உடன் மங்கா காணப்படவில்லை</string>
     <string name="opds_error_chapter_not_found">குறியீட்டு %1$d உடன் அத்தியாயம் காணப்படவில்லை</string>
     <string name="opds_facetgroup_sort_order">வரிசைப்படுத்தும் முறை</string>
