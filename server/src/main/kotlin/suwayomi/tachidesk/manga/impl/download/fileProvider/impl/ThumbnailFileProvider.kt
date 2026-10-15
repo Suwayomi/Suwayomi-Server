@@ -54,6 +54,18 @@ class ThumbnailFileProvider(
         return true
     }
 
+    suspend fun refreshIfStale(staleBefore: Long) {
+        if (getFilePath() == null) {
+            return
+        }
+
+        ImageResponse
+            .getImageResponse(applicationDirs.thumbnailDownloadsRoot, mangaId.toString(), staleBefore) {
+                Manga.fetchMangaThumbnailResponse(mangaId)
+            }.first
+            .close()
+    }
+
     override fun download(): FileDownload0Args = FileDownload0Args(::downloadImpl)
 
     override suspend fun delete(): Boolean {
