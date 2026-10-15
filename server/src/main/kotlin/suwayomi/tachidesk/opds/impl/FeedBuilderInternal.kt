@@ -6,6 +6,7 @@ import suwayomi.tachidesk.opds.model.OpdsAuthorXml
 import suwayomi.tachidesk.opds.model.OpdsEntryXml
 import suwayomi.tachidesk.opds.model.OpdsFeedXml
 import suwayomi.tachidesk.opds.model.OpdsLinkXml
+import suwayomi.tachidesk.opds.model.OpdsSearchQueryXml
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
@@ -29,6 +30,11 @@ class FeedBuilderInternal(
     private val isSearchFeed: Boolean = false,
 ) {
     var totalResults: Long = 0
+
+    // Sources only tell whether there is a next page
+    var isLastPageKnown = true
+
+    var searchTerms: String? = null
     var icon: String? = null
     val links = mutableListOf<OpdsLinkXml>()
     val entries = mutableListOf<OpdsEntryXml>()
@@ -128,18 +134,21 @@ class FeedBuilderInternal(
                                     ),
                                 )
                             }
-                            add(
-                                OpdsLinkXml(
-                                    OpdsConstants.LINK_REL_LAST,
-                                    buildUrlWithParams(totalPages),
-                                    feedType,
-                                    MR.strings.opds_linktitle_last_page.localized(locale),
-                                ),
-                            )
+                            if (isLastPageKnown) {
+                                add(
+                                    OpdsLinkXml(
+                                        OpdsConstants.LINK_REL_LAST,
+                                        buildUrlWithParams(totalPages),
+                                        feedType,
+                                        MR.strings.opds_linktitle_last_page.localized(locale),
+                                    ),
+                                )
+                            }
                         }
                     }
                 },
             entries = entries,
+            query = OpdsSearchQueryXml(role = "request", searchTerms = searchTerms).takeIf { isSearchFeed },
             totalResults = totalResults.takeIf { showOpenSearch },
             itemsPerPage = itemsPerPage.takeIf { showOpenSearch },
             startIndex = if (showOpenSearch && pageNum != null) ((pageNum - 1) * itemsPerPage) + 1 else null,
