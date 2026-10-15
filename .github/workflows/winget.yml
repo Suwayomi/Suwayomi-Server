@@ -10,14 +10,17 @@ on:
   release:
     types: [published]
 
+# Only `gh release view` against this repo runs on the GITHUB_TOKEN; the
+# winget-pkgs fork operations use the WINGET_PUBLISH_PAT secret.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   publish:
     runs-on: windows-latest # action can only be run on windows
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Determine version
         id: version
@@ -56,10 +59,10 @@ jobs:
             "repos/Suwayomi/winget-pkgs/merge-upstream" \
             -f branch=master
 
-      # TODO(security): vedantmgoyal2009/winget-releaser is referenced via the
-      # mutable major tag @v2. Pin to a commit SHA once the repo owner has
-      # verified the exact upstream revision to trust.
-      - uses: vedantmgoyal2009/winget-releaser@v2
+      # NOTE(security): winget-releaser is a third-party action holding a
+      # write-capable PAT; pinned to a commit SHA. Replacing it with a
+      # hand-rolled `gh api` manifest submission is a follow-up.
+      - uses: vedantmgoyal2009/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54 # v2
         with:
           identifier: Suwayomi.Suwayomi-Server
           installers-regex: '.*x64.msi$'

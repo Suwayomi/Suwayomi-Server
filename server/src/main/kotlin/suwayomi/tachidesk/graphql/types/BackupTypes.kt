@@ -17,6 +17,7 @@ data class PartialBackupFlags(
 enum class BackupRestoreState {
     IDLE,
     SUCCESS,
+    SUCCESS_WITH_ERRORS,
     FAILURE,
     RESTORING_CATEGORIES,
     RESTORING_MANGA,
@@ -29,6 +30,11 @@ data class BackupRestoreStatus(
     val state: BackupRestoreState,
     val totalManga: Int,
     val mangaProgress: Int,
+    /**
+     * Per-manga failures of a finished restore; only populated when [state] is
+     * [BackupRestoreState.SUCCESS_WITH_ERRORS].
+     */
+    val errors: List<String> = emptyList(),
 )
 
 fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus =
@@ -46,6 +52,15 @@ fun ProtoBackupImport.BackupRestoreState.toStatus(): BackupRestoreStatus =
                 state = BackupRestoreState.SUCCESS,
                 totalManga = 0,
                 mangaProgress = 0,
+            )
+        }
+
+        is ProtoBackupImport.BackupRestoreState.SuccessWithErrors -> {
+            BackupRestoreStatus(
+                state = BackupRestoreState.SUCCESS_WITH_ERRORS,
+                totalManga = 0,
+                mangaProgress = 0,
+                errors = errors,
             )
         }
 

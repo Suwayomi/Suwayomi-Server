@@ -9,24 +9,27 @@ import eu.kanade.tachiyomi.network.jsonMime
 import eu.kanade.tachiyomi.network.parseAs
 import eu.kanade.tachiyomi.util.lang.withIOContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALAddMangaResult
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALCurrentUserResult
+import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALGraphQlErrors
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALOAuth
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALSearchResult
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALUserListMangaQueryResult
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.util.UUID
 import kotlin.time.Duration.Companion.minutes
 
 class AnilistApi(
@@ -72,9 +75,9 @@ class AnilistApi(
                             body = payload.toString().toRequestBody(jsonMime),
                         ),
                     ).awaitSuccess()
-                    .parseAs<ALAddMangaResult>()
+                    .bodyCheckedAs<ALAddMangaResult>()
                     .let {
-                        track.library_id = it.data.entry.id
+                        track.library_id = it.data?.entry?.id
                         track
                     }
             }
@@ -106,15 +109,25 @@ class AnilistApi(
                         put("listId", track.library_id)
                         put("progress", track.last_chapter_read.toInt())
                         put("status", track.toApiStatus())
-                        put("score", track.score.toInt())
-                        put("startedAt", createDate(track.started_reading_date))
-                        put("completedAt", createDate(track.finished_reading_date))
+                        // a negative score is an unset sentinel, not a real
+                        // rating — pre-validation data can still carry one;
+                        // omitting scoreRaw leaves the remote score untouched
+                        // instead of pushing scoreRaw=-1
+                        if (track.score >= 0) {
+                            put("score", track.score.toInt())
+                        }
+                        // A zero date must omit the variable entirely: sending
+                        // the all-null FuzzyDate clears the remote date, which
+                        // used to silently wipe started/completed dates.
+                        createDate(track.started_reading_date)?.let { put("startedAt", it) }
+                        createDate(track.finished_reading_date)?.let { put("completedAt", it) }
                         put("private", track.private)
                     }
                 }
             authClient
                 .newCall(POST(API_URL, body = payload.toString().toRequestBody(jsonMime)))
                 .awaitSuccess()
+                .throwOnGraphQlErrors()
             track
         }
 
@@ -139,6 +152,7 @@ class AnilistApi(
             authClient
                 .newCall(POST(API_URL, body = payload.toString().toRequestBody(jsonMime)))
                 .awaitSuccess()
+                .throwOnGraphQlErrors()
         }
     }
 
@@ -200,7 +214,10 @@ class AnilistApi(
                         ),
                     ).awaitSuccess()
                     .parseAs<ALSearchResult>()
-                    .data.page.media
+                    .data
+                    ?.page
+                    ?.media
+                    .orEmpty()
                     .map { it.toALManga().toTrack() }
             }
         }
@@ -283,8 +300,11 @@ class AnilistApi(
                         ),
                     ).awaitSuccess()
                     .parseAs<ALUserListMangaQueryResult>()
-                    .data.page.mediaList
-                    .map { it.toALUserManga() }
+                    .data
+                    ?.page
+                    ?.mediaList
+                    .orEmpty()
+                    .mapNotNull { it.toALUserManga() }
                     .firstOrNull()
                     ?.toTrack()
             }
@@ -293,8 +313,9 @@ class AnilistApi(
     suspend fun getLibManga(
         track: Track,
         userId: Int,
-    ): Track = findLibManga(track, userId) ?: throw Exception("Could not find manga")
+    ): Track = findLibManga(track, userId) ?: throw IOException("Could not find manga")
 
+    // ALOAuth.expires is an epoch in **milliseconds** (currentTimeMillis-based).
     fun createOAuth(token: String): ALOAuth = ALOAuth(token, "Bearer", System.currentTimeMillis() + 31536000000, 31536000000)
 
     suspend fun getCurrentUser(): Pair<Int, String> =
@@ -325,19 +346,51 @@ class AnilistApi(
                     ).awaitSuccess()
                     .parseAs<ALCurrentUserResult>()
                     .let {
-                        val viewer = it.data.viewer
-                        Pair(viewer.id, viewer.mediaListOptions.scoreFormat)
+                        val viewer =
+                            it.data?.viewer
+                                ?: throw IOException("Anilist: could not fetch the current user")
+                        Pair(viewer.id, viewer.mediaListOptions?.scoreFormat ?: "POINT_10")
                     }
             }
         }
 
-    private fun createDate(dateValue: Long): JsonObject {
-        if (dateValue == 0L) {
-            return buildJsonObject {
-                put("year", JsonNull)
-                put("month", JsonNull)
-                put("day", JsonNull)
+    /**
+     * AniList answers failed mutations with HTTP 200 plus an `errors` array.
+     * Reading the body without checking it reports a remote write as done when
+     * nothing was persisted — surface the server message instead.
+     */
+    private fun Response.throwOnGraphQlErrors() {
+        val bodyText = body.string()
+        val errors =
+            runCatching { json.decodeFromString<ALGraphQlErrors>(bodyText) }
+                .getOrNull()
+                ?.errors
+                .orEmpty()
+        if (errors.isNotEmpty()) {
+            throw IOException(
+                "Anilist API error: " +
+                    errors.joinToString { it.message ?: "unknown error" },
+            )
+        }
+    }
+
+    private inline fun <reified T> Response.bodyCheckedAs(): T {
+        val bodyText = body.string()
+        runCatching { json.decodeFromString<ALGraphQlErrors>(bodyText) }
+            .getOrNull()
+            ?.errors
+            ?.takeIf { it.isNotEmpty() }
+            ?.let {
+                throw IOException(
+                    "Anilist API error: " + it.joinToString { e -> e.message ?: "unknown error" },
+                )
             }
+        return json.decodeFromString(bodyText)
+    }
+
+    private fun createDate(dateValue: Long): JsonObject? {
+        if (dateValue == 0L) {
+            return null
         }
 
         val dateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(dateValue), ZoneId.systemDefault())
@@ -362,6 +415,8 @@ class AnilistApi(
                 .buildUpon()
                 .appendQueryParameter("client_id", CLIENT_ID)
                 .appendQueryParameter("response_type", "token")
+                // correlate the callback with the session that started it
+                .appendQueryParameter("state", UUID.randomUUID().toString())
                 .build()
     }
 }

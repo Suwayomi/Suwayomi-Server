@@ -48,13 +48,17 @@ object KoreaderSyncService {
     // NOTE: the user key is stored as the plain md5 of the password — that is the credential KOReader's
     // kosync protocol itself uses for x-auth-key, so it is secret material. Clearing a user account does
     // not cascade here; use [logout] or wipe the "koreader_sync" preferences.
-    private val preferences = Injekt.get<Application>().getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
-    private const val SERVER_ADDRESS_KEY = "server_address"
-    private const val USERNAME_KEY = "username"
-    private const val USERKEY_KEY = "user_key"
-    private const val DEVICE_ID_KEY = "client_id"
+    private val preferences = Injekt.get<Application>().getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
-    private fun key(
+    // internal so tests can assert against the same key names instead of copying private
+    // strings that would silently drift from the production values
+    internal const val PREFERENCES_NAME = "koreader_sync"
+    internal const val SERVER_ADDRESS_KEY = "server_address"
+    internal const val USERNAME_KEY = "username"
+    internal const val USERKEY_KEY = "user_key"
+    internal const val DEVICE_ID_KEY = "client_id"
+
+    internal fun key(
         base: String,
         userId: Int,
     ) = "${base}_$userId"

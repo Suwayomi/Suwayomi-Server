@@ -57,11 +57,11 @@ class BackupMutation {
 
             withTimeout(10.seconds) {
                 ProtoBackupImport.notifyFlow.first {
-                    ProtoBackupImport.getRestoreState(restoreId) != null
+                    ProtoBackupImport.getRestoreState(userId, restoreId) != null
                 }
             }
 
-            RestoreBackupPayload(clientMutationId, restoreId, ProtoBackupImport.getRestoreState(restoreId)?.toStatus())
+            RestoreBackupPayload(clientMutationId, restoreId, ProtoBackupImport.getRestoreState(userId, restoreId)?.toStatus())
         }
     }
 

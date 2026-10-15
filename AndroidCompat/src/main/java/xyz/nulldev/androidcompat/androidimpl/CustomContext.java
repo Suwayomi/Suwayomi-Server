@@ -403,7 +403,7 @@ public class CustomContext extends Context {
             }
             Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
             return true;
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             logger.error("Failed to move database " + name, e);
             return false;
         }
@@ -411,12 +411,30 @@ public class CustomContext extends Context {
 
     @Override
     public boolean deleteDatabase(String s) {
-        return getDatabasePath(s).delete();
+        try {
+            return getDatabasePath(s).delete();
+        } catch (IllegalArgumentException e) {
+            logger.warn("Refusing to delete database with illegal name: {}", s);
+            return false;
+        }
     }
 
     @Override
     public File getDatabasePath(String s) {
-        return new File(androidFiles.getDatabasesDir(), s);
+        File databasesDir = androidFiles.getDatabasesDir();
+        try {
+            File parent = databasesDir.getCanonicalFile();
+            File target = new File(parent, s).getCanonicalFile();
+            // "" or "." canonicalize to the databases directory itself — a database
+            // name must denote a file strictly inside it.
+            if (target.equals(parent) || !target.getPath().startsWith(parent.getPath() + File.separator)) {
+                throw new IllegalArgumentException(
+                        "Database name escapes the databases directory: " + s);
+            }
+            return target;
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to resolve database path", e);
+        }
     }
 
     @Override

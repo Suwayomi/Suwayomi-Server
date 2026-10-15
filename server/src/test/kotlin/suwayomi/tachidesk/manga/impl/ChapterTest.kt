@@ -12,12 +12,12 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
-import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
@@ -49,20 +49,17 @@ import kotlin.test.assertTrue
 class ChapterTest : ApplicationTest() {
     private val source = StubSource(1L)
 
+    // ids of users created by the running test — tearDown deletes by identity, never by a
+    // broad "id != 1" predicate that would also remove other tests' fixtures
+    private val createdUserIds = mutableListOf<Int>()
+
     @Test
     fun pageListRefreshPreservesEachUsersDownloadRequest() =
         runTest {
             val mangaId = createLibraryManga("PAGE_REFRESH_REQUESTS")
             val chapterId = createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = true).single()
             val secondUser = createSecondUser()
-            val thirdUser =
-                transaction {
-                    UserAccountTable
-                        .insertAndGetId {
-                            it[username] = "page-refresh-reader"
-                            it[password] = "password"
-                        }.value
-                }
+            val thirdUser = createSecondUser("page-refresh-reader")
             transaction {
                 ChapterUserTable.batchInsert(listOf(1, secondUser, thirdUser)) { userId ->
                     this[ChapterUserTable.chapter] = chapterId
@@ -93,14 +90,7 @@ class ChapterTest : ApplicationTest() {
     fun chapterUrlChangeMigratesPerUserStateForAllUsers() =
         runTest {
             val mangaId = createLibraryManga("URL_CHANGE_TEST")
-            val userId2 =
-                transaction {
-                    UserAccountTable
-                        .insertAndGetId {
-                            it[UserAccountTable.username] = "user2"
-                            it[UserAccountTable.password] = "password"
-                        }.value
-                }
+            val userId2 = createSecondUser()
 
             val chapter2Id =
                 transaction {
@@ -779,17 +769,20 @@ class ChapterTest : ApplicationTest() {
                 }.map { it[ChapterTable.id].value }
         }
 
-    private fun createSecondUser(): Int =
+    private fun createSecondUser(name: String = "user2"): Int =
         transaction {
             UserAccountTable
                 .insertAndGetId {
-                    it[UserAccountTable.username] = "user2"
+                    it[UserAccountTable.username] = name
                     it[UserAccountTable.password] = "password"
                 }.value
-        }
+        }.also { createdUserIds += it }
 
     @AfterEach
     internal fun tearDown() {
+        // drain the shared DownloadManager first: queued entries reference the rows we are
+        // about to delete, and a stale queue would bleed into the next test
+        runBlocking { DownloadManager.clear() }
         clearTables(
             ChapterUserTable,
             ChapterTable,
@@ -797,7 +790,10 @@ class ChapterTest : ApplicationTest() {
             MangaTable,
         )
         transaction {
-            UserAccountTable.deleteWhere { id neq 1 }
+            if (createdUserIds.isNotEmpty()) {
+                UserAccountTable.deleteWhere { UserAccountTable.id inList createdUserIds }
+                createdUserIds.clear()
+            }
         }
         GetSource.unregisterSource(source.id)
     }

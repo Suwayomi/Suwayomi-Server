@@ -500,6 +500,9 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = 1,
         min = 0,
+        // the schedule is rendered as a */interval day-of-month cron field, so a value
+        // above 31 is not representable and kills the settings subscription on write
+        max = 31,
         description = "Time in days",
     )
 
@@ -646,11 +649,13 @@ class ServerConfig(
     fun createDownloadConversionsMap(
         protoNumber: Int,
         key: String,
+        excludeFromBackup: Boolean = false,
     ) = MapSetting<String, DownloadConversion>(
         protoNumber = protoNumber,
         group = SettingGroup.DOWNLOADER,
         privacySafe = false,
         defaultValue = emptyMap(),
+        excludeFromBackup = excludeFromBackup,
         typeInfo = downloadConversionTypeInfo(),
         description =
             """
@@ -661,9 +666,14 @@ class ServerConfig(
             }
             """.trimIndent(),
     )
+
+    // excluded from backups: conversion headers may carry credentials for external
+    // conversion services (e.g. Authorization); conversion rules must be reconfigured
+    // after a restore
     val downloadConversions: MutableStateFlow<Map<String, DownloadConversion>> by createDownloadConversionsMap(
         protoNumber = 57,
-        key = "downloadConversions"
+        key = "downloadConversions",
+        excludeFromBackup = true,
     )
 
     val jwtAudience: MutableStateFlow<String> by StringSetting(
@@ -1156,6 +1166,43 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = "suwayomi",
         minLength = 1
+    )
+
+    // Extension store egress is restricted to http(s) URLs whose host does not
+    // resolve to a loopback/link-local/private (RFC1918/ULA/CGNAT) address —
+    // a configured store could otherwise use this server as a blind SSRF
+    // springboard. Self-hosted stores inside a trusted LAN need this enabled.
+    val extensionStoresAllowPrivateHosts: MutableStateFlow<Boolean> by BooleanSetting(
+        protoNumber = 101,
+        group = SettingGroup.EXTENSION,
+        privacySafe = true,
+        defaultValue = false,
+        description =
+            "Allow extension stores, their extension lists, and extension icon/apk " +
+                "downloads to resolve to private network addresses (loopback, link-local, " +
+                "RFC1918, ULA, CGNAT). Enable only for a store self-hosted inside a trusted LAN.",
+    )
+
+    val javaScriptEngineStatementLimit: MutableStateFlow<Int> by IntSetting(
+        protoNumber = 102,
+        group = SettingGroup.EXTENSION,
+        privacySafe = true,
+        defaultValue = 100_000_000,
+        min = 1_000,
+        description =
+            "GraalVM statement budget for a single extension JavaScript evaluation; " +
+                "a hard engine-level interrupt for runaway loops",
+    )
+
+    val javaScriptEngineTimeout: MutableStateFlow<Duration> by DurationSetting(
+        protoNumber = 103,
+        group = SettingGroup.EXTENSION,
+        privacySafe = true,
+        defaultValue = 30.seconds,
+        min = 1.seconds,
+        description =
+            "Wall-clock timeout for evaluating extension JavaScript; the engine is " +
+                "force-closed on expiry",
     )
 
     /** ****************************************************************** **/

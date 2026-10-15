@@ -17,8 +17,10 @@ import xyz.nulldev.androidcompat.util.SafePath
 import xyz.nulldev.ts.config.ApplicationRootDir
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.attribute.PosixFilePermissions
 import java.util.Properties
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
@@ -560,6 +562,21 @@ class JavaSharedPreferences(
     }
 
     /**
+     * Preference files can hold tracker OAuth tokens and session credentials —
+     * restrict them to the owning user where the filesystem supports POSIX
+     * permissions (no-op on Windows/non-POSIX filesystems).
+     */
+    private fun restrictToOwnerOnly(path: Path) {
+        try {
+            if (path.fileSystem.supportedFileAttributeViews().contains("posix")) {
+                Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"))
+            }
+        } catch (e: Exception) {
+            logger.warn(e) { "Could not restrict permissions on ${path.name}" }
+        }
+    }
+
+    /**
      * Writes [snapshot] to disk atomically (write temp file, then move over
      * the destination). Caller must hold [properties] so that disk state and
      * in-memory state stay consistent with respect to deleteAll()/clear().
@@ -573,9 +590,12 @@ class JavaSharedPreferences(
                     file.createParentDirectories()
 
                     val tempFile = file.resolveSibling("${file.name}.tmp")
+
                     tempFile.outputStream().use {
                         snapshot.storeToXML(it, null)
                     }
+                    // Lock down the temp file before it is renamed over the real one.
+                    restrictToOwnerOnly(tempFile)
 
                     try {
                         tempFile.moveTo(
@@ -592,6 +612,9 @@ class JavaSharedPreferences(
                             tempFile.deleteIfExists()
                         }
                     }
+                    // Re-assert on the destination: the copyTo fallback does not
+                    // carry the temp file's attributes over.
+                    restrictToOwnerOnly(file)
                 }
 
                 return true

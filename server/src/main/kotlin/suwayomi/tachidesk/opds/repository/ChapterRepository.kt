@@ -8,6 +8,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -325,37 +326,52 @@ object ChapterRepository {
         return entry
     }
 
+    /**
+     * ORDER BY clause of the library-updates feed. Kept next to [libraryUpdatesQuery] so the
+     * query-plan regression test exercises the same ordering production uses — the
+     * `chapter_fetched_at` index only covers exactly this clause.
+     */
+    internal val libraryUpdatesOrder =
+        arrayOf<Pair<Expression<*>, SortOrder>>(
+            ChapterTable.fetchedAt to SortOrder.DESC,
+            ChapterTable.sourceOrder to SortOrder.DESC,
+            ChapterTable.id to SortOrder.DESC,
+        )
+
+    /**
+     * Base FROM/JOIN/WHERE of the library-updates feed, before ordering and paging.
+     * Extracted so tests can EXPLAIN the real production query instead of copying it.
+     */
+    internal fun libraryUpdatesQuery(userId: Int) =
+        ChapterTable
+            .getWithUserData(userId)
+            .innerJoin(
+                MangaTable.getWithUserData(userId),
+                { ChapterTable.manga },
+                { MangaTable.id },
+            ).innerJoin(
+                SourceTable,
+                { MangaTable.sourceReference },
+                { SourceTable.id },
+            ).select(
+                ChapterTable.columns + MangaTable.title + MangaTable.author +
+                    MangaTable.thumbnail_url + MangaTable.id + SourceTable.lang,
+            ).where { MangaUserTable.inLibrary eq true }
+
     fun getLibraryUpdates(
         userId: Int,
         pageNum: Int,
     ): Pair<List<OpdsLibraryUpdateAcqEntry>, Long> =
         transaction {
-            val query =
-                ChapterTable
-                    .getWithUserData(userId)
-                    .innerJoin(
-                        MangaTable.getWithUserData(userId),
-                        { ChapterTable.manga },
-                        { MangaTable.id },
-                    ).innerJoin(
-                        SourceTable,
-                        { MangaTable.sourceReference },
-                        { SourceTable.id },
-                    ).select(
-                        ChapterTable.columns + MangaTable.title + MangaTable.author +
-                            MangaTable.thumbnail_url + MangaTable.id + SourceTable.lang,
-                    ).where { MangaUserTable.inLibrary eq true }
+            val query = libraryUpdatesQuery(userId)
 
             val totalCount = query.count()
 
             val perPage = opdsItemsPerPage(userId)
             val rawItems =
                 query
-                    .orderBy(
-                        ChapterTable.fetchedAt to SortOrder.DESC,
-                        ChapterTable.sourceOrder to SortOrder.DESC,
-                        ChapterTable.id to SortOrder.DESC,
-                    ).limit(perPage)
+                    .orderBy(*libraryUpdatesOrder)
+                    .limit(perPage)
                     .offset(OpdsPaging.offsetFor(pageNum, perPage))
                     .toList()
 

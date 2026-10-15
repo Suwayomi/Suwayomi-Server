@@ -46,7 +46,7 @@ class PersistentCookieStore(
                                 .mapNotNull { Cookie.parse(url, it) }
                                 .filter { !it.hasExpired() }
                                 .groupBy { it.domain }
-                                .mapValues { it.value.distinctBy { it.name } }
+                                .mapValues { it.value.distinctBy { it.name to it.path } }
                         nonExpiredCookies.forEach { (domain, cookies) ->
                             cookieMap[domain] = cookies
                             domainsToSave.add(domain)
@@ -70,7 +70,10 @@ class PersistentCookieStore(
             // Append or replace the cookies for this domain.
             for (cookie in cookies) {
                 val cookiesForDomain = cookieMap[cookie.domain].orEmpty().toMutableList()
-                val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
+                // RFC 6265 cookie identity is (name, domain, path): find a cookie with
+                // the same name AND path — same-name cookies scoped to different paths
+                // must coexist (same match rule as add()/remove()).
+                val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name && it.path == cookie.path }
                 if (pos == -1) {
                     cookiesForDomain.add(cookie)
                 } else {
@@ -225,9 +228,12 @@ class PersistentCookieStore(
 
     /**
      * True when [domain] is itself a public suffix ("github.io", "co.uk"), which
-     * RFC 6265 §5.3 forbids as a Domain attribute value. Falls back to rejecting
-     * bare single-label suffixes (".com") when the embedded public-suffix list
-     * cannot be read.
+     * RFC 6265 §5.3 forbids as a Domain attribute value. IP literals are *not*
+     * public suffixes — the PSL's implicit `*` rule still yields an eTLD+1 for
+     * them — so `Domain=<ip>` is accepted and stored as a domain cookie that,
+     * having no subdomains, behaves like the host cookie RFC 6265 permits.
+     * Falls back to rejecting bare single-label suffixes (".com") when the
+     * embedded public-suffix list cannot be read.
      */
     private fun isPublicSuffix(domain: String): Boolean =
         try {

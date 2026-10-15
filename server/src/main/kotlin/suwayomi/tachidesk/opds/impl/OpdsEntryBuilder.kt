@@ -2,6 +2,7 @@ package suwayomi.tachidesk.opds.impl
 
 import dev.icerock.moko.resources.StringResource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.withTimeoutOrNull
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
@@ -27,6 +28,7 @@ import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatFileSizeForOpds
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
 import java.util.Locale
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * A builder class responsible for creating OPDS Entry XML objects from data transfer objects.
@@ -207,9 +209,14 @@ object OpdsEntryBuilder {
         var effectiveLastReadAt = chapter.lastReadAt
 
         if (skipMetadataFeed) {
+            // KOReader progress sync performs a (remote) call per chapter entry — bounded by
+            // the page size. A sync outage must not take down the whole feed, so the pull
+            // is time-boxed the same way as MangaController's page-loading path.
             val syncResult =
                 runCatching {
-                    KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                    withTimeoutOrNull(10.seconds) {
+                        KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                    }
                 }.onFailure { logger.warn(it) { "KOReader progress sync failed for chapter ${chapter.id}" } }
                     .getOrNull()
 
@@ -338,10 +345,13 @@ object OpdsEntryBuilder {
         chapter: OpdsChapterMetadataAcqEntry,
         manga: OpdsMangaDetails,
     ): Pair<OpdsEntryXml, OpdsEntryXml?> {
-        // Check remote progress before building the entry; a sync outage must not 500 the feed.
+        // Check remote progress before building the entry; a sync outage must not 500 the feed,
+        // so the remote pull is time-boxed the same way as MangaController's page-loading path.
         val syncResult =
             runCatching {
-                KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                withTimeoutOrNull(10.seconds) {
+                    KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                }
             }.onFailure { logger.warn(it) { "KOReader progress sync failed for chapter ${chapter.id}" } }
                 .getOrNull()
 
@@ -444,7 +454,7 @@ object OpdsEntryBuilder {
 
             is ProgressSource.Remote -> {
                 idSuffix = ":remote"
-                titlePrefix = MR.strings.opds_chapter_status_synced.localized(locale, progressSource.device)
+                titlePrefix = MR.strings.opds_chapter_status_synced.localized(locale)
             }
         }
 

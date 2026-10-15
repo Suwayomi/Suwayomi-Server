@@ -46,6 +46,7 @@ object DBManager {
      * replaces the old public `db` field, which had no readers and was never assigned on
      * the Hikari path due to an early `return` skipping `.also { db = it }`.
      */
+    @Volatile
     private var connectedDb: Database? = null
 
     @Volatile

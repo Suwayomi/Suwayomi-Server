@@ -1,22 +1,28 @@
 package suwayomi.tachidesk.manga.impl.track
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.http.NotFoundResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import org.jsoup.Jsoup
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
@@ -48,10 +54,28 @@ import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.insertAll
 import suwayomi.tachidesk.server.generated.BuildConfig
 import java.io.InputStream
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.round
 
 object Track {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val logger = KotlinLogging.logger {}
+
+    /**
+     * Serializes the remote read-modify-write in [trackChapterForTracker] per
+     * (userId, trackerId): two concurrent marks (e.g. ch.7 then ch.6 from two
+     * clients) would otherwise each read the stale remote progress and let the
+     * later write regress it. The map is bounded by users × trackers and the
+     * mutexes are intentionally kept resident.
+     */
+    private val trackChapterMutexes = ConcurrentHashMap<Pair<Int, Int>, Mutex>()
+
+    /**
+     * `ChapterTable.chapter_number` is a Float; widening it to Double without
+     * rounding turns 10.1f into 10.100000381… which is what gets pushed to the
+     * remote. Round to 3 decimals before writing.
+     */
+    private fun Double.roundedChapter(): Double = round(this * 1000) / 1000
 
     fun getTrackerList(userId: Int): List<TrackerDataClass> {
         val trackers = TrackerManager.services
@@ -72,11 +96,16 @@ object Track {
         userId: Int,
         input: LoginInput,
     ) {
-        val tracker = TrackerManager.getTracker(input.trackerId)!!
+        val tracker =
+            TrackerManager.getTracker(input.trackerId)
+                ?: throw NotFoundResponse("Unknown tracker ${input.trackerId}")
         if (input.callbackUrl != null) {
-            tracker.authCallback(userId, input.callbackUrl)
+            // goes through the wrapper so a half-applied OAuth login is cleaned up
+            tracker.loginOAuth(userId, input.callbackUrl)
         } else {
-            tracker.loginImpl(userId, input.username ?: "", input.password ?: "")
+            // Tracker.login wraps loginImpl with logout-on-failure cleanup while
+            // still rethrowing the original throwable (a9c1c17e)
+            tracker.login(userId, input.username ?: "", input.password ?: "")
         }
     }
 
@@ -84,15 +113,21 @@ object Track {
         userId: Int,
         input: LogoutInput,
     ) {
-        val tracker = TrackerManager.getTracker(input.trackerId)!!
+        val tracker =
+            TrackerManager.getTracker(input.trackerId)
+                ?: throw NotFoundResponse("Unknown tracker ${input.trackerId}")
         tracker.logout(userId)
     }
 
     fun proxyThumbnailUrl(trackerId: Int): String = "/api/v1/track/$trackerId/thumbnail"
 
     fun getTrackerThumbnail(trackerId: Int): Pair<InputStream, String> {
-        val tracker = TrackerManager.getTracker(trackerId)!!
-        val logo = BuildConfig::class.java.getResourceAsStream(tracker.getLogo())!!
+        val tracker =
+            TrackerManager.getTracker(trackerId)
+                ?: throw NotFoundResponse("Unknown tracker $trackerId")
+        val logo =
+            BuildConfig::class.java.getResourceAsStream(tracker.getLogo())
+                ?: throw NotFoundResponse("No thumbnail for tracker $trackerId")
         return logo to "image/png"
     }
 
@@ -134,7 +169,9 @@ object Track {
         userId: Int,
         input: SearchInput,
     ): List<TrackSearchDataClass> {
-        val tracker = TrackerManager.getTracker(input.trackerId)!!
+        val tracker =
+            TrackerManager.getTracker(input.trackerId)
+                ?: throw NotFoundResponse("Unknown tracker ${input.trackerId}")
         val list = tracker.search(userId, input.title)
         return list.insertAll().map {
             TrackSearchDataClass(
@@ -192,14 +229,17 @@ object Track {
                             (TrackRecordTable.trackerId eq trackerId) and
                                 (TrackRecordTable.remoteId eq remoteId) and
                                 (TrackRecordTable.user eq userId)
-                        }.first()
-                        .toTrack()
+                        }.firstOrNull()
+                        ?.toTrack()
+                    ?: throw NotFoundResponse("No track search result or record for remoteId $remoteId")
             }.apply {
                 this.manga_id = mangaId
                 this.private = private
             }
 
-        val tracker = TrackerManager.getTracker(trackerId)!!
+        val tracker =
+            TrackerManager.getTracker(trackerId)
+                ?: throw NotFoundResponse("Unknown tracker $trackerId")
 
         val chapter = queryMaxReadChapter(userId, mangaId)
         val hasReadChapters = chapter != null
@@ -211,7 +251,7 @@ object Track {
         var lastChapterRead: Double? = null
         var startDate: Long? = null
         if (chapterNumber != null && chapterNumber > 0 && chapterNumber > track.last_chapter_read) {
-            lastChapterRead = chapterNumber.toDouble()
+            lastChapterRead = chapterNumber.toDouble().roundedChapter()
         }
         if (track.started_reading_date <= 0) {
             val oldestChapter =
@@ -240,51 +280,48 @@ object Track {
         }
     }
 
+    /**
+     * Binds [trackRecordId] to [mangaId] as a *move*: the record's remote
+     * identity must never exist on two rows at once (remote_id has no unique
+     * constraint, and two rows sharing it push progress to the same remote
+     * entry and pollute each other). Any record already occupying the
+     * (user, manga, tracker) slot is removed first — the moved record replaces
+     * it — then the source row itself is re-pointed at [mangaId].
+     */
     fun bindTrackRecord(
         userId: Int,
         mangaId: Int,
         trackRecordId: Int,
-    ): Int {
-        val (trackRecord, existingTrackRecord) =
-            transaction {
-                val trackRecord =
-                    TrackRecordTable
-                        .selectAll()
-                        .where {
-                            (TrackRecordTable.id eq trackRecordId) and
-                                (TrackRecordTable.user eq userId)
-                        }.first()
-                        .toTrackRecordDataClass()
+    ): Int =
+        transaction {
+            val trackRecord =
+                TrackRecordTable
+                    .selectAll()
+                    .where {
+                        (TrackRecordTable.id eq trackRecordId) and
+                            (TrackRecordTable.user eq userId)
+                    }.firstOrNull()
+                    ?.toTrackRecordDataClass()
+                    ?: throw NotFoundResponse("Track record $trackRecordId not found")
 
-                val existingTrackRecord =
-                    TrackRecordTable
-                        .selectAll()
-                        .where {
-                            (TrackRecordTable.mangaId eq mangaId) and
-                                (TrackRecordTable.trackerId eq trackRecord.trackerId) and
-                                (TrackRecordTable.user eq userId)
-                        }.firstOrNull()
-                        ?.toTrackRecordDataClass()
-
-                trackRecord to existingTrackRecord
+            if (trackRecord.mangaId == mangaId) {
+                return@transaction trackRecordId
             }
 
-        val isAlreadyBoundToManga = trackRecord.mangaId == mangaId
-        if (isAlreadyBoundToManga) {
-            return trackRecordId
+            TrackRecordTable.deleteWhere {
+                (TrackRecordTable.mangaId eq mangaId) and
+                    (TrackRecordTable.trackerId eq trackRecord.trackerId) and
+                    (TrackRecordTable.user eq userId)
+            }
+
+            TrackRecordTable.update({
+                (TrackRecordTable.id eq trackRecordId) and (TrackRecordTable.user eq userId)
+            }) {
+                it[TrackRecordTable.mangaId] = mangaId
+            }
+
+            trackRecordId
         }
-
-        val hasRecordForTracker = existingTrackRecord != null
-        if (hasRecordForTracker) {
-            val updatedTrack = trackRecord.copy(id = existingTrackRecord.id, mangaId = mangaId).toTrack()
-
-            return updateTrackRecord(userId, updatedTrack)
-        }
-
-        val newTrack = trackRecord.copy(mangaId = mangaId).toTrack()
-
-        return insertTrackRecord(userId, newTrack)
-    }
 
     suspend fun refresh(
         userId: Int,
@@ -292,10 +329,15 @@ object Track {
     ) {
         val recordDb =
             transaction {
-                TrackRecordTable.selectAll().where { TrackRecordTable.id eq recordId and (TrackRecordTable.user eq userId) }.first()
-            }
+                TrackRecordTable
+                    .selectAll()
+                    .where { TrackRecordTable.id eq recordId and (TrackRecordTable.user eq userId) }
+                    .firstOrNull()
+            } ?: throw NotFoundResponse("Track record $recordId not found")
 
-        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
+        val tracker =
+            TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])
+                ?: throw NotFoundResponse("Unknown tracker ${recordDb[TrackRecordTable.trackerId]}")
 
         val track = recordDb.toTrack()
         tracker.refresh(userId, track)
@@ -309,8 +351,11 @@ object Track {
     ) {
         val recordDb =
             transaction {
-                TrackRecordTable.selectAll().where { TrackRecordTable.id eq recordId and (TrackRecordTable.user eq userId) }.first()
-            }
+                TrackRecordTable
+                    .selectAll()
+                    .where { TrackRecordTable.id eq recordId and (TrackRecordTable.user eq userId) }
+                    .firstOrNull()
+            } ?: throw NotFoundResponse("Track record $recordId not found")
 
         val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])
 
@@ -333,26 +378,44 @@ object Track {
         }
         val recordDb =
             transaction {
-                TrackRecordTable.selectAll().where { TrackRecordTable.id eq input.recordId and (TrackRecordTable.user eq userId) }.first()
-            }
+                TrackRecordTable
+                    .selectAll()
+                    .where { TrackRecordTable.id eq input.recordId and (TrackRecordTable.user eq userId) }
+                    .firstOrNull()
+            } ?: throw NotFoundResponse("Track record ${input.recordId} not found")
 
-        val tracker = TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])!!
+        val tracker =
+            TrackerManager.getTracker(recordDb[TrackRecordTable.trackerId])
+                ?: throw NotFoundResponse("Unknown tracker ${recordDb[TrackRecordTable.trackerId]}")
 
         if (input.status != null) {
-            recordDb[TrackRecordTable.status] = input.status
-            if (input.status == tracker.getCompletionStatus() && recordDb[TrackRecordTable.totalChapters] != 0) {
-                recordDb[TrackRecordTable.lastChapterRead] = recordDb[TrackRecordTable.totalChapters]
+            // an out-of-list status would be persisted and pushed to the remote
+            // as-is — reject it instead of corrupting the record
+            if (input.status in tracker.getStatusList()) {
+                recordDb[TrackRecordTable.status] = input.status
+                if (input.status == tracker.getCompletionStatus() && recordDb[TrackRecordTable.totalChapters] != 0) {
+                    recordDb[TrackRecordTable.lastChapterRead] = recordDb[TrackRecordTable.totalChapters]
+                }
+            } else {
+                logger.warn {
+                    "update(recordId= ${input.recordId}): ignoring status ${input.status} not in ${tracker.name}'s status list"
+                }
             }
         }
         if (input.lastChapterRead != null) {
-            if (recordDb[TrackRecordTable.lastChapterRead] == 0.0 &&
+            // status derivations only run when the caller did not send an
+            // explicit status — a progress update must not silently turn an
+            // explicit DROPPED/ON_HOLD into READING/COMPLETED
+            if (input.status == null &&
+                recordDb[TrackRecordTable.lastChapterRead] == 0.0 &&
                 recordDb[TrackRecordTable.lastChapterRead] < input.lastChapterRead &&
                 recordDb[TrackRecordTable.status] != tracker.getRereadingStatus()
             ) {
                 recordDb[TrackRecordTable.status] = tracker.getReadingStatus()
             }
             recordDb[TrackRecordTable.lastChapterRead] = input.lastChapterRead
-            if (recordDb[TrackRecordTable.totalChapters] != 0 &&
+            if (input.status == null &&
+                recordDb[TrackRecordTable.totalChapters] != 0 &&
                 input.lastChapterRead.toInt() == recordDb[TrackRecordTable.totalChapters]
             ) {
                 recordDb[TrackRecordTable.status] = tracker.getCompletionStatus()
@@ -360,8 +423,18 @@ object Track {
             }
         }
         if (input.scoreString != null) {
-            val score = tracker.indexToScore(userId, tracker.getScoreList(userId).indexOf(input.scoreString))
-            recordDb[TrackRecordTable.score] = score
+            // indexOf returns -1 for strings outside the score list; feeding
+            // that into indexToScore used to silently clear the remote score.
+            // "unknown score string" must stay distinguishable from an
+            // explicit "0" (which IS in the list and clears the score).
+            val scoreIndex = tracker.getScoreList(userId).indexOf(input.scoreString)
+            if (scoreIndex >= 0) {
+                recordDb[TrackRecordTable.score] = tracker.indexToScore(userId, scoreIndex)
+            } else {
+                logger.warn {
+                    "update(recordId= ${input.recordId}): ignoring scoreString '${input.scoreString}' not in ${tracker.name}'s score list"
+                }
+            }
         }
         if (input.startDate != null) {
             recordDb[TrackRecordTable.startDate] = input.startDate
@@ -387,8 +460,17 @@ object Track {
             return
         }
         scope.launch {
-            mangaIds.forEach {
-                trackChapter(userId, it)
+            mangaIds.forEach { mangaId ->
+                // per-manga isolation: one failing manga must not stop the rest of the batch
+                try {
+                    trackChapter(userId, mangaId)
+                } catch (e: CancellationException) {
+                    // scope cancellation is not "a failing manga" — it must
+                    // abort the whole batch instead of being logged per item
+                    throw e
+                } catch (e: Exception) {
+                    logger.error(e) { "trackChapter(mangaId= $mangaId) failed" }
+                }
             }
         }
     }
@@ -405,7 +487,7 @@ object Track {
         }
 
         if (chapterNumber != null && chapterNumber > 0) {
-            trackChapter(userId, mangaId, chapterNumber.toDouble())
+            trackChapter(userId, mangaId, chapterNumber.toDouble().roundedChapter())
         }
     }
 
@@ -439,6 +521,10 @@ object Track {
         records.forEach {
             try {
                 trackChapterForTracker(userId, it, chapterNumber)
+            } catch (e: CancellationException) {
+                // same contract as the per-manga catch: cancellation aborts
+                // the batch, it is not a per-record failure to swallow
+                throw e
             } catch (e: Exception) {
                 KotlinLogging
                     .logger("${logger.name}::trackChapter(mangaId= $mangaId, chapterNumber= $chapterNumber)")
@@ -473,17 +559,24 @@ object Track {
             return
         }
 
-        tracker.refresh(userId, track)
-        upsertTrackRecord(userId, track)
-
-        val lastChapterRead = track.last_chapter_read
-
-        log.debug { "remoteLastReadChapter= $lastChapterRead" }
-
-        if (chapterNumber > lastChapterRead) {
-            track.last_chapter_read = chapterNumber
-            tracker.update(userId, track, true)
+        // The remote read-modify-write below (refresh → compare → update) is
+        // serialized per (user, tracker) so concurrent marks can't regress the
+        // remote progress; combined with the monotonic guard a refreshed remote
+        // value >= the local chapter is never overwritten.
+        val mutex = trackChapterMutexes.computeIfAbsent(userId to tracker.id) { Mutex() }
+        mutex.withLock {
+            tracker.refresh(userId, track)
             upsertTrackRecord(userId, track)
+
+            val lastChapterRead = track.last_chapter_read
+
+            log.debug { "remoteLastReadChapter= $lastChapterRead" }
+
+            if (chapterNumber > lastChapterRead) {
+                track.last_chapter_read = chapterNumber
+                tracker.update(userId, track, true)
+                upsertTrackRecord(userId, track)
+            }
         }
     }
 
@@ -520,28 +613,49 @@ object Track {
         tracks: List<Track>,
     ): List<Int> =
         transaction {
-            if (tracks.isNotEmpty()) {
-                BatchUpdateStatement(TrackRecordTable)
-                    .apply {
-                        tracks.forEach {
-                            addBatch(EntityID(it.id!!, TrackRecordTable))
-                            this[remoteId] = it.remote_id
-                            this[libraryId] = it.library_id
-                            this[title] = it.title
-                            this[lastChapterRead] = it.last_chapter_read
-                            this[totalChapters] = it.total_chapters
-                            this[status] = it.status
-                            this[score] = it.score
-                            this[remoteUrl] = it.tracking_url
-                            this[startDate] = it.started_reading_date
-                            this[finishDate] = it.finished_reading_date
-                            this[private] = it.private
-                        }
-                    }.toExecutable()
-                    .execute(this@transaction)
+            if (tracks.isEmpty()) {
+                return@transaction emptyList()
             }
 
-            tracks.map { it.id!! }
+            // BatchUpdateStatement locates rows by id alone — the user column
+            // never reaches the WHERE clause — so ownership is verified
+            // up-front: a foreign (or un-persisted, null-id) record can never
+            // be written through this function.
+            val recordIds =
+                tracks.map {
+                    requireNotNull(it.id) { "Cannot update a track record without an id" }
+                }
+            val ownedIds =
+                TrackRecordTable
+                    .selectAll()
+                    .where {
+                        (TrackRecordTable.id inList recordIds.map { EntityID(it, TrackRecordTable) }) and
+                            (TrackRecordTable.user eq userId)
+                    }.mapTo(HashSet()) { it[TrackRecordTable.id].value }
+            require(ownedIds.containsAll(recordIds)) {
+                "Track record ids not found or not owned by user $userId"
+            }
+
+            BatchUpdateStatement(TrackRecordTable)
+                .apply {
+                    tracks.forEachIndexed { index, it ->
+                        addBatch(EntityID(recordIds[index], TrackRecordTable))
+                        this[remoteId] = it.remote_id
+                        this[libraryId] = it.library_id
+                        this[title] = it.title
+                        this[lastChapterRead] = it.last_chapter_read
+                        this[totalChapters] = it.total_chapters
+                        this[status] = it.status
+                        this[score] = it.score
+                        this[remoteUrl] = it.tracking_url
+                        this[startDate] = it.started_reading_date
+                        this[finishDate] = it.finished_reading_date
+                        this[private] = it.private
+                    }
+                }.toExecutable()
+                .execute(this@transaction)
+
+            recordIds
         }
 
     fun insertTrackRecord(
@@ -579,7 +693,11 @@ object Track {
         val callbackUrl: String? = null,
         val username: String? = null,
         val password: String? = null,
-    )
+    ) {
+        // the password slot and the OAuth callbackUrl both carry bearer
+        // credentials — never let them end up in logs via toString
+        override fun toString(): String = "LoginInput(trackerId=$trackerId, callbackUrl=***, username=$username, password=***)"
+    }
 
     @Serializable
     data class LogoutInput(

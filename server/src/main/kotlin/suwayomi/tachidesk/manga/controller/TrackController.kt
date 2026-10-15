@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -131,8 +132,11 @@ object TrackController {
             },
             behaviorOf = { ctx, mangaId, trackerId, remoteId, private ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val remoteIdLong =
+                    remoteId.toLongOrNull()
+                        ?: throw BadRequestResponse("Invalid remoteId '$remoteId': expected a number")
                 ctx.future {
-                    future { Track.bind(userId, mangaId, trackerId, remoteId.toLong(), private) }
+                    future { Track.bind(userId, mangaId, trackerId, remoteIdLong, private) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },

@@ -4,7 +4,9 @@ import androidx.core.net.toUri
 import eu.kanade.tachiyomi.data.track.kitsu.dto.KitsuOAuth
 import eu.kanade.tachiyomi.network.DELETE
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.jsonMime
 import eu.kanade.tachiyomi.network.parseAs
@@ -24,10 +26,13 @@ import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuAddMangaResult
 import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuAlgoliaSearchResult
 import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuCurrentUserResult
 import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuListSearchResult
+import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuMangaResponse
 import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuSearchResult
+import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.dto.KitsuUser
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
 import java.net.URLEncoder
 
 class KitsuApi(
@@ -43,6 +48,9 @@ class KitsuApi(
         userId: String,
     ): Track =
         withIOContext {
+            if (userId.isBlank() || track.remote_id == 0L) {
+                throw IOException("Kitsu: cannot add a library entry without a user id and a media id")
+            }
             val data =
                 buildJsonObject {
                     putJsonObject("data") {
@@ -61,7 +69,8 @@ class KitsuApi(
                             }
                             putJsonObject("media") {
                                 putJsonObject("data") {
-                                    put("id", track.remote_id)
+                                    // JSON:API resource ids are strings
+                                    put("id", track.remote_id.toString())
                                     put("type", "manga")
                                 }
                             }
@@ -80,23 +89,30 @@ class KitsuApi(
                     ).awaitSuccess()
                     .parseAs<KitsuAddMangaResult>()
                     .let {
-                        track.library_id = it.data.id
+                        track.library_id = it.data.id.toLongOrNull()
                         track
                     }
             }
         }
 
-    suspend fun updateLibManga(track: Track): Track =
+    suspend fun updateLibManga(
+        track: Track,
+        ratingTwenty: Int?,
+    ): Track =
         withIOContext {
+            val libraryId =
+                track.library_id?.takeIf { it != 0L }
+                    ?: throw IOException("Kitsu: cannot update a library entry without its id")
             val data =
                 buildJsonObject {
                     putJsonObject("data") {
                         put("type", "libraryEntries")
-                        put("id", track.library_id)
+                        // JSON:API resource ids are strings
+                        put("id", libraryId.toString())
                         putJsonObject("attributes") {
                             put("status", track.toApiStatus())
                             put("progress", track.last_chapter_read.toInt())
-                            put("ratingTwenty", track.toApiScore())
+                            put("ratingTwenty", ratingTwenty)
                             put("startedAt", KitsuDateHelper.convert(track.started_reading_date))
                             put("finishedAt", KitsuDateHelper.convert(track.finished_reading_date))
                             put("private", track.private)
@@ -108,7 +124,7 @@ class KitsuApi(
                 .newCall(
                     Request
                         .Builder()
-                        .url("${BASE_URL}library-entries/${track.library_id}")
+                        .url("${BASE_URL}library-entries/$libraryId")
                         .headers(
                             headersOf("Content-Type", VND_API_JSON),
                         ).patch(data.toString().toRequestBody(VND_JSON_MEDIA_TYPE))
@@ -119,14 +135,27 @@ class KitsuApi(
         }
 
     suspend fun removeLibManga(track: Track) {
+        val libraryId =
+            track.library_id?.takeIf { it != 0L }
+                // without a library entry id there is nothing to delete —
+                // failing here used to block the local unbind as well
+                ?: return
         withIOContext {
             authClient
                 .newCall(
                     DELETE(
-                        "${BASE_URL}library-entries/${track.library_id}",
+                        "${BASE_URL}library-entries/$libraryId",
                         headers = headersOf("Content-Type", VND_API_JSON),
                     ),
-                ).awaitSuccess()
+                ).await()
+                .use { response ->
+                    // 404 means the remote entry is already gone — the delete
+                    // goal is met either way, so it must not abort the local
+                    // unbind
+                    if (!response.isSuccessful && response.code != 404) {
+                        throw HttpException(response.code)
+                    }
+                }
         }
     }
 
@@ -180,6 +209,9 @@ class KitsuApi(
         userId: String,
     ): Track? =
         withIOContext {
+            if (userId.isBlank() || track.remote_id == 0L) {
+                return@withIOContext null
+            }
             val url =
                 "${BASE_URL}library-entries"
                     .toUri()
@@ -193,8 +225,12 @@ class KitsuApi(
                     .awaitSuccess()
                     .parseAs<KitsuListSearchResult>()
                     .let {
-                        if (it.data.isNotEmpty() && it.included.isNotEmpty()) {
-                            it.firstToTrack()
+                        // the media payload may be absent even though the
+                        // library entry exists — build from data + local
+                        // fields instead of misreporting "not collected"
+                        // (which used to trigger a duplicate remote add)
+                        if (it.data.isNotEmpty()) {
+                            it.firstToTrack(track)
                         } else {
                             null
                         }
@@ -204,11 +240,14 @@ class KitsuApi(
 
     suspend fun getLibManga(track: Track): Track =
         withIOContext {
+            val libraryId =
+                track.library_id?.takeIf { it != 0L }
+                    ?: throw IOException("Kitsu: cannot fetch a library entry without its id")
             val url =
                 "${BASE_URL}library-entries"
                     .toUri()
                     .buildUpon()
-                    .encodedQuery("filter[id]=${track.library_id}")
+                    .encodedQuery("filter[id]=$libraryId")
                     .appendQueryParameter("include", "manga")
                     .build()
             with(json) {
@@ -217,12 +256,25 @@ class KitsuApi(
                     .awaitSuccess()
                     .parseAs<KitsuListSearchResult>()
                     .let {
-                        if (it.data.isNotEmpty() && it.included.isNotEmpty()) {
-                            it.firstToTrack()
+                        if (it.data.isNotEmpty()) {
+                            it.firstToTrack(track)
                         } else {
-                            throw Exception("Could not find manga")
+                            throw IOException("Could not find manga")
                         }
                     }
+            }
+        }
+
+    suspend fun getManga(mediaId: Long): TrackSearch =
+        withIOContext {
+            with(json) {
+                authClient
+                    .newCall(GET("${BASE_URL}manga/$mediaId"))
+                    .awaitSuccess()
+                    .parseAs<KitsuMangaResponse>()
+                    .data
+                    ?.toTrack(mediaId)
+                    ?: throw IOException("Kitsu: media $mediaId not found")
             }
         }
 
@@ -248,21 +300,22 @@ class KitsuApi(
             }
         }
 
-    suspend fun getCurrentUser(): String =
+    suspend fun getCurrentUser(): KitsuUser =
         withIOContext {
             val url =
                 "${BASE_URL}users"
                     .toUri()
                     .buildUpon()
-                    .encodedQuery("filter[self]=true")
+                    .encodedQuery("filter[self]=true&fields[users]=ratingSystem")
                     .build()
             with(json) {
                 authClient
                     .newCall(GET(url.toString()))
                     .awaitSuccess()
                     .parseAs<KitsuCurrentUserResult>()
-                    .data[0]
-                    .id
+                    .data
+                    .firstOrNull()
+                    ?: throw IOException("Kitsu: could not fetch the current user")
             }
         }
 

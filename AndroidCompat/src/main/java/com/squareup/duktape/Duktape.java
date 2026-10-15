@@ -61,6 +61,15 @@ public final class Duktape implements Closeable, AutoCloseable {
     }
 
     /**
+     * Evaluate {@code script} using {@code fileName} for error reporting.
+     *
+     * @throws UnsupportedOperationException always; use {@code app.cash.quickjs.QuickJs}.
+     */
+    public synchronized Object evaluate(String script, String fileName) {
+        throw new UnsupportedOperationException(NOT_SUPPORTED);
+    }
+
+    /**
      * Provides {@code object} to JavaScript as a global object called {@code name}.
      *
      * @throws UnsupportedOperationException always; use {@code app.cash.quickjs.QuickJs}.

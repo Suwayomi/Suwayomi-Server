@@ -33,14 +33,19 @@ fun <T> paginatedFrom(
     val list = lister()
     val lastIndex = list.size - 1
 
-    val lowerIndex = pageNum * paginationFactor
-    val higherIndex = (pageNum + 1) * paginationFactor - 1
+    // a negative page number used to produce a negative slice range and throw — clamp it to
+    // the first page instead, the same lenient behavior a client expects from ?page=-1.
+    // Index math runs in Long: pageNum * paginationFactor can overflow Int for absurd page
+    // numbers, which would wrap around to a negative index and throw again
+    val safePageNum = pageNum.coerceAtLeast(0)
+    val lowerIndex = safePageNum.toLong() * paginationFactor
+    val higherIndex = lowerIndex + paginationFactor - 1
 
     if (lowerIndex > lastIndex) {
         return PaginatedList(emptyList(), false)
     }
 
-    val sliced = list.slice(lowerIndex..min(lastIndex, higherIndex))
+    val sliced = list.slice(lowerIndex.toInt()..min(lastIndex.toLong(), higherIndex).toInt())
 
     return PaginatedList(
         sliced,

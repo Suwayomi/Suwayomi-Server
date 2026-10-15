@@ -4,7 +4,9 @@ import android.net.Uri
 import androidx.core.net.toUri
 import eu.kanade.tachiyomi.network.DELETE
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.POST
+import eu.kanade.tachiyomi.network.await
 import eu.kanade.tachiyomi.network.awaitSuccess
 import eu.kanade.tachiyomi.network.jsonMime
 import eu.kanade.tachiyomi.network.parseAs
@@ -46,8 +48,18 @@ class ShikimoriApi(
                             put("user_id", userId)
                             put("target_id", track.remote_id)
                             put("target_type", "Manga")
-                            put("chapters", track.last_chapter_read.toInt())
-                            put("score", track.score.toInt())
+                            // Shikimori rejects chapters beyond the total with
+                            // a 422, and only ever stores the floored count
+                            put(
+                                "chapters",
+                                if (track.total_chapters > 0) {
+                                    minOf(track.last_chapter_read.toInt(), track.total_chapters)
+                                } else {
+                                    track.last_chapter_read.toInt()
+                                },
+                            )
+                            // scores outside 0-10 are rejected with a 422
+                            put("score", track.score.toInt().coerceIn(0, 10))
                             put("status", track.toShikimoriStatus())
                         }
                     }
@@ -73,10 +85,24 @@ class ShikimoriApi(
     ): Track = addLibManga(track, userId)
 
     suspend fun deleteLibManga(track: Track) {
+        val libraryId =
+            track.library_id?.takeIf { it != 0L }
+                // without a user_rates id there is nothing to delete — the
+                // request used to hit /v2/user_rates/null and 404, blocking
+                // the local unbind as well
+                ?: return
         withIOContext {
             authClient
-                .newCall(DELETE("$API_URL/v2/user_rates/${track.library_id}"))
-                .awaitSuccess()
+                .newCall(DELETE("$API_URL/v2/user_rates/$libraryId"))
+                .await()
+                .use { response ->
+                    // 404 means the remote entry is already gone (e.g. deleted
+                    // on the website) — the delete goal is met either way, so
+                    // it must not abort the local unbind
+                    if (!response.isSuccessful && response.code != 404) {
+                        throw HttpException(response.code)
+                    }
+                }
         }
     }
 
@@ -89,6 +115,8 @@ class ShikimoriApi(
                     .appendQueryParameter("order", "popularity")
                     .appendQueryParameter("search", search)
                     .appendQueryParameter("limit", "20")
+                    // the mangas index mixes in light novels — exclude them
+                    .appendQueryParameter("kind", "!light_novel,!novel")
                     .build()
             with(json) {
                 authClient
@@ -136,7 +164,8 @@ class ShikimoriApi(
                             throw Exception("Too many manga in response")
                         }
                         entries
-                            .map { it.toTrack(trackId, manga) }
+                            // an unknown remote status keeps the local one
+                            .map { it.toTrack(trackId, manga, track.status) }
                             .firstOrNull()
                     }
             }

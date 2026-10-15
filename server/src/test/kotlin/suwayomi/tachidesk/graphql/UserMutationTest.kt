@@ -277,7 +277,7 @@ class UserMutationTest : GraphQLTest() {
                     }
                 }
                 """.trimIndent(),
-                mapOf("input" to mapOf("username" to "newuser", "password" to "newpass")),
+                mapOf("input" to mapOf("username" to "newuser", "password" to "newpass1")),
             )
 
         response.assertNoErrors()
@@ -503,14 +503,14 @@ class UserMutationTest : GraphQLTest() {
         val userId = createTestUser("recoveryuser")
         val (code, _) = createRecoveryCodeFor(userId)
 
-        val redeemResponse = redeemRecoveryCode(code, "newpass")
+        val redeemResponse = redeemRecoveryCode(code, "newpass1")
         redeemResponse.assertNoErrors()
         assertEquals(userId, (redeemResponse.dataPath("redeemRecoveryCode", "user", "id") as Number).toInt())
         assertNotNull(redeemResponse.dataPath("redeemRecoveryCode", "accessToken"), "accessToken should be present")
         assertNotNull(redeemResponse.dataPath("redeemRecoveryCode", "refreshToken"), "refreshToken should be present")
 
         // login with the new password works
-        login("recoveryuser", "newpass").assertNoErrors()
+        login("recoveryuser", "newpass1").assertNoErrors()
 
         // login with the old password fails
         login("recoveryuser", "password").assertHasError()
@@ -521,7 +521,7 @@ class UserMutationTest : GraphQLTest() {
         val userId = createTestUser("singleuseuser")
         val (code, _) = createRecoveryCodeFor(userId)
 
-        redeemRecoveryCode(code, "newpass").assertNoErrors()
+        redeemRecoveryCode(code, "newpass1").assertNoErrors()
 
         redeemRecoveryCode(code, "otherpass").assertHasError()
     }
@@ -531,14 +531,14 @@ class UserMutationTest : GraphQLTest() {
         val userId = createTestUser("expireduser")
         val code = seedExpiredRecoveryCode(userId)
 
-        redeemRecoveryCode(code, "newpass").assertHasError()
+        redeemRecoveryCode(code, "newpass1").assertHasError()
     }
 
     @Test
     fun registrationCodeRedemptionFailsWhenExpired() {
         val code = seedExpiredRegistrationCode()
 
-        redeemRegistrationCode(code, "reguser", "regpass").assertHasError()
+        redeemRegistrationCode(code, "reguser", "regpass1").assertHasError()
 
         // no account was created
         val exists =
@@ -605,17 +605,17 @@ class UserMutationTest : GraphQLTest() {
         val (code2, _) = createRecoveryCodeFor(userId)
 
         // the first code was superseded by issuing the second one
-        redeemRecoveryCode(code1, "newpass").assertHasError()
+        redeemRecoveryCode(code1, "newpass1").assertHasError()
 
         // the second code still works
-        redeemRecoveryCode(code2, "newpass").assertNoErrors()
+        redeemRecoveryCode(code2, "newpass1").assertNoErrors()
     }
 
     @Test
     fun registrationCodeRoundTrip() {
         val (code, _) = createRegistrationCode()
 
-        val redeemResponse = redeemRegistrationCode(code, "reguser", "regpass")
+        val redeemResponse = redeemRegistrationCode(code, "reguser", "regpass1")
         redeemResponse.assertNoErrors()
         assertNotNull(redeemResponse.dataPath("redeemRegistrationCode", "accessToken"), "accessToken should be present")
         assertNotNull(redeemResponse.dataPath("redeemRegistrationCode", "refreshToken"), "refreshToken should be present")
@@ -643,7 +643,7 @@ class UserMutationTest : GraphQLTest() {
         assertEquals(listOf(UserRole.USER.name), roles)
 
         // login works
-        login("reguser", "regpass").assertNoErrors()
+        login("reguser", "regpass1").assertNoErrors()
     }
 
     @Test
@@ -689,7 +689,7 @@ class UserMutationTest : GraphQLTest() {
         assertEquals(0, (response.dataPath("userCodes") as List<*>).size)
 
         // redeeming the registration code consumes it
-        redeemRegistrationCode(registrationCode, "reguser2", "regpass").assertNoErrors()
+        redeemRegistrationCode(registrationCode, "reguser2", "regpass1").assertNoErrors()
 
         response = userCodes()
         response.assertNoErrors()
@@ -708,7 +708,7 @@ class UserMutationTest : GraphQLTest() {
         revokeUserCode(codeId).assertNoErrors()
 
         // the revoked code can no longer be redeemed
-        redeemRecoveryCode(code, "newpass").assertHasError()
+        redeemRecoveryCode(code, "newpass1").assertHasError()
 
         // revoking it again fails
         revokeUserCode(codeId).assertHasError()
@@ -754,7 +754,7 @@ class UserMutationTest : GraphQLTest() {
                         }
                     }
                     """.trimIndent(),
-                    mapOf("input" to mapOf("newPassword" to "newpass", "oldPassword" to "password")),
+                    mapOf("input" to mapOf("newPassword" to "newpass1", "oldPassword" to "password")),
                     user = UserType.User(userId, listOf(UserPermission.DOWNLOAD_CHAPTERS)),
                 )
             response.assertNoErrors()
@@ -821,7 +821,7 @@ class UserMutationTest : GraphQLTest() {
                 "input" to
                     mapOf(
                         "username" to username,
-                        "password" to "newpass",
+                        "password" to "newpass1",
                         "userPermissions" to permissions,
                     ),
             ),

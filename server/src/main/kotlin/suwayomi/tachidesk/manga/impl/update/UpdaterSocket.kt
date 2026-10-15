@@ -15,7 +15,13 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
     private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val updater: IUpdater by injectLazy()
+
+    @Volatile
     private var job: Job? = null
+
+    // Jetty invokes ws handlers on its own threads — serialize the check-and-start/stop so two
+    // concurrent addClient calls can't both see an inactive job and start duplicate collectors
+    private val jobLock = Any()
 
     override fun notifyClient(
         ctx: WsContext,
@@ -47,16 +53,20 @@ object UpdaterSocket : Websocket<UpdateStatus>() {
     override fun addClient(ctx: WsContext) {
         logger.info { ctx.sessionId() }
         super.addClient(ctx)
-        if (job?.isActive != true) {
-            job = start()
+        synchronized(jobLock) {
+            if (job?.isActive != true) {
+                job = start()
+            }
         }
     }
 
     override fun removeClient(ctx: WsContext) {
         super.removeClient(ctx)
-        if (clients.isEmpty()) {
-            job?.cancel()
-            job = null
+        synchronized(jobLock) {
+            if (clients.isEmpty()) {
+                job?.cancel()
+                job = null
+            }
         }
     }
 

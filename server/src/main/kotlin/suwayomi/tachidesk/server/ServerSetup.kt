@@ -76,6 +76,9 @@ import xyz.nulldev.ts.config.setLogLevelFor
 import xyz.nulldev.ts.config.updateFileAppender
 import java.io.File
 import java.net.Authenticator
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.net.PasswordAuthentication
 import java.nio.file.Files
 import java.security.Security
@@ -327,6 +330,14 @@ fun applicationSetup() {
         .userAgentFlow
         .onEach { System.setProperty("http.agent", it) }
         .launchIn(GlobalScope)
+
+    // Route java.net.CookieHandler callers (WebView/CEF bridge, java.net URLs opened
+    // by extensions) through the persistent store. This used to be a hidden side
+    // effect of constructing NetworkHelper; installing it here keeps the JVM-global
+    // mutation explicit at startup.
+    CookieHandler.setDefault(
+        CookieManager(Injekt.get<NetworkHelper>().cookieStore, CookiePolicy.ACCEPT_ALL),
+    )
 
     // create or update conf file if doesn't exist
     try {

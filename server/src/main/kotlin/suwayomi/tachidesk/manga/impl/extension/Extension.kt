@@ -87,24 +87,29 @@ import kotlin.io.path.outputStream
 import kotlin.io.path.relativeTo
 import kotlin.io.path.walk
 
+private fun isSafePathComponent(name: String): Boolean = SafePath.buildValidFilename(name) == name
+
+// file-level so the path-safety contract can be exercised by SafePathTest without
+// initializing the whole Extension object (which needs the Koin runtime)
+internal fun requireSafePathComponent(name: String) {
+    require(isSafePathComponent(name)) { "Invalid file name component \"$name\"" }
+}
+
 object Extension {
     private val logger = KotlinLogging.logger {}
     private val applicationDirs: ApplicationDirs by injectLazy()
 
     private suspend fun fetchExtensionFile(url: String): Path {
+        // extension jar/apk URLs come from the store index — apply the same
+        // egress policy as the index fetch (SSRF containment)
+        val validatedUrl = StoreUrlPolicy.requireAllowedUrl(url)
         val name = Uri.parse(url).lastPathSegment!!
         requireSafePathComponent(name)
         val savePath = Path(applicationDirs.tempRoot) / "extensions" / name
         // download jar file
-        downloadExtension(url, savePath)
+        downloadExtension(validatedUrl.toString(), savePath)
 
         return savePath
-    }
-
-    private fun isSafePathComponent(name: String): Boolean = SafePath.buildValidFilename(name) == name
-
-    private fun requireSafePathComponent(name: String) {
-        require(isSafePathComponent(name)) { "Invalid file name component \"$name\"" }
     }
 
     private fun requireSafePathComponentOrDelete(
@@ -903,10 +908,14 @@ object Extension {
         val iconUrl =
             transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }[ExtensionTable.iconUrl]
 
+        // iconUrl is store-supplied and lazily fetched on demand — apply the
+        // egress policy so a store cannot use icon requests as a blind SSRF probe
+        val validatedIconUrl = StoreUrlPolicy.requireAllowedUrl(iconUrl)
+
         return getImageResponse(cacheSaveDir, pkgName) {
             network.client
                 .newCall(
-                    GET(iconUrl, cache = CacheControl.FORCE_NETWORK),
+                    GET(validatedIconUrl.toString(), cache = CacheControl.FORCE_NETWORK),
                 ).await()
         }
     }

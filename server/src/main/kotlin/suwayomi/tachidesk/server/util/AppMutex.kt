@@ -123,7 +123,20 @@ object AppMutex {
         }
     }
 
+    /**
+     * Test hook: the unit-test JVM never opens the configured port, so probing it can only
+     * yield false positives — any other listener (e.g. a dev server on :4567) would be
+     * classified as a running instance and [shutdownApp] -> exitProcess would kill the whole
+     * Gradle test worker. The shared test bootstrap sets this once, making the check a
+     * constant Clear; production startup never touches it.
+     */
+    @Volatile
+    var bypassForTests = false
+
     private fun checkAppMutex(): AppMutexState {
+        if (bypassForTests) {
+            return AppMutexState.Clear
+        }
         if (!tryLockDataDir()) {
             // the lock is held by another instance even if its HTTP layer is not up yet
             // (covers the startup race where both instances would otherwise see "Clear")

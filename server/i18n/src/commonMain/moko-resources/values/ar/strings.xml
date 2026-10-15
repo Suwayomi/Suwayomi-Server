@@ -27,7 +27,7 @@
     <string name="opds_feeds_genre_specific_title">الأنواع: %1$s</string>
     <string name="opds_feeds_status_specific_title">الحالة: %1$s</string>
     <string name="opds_feeds_language_specific_title">اللغات: %1$s</string>
-    <string name="opds_feeds_source_specific_title">المصدر: %1$s</string>
+
     <string name="opds_feeds_library_source_specific_title">المكتبة - المصدر: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">المصدر: %1$s - شائع</string>
     <string name="opds_feeds_source_specific_latest_title">المصدر: %1$s - الأحدث</string>
@@ -88,8 +88,8 @@
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">السلسلة: %1$s | %2$s</string>
-    <string name="opds_chapter_details_scanlator">| بواسطة %1$s</string>
-    <string name="opds_chapter_details_progress">| التقدم: %1$d من %2$d</string>
+    <string name="opds_chapter_details_scanlator"> | بواسطة %1$s</string>
+    <string name="opds_chapter_details_progress"> | التقدم: %1$d من %2$s</string>
     <string name="opds_manga_summary_status">الحالة: %1$s</string>
     <string name="opds_manga_summary_source">المصدر: %1$s</string>
     <string name="opds_manga_summary_language">اللغة: %1$s</string>

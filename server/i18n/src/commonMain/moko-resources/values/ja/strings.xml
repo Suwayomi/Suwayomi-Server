@@ -8,7 +8,7 @@
     <string name="opds_feeds_category_specific_title">カテゴリー: %1$s</string>
     <string name="opds_feeds_library_updates_entry_content">ライブラリから最近更新された章</string>
     <string name="opds_feeds_status_entry_content">出版状況でマンガを閲覧</string>
-    <string name="opds_feeds_source_specific_title">ソース: %1$s</string>
+
     <string name="opds_feeds_manga_chapters">%1$s 章</string>
     <string name="opds_search_description">カタログ内でマンガを検索する</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | 詳細</string>
@@ -46,8 +46,8 @@
     <string name="opds_facet_filter_read_only">既読のみ</string>
     <string name="opds_linktitle_view_chapter_details">詳細を表示・ページ取得</string>
     <string name="opds_linktitle_self_feed">現在のページ</string>
-    <string name="opds_chapter_details_scanlator">| 翻訳 %1$s</string>
-    <string name="opds_chapter_details_progress">| 読書進捗: %1$d / %2$d</string>
+    <string name="opds_chapter_details_scanlator"> | 翻訳 %1$s</string>
+    <string name="opds_chapter_details_progress"> | 読書進捗: %1$d / %2$s</string>
     <string name="manga_status_ongoing">連載中</string>
     <string name="manga_status_completed">完結済み</string>
     <string name="manga_status_licensed">正式版</string>

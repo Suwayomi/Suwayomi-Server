@@ -12,6 +12,8 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.withOperation
@@ -84,6 +86,18 @@ object BackupController {
         requireMaxUploadSize(req().contentLengthLong)
         return BoundedInputStream(bodyInputStream(), Backup.MAX_UPLOAD_SIZE).use { it.readBytes() }
     }
+
+    /**
+     * The flags REST exports run with: the global server settings stay out of the backup
+     * unless the user holds MANAGE_SETTINGS — the same restriction the GraphQL
+     * `createBackup` mutation applies.
+     */
+    private fun backupFlags(userId: Int): BackupFlags =
+        if (hasPermission(userId, UserPermission.MANAGE_SETTINGS)) {
+            BackupFlags.DEFAULT
+        } else {
+            BackupFlags.DEFAULT.copy(includeServerSettings = false)
+        }
 
     /** expects a Tachiyomi protobuf backup in the body */
     val protobufImport =
@@ -162,7 +176,7 @@ object BackupController {
                 ctx.contentType("application/octet-stream")
                 ctx.future {
                     future {
-                        ProtoBackupExport.createBackup(userId, BackupFlags.DEFAULT)
+                        ProtoBackupExport.createBackup(userId, backupFlags(userId))
                     }.thenApply { ctx.result(it) }
                 }
             },
@@ -189,7 +203,7 @@ object BackupController {
                     future {
                         ProtoBackupExport.createBackup(
                             userId,
-                            BackupFlags.DEFAULT,
+                            backupFlags(userId),
                         )
                     }.thenApply { ctx.result(it) }
                 }

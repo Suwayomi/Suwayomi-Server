@@ -4,6 +4,9 @@ Suwayomi supports a multi-user mode in which each person on the server has their
 
 Multi-user mode is gated by the `ui_login` authentication mode. In all other modes (`none`, `basic_auth`, `simple_login`) there is effectively a single admin account and the per-user features are inactive.
 
+> [!WARNING]
+> With `server.authMode = "none"` **every** request and WebSocket connection resolves to the built-in admin — there is no credential check at all. Anyone who can reach the port gets full control of the server, including the remote WebView (`/api/v1/webview`), which lets them drive the server's embedded browser to load arbitrary `http(s)` URLs — including hosts on your LAN that are not reachable from the outside. Never use `none` on an untrusted or publicly reachable network; use at least `basic_auth`/`simple_login`, or `ui_login` for multi-user setups.
+
 ## Enabling multi-user mode
 
 Set the authentication mode to `ui_login` in `server.conf`:
@@ -79,6 +82,7 @@ Accounts are granted fine-grained permissions. The `ADMIN` role (user `1`) bypas
 | `INSTALL_EXTERNAL_EXTENSIONS` | Installing untrusted extensions (`installExternalExtension`) |
 | `UNINSTALL_EXTENSIONS` | Uninstalling extensions |
 | `DOWNLOAD_CHAPTERS` | Enqueueing chapter downloads |
+| `ACCESS_NSFW` | Seeing and browsing NSFW-flagged sources and extensions in GraphQL and OPDS listings; accounts without it have NSFW entries filtered out. Intentionally **not** part of the default permission set — an admin must grant it explicitly |
 | `MANAGE_SETTINGS` | Reading (real values) / writing global server settings; including server settings in backup exports and applying them on backup restore |
 | `MANAGE_USERS` | Registering users, listing users, granting/revoking permissions, setting roles, issuing user codes |
 | `MANAGE_EXTENSION_STORES` | Adding/removing extension stores |
@@ -103,6 +107,14 @@ The permission gates apply to the REST API (`/api/v1/…`) with the same semanti
 | `POST`/`DELETE /api/v1/download/batch` | `DOWNLOAD_CHAPTERS` |
 
 An authenticated account that lacks the required permission gets `403 Forbidden`; an unauthenticated request gets `401 Unauthorized`. Other REST endpoints behave like their GraphQL counterparts: they require a logged-in account and apply the same internal checks (e.g. backup restore only applies global server settings for `MANAGE_SETTINGS` holders — see [Server settings in backups](#server-settings-in-backups)).
+
+### Remote WebView WebSocket
+
+The remote WebView (`GET /api/v1/webview` serves the page, `ws /api/v1/webview` is its control channel) requires `MANAGE_CACHE`. Connection handling:
+
+- Unauthenticated connections are closed with code `1011` and reason `Unauthorized` — the bundled WebView page treats that as the signal to show its in-page login dialog.
+- Authenticated connections without `MANAGE_CACHE` are also closed with `1011`, with a `Forbidden` reason.
+- `loadUrl` requests are checked against a URL policy: only `http`/`https` targets are accepted. A refused load produces a server-to-client **`error` event** — a JSON frame `{"type":"error","message":"Refused to load URL, only http/https URLs are allowed: <url>"}` — so clients should surface it rather than treating the load as silently dropped. Other client→server message types are `resize`, `event`, `paste`, `copy`, and `ping` (answered by `{"type":"pong"}`).
 
 ### Default permissions for new accounts
 

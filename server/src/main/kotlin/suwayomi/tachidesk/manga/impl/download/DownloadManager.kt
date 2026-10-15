@@ -70,21 +70,44 @@ object DownloadManager {
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
     private val downloaders = ConcurrentHashMap<Long, Downloader>()
 
+    /**
+     * Set while the queue was explicitly stopped ([stop]/[clear]); keeps the downloader
+     * watcher from immediately re-launching queued items behind a stop.
+     */
+    @Volatile
+    private var downloadsStopped = false
+
     private const val DOWNLOAD_QUEUE_KEY = "downloadQueueKey"
     private val sharedPreferences =
         Injekt.get<Application>().getSharedPreferences(DownloadManager::class.jvmName, Context.MODE_PRIVATE)
 
     private fun loadDownloadQueue(): List<Int> =
-        sharedPreferences
-            .getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())
-            ?.mapNotNull {
-                it.toInt()
-            }.orEmpty()
+        // stored as a comma-separated list so the queue order survives restarts
+        // (a StringSet is unordered); corrupted entries are skipped one by one
+        try {
+            sharedPreferences
+                .getString(DOWNLOAD_QUEUE_KEY, null)
+                .orEmpty()
+                .split(',')
+                .mapNotNull { it.trim().toIntOrNull() }
+        } catch (e: ClassCastException) {
+            // legacy format: the queue was persisted as an unordered StringSet —
+            // it is still readable and gets migrated on the next save
+            logger.warn { "Download queue stored in legacy StringSet format, migrating on next save" }
+            sharedPreferences
+                .getStringSet(DOWNLOAD_QUEUE_KEY, emptySet())
+                ?.mapNotNull { it.toIntOrNull() }
+                .orEmpty()
+        }
 
     private fun saveDownloadQueue() {
+        val orderedChapterIds =
+            synchronized(downloadQueue) {
+                downloadQueue.map { it.chapterId }
+            }
         sharedPreferences
             .edit()
-            .putStringSet(DOWNLOAD_QUEUE_KEY, downloadQueue.map { it.chapterId.toString() }.toSet())
+            .putString(DOWNLOAD_QUEUE_KEY, orderedChapterIds.joinToString(","))
             .commit()
     }
 
@@ -174,29 +197,38 @@ object DownloadManager {
         downloads: List<DownloadUpdate> = emptyList(),
         gqlEmit: Boolean = false,
     ) {
-        val outdatedUpdates =
-            downloadUpdates.filter { update ->
-                downloads.any { download ->
-                    download.downloadQueueItem.chapterId ==
-                        update.downloadQueueItem.chapterId
+        // The merge of incoming updates and the snapshot+clear for gqlEmit have to be
+        // atomic: an update arriving between a plain read and `clear()` would be dropped
+        // without ever reaching subscribers.
+        val updatesToEmit: DownloadUpdates? =
+            synchronized(downloadUpdates) {
+                val outdatedUpdates =
+                    downloadUpdates.filter { update ->
+                        downloads.any { download ->
+                            download.downloadQueueItem.chapterId ==
+                                update.downloadQueueItem.chapterId
+                        }
+                    }
+                downloadUpdates.removeAll(outdatedUpdates.toSet())
+                downloadUpdates.addAll(downloads)
+
+                // There is a problem where too many immediate updates can cause the client to lag out (e.g., in case
+                // it has to update the queue in the cache based on the updates).
+                // This happens in case e.g., a source is broken and all its downloads error out basically immediately.
+                // With each errored out download, a new one starts, which causes an immediate notification to the
+                // clients. While the immediate notification functionality is no longer needed for the latest graphql
+                // download subscription, it is still required for the deprecated version as well as the rest api
+                // subscription.
+                if (gqlEmit) {
+                    getDownloadUpdates().also { downloadUpdates.clear() }
+                } else {
+                    null
                 }
             }
-        downloadUpdates.removeAll(outdatedUpdates.toSet())
-        downloadUpdates.addAll(downloads)
 
-        // There is a problem where too many immediate updates can cause the client to lag out (e.g., in case it has to
-        // update the queue in the cache based on the updates).
-        // This happens in case e.g., a source is broken and all its downloads error out basically immediately.
-        // With each errored out download, a new one starts, which causes an immediate notification to the clients.
-        // While the immediate notification functionality is no longer needed for the latest graphql download subscription,
-        // it is still required for the deprecated version as well as the rest api subscription.
-        if (gqlEmit) {
-            val updates = getDownloadUpdates()
-
-            downloadUpdates.clear()
-
+        if (updatesToEmit != null) {
             scope.launch {
-                updatesFlow.emit(updates)
+                updatesFlow.emit(updatesToEmit)
             }
         }
 
@@ -304,7 +336,7 @@ object DownloadManager {
                         "Failed: ${downloadQueue.size - availableDownloads.size}"
                 }
 
-                if (runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
+                if (!downloadsStopped && runningDownloaders.size < serverConfig.maxSourcesInParallel.value) {
                     availableDownloads
                         .asSequence()
                         .map { it.sourceId }
@@ -328,17 +360,23 @@ object DownloadManager {
         }
     }
 
-    private fun getDownloader(sourceId: Long) =
-        downloaders.getOrPut(sourceId) {
-            Downloader(
-                scope = scope,
-                sourceId = sourceId,
-                downloadQueue = downloadQueue,
-                notifier = ::handleDownloadUpdate,
-                onComplete = ::refreshDownloaders,
-                onDownloadFinished = ::triggerSaveDownloadQueue,
-            )
-        }
+    private fun getDownloader(sourceId: Long): Downloader =
+        // a stopped downloader instance must never be restarted (Downloader.start no-ops
+        // on it); a legitimate later start has to work on a fresh instance instead
+        downloaders.compute(sourceId) { _, existing ->
+            if (existing == null || existing.stopped) {
+                Downloader(
+                    scope = scope,
+                    sourceId = sourceId,
+                    downloadQueue = downloadQueue,
+                    notifier = ::handleDownloadUpdate,
+                    onComplete = ::refreshDownloaders,
+                    onDownloadFinished = ::triggerSaveDownloadQueue,
+                )
+            } else {
+                existing
+            }
+        }!!
 
     /**
      * Marks the given chapters as download-requested for [userId] and returns the chapter ids
@@ -352,7 +390,23 @@ object DownloadManager {
 
         val chapterIds =
             transaction {
-                ChapterUserTable.batchUpsert(chapterIds, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
+                // drop ids that don't reference an existing chapter row first — upserting
+                // them would violate the chapter FK and roll back the whole batch
+                val existingChapterIds =
+                    ChapterTable
+                        .select(ChapterTable.id)
+                        .where { ChapterTable.id inList chapterIds }
+                        .mapTo(LinkedHashSet()) { it[ChapterTable.id].value }
+
+                if (existingChapterIds.isEmpty()) {
+                    return@transaction emptyList()
+                }
+
+                ChapterUserTable.batchUpsert(
+                    existingChapterIds,
+                    ChapterUserTable.chapter,
+                    ChapterUserTable.user,
+                ) { chapterId ->
                     this[ChapterUserTable.user] = userId
                     this[ChapterUserTable.chapter] = chapterId
                     this[ChapterUserTable.isDownloadRequested] = true
@@ -361,12 +415,12 @@ object DownloadManager {
                 val chapterIdsToEnqueue =
                     ChapterTable
                         .select(ChapterTable.id)
-                        .where { (ChapterTable.id inList chapterIds) and (ChapterTable.isDownloaded eq false) }
+                        .where { (ChapterTable.id inList existingChapterIds) and (ChapterTable.isDownloaded eq false) }
                         .map { it[ChapterTable.id].value }
                         .toSet()
 
                 // the shared download already exists, so it counts as downloaded for the user right away
-                val chapterIdsAlreadyDownloaded = chapterIds.filter { it !in chapterIdsToEnqueue }
+                val chapterIdsAlreadyDownloaded = existingChapterIds.filter { it !in chapterIdsToEnqueue }
                 if (chapterIdsAlreadyDownloaded.isNotEmpty()) {
                     ChapterUserTable.update({
                         (ChapterUserTable.user eq userId) and
@@ -424,27 +478,33 @@ object DownloadManager {
      * If any of inputs was actually added to queue, starts the queue
      */
     private fun addMultipleToQueue(inputs: List<Pair<MangaDataClass, ChapterDataClass>>) {
-        val size = downloadQueue.size
-        val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
-        if (addedChapters.isNotEmpty()) {
-            start()
-            notifyAllClients(
-                false,
-                addedChapters.mapIndexed { index, item ->
-                    DownloadUpdate(
-                        DownloadUpdateType.QUEUED,
-                        item,
-                        size + index,
-                    )
-                },
-            )
-            triggerSaveDownloadQueue()
+        // the check-then-add per item and the queue size used for update positions have
+        // to be one atomic section; concurrent enqueues could otherwise interleave and
+        // produce duplicate entries or wrong positions
+        synchronized(downloadQueue) {
+            val size = downloadQueue.size
+            val addedChapters = inputs.mapNotNull { addToQueue(it.first, it.second) }
+            if (addedChapters.isNotEmpty()) {
+                start()
+                notifyAllClients(
+                    false,
+                    addedChapters.mapIndexed { index, item ->
+                        DownloadUpdate(
+                            DownloadUpdateType.QUEUED,
+                            item,
+                            size + index,
+                        )
+                    },
+                )
+                triggerSaveDownloadQueue()
+            }
         }
     }
 
     /**
      * Tries to add chapter to queue.
      * If chapter is added, returns the created DownloadChapter, otherwise returns null
+     * Must be called while holding the [downloadQueue] monitor.
      */
     private fun addToQueue(
         manga: MangaDataClass,
@@ -473,6 +533,9 @@ object DownloadManager {
 
             downloadChapter.state = Queued
             downloadChapter.progress = 0f
+            // reset the try counter as well — otherwise a re-enqueued item (tries == MAX)
+            // would error out again on the very first failed retry
+            downloadChapter.tries = 0
 
             return downloadChapter
         }
@@ -572,27 +635,32 @@ object DownloadManager {
     private fun reorder(reorder: ChapterDownloadReorder): DownloadQueueItem? {
         val (chapterId, to) = reorder
 
-        require(to >= 0) { "'to' must be over or equal to 0" }
+        // find+remove+insert must be atomic or a concurrent queue mutation can turn the
+        // target index stale; the target is clamped into the post-removal index range
+        // (0..size) instead of throwing IndexOutOfBoundsException
+        synchronized(downloadQueue) {
+            val download = downloadQueue.find { it.chapterId == chapterId } ?: return null
 
-        val download = downloadQueue.find { it.chapterId == chapterId } ?: return null
+            logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
 
-        logger.debug { "reorder download $download from ${downloadQueue.indexOf(download)} to $to" }
+            downloadQueue -= download
+            downloadQueue.add(to.coerceIn(0, downloadQueue.size), download)
 
-        downloadQueue -= download
-        downloadQueue.add(to, download)
-
-        return download
+            return download
+        }
     }
 
     fun start() {
         logger.debug { "start" }
 
+        downloadsStopped = false
         refreshDownloaders()
     }
 
     suspend fun stop() {
         logger.debug { "stop" }
 
+        downloadsStopped = true
         coroutineScope {
             downloaders
                 .map { (_, downloader) ->

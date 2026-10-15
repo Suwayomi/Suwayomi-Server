@@ -16,7 +16,6 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greaterEq
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.batchInsert
@@ -27,6 +26,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.jetbrains.exposed.v1.jdbc.upsert
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
@@ -182,11 +182,19 @@ object BackupMangaHandler {
                             if (it.record == null) {
                                 null
                             } else {
+                                // also fill the deprecated int field 3 when the id fits:
+                                // Mihon/Tachiyomi readers ignore field 100 (mediaId)
+                                @Suppress("DEPRECATION")
+                                val mediaIdInt =
+                                    it.record.remoteId
+                                        .takeIf { id -> id in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong() }
+                                        ?.toInt() ?: 0
                                 BackupTracking(
                                     syncId = it.record.trackerId,
                                     // forced not null so its compatible with 1.x backup system
                                     libraryId = it.record.libraryId ?: 0,
                                     mediaId = it.record.remoteId,
+                                    mediaIdInt = mediaIdInt,
                                     title = it.record.title,
                                     lastChapterRead = it.record.lastChapterRead.toFloat(),
                                     totalChapters = it.record.totalChapters,
@@ -225,12 +233,23 @@ object BackupMangaHandler {
         val dbCategoryIds = categories.mapNotNull { categoryMapping[it] }
 
         try {
-            restoreMangaData(userId, backupManga, chapters, dbCategoryIds, history, tracking, flags, syncMode)
+            restoreMangaData(userId, backupManga, chapters, dbCategoryIds, history, tracking, flags, syncMode, errors)
         } catch (e: Exception) {
             val sourceName = sourceMapping[backupManga.source] ?: backupManga.source.toString()
             errors.add(Date() to "${backupManga.title} [$sourceName]: ${e.message}")
         }
     }
+
+    /**
+     * Decodes the wire memo, treating absent/blank/invalid payloads and the default
+     * empty JSON object as "no memo" so they can never wipe stored data.
+     */
+    private fun decodeMemo(memo: ByteArray): JsonObject? =
+        memo
+            .decodeToString()
+            .takeIf { it.isNotBlank() }
+            ?.let { runCatching { Json.decodeFromString<JsonObject>(it) }.getOrNull() }
+            ?.takeIf { it.isNotEmpty() }
 
     private fun restoreMangaData(
         userId: Int,
@@ -241,6 +260,7 @@ object BackupMangaHandler {
         tracks: List<BackupTracking>,
         flags: BackupFlags,
         syncMode: SyncRestoreMode,
+        errors: MutableList<Pair<Date, String>>,
     ) {
         val dbManga =
             transaction {
@@ -251,9 +271,12 @@ object BackupMangaHandler {
                     .firstOrNull()
             }
         val restoreMode = if (dbManga != null) RestoreMode.EXISTING else RestoreMode.NEW
-        // a newer local copy wins the next upload; categories and tracking are part of the manga's version
+        // a newer local copy wins the next upload; categories and tracking are part of the manga's version.
+        // getWithUserData is a left join: a manga without a MANGAUSER row reports 0 rather
+        // than failing the whole entry
         val keepLocalManga =
-            syncMode == SyncRestoreMode.ADOPT && dbManga != null && manga.version < dbManga[MangaUserTable.version]
+            syncMode == SyncRestoreMode.ADOPT && dbManga != null &&
+                manga.version < (dbManga.getOrNull(MangaUserTable.version) ?: 0)
 
         val mangaId =
             transaction {
@@ -269,15 +292,15 @@ object BackupMangaHandler {
                                 it[author] = manga.author
                                 it[description] = manga.description
                                 it[genre] = manga.genre.joinToString()
-                                it[status] = manga.status
+                                it[status] = MangaStatus.valueOf(manga.status).value
                                 it[thumbnail_url] = manga.thumbnailUrl
                                 it[updateStrategy] = manga.updateStrategy.name
 
                                 it[sourceReference] = manga.source
 
-                                it[initialized] = manga.description != null
+                                it[initialized] = manga.initialized || manga.description != null
 
-                                it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
+                                it[memo] = decodeMemo(manga.memo) ?: JsonObject(emptyMap())
                             }.value
                     } else if (keepLocalManga) {
                         dbManga[MangaTable.id].value
@@ -290,13 +313,14 @@ object BackupMangaHandler {
                             it[author] = manga.author ?: dbManga[author]
                             it[description] = manga.description ?: dbManga[description]
                             it[genre] = manga.genre.ifEmpty { null }?.joinToString() ?: dbManga[genre]
-                            it[status] = manga.status
+                            it[status] = MangaStatus.valueOf(manga.status).value
                             it[thumbnail_url] = manga.thumbnailUrl ?: dbManga[thumbnail_url]
                             it[updateStrategy] = manga.updateStrategy.name
 
-                            it[initialized] = dbManga[initialized] || manga.description != null
+                            it[initialized] = dbManga[initialized] || manga.initialized || manga.description != null
 
-                            it[memo] = Json.decodeFromString<JsonObject>(manga.memo.decodeToString())
+                            // an absent/default "{}" backup memo must not wipe the local one
+                            it[memo] = decodeMemo(manga.memo) ?: dbManga[memo]
                         }
 
                         dbMangaId
@@ -311,7 +335,7 @@ object BackupMangaHandler {
                             if (syncMode == SyncRestoreMode.ADOPT) {
                                 manga.favorite
                             } else {
-                                dbManga?.get(MangaUserTable.inLibrary) == true || manga.favorite
+                                dbManga?.getOrNull(MangaUserTable.inLibrary) == true || manga.favorite
                             }
                         it[inLibraryAt] = manga.dateAdded.milliseconds.inWholeSeconds
 
@@ -326,7 +350,7 @@ object BackupMangaHandler {
 
                         if (syncMode == SyncRestoreMode.CONVERGE) {
                             it[lastModifiedAt] = Clock.System.now().epochSeconds
-                            it[version] = max(manga.version, dbManga?.get(MangaUserTable.version) ?: 0) + 1
+                            it[version] = max(manga.version, dbManga?.getOrNull(MangaUserTable.version) ?: 0) + 1
                         } else {
                             it[lastModifiedAt] = manga.lastModifiedAt
                             it[version] = manga.version
@@ -338,13 +362,15 @@ object BackupMangaHandler {
                 // delete thumbnail in case cached data still exists
                 clearThumbnail(mangaId)
 
-                if (flags.includeClientData && manga.meta.isNotEmpty()) {
+                // keepLocalManga means an older remote copy arrived: its meta (a versionless
+                // blob) must not overwrite the newer local one
+                if (flags.includeClientData && manga.meta.isNotEmpty() && !keepLocalManga) {
                     modifyMangasMetas(userId, mapOf(mangaId to manga.meta))
                 }
 
                 // merge chapter data
                 if (flags.includeChapters || flags.includeHistory) {
-                    restoreMangaChapterData(userId, mangaId, restoreMode, chapters, history, flags, syncMode)
+                    restoreMangaChapterData(userId, mangaId, restoreMode, chapters, history, flags, syncMode, keepLocalManga)
                 }
 
                 // update categories
@@ -356,26 +382,53 @@ object BackupMangaHandler {
             }
 
         if (flags.includeTracking && !keepLocalManga) {
-            restoreMangaTrackerData(userId, mangaId, tracks)
+            restoreMangaTrackerData(userId, mangaId, manga.title, tracks, errors)
         }
 
         // TODO: insert/merge history
     }
 
+    /**
+     * Merges backup chapters that share a [BackupChapter.url] (e.g. the same chapter
+     * published under different scanlator names) into one entry instead of silently
+     * dropping every occurrence after the first — read/bookmark state and progress are
+     * merged, the freshest bookkeeping wins.
+     */
+    private fun mergeDuplicateChapters(chapters: List<BackupChapter>): List<BackupChapter> =
+        chapters
+            .groupBy { it.url }
+            .map { (_, sameUrlChapters) ->
+                if (sameUrlChapters.size == 1) {
+                    sameUrlChapters.first()
+                } else {
+                    sameUrlChapters.reduce { merged, next ->
+                        merged.apply {
+                            read = read || next.read
+                            bookmark = bookmark || next.bookmark
+                            lastPageRead = max(lastPageRead, next.lastPageRead)
+                            version = max(version, next.version)
+                            lastModifiedAt = max(lastModifiedAt, next.lastModifiedAt)
+                            if (scanlator.isNullOrBlank()) scanlator = next.scanlator
+                            meta = meta + next.meta
+                            // prefer a real memo over the default empty object
+                            if (decodeMemo(memo) == null) memo = next.memo
+                        }
+                    }
+                }
+            }
+
     private fun getMangaChapterToRestoreInfo(
         mangaId: Int,
         restoreMode: RestoreMode,
-        chapters: List<BackupChapter>,
+        deduplicatedChapters: List<BackupChapter>,
     ): Pair<List<BackupChapter>, List<Pair<BackupChapter, ResultRow>>> {
-        val uniqueChapters = chapters.distinctBy { it.url }
-
         if (restoreMode == RestoreMode.NEW) {
-            return Pair(uniqueChapters, emptyList())
+            return Pair(deduplicatedChapters, emptyList())
         }
 
         val dbChaptersByUrl = ChapterTable.selectAll().where { ChapterTable.manga eq mangaId }.associateBy { it[ChapterTable.url] }
 
-        val (chaptersToUpdate, chaptersToInsert) = uniqueChapters.partition { dbChaptersByUrl.contains(it.url) }
+        val (chaptersToUpdate, chaptersToInsert) = deduplicatedChapters.partition { dbChaptersByUrl.contains(it.url) }
         val chaptersToUpdateToDbChapter = chaptersToUpdate.map { it to dbChaptersByUrl[it.url]!! }
 
         return chaptersToInsert to chaptersToUpdateToDbChapter
@@ -389,8 +442,11 @@ object BackupMangaHandler {
         history: List<BackupHistory>,
         flags: BackupFlags,
         syncMode: SyncRestoreMode,
+        keepLocalManga: Boolean = false,
     ) = dbTransaction {
-        val (chaptersToInsert, allChaptersToUpdate) = getMangaChapterToRestoreInfo(mangaId, restoreMode, chapters)
+        val deduplicatedChapters = mergeDuplicateChapters(chapters)
+        val (chaptersToInsert, allChaptersToUpdate) =
+            getMangaChapterToRestoreInfo(mangaId, restoreMode, deduplicatedChapters)
         val historyByChapter = history.groupBy({ it.url }, { it.lastRead })
 
         val existingUserData =
@@ -398,7 +454,9 @@ object BackupMangaHandler {
                 .selectAll()
                 .where {
                     (ChapterUserTable.user eq userId) and
-                        (ChapterUserTable.chapter inList allChaptersToUpdate.map { it.second[ChapterTable.id].value })
+                        // literal, chunked IN list: bound parameters hit the driver's
+                        // variable limit on large backups
+                        (ChapterUserTable.chapter inIds allChaptersToUpdate.map { it.second[ChapterTable.id].value })
                 }.associate { it[ChapterUserTable.chapter].value to it }
 
         val chaptersToUpdateToDbChapter =
@@ -426,12 +484,16 @@ object BackupMangaHandler {
                             this[ChapterTable.chapter_number] = chapter.chapterNumber
                             this[ChapterTable.scanlator] = chapter.scanlator
 
-                            this[ChapterTable.sourceOrder] = chaptersToInsert.size - chapter.sourceOrder
+                            // the wire order indexes into the *full* backup chapter list,
+                            // not the subset that happens to be new here
+                            this[ChapterTable.sourceOrder] = deduplicatedChapters.size - chapter.sourceOrder
                             this[ChapterTable.manga] = mangaId
 
                             this[ChapterTable.fetchedAt] = chapter.dateFetch.milliseconds.inWholeSeconds
 
-                            this[ChapterTable.memo] = Json.decodeFromString<JsonObject>(chapter.memo.decodeToString())
+                            // same defensive decode as the manga-level memo:
+                            // non-JSON bytes must not fail the whole manga
+                            this[ChapterTable.memo] = decodeMemo(chapter.memo) ?: JsonObject(emptyMap())
                         }.map { it[ChapterTable.id].value }
 
                 ChapterUserTable.batchUpsert(
@@ -508,16 +570,26 @@ object BackupMangaHandler {
                     }
 
                     SyncRestoreMode.NONE -> {
-                        this[ChapterUserTable.lastModifiedAt] = backupChapter.lastModifiedAt
-                        this[ChapterUserTable.version] =
-                            max(backupChapter.version, userData?.get(ChapterUserTable.version) ?: 0)
-                        this[ChapterUserTable.isSyncing] = true
+                        val localVersion = userData?.get(ChapterUserTable.version) ?: 0
+                        this[ChapterUserTable.version] = max(backupChapter.version, localVersion)
+                        // lastModifiedAt follows the version winner so a newer local row
+                        // does not get stamped with the older backup timestamp
+                        this[ChapterUserTable.lastModifiedAt] =
+                            if (backupChapter.version >= localVersion) {
+                                backupChapter.lastModifiedAt
+                            } else {
+                                userData?.get(ChapterUserTable.lastModifiedAt) ?: 0
+                            }
+                        // a file restore does not participate in sync; the row must not be
+                        // left flagged as in-flight
+                        this[ChapterUserTable.isSyncing] = false
                     }
                 }
             }
         }
 
-        if (flags.includeClientData) {
+        // see the manga-level note: versionless client metas must not overwrite newer data
+        if (flags.includeClientData && !keepLocalManga) {
             val chaptersToInsertByChapterId = insertedChapterIds.zip(chaptersToInsert)
             val chapterToUpdateByChapterId =
                 chaptersToUpdateToDbChapter.map { (backupChapter, dbChapter) ->
@@ -550,13 +622,17 @@ object BackupMangaHandler {
     private fun restoreMangaTrackerData(
         userId: Int,
         mangaId: Int,
+        mangaTitle: String,
         tracks: List<BackupTracking>,
+        errors: MutableList<Pair<Date, String>>,
     ) {
         val dbTrackRecordsByTrackerId =
             Tracker
                 .getTrackRecordsByMangaId(userId, mangaId)
                 .mapNotNull { it.record?.toTrack() }
                 .associateBy { it.tracker_id }
+
+        val unsupportedTrackerIds = mutableListOf<Int>()
 
         val (existingTracks, newTracks) =
             tracks
@@ -565,6 +641,9 @@ object BackupMangaHandler {
 
                     val isUnsupportedTracker = TrackerManager.getTracker(track.tracker_id) == null
                     if (isUnsupportedTracker) {
+                        // no implementation on this server: report the dropped record
+                        // instead of silently losing the user's tracking data
+                        unsupportedTrackerIds += track.tracker_id
                         return@mapNotNull null
                     }
 
@@ -580,9 +659,26 @@ object BackupMangaHandler {
                     dbTrack.also {
                         it.remote_id = track.remote_id
                         it.library_id = track.library_id
+                        it.title = track.title
+                        // reading progress only moves forward on merge
                         it.last_chapter_read = max(dbTrack.last_chapter_read, track.last_chapter_read)
+                        it.total_chapters = track.total_chapters
+                        it.status = track.status
+                        it.score = track.score
+                        it.tracking_url = track.tracking_url
+                        it.started_reading_date = track.started_reading_date
+                        it.finished_reading_date = track.finished_reading_date
+                        it.private = track.private
                     }
                 }.partition { (it.id ?: -1) > 0 }
+
+        if (unsupportedTrackerIds.isNotEmpty()) {
+            errors.add(
+                Date() to
+                    "$mangaTitle: skipped tracking records for unsupported trackers " +
+                    unsupportedTrackerIds.sorted().joinToString(", "),
+            )
+        }
 
         Tracker.updateTrackRecords(userId, existingTracks)
         Tracker.insertTrackRecords(userId, newTracks)

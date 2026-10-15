@@ -27,7 +27,7 @@
     <string name="opds_feeds_genre_specific_title">Είδος: %1$s</string>
     <string name="opds_feeds_status_specific_title">Κατάσταση: %1$s</string>
     <string name="opds_feeds_language_specific_title">Γλώσσα: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Πηγή: %1$s</string>
+
     <string name="opds_feeds_library_source_specific_title">Βιβλιοθήκη - Πηγή: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">Πηγή: %1$s - Δημοφιλές</string>
     <string name="opds_feeds_source_specific_latest_title">Πηγή: %1$s - Τελευταίο</string>
@@ -90,8 +90,8 @@
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">Σειρά: %1$s | %2$s</string>
-    <string name="opds_chapter_details_scanlator">| Από %1$s</string>
-    <string name="opds_chapter_details_progress">| Πρόοδος: %1$d από %2$d</string>
+    <string name="opds_chapter_details_scanlator"> | Από %1$s</string>
+    <string name="opds_chapter_details_progress"> | Πρόοδος: %1$d από %2$s</string>
     <string name="opds_manga_summary_status">Κατάσταση: %1$s</string>
     <string name="opds_manga_summary_source">Πηγή: %1$s</string>
     <string name="opds_manga_summary_language">Γλώσσα: %1$s</string>

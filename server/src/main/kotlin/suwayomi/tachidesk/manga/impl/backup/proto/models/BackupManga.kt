@@ -52,4 +52,64 @@ data class BackupManga(
     @ProtoNumber(112) var memo: ByteArray = JsonObjectEmptyBytes,
     // suwayomi
     @ProtoNumber(9000) var meta: Map<String, String> = emptyMap(),
-)
+) {
+    // memo is a ByteArray: the generated data class equals would compare it by reference,
+    // so equality is hand-rolled with contentEquals
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is BackupManga) return false
+
+        return source == other.source &&
+            url == other.url &&
+            title == other.title &&
+            artist == other.artist &&
+            author == other.author &&
+            description == other.description &&
+            genre == other.genre &&
+            status == other.status &&
+            thumbnailUrl == other.thumbnailUrl &&
+            dateAdded == other.dateAdded &&
+            viewer == other.viewer &&
+            chapters == other.chapters &&
+            categories == other.categories &&
+            tracking == other.tracking &&
+            favorite == other.favorite &&
+            chapterFlags == other.chapterFlags &&
+            viewer_flags == other.viewer_flags &&
+            history == other.history &&
+            updateStrategy == other.updateStrategy &&
+            lastModifiedAt == other.lastModifiedAt &&
+            version == other.version &&
+            initialized == other.initialized &&
+            memo.contentEquals(other.memo) &&
+            meta == other.meta
+    }
+
+    override fun hashCode(): Int {
+        var result = source.hashCode()
+        result = 31 * result + url.hashCode()
+        result = 31 * result + title.hashCode()
+        result = 31 * result + (artist?.hashCode() ?: 0)
+        result = 31 * result + (author?.hashCode() ?: 0)
+        result = 31 * result + (description?.hashCode() ?: 0)
+        result = 31 * result + genre.hashCode()
+        result = 31 * result + status
+        result = 31 * result + (thumbnailUrl?.hashCode() ?: 0)
+        result = 31 * result + dateAdded.hashCode()
+        result = 31 * result + viewer
+        result = 31 * result + chapters.hashCode()
+        result = 31 * result + categories.hashCode()
+        result = 31 * result + tracking.hashCode()
+        result = 31 * result + favorite.hashCode()
+        result = 31 * result + chapterFlags
+        result = 31 * result + (viewer_flags ?: 0)
+        result = 31 * result + history.hashCode()
+        result = 31 * result + updateStrategy.hashCode()
+        result = 31 * result + lastModifiedAt.hashCode()
+        result = 31 * result + version.hashCode()
+        result = 31 * result + initialized.hashCode()
+        result = 31 * result + memo.contentHashCode()
+        result = 31 * result + meta.hashCode()
+        return result
+    }
+}

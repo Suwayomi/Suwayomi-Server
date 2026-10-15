@@ -25,6 +25,12 @@ import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService.DEVICE_ID_KEY
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService.PREFERENCES_NAME
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService.SERVER_ADDRESS_KEY
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService.USERKEY_KEY
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService.USERNAME_KEY
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService.key
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
@@ -56,13 +62,8 @@ class KoreaderSyncServiceTest : ApplicationTest() {
 
     // Lazy: the shared preferences come from Koin, which is only started by @BeforeAll.
     private val preferences: SharedPreferences by lazy {
-        Injekt.get<Application>().getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+        Injekt.get<Application>().getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     }
-
-    private fun key(
-        base: String,
-        userId: Int,
-    ) = "${base}_$userId"
 
     @BeforeEach
     fun setUp() {
@@ -127,19 +128,19 @@ class KoreaderSyncServiceTest : ApplicationTest() {
     ) {
         preferences
             .edit()
-            .putString(key("server_address", user), serverAddress)
-            .putString(key("username", user), username)
-            .putString(key("user_key", user), userKey)
+            .putString(key(SERVER_ADDRESS_KEY, user), serverAddress)
+            .putString(key(USERNAME_KEY, user), username)
+            .putString(key(USERKEY_KEY, user), userKey)
             .apply()
     }
 
     private fun clearCredentials(user: Int) {
         preferences
             .edit()
-            .remove(key("server_address", user))
-            .remove(key("username", user))
-            .remove(key("user_key", user))
-            .remove(key("client_id", user))
+            .remove(key(SERVER_ADDRESS_KEY, user))
+            .remove(key(USERNAME_KEY, user))
+            .remove(key(USERKEY_KEY, user))
+            .remove(key(DEVICE_ID_KEY, user))
             .apply()
     }
 
@@ -159,31 +160,31 @@ class KoreaderSyncServiceTest : ApplicationTest() {
         setCredentials(userId, "https://a.example.com", "alice", "alice-key")
         setCredentials(userId2, "https://b.example.com", "bob", "bob-key")
 
-        assertEquals("alice", preferences.getString(key("username", userId), ""))
-        assertEquals("bob", preferences.getString(key("username", userId2), ""))
+        assertEquals("alice", preferences.getString(key(USERNAME_KEY, userId), ""))
+        assertEquals("bob", preferences.getString(key(USERNAME_KEY, userId2), ""))
 
         // Log out user A only
         KoreaderSyncService.logout(userId)
 
         // User A's credentials are cleared
-        assertEquals(null, preferences.getString(key("username", userId), null))
-        assertEquals(null, preferences.getString(key("user_key", userId), null))
-        assertEquals(null, preferences.getString(key("server_address", userId), null))
-        assertEquals(null, preferences.getString(key("client_id", userId), null))
+        assertEquals(null, preferences.getString(key(USERNAME_KEY, userId), null))
+        assertEquals(null, preferences.getString(key(USERKEY_KEY, userId), null))
+        assertEquals(null, preferences.getString(key(SERVER_ADDRESS_KEY, userId), null))
+        assertEquals(null, preferences.getString(key(DEVICE_ID_KEY, userId), null))
 
         // User B's credentials are untouched
-        assertEquals("https://b.example.com", preferences.getString(key("server_address", userId2), null))
-        assertEquals("bob", preferences.getString(key("username", userId2), null))
-        assertEquals("bob-key", preferences.getString(key("user_key", userId2), null))
+        assertEquals("https://b.example.com", preferences.getString(key(SERVER_ADDRESS_KEY, userId2), null))
+        assertEquals("bob", preferences.getString(key(USERNAME_KEY, userId2), null))
+        assertEquals("bob-key", preferences.getString(key(USERKEY_KEY, userId2), null))
     }
 
     @Test
     fun perUserConnectionIsolation() {
         setCredentials(userId, "https://a.example.com", "alice", "alice-key")
 
-        assertEquals("alice", preferences.getString(key("username", userId), ""))
+        assertEquals("alice", preferences.getString(key(USERNAME_KEY, userId), ""))
         // User B is unaffected
-        assertEquals(null, preferences.getString(key("username", userId2), null))
+        assertEquals(null, preferences.getString(key(USERNAME_KEY, userId2), null))
     }
 
     @Test

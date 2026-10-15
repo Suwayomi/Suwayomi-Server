@@ -18,6 +18,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Properties
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -176,6 +177,69 @@ class PersistentCookieStoreTest {
         val store = newStore(rootDir)
         assertTrue(cookieNames(store, "https://example.com/").contains("restored"))
         assertTrue(cookieNames(store, "https://sub.example.com/").contains("restored"))
+    }
+
+    // ---- java.net.CookieStore entry-point cases (U8) ----
+
+    @Test
+    fun `add replaces only a same-name cookie on the same path`() {
+        val store = newStore()
+        store.add(URI("https://example.com/foo"), HttpCookie("n", "path-scoped").apply { path = "/foo" })
+        store.add(URI("https://example.com/"), HttpCookie("n", "root-scoped").apply { path = "/" })
+
+        // Different paths -> different identities, both must coexist under /foo.
+        val cookies = store.get(URI("https://example.com/foo")).filter { it.name == "n" }
+        assertEquals(2, cookies.size)
+        assertEquals("path-scoped", cookies.first { it.path == "/foo" }.value)
+        assertEquals("root-scoped", cookies.first { it.path == "/" }.value)
+
+        // Same name + same path -> replacement.
+        store.add(URI("https://example.com/"), HttpCookie("n", "root-v2").apply { path = "/" })
+        assertEquals("root-v2", store.get(URI("https://example.com/")).first { it.name == "n" }.value)
+        assertEquals(2, store.get(URI("https://example.com/foo")).filter { it.name == "n" }.size)
+    }
+
+    @Test
+    fun `get with a non-http URI returns empty instead of throwing`() {
+        val store = newStore()
+        store.add(URI("https://example.com/"), HttpCookie("n", "v"))
+
+        // jar:/file:/opaque URIs reach the store through CookieHandler paths.
+        assertTrue(store.get(URI("jar:file:/tmp/x.jar!/")).isEmpty())
+        assertTrue(store.get(URI("file:///tmp/x")).isEmpty())
+        assertTrue(store.get(URI("mailto:a@b.c")).isEmpty())
+    }
+
+    @Test
+    fun `remove by uri deletes domain-keyed parent cookies`() {
+        val store = newStore()
+        // Stored under "example.com" (domain cookie) but also served to subdomains.
+        store.add(URI("https://sub.example.com/"), HttpCookie("d", "v").apply { domain = "example.com" })
+
+        store.remove(URI("https://sub.example.com/"))
+        assertTrue(cookieNames(store, "https://sub.example.com/").isEmpty())
+        assertTrue(cookieNames(store, "https://example.com/").isEmpty())
+    }
+
+    @Test
+    fun `getCookies and getStoredCookies drop expired entries`() {
+        val store = newStore()
+        store.add(URI("https://example.com/"), HttpCookie("dead", "1").apply { maxAge = 0L })
+        store.add(URI("https://example.com/"), HttpCookie("live", "1").apply { maxAge = 3_600L })
+
+        assertFalse(store.getCookies().any { it.name == "dead" })
+        assertFalse(store.getStoredCookies().any { it.name == "dead" })
+        assertTrue(store.getStoredCookies().any { it.name == "live" })
+    }
+
+    @Test
+    fun `Domain attribute naming a public suffix is rejected`() {
+        val store = newStore()
+        // Domain=.github.io would otherwise leak to every *.github.io page.
+        store.add(URI("https://user.github.io/"), HttpCookie("evil", "1").apply { domain = ".github.io" })
+
+        assertTrue(store.getCookies().isEmpty())
+        assertTrue(cookieNames(store, "https://other.github.io/").isEmpty())
     }
 
     private companion object {

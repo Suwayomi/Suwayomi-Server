@@ -38,6 +38,9 @@ import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import kotlin.time.Duration.Companion.days
 
 object ProtoBackupExport : ProtoBackupBase() {
@@ -84,7 +87,13 @@ object ProtoBackupExport : ProtoBackupBase() {
             serverConfig.backupTime.value
                 .split(":")
                 .map { it.toInt() }
-        val backupInterval = serverConfig.backupInterval.value.days
+        // the interval lands in a "*/n" day-of-month cron field; a persisted value that
+        // predates the setting's max=31 (or an out-of-range DB write) must not produce an
+        // invalid schedule — clamp to [1, 31] here as well (0 already returned above)
+        val backupInterval =
+            serverConfig.backupInterval.value
+                .coerceIn(1, 31)
+                .days
 
         // trigger last backup in case the server wasn't running on the scheduled time
         val lastAutomatedBackup = preferences.getLong(LAST_AUTOMATED_BACKUP_KEY, 0)
@@ -121,15 +130,25 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         var anySucceeded = false
         users.forEach { (userId, username) ->
+            // the userId keeps names unique across users whose usernames sanitize to the
+            // same string ("a/b" and "a?b" both become "a_b"); the tmp+rename dance makes
+            // sure a failed/crashed backup never leaves a truncated .tachibk behind
+            val backupFile =
+                File(automatedBackupDir, Backup.getFilename("$AUTO_BACKUP_FILENAME.$userId.$username"))
+            val tmpFile = File(automatedBackupDir, "${backupFile.name}.tmp")
             try {
                 createBackup(userId, BackupFlags.fromServerConfig()).use { input ->
-                    val backupFile = File(automatedBackupDir, Backup.getFilename("$AUTO_BACKUP_FILENAME.$username"))
-
-                    backupFile.outputStream().use { output -> input.copyTo(output) }
+                    tmpFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                try {
+                    Files.move(tmpFile.toPath(), backupFile.toPath(), StandardCopyOption.ATOMIC_MOVE)
+                } catch (_: AtomicMoveNotSupportedException) {
+                    Files.move(tmpFile.toPath(), backupFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
                 }
                 logger.info { "Automated backup for user $userId complete" }
                 anySucceeded = true
             } catch (e: Exception) {
+                tmpFile.delete()
                 logger.error(e) { "Automated backup for user $userId failed" }
             }
         }
@@ -149,7 +168,11 @@ object ProtoBackupExport : ProtoBackupBase() {
             return
         }
 
-        automatedBackupDir.listFiles { file -> file.name.startsWith(Backup.getBasename(AUTO_BACKUP_FILENAME)) }?.forEach { file ->
+        // names are "org.suwayomi.tachidesk.auto.<userId>.<username>_…​.tachibk": match on
+        // the exact "…​.auto." prefix so a manual backup merely *starting* with "auto"
+        // cannot be TTL-deleted
+        val autoBackupPrefix = "${Backup.getBasename()}.$AUTO_BACKUP_FILENAME."
+        automatedBackupDir.listFiles { file -> file.name.startsWith(autoBackupPrefix) }?.forEach { file ->
             try {
                 cleanupAutomatedBackupFile(file)
             } catch (_: Exception) {

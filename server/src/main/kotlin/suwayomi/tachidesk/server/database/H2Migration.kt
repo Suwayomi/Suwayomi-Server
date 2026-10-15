@@ -113,9 +113,24 @@ object H2Migration {
             h2New,
         )
 
-        // Delete attempted migration if failed previously
+        // Delete attempted migration if failed previously — but first check whether a
+        // previous run already produced a store the bundled driver can open (e.g. it got
+        // as far as the migrated result and only failed copying it back over a corrupt
+        // mvStore). Deleting a valid result would rerun a doomed migration of the same
+        // broken input on every start.
         val newDatabase = Path(rootDir, "database.${h2New.substringAfterLast('.')}.mv.db")
         val modifiedNewDatabase = Path(rootDir, "database.${h2Old.substringAfterLast('.')}.modified.${h2New.substringAfterLast('.')}.mv.db")
+        val priorResult =
+            listOf(modifiedNewDatabase, newDatabase).firstOrNull {
+                it.exists() && opensWithBundledDriver(it.absolutePathString().removeSuffix(".mv.db"))
+            }
+        if (priorResult != null) {
+            priorResult.copyTo(mvStore, overwrite = true)
+            newDatabase.deleteIfExists()
+            modifiedNewDatabase.deleteIfExists()
+            logger.info { "Reusable H2 migration result found, copied into place: ${priorResult.absolutePathString()}" }
+            return
+        }
         newDatabase.deleteIfExists()
         modifiedNewDatabase.deleteIfExists()
 

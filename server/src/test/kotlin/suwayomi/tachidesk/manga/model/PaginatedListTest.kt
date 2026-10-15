@@ -10,11 +10,12 @@ package suwayomi.tachidesk.manga.model
 import suwayomi.tachidesk.manga.model.dataclass.PAGINATION_FACTOR
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.manga.model.dataclass.paginatedFrom
-import suwayomi.tachidesk.test.ApplicationTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class PaginatedListTest : ApplicationTest() {
+// pure helper — no ApplicationTest fixture needed (keeps the shared Koin/DB runtime out of
+// the class setup entirely)
+class PaginatedListTest {
     @Test
     fun `empty list`() {
         val paginated = paginatedFrom(0) { listIndicesOf(0, 0) }
@@ -96,6 +97,35 @@ class PaginatedListTest : ApplicationTest() {
         assertEquals(
             PaginatedList(listIndicesOf(PAGINATION_FACTOR * 2, PAGINATION_FACTOR * 2 + 1), false),
             thirdPage,
+        )
+    }
+
+    @Test
+    fun `negative page number clamps to first page`() {
+        // pageNum < 0 used to build a negative slice range and throw
+        val masterLister = { listIndicesOf(0, PAGINATION_FACTOR * 2) }
+
+        assertEquals(
+            PaginatedList(listIndicesOf(0, PAGINATION_FACTOR), true),
+            paginatedFrom(-1, lister = masterLister),
+        )
+        assertEquals(
+            PaginatedList(listIndicesOf(0, PAGINATION_FACTOR), true),
+            paginatedFrom(Int.MIN_VALUE, lister = masterLister),
+        )
+    }
+
+    @Test
+    fun `page beyond the end is empty without a next page`() {
+        val masterLister = { listIndicesOf(0, PAGINATION_FACTOR) }
+
+        assertEquals(
+            PaginatedList(emptyList<Int>(), false),
+            paginatedFrom(1, lister = masterLister),
+        )
+        assertEquals(
+            PaginatedList(emptyList<Int>(), false),
+            paginatedFrom(Int.MAX_VALUE, lister = masterLister),
         )
     }
 

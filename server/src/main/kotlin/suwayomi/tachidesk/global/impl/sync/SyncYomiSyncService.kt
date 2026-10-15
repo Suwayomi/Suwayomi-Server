@@ -567,6 +567,9 @@ object SyncYomiSyncService {
 
         val localCategoriesMapByOrder = localCategories.associateBy { it.order }
         val remoteCategoriesMapByOrder = remoteCategories.associateBy { it.order }
+        // Distinct categories may share a name: resolve the merged category by uid
+        // first and fall back to name only when no uid is available.
+        val mergedCategoriesMapByUid = mergedCategories.filter { it.uid != 0L }.associateBy { it.uid }
         val mergedCategoriesMapByName = mergedCategories.associateBy { it.name }
 
         fun updateCategories(
@@ -577,7 +580,7 @@ object SyncYomiSyncService {
                 categories =
                     theManga.categories.mapNotNull {
                         theMap[it]?.let { category ->
-                            mergedCategoriesMapByName[category.name]?.order
+                            (mergedCategoriesMapByUid[category.uid] ?: mergedCategoriesMapByName[category.name])?.order
                         }
                     },
             )
@@ -793,8 +796,12 @@ object SyncYomiSyncService {
             if (localIndex != null) {
                 val localMatch = localCategoriesList[localIndex]
                 processedLocalIndices.add(localIndex)
-                // Conflict resolution
-                if (localMatch.version >= remote.version) {
+                // Conflict resolution — same tie-break as the manga merge: local only
+                // wins when strictly newer (version, then lastModifiedAt); a full tie
+                // takes remote so all devices converge on the server copy.
+                if (localMatch.version > remote.version ||
+                    (localMatch.version == remote.version && localMatch.lastModifiedAt > remote.lastModifiedAt)
+                ) {
                     logger.debug { "Keeping local category: ${localMatch.name} (UID: ${localMatch.uid})" }
                     result.add(localMatch)
                 } else {

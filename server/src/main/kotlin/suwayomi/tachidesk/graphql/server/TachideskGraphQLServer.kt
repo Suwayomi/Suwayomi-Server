@@ -92,8 +92,10 @@ class TachideskGraphQLServer(
     }
 
     fun handleSubscriptionDisconnect(context: WsCloseContext) {
-        sessionSendMutexes.remove(context.sessionId())
+        // terminate the session first: a flow that is still completing would otherwise
+        // re-create an orphaned send mutex via getOrPut after the remove below.
         subscriptionProtocolHandler.handleDisconnect(context)
+        sessionSendMutexes.remove(context.sessionId())
     }
 
     companion object {

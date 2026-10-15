@@ -9,7 +9,5 @@ fun Track.toApiStatus() =
         Kitsu.ON_HOLD -> "on_hold"
         Kitsu.DROPPED -> "dropped"
         Kitsu.PLAN_TO_READ -> "planned"
-        else -> throw Exception("Unknown status")
+        else -> throw IllegalArgumentException("Unknown status: $status")
     }
-
-fun Track.toApiScore(): String? = if (score > 0) (score * 2).toInt().toString() else null

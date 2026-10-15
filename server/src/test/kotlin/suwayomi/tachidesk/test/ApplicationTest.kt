@@ -28,6 +28,7 @@ import suwayomi.tachidesk.server.database.databaseUp
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.server.serverModule
 import suwayomi.tachidesk.server.settings.SettingsRegistry
+import suwayomi.tachidesk.server.util.AppMutex
 import suwayomi.tachidesk.server.util.AppMutex.handleAppMutex
 import suwayomi.tachidesk.server.util.ConfigTypeRegistration
 import uy.kohesive.injekt.Injekt
@@ -51,7 +52,30 @@ open class ApplicationTest {
         @BeforeAll
         @JvmStatic
         fun beforeAll() {
-            if (!initializedTheApp) {
+            ensureAppInitialized()
+        }
+
+        private val logger = KotlinLogging.logger {}
+
+        @Volatile
+        private var initializedTheApp = false
+
+        /** Whether the shared application/database runtime is already up in this JVM. */
+        val isAppInitialized: Boolean
+            get() = initializedTheApp
+
+        /**
+         * Idempotent one-time app+DB bootstrap, shared by every [ApplicationTest] subclass
+         * and by standalone suites that need the app but not the base class (migration tests
+         * on scratch databases, masstest). Without this guard a second [testingSetup] would
+         * stopKoin/startKoin, clear the SettingsRegistry and re-probe the app mutex, leaving
+         * later tests with a dead Koin app.
+         */
+        @JvmStatic
+        fun ensureAppInitialized() {
+            if (initializedTheApp) return
+            synchronized(this) {
+                if (initializedTheApp) return
                 val dataRoot = Path(BASE_PATH).absolutePathString()
                 System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
                 // Delete if previous config to restart from a fresh state
@@ -65,8 +89,11 @@ open class ApplicationTest {
             }
         }
 
-        private val logger = KotlinLogging.logger {}
-        private var initializedTheApp = false
+        /** Marks the shared runtime as uninitialized so the next [ensureAppInitialized] re-runs the bootstrap. */
+        @JvmStatic
+        fun markAppUninitialized() {
+            initializedTheApp = false
+        }
 
         fun testingSetup() {
             // register Tachidesk's config which is dubbed "ServerConfig"
@@ -105,7 +132,11 @@ open class ApplicationTest {
                 )
             }
 
-            // Make sure only one instance of the app is running
+            // Make sure only one instance of the app is running — bypassed in tests: the
+            // shared test JVM never opens the configured port, and a probe hit (e.g. a dev
+            // server on :4567) would call shutdownApp -> exitProcess, killing the Gradle
+            // test worker
+            AppMutex.bypassForTests = true
             handleAppMutex()
 
             // Load Android compatibility dependencies

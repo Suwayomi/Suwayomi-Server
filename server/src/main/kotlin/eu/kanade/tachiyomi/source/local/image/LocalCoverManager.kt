@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.source.local.image
 
 import eu.kanade.tachiyomi.source.local.io.LocalSourceFileSystem
 import eu.kanade.tachiyomi.source.model.SManga
+import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import java.io.File
 import java.io.InputStream
@@ -14,11 +15,17 @@ private const val COVER_BASENAME = "cover"
 class LocalCoverManager(
     private val fileSystem: LocalSourceFileSystem,
 ) {
+    private val logger = KotlinLogging.logger {}
+
     fun find(mangaUrl: String): File? =
         fileSystem
             .getFilesInMangaDirectory(mangaUrl)
             // Get all file whose names start with 'cover'
             .filter { it.isFile && it.nameWithoutExtension.equals(COVER_BASENAME, ignoreCase = true) }
+            // Deterministic order: when a stale cover survives deletion and coexists
+            // with a newer one, the most recently written file wins instead of
+            // whatever the directory listing happens to return first.
+            .sortedByDescending { it.lastModified() }
             // Get the first actual image
             .firstOrNull {
                 ImageUtil.isImage(it.name) { it.inputStream() }
@@ -60,7 +67,9 @@ class LocalCoverManager(
                 Files.move(tempFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
             }
             // A previous cover under a different extension is stale now
-            existing?.delete()
+            if (existing != null && !existing.delete() && existing.exists()) {
+                logger.warn { "Failed to delete previous cover ${existing.name}; it may still be served until removed manually" }
+            }
 
             manga.thumbnail_url = targetFile.absolutePath
             return targetFile

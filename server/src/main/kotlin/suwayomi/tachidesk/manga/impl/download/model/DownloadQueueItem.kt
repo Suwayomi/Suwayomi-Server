@@ -14,9 +14,15 @@ class DownloadQueueItem(
     val chapterIndex: Int,
     val mangaId: Int,
     val sourceId: Long,
+    @Volatile
     var pageCount: Int,
+    // mutated by downloader coroutines while readers iterate the queue on other
+    // threads; @Volatile keeps the state visible to everyone
+    @Volatile
     var state: DownloadState = Queued,
+    @Volatile
     var progress: Float = 0f,
+    @Volatile
     var tries: Int = 0,
 ) {
     override fun toString(): String = "$mangaId - $chapterId | state= $state, tries= $tries, progress= $progress"

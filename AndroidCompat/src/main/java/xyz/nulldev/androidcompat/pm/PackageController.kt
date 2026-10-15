@@ -69,6 +69,14 @@ class PackageController {
                 val oldSignatures = apkSignatures(File(root, "package.apk"))
                 val newSignatures = apkSignatures(apk)
 
+                // A previously signed package must not be replaced by an unsigned APK:
+                // the recorded trust anchor would be silently dropped (same rule as the
+                // server's extension-install path).
+                if (oldSignatures.isNotEmpty() && newSignatures.isEmpty()) {
+                    throw IllegalStateException(
+                        "Refusing to reinstall ${root.name}: previously signed package replaced by an unsigned APK",
+                    )
+                }
                 if (oldSignatures.isNotEmpty() && newSignatures.isNotEmpty() && oldSignatures != newSignatures) {
                     throw IllegalStateException(
                         "Refusing to reinstall ${root.name}: signature mismatch",

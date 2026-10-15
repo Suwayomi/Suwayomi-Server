@@ -7,12 +7,8 @@ package suwayomi.tachidesk.graphql
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.v1.core.SortOrder
-import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.statements.StatementType
 import org.jetbrains.exposed.v1.jdbc.Query
-import org.jetbrains.exposed.v1.jdbc.andWhere
-import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assumptions
@@ -21,7 +17,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
-import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.opds.repository.ChapterRepository
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
@@ -36,23 +32,13 @@ class ChapterUpdatesQueryPlanTest : ApplicationTest() {
         clearTables(ChapterUserTable, ChapterTable, MangaUserTable, MangaTable)
     }
 
-    // Same query as the updates list in ChapterQuery.chapters
-    private fun updatesQuery(
-        reverse: Boolean,
-        userId: Int = 1,
-    ): Query {
-        val fetchedAtOrder = if (reverse) SortOrder.ASC else SortOrder.DESC
-        return ChapterTable
-            .getWithUserData(userId)
-            .innerJoin(MangaTable.getWithUserData(userId))
-            .selectAll()
-            .andWhere { MangaUserTable.inLibrary eq true }
-            .orderBy(
-                ChapterTable.fetchedAt to fetchedAtOrder,
-                ChapterTable.sourceOrder to fetchedAtOrder,
-                ChapterTable.id to if (reverse) SortOrder.DESC else SortOrder.ASC,
-            ).limit(50)
-    }
+    // The real production query of the library-updates feed — the ordering is shared from
+    // ChapterRepository, so this test cannot silently drift into a plan production never runs
+    private fun updatesQuery(userId: Int = 1): Query =
+        ChapterRepository
+            .libraryUpdatesQuery(userId)
+            .orderBy(*ChapterRepository.libraryUpdatesOrder)
+            .limit(50)
 
     private fun explain(query: Query): String =
         transaction {
@@ -68,10 +54,8 @@ class ChapterUpdatesQueryPlanTest : ApplicationTest() {
 
         repeat(5) { createChapters(createLibraryManga("Manga $it"), 20, read = false) }
 
-        for (reverse in listOf(false, true)) {
-            val plan = explain(updatesQuery(reverse))
-            assertTrue("CHAPTER_FETCHED_AT" in plan.uppercase(), "reverse=$reverse plan doesn't use the index:\n$plan")
-            assertTrue("index sorted" in plan, "reverse=$reverse plan still sorts the rows:\n$plan")
-        }
+        val plan = explain(updatesQuery())
+        assertTrue("CHAPTER_FETCHED_AT" in plan.uppercase(), "plan doesn't use the index:\n$plan")
+        assertTrue("index sorted" in plan, "plan still sorts the rows:\n$plan")
     }
 }

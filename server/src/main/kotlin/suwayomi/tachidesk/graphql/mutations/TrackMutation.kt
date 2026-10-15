@@ -42,7 +42,8 @@ class TrackMutation {
                 "Could not find tracker"
             }
         return future {
-            tracker.authCallback(userId, input.callbackUrl)
+            // go through the loginOAuth wrapper so a half-applied OAuth login is cleaned up
+            tracker.loginOAuth(userId, input.callbackUrl)
             val trackerType = TrackerType(tracker, userId)
             LoginTrackerOAuthPayload(
                 input.clientMutationId,
@@ -76,7 +77,8 @@ class TrackMutation {
                 "Could not find tracker"
             }
         return future {
-            tracker.loginImpl(userId, input.username, input.password)
+            // Tracker.login wraps loginImpl with logout-on-failure cleanup
+            tracker.login(userId, input.username, input.password)
             val trackerType = TrackerType(tracker, userId)
             LoginTrackerCredentialsPayload(
                 input.clientMutationId,
@@ -159,7 +161,7 @@ class TrackMutation {
                             TrackRecordTable.mangaId eq mangaId and
                                 (TrackRecordTable.trackerId eq trackerId) and
                                 (TrackRecordTable.user eq userId)
-                        }.first()
+                        }.firstOrNull() ?: throw IllegalStateException("Track record not found after bind")
                 }
             BindTrackPayload(
                 clientMutationId,
@@ -192,7 +194,10 @@ class TrackMutation {
 
             val trackRecord =
                 transaction {
-                    TrackRecordTable.selectAll().where { TrackRecordTable.id eq boundTrackRecordId }.first()
+                    TrackRecordTable
+                        .selectAll()
+                        .where { TrackRecordTable.id eq boundTrackRecordId }
+                        .firstOrNull() ?: throw IllegalStateException("Track record not found: $boundTrackRecordId")
                 }
 
             BindTrackRecordPayload(
@@ -229,7 +234,7 @@ class TrackMutation {
                         .where {
                             TrackRecordTable.id eq recordId and
                                 (TrackRecordTable.user eq userId)
-                        }.first()
+                        }.firstOrNull() ?: throw IllegalArgumentException("Track record not found: $recordId")
                 }
             FetchTrackPayload(
                 clientMutationId,
