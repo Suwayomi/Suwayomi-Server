@@ -6,6 +6,9 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+# Linux-only: requires a GNU userland (readlink -e, grep -oP, tar -I,
+# stat -c%s) plus bash, curl, zip/unzip and gcc; wixl/dpkg for packages.
+
 main() {
   POSITIONAL_ARGS=()
   OUTPUT_DIR=.
@@ -27,18 +30,22 @@ main() {
 
   OS="$1"
   JAR="$(ls server/build/*.jar | tail -n1)" || error $LINENO "No JAR found in server/build/" 1
-  RELEASE_NAME="$(echo "${JAR%.*}" | xargs basename)-$OS"
+  RELEASE_NAME="${JAR%.*}"
+  RELEASE_NAME="${RELEASE_NAME##*/}-$OS"
   RELEASE_VERSION=$(echo "$JAR" | grep -oP "v\K[0-9]+\.[0-9]+\.[0-9]+")
-  #RELEASE_REVISION_NUMBER="$(tmp="${JAR%.*}" && echo "${tmp##*-}" | tr -d r)"
   local electron_version="v37.2.5"
 
-  # clean temporary directory on function return
-  trap "rm -rf $RELEASE_NAME/" RETURN
-  mkdir "$RELEASE_NAME/" || error $LINENO "Failed to create release directory" 1
+  # Clean the staging directory on any script exit. A RETURN trap would not
+  # fire when error() exits inside a function, and an EXIT trap on a relative
+  # path could resolve against a changed working directory, so use the
+  # absolute path captured here.
+  mkdir -p "$RELEASE_NAME/" || error $LINENO "Failed to create release directory" 1
+  RELEASE_ABS="$(cd "$RELEASE_NAME" && pwd)"
+  trap 'rm -rf "$RELEASE_ABS"' EXIT
 
   download_launcher
 
-  if [ ! -f scripts/resources/catch_abort.so ]; then
+  if [ ! -f scripts/resources/catch_abort.so ] || [ scripts/resources/catch_abort.c -nt scripts/resources/catch_abort.so ]; then
     gcc -fPIC -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so || error $LINENO "Failed to compile catch_abort" 1
   fi
 
@@ -76,7 +83,7 @@ main() {
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
       setup_jre
-      tree "$RELEASE_NAME"
+      print_release_tree
 
       RELEASE="$RELEASE_NAME.tar.gz"
       make_linux_bundle
@@ -90,7 +97,7 @@ main() {
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
       setup_jre
-      tree "$RELEASE_NAME"
+      print_release_tree
 
       RELEASE="$RELEASE_NAME.tar.gz"
       make_macos_bundle
@@ -104,7 +111,7 @@ main() {
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
       setup_jre
-      tree "$RELEASE_NAME"
+      print_release_tree
 
       RELEASE="$RELEASE_NAME.tar.gz"
       make_macos_bundle
@@ -118,7 +125,7 @@ main() {
       ELECTRON_URL="https://github.com/electron/electron/releases/download/$electron_version/$ELECTRON"
       download_electron
       setup_jre
-      tree "$RELEASE_NAME"
+      print_release_tree
 
       RELEASE="$RELEASE_NAME.zip"
       make_windows_bundle
@@ -142,21 +149,41 @@ move_release_to_output_dir() {
    mv "$RELEASE" "$OUTPUT_DIR/" || error $LINENO "Failed to move release to output dir" 1
 }
 
+# Debug listing of the staged bundle; `tree` may not be installed.
+print_release_tree() {
+  command -v tree >/dev/null 2>&1 && tree "$RELEASE_NAME" || true
+}
+
+# Curl downloads carry no checksums (launcher/appimagetool move over time);
+# enforce --fail, a minimum size and, for archives, a zip integrity test so a
+# truncated or error-page download cannot silently enter the bundle.
+# Usage: download URL DEST MIN_SIZE_BYTES
+download() {
+  local url="$1" dest="$2" min_size="${3:-1048576}"
+  curl -fL "$url" -o "$dest" || return 1
+  [ "$(stat -c%s "$dest")" -ge "$min_size" ] || return 1
+  case "$dest" in
+    *.zip|*.jar) unzip -tq "$dest" >/dev/null 2>&1 || return 1 ;;
+  esac
+}
+
 download_launcher() {
-  LAUNCHER_URL=$(curl -sf "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  # `|| true`: `head -n 1` closes the pipe early and can SIGPIPE the greps;
+  # under pipefail+ERR that would abort even though the URL was captured.
+  LAUNCHER_URL=$(curl -sf "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4 || true)
   if [ -z "$LAUNCHER_URL" ]; then
     error $LINENO "Failed to determine launcher URL from GitHub API" 1
   fi
-  curl -fL "$LAUNCHER_URL" -o "Suwayomi-Launcher.jar" || error $LINENO "Failed to download launcher JAR" 1
+  download "$LAUNCHER_URL" "Suwayomi-Launcher.jar" 1048576 || error $LINENO "Failed to download launcher JAR" 1
   mv "Suwayomi-Launcher.jar" "$RELEASE_NAME/Suwayomi-Launcher.jar" || error $LINENO "Failed to move launcher JAR" 1
 }
 
 download_electron() {
   if [ ! -f "$ELECTRON" ]; then
-    curl -fL "$ELECTRON_URL" -o "$ELECTRON" || error $LINENO "Failed to download electron" 1
+    download "$ELECTRON_URL" "$ELECTRON" 52428800 || error $LINENO "Failed to download electron" 1
   fi
 
-  unzip "$ELECTRON" -d "$RELEASE_NAME/electron/" || error $LINENO "Failed to extract electron" 1
+  unzip -oq "$ELECTRON" -d "$RELEASE_NAME/electron/" || error $LINENO "Failed to extract electron" 1
 }
 
 setup_jre() {
@@ -168,15 +195,11 @@ setup_jre() {
     mv "jre" "$RELEASE_NAME/jre" || error $LINENO "Failed to move jre" 1
   else
     if [ ! -f "$JRE" ]; then
-      curl -fL "$JRE_URL" -o "$JRE" || error $LINENO "Failed to download JRE" 1
+      download "$JRE_URL" "$JRE" 52428800 || error $LINENO "Failed to download JRE" 1
     fi
 
-    local ext="${JRE##*.}"
-    if [ "$ext" = "zip" ]; then
-      unzip "$JRE" || error $LINENO "Failed to extract JRE zip" 1
-    else
-      tar xvf "$JRE" || error $LINENO "Failed to extract JRE tar" 1
-    fi
+    # Zulu JRE artifacts are always .zip
+    unzip -oq "$JRE" || error $LINENO "Failed to extract JRE zip" 1
     mv "$JRE_DIR" "$RELEASE_NAME/jre" || error $LINENO "Failed to move extracted JRE" 1
 
     if [ ! -f "$RELEASE_NAME/jre/bin/java.exe" ]; then
@@ -230,7 +253,9 @@ make_deb_package() {
   cp "$JAR" "$RELEASE_NAME/$source_dir/Suwayomi-Server.jar" || error $LINENO "Failed to copy server jar" 1
   copy_linux_package_assets_to "$RELEASE_NAME/$source_dir/"
   cp "scripts/resources/catch_abort.so" "$RELEASE_NAME/$source_dir/" || error $LINENO "Failed to copy catch_abort" 1
-  tar -I "gzip" -C "$RELEASE_NAME/" -cvf "$upstream_source" "$source_dir" || error $LINENO "Failed to create source tar.gz" 1
+  # dpkg-source looks for the .orig tarball next to the source dir, i.e. inside
+  # $RELEASE_NAME/; -f is not affected by -C so give the full target path.
+  tar -I "gzip -9" -cvf "$RELEASE_NAME/$upstream_source" -C "$RELEASE_NAME/" "$source_dir" || error $LINENO "Failed to create source tar.gz" 1
 
   cp -r "scripts/resources/deb/" "$RELEASE_NAME/$source_dir/debian/" || error $LINENO "Failed to copy debian resources" 1
   sed -i "s/\$pkgver/$RELEASE_VERSION/" "$RELEASE_NAME/$source_dir/debian/changelog" || error $LINENO "Failed to update changelog" 1
@@ -238,7 +263,7 @@ make_deb_package() {
 
   if [ "${CI:-}" = true ]; then
     sudo apt update || error $LINENO "Failed to update apt" 1
-    sudo apt install devscripts build-essential dh-exec || error $LINENO "Failed to install build deps" 1
+    sudo apt install -y devscripts build-essential dh-exec || error $LINENO "Failed to install build deps" 1
   fi
   cd "$RELEASE_NAME/$source_dir/" || error $LINENO "Failed to change directory" 1
   dpkg-buildpackage --no-sign --build=all || error $LINENO "Debian package build failed" 1
@@ -262,41 +287,16 @@ make_appimage() {
 
   if [ "${CI:-}" = true ]; then
     sudo apt update || error $LINENO "Failed to update apt" 1
-    sudo apt install libfuse2 || error $LINENO "Failed to install libfuse2" 1
+    sudo apt install -y libfuse2 || error $LINENO "Failed to install libfuse2" 1
   fi
-  curl -fL $APPIMAGE_URL -o $APPIMAGE_TOOLNAME || error $LINENO "Failed to download appimagetool" 1
-  chmod +x $APPIMAGE_TOOLNAME || error $LINENO "Failed to make appimagetool executable" 1
-  ARCH=x86_64 ./$APPIMAGE_TOOLNAME "$RELEASE_NAME" "$RELEASE" || error $LINENO "AppImage creation failed" 1
+  download "$APPIMAGE_URL" "$APPIMAGE_TOOLNAME" 10485760 || error $LINENO "Failed to download appimagetool" 1
+  chmod +x "$APPIMAGE_TOOLNAME" || error $LINENO "Failed to make appimagetool executable" 1
+  ARCH=x86_64 "./$APPIMAGE_TOOLNAME" "$RELEASE_NAME" "$RELEASE" || error $LINENO "AppImage creation failed" 1
 }
 
 make_windows_bundle() {
-  ## I disabled this section until someone find a solution to this error:
-  ##E: Unable to correct problems, you have held broken packages.
-  ##./bundler.sh: line 250: wine: command not found
-
-  ## check if running under github actions
-  #if [ "${CI:-}" = true ]; then
-    ## change electron executable's icon
-    #sudo dpkg --add-architecture i386
-    #wget -qO - https://dl.winehq.org/wine-builds/winehq.key \
-        #| sudo apt-key add -
-    #sudo add-apt-repository ppa:cybermax-dexter/sdl2-backport
-    #sudo apt-add-repository "deb https://dl.winehq.org/wine-builds/ubuntu \
-        #$(lsb_release -cs) main"
-    #sudo apt install --install-recommends winehq-stable
-  #fi
-  ## this script assumes that wine is installed here on out
-
-  #local rcedit="rcedit-x85.exe"
-  #local rcedit_url="https://github.com/electron/rcedit/releases/download/v0.1.1/$rcedit"
-  ## change electron's icon
-  #if [ ! -f "$rcedit" ]; then
-    #curl -fL "$rcedit_url" -o "$rcedit" || error $LINENO "Failed to download rcedit" 1
-  #fi
-
-  #local icon="server/src/main/resources/icon/faviconlogo.ico"
-  #WINEARCH=win32 wine "$rcedit" "$RELEASE_NAME/electron/electron.exe" \
-  #    --set-icon "$icon"
+  # NOTE: a wine+rcedit step to brand electron.exe was removed; it was never
+  # enabled (broken on CI: "held broken packages" / "wine: command not found").
 
   mkdir "$RELEASE_NAME/bin"
   cp "$JAR" "$RELEASE_NAME/bin/Suwayomi-Server.jar" || error $LINENO "Failed to copy server jar" 1
@@ -339,7 +339,7 @@ make_windows_package() {
 # set -e is not recommended and unpredictable.
 # see https://stackoverflow.com/questions/64786/error-handling-in-bash
 # and http://mywiki.wooledge.org/BashFAO/105
-set -uo pipefail
+set -Euo pipefail
 error() {
   local parent_lineno="$1"
   local message="$2"

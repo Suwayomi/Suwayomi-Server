@@ -35,6 +35,14 @@ object ChapterTable : IntIdTable() {
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 
     val memo = jsonObject("memo")
+
+    init {
+        // Ordinary lookup index for chapter-url resolution during chapter-list updates
+        // (created by M0070). Deliberately NON-unique like MangaTable's (source, url):
+        // duplicates can exist from historical data and concurrent updates; deduplication
+        // stays an application-layer invariant.
+        index("chapter_manga_url", false, manga, url)
+    }
 }
 
 fun ChapterTable.toDataClass(chapterEntry: ResultRow) =

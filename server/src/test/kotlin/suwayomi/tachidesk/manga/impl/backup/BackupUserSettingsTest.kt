@@ -119,7 +119,8 @@ class BackupUserSettingsTest : ApplicationTest() {
         assertEquals(250, userConfig.opdsItemsPerPage.value(userA))
         assertEquals(true, userConfig.excludeUnreadChapters.value(userA))
 
-        // B actually has override rows stored (one per exported setting)
+        // B actually has override rows stored — one per exported setting; backup-excluded
+        // settings (syncYomiHost/syncYomiApiKey) are never written
         val rows =
             transaction {
                 UserSettingsTable
@@ -128,7 +129,7 @@ class BackupUserSettingsTest : ApplicationTest() {
                     .count()
                     .toInt()
             }
-        assertEquals(UserSettingsRegistry.getAll().size, rows)
+        assertEquals(UserSettingsRegistry.getAll().values.count { !it.excludeFromBackup }, rows)
     }
 
     @Test
@@ -170,6 +171,56 @@ class BackupUserSettingsTest : ApplicationTest() {
         assertNull(backup.koreaderSyncPercentageTolerance)
         assertNull(backup.opdsChapterSortOrder)
         assertNull(backup.serveConversions)
+    }
+
+    @Test
+    fun downloadConversionsAreExcludedFromServerSettingsBackups() {
+        // conversion headers may carry credentials for external services — the whole
+        // setting stays out of backups
+        assertNull(assertNotNull(BackupSettingsHandler.backup(BackupFlags.DEFAULT)).downloadConversions)
+    }
+
+    @Test
+    fun backupOmitsSyncYomiCredentials() {
+        userSettings.set(userA, userConfig.syncYomiHost, "https://sync.internal.example")
+        userSettings.set(userA, userConfig.syncYomiApiKey, "secret-api-key")
+
+        val backup = assertNotNull(BackupUserSettingsHandler.backup(BackupFlags.DEFAULT, userA))
+
+        // proto fields 25/26 stay unset so the values never hit the wire...
+        assertNull(backup.syncYomiHost)
+        assertNull(backup.syncYomiApiKey)
+
+        // ...and a serialized .tachibk decodes with them absent
+        val encoded = ProtoBuf.encodeToByteArray(Backup.serializer(), Backup(emptyList(), userSettings = backup))
+        val decoded = assertNotNull(ProtoBuf.decodeFromByteArray(Backup.serializer(), encoded).userSettings)
+        assertNull(decoded.syncYomiHost)
+        assertNull(decoded.syncYomiApiKey)
+    }
+
+    @Test
+    fun restoreNeverImportsSyncYomiCredentials() {
+        // a foreign backup that still carries the fields (older server version) must not
+        // import them — neither from userSettings nor the legacy serverSettings fallback
+        val foreign =
+            BackupUserSettings(
+                opdsItemsPerPage = 250,
+                syncYomiHost = "https://attacker.example",
+                syncYomiApiKey = "foreign-key",
+            )
+        val legacy =
+            BackupServerSettings(
+                syncYomiHost = "https://legacy.example",
+                syncYomiApiKey = "legacy-key",
+            )
+
+        BackupUserSettingsHandler.restore(userC, foreign, legacy)
+
+        assertEquals(userConfig.syncYomiHost.defaultValue, userConfig.syncYomiHost.value(userC))
+        assertEquals(userConfig.syncYomiApiKey.defaultValue, userConfig.syncYomiApiKey.value(userC))
+
+        // non-excluded settings from the same backup still apply
+        assertEquals(250, userConfig.opdsItemsPerPage.value(userC))
     }
 
     @Test

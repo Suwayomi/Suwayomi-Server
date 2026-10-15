@@ -4,8 +4,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class MALUserSearchResult(
-    val data: List<MALUserSearchItem>,
-    val paging: MALUserSearchPaging,
+    val data: List<MALUserSearchItem> = emptyList(),
+    val paging: MALUserSearchPaging = MALUserSearchPaging(),
 )
 
 @Serializable
@@ -15,11 +15,11 @@ data class MALUserSearchItem(
 
 @Serializable
 data class MALUserSearchPaging(
-    val next: String?,
+    val next: String? = null,
 )
 
 @Serializable
 data class MALUserSearchItemNode(
     val id: Int,
-    val title: String,
+    val title: String = "",
 )

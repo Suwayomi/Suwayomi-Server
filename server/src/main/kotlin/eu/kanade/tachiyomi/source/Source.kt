@@ -107,5 +107,3 @@ interface Source {
     @Deprecated("Use the suspend API instead", ReplaceWith("getPageList"))
     fun fetchPageList(chapter: SChapter): Observable<List<Page>> = throw UnsupportedOperationException()
 }
-
-// fun Source.icon(): Drawable? = Injekt.get<ExtensionManager>().getAppIconForSource(this)

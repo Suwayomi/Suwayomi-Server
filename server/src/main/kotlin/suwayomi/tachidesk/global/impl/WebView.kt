@@ -5,6 +5,7 @@ import io.javalin.websocket.WsContext
 import io.javalin.websocket.WsMessageContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.eclipse.jetty.websocket.core.CloseStatus
 import suwayomi.tachidesk.manga.impl.update.Websocket
@@ -93,6 +94,14 @@ object WebView : Websocket<String>() {
     @SerialName("ping")
     class JsPingMessage : TypeObject()
 
+    // Server-to-client only event; a TypeObject subclass so the encoded JSON
+    // carries the "type" discriminator the Webview.kte switch relies on.
+    @Serializable
+    @SerialName("error")
+    private data class ErrorEvent(
+        val message: String,
+    ) : TypeObject()
+
     override fun handleRequest(ctx: WsMessageContext) {
         val dr = driver ?: return
         try {
@@ -100,9 +109,19 @@ object WebView : Websocket<String>() {
             when (event) {
                 is LoadUrlMessage -> {
                     val url = event.url
-                    dr.loadUrl(url)
-                    dr.resize(event.width, event.height)
-                    logger.debug { "Loading URL $url" }
+                    if (WebViewUrlPolicy.isAllowed(url)) {
+                        dr.loadUrl(url)
+                        dr.resize(event.width, event.height)
+                        logger.debug { "Loading URL $url" }
+                    } else {
+                        logger.warn { "Refusing to load disallowed URL: $url" }
+                        notifyClient(
+                            ctx,
+                            Json.encodeToString<TypeObject>(
+                                ErrorEvent("Refused to load URL, only http/https URLs are allowed: $url"),
+                            ),
+                        )
+                    }
                 }
 
                 is ResizeMessage -> {
@@ -124,9 +143,17 @@ object WebView : Websocket<String>() {
                 is JsPingMessage -> {
                     notifyAllClients("{\"type\":\"pong\"}")
                 }
+
+                is ErrorEvent -> {
+                    // Outgoing-only event; ignore if a client sends it anyway
+                }
             }
-        } catch (e: Exception) {
+        } catch (e: SerializationException) {
             logger.warn(e) { "Failed to deserialize client request: ${ctx.message()}" }
+        } catch (e: IllegalArgumentException) {
+            logger.warn(e) { "URL rejected by policy" }
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to handle client request: ${ctx.message()}" }
         }
     }
 }

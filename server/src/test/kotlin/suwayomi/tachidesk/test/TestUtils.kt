@@ -30,6 +30,29 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 
+/*
+ * Test isolation conventions (shared-JVM suite)
+ * ---------------------------------------------
+ * All :server:test classes share one JVM, one Koin application and one database, so a test
+ * that leaks rows, config values, mocks or queue entries can break an unrelated later test.
+ * Conventions every test is expected to follow:
+ *
+ *  - Assert presence/absence of the rows a test created itself; never assert brittle
+ *    whole-table counts (entries.size == N, table count == N) — unrelated fixtures may
+ *    legitimately add rows.
+ *  - Clear child tables before parent tables (e.g. ChapterUserTable -> ChapterTable ->
+ *    MangaUserTable -> MangaTable) so foreign keys are never violated in tearDown.
+ *  - Delete test-created users by identity (collected ids, `id inList createdUserIds`),
+ *    never by broad predicates like `id neq 1`.
+ *  - Drain shared DownloadManager state (`runBlocking { DownloadManager.clear() }`) in
+ *    tearDown of any test that enqueues downloads; queued items outlive the test otherwise.
+ *  - Restore the actual original configuration values captured before the test (never a
+ *    hardcoded default) when mutating GlobalConfigManager/serverConfig — see
+ *    ProtoBackupImportTest and UserSettingsBackfillTest.
+ *  - Release object mocks (unmockkObject/unmockkStatic) in a finally block so a failing
+ *    assertion cannot poison the rest of the suite.
+ */
+
 fun setLoggingEnabled(enabled: Boolean = true) {
     val logger = ((KotlinLogging.logger(Logger.ROOT_LOGGER_NAME) as DelegatingKLogger<*>).underlyingLogger as ch.qos.logback.classic.Logger)
     logger.level =

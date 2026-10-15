@@ -51,7 +51,7 @@
     </DirectoryRef>
 
     <InstallExecuteSequence>
-      <RemoveExistingProducts After="InstallValidate" />
+      <RemoveExistingProducts After="InstallFinalize" />
     </InstallExecuteSequence>
 
     <!-- Feature -->

@@ -11,11 +11,14 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SManga
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -25,6 +28,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class MangaListTest : GraphQLTest() {
+    // users created for the membership permutations — deleted by identity in tearDown so
+    // the browse-* accounts do not leak across test classes
+    private val createdUserIds = mutableListOf<Int>()
+
+    private fun createTrackedUser(username: String): Int = createTestUser(username).also { createdUserIds += it }
+
     @Test
     fun browseUpdatesMangaWithoutUserRows() = checkBrowse("none", false, "Updated")
 
@@ -71,7 +80,7 @@ class MangaListTest : GraphQLTest() {
             }
         if (memberships != "none") {
             memberships.split(":").forEachIndexed { index, membership ->
-                val userId = createTestUser("browse-$memberships-$local-$index")
+                val userId = createTrackedUser("browse-$memberships-$local-$index")
                 transaction {
                     MangaUserTable.insert {
                         it[manga] = mangaId
@@ -101,5 +110,11 @@ class MangaListTest : GraphQLTest() {
             MangaUserTable,
             MangaTable,
         )
+        transaction {
+            if (createdUserIds.isNotEmpty()) {
+                UserAccountTable.deleteWhere { UserAccountTable.id inList createdUserIds }
+                createdUserIds.clear()
+            }
+        }
     }
 }

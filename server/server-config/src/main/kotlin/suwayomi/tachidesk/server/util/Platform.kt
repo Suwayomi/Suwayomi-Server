@@ -1,11 +1,16 @@
 package suwayomi.tachidesk.server.util
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.graphql.types.JvmInfo
 import suwayomi.tachidesk.graphql.types.OSInfo
 import java.awt.GraphicsEnvironment
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.Path
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.readLines
+
+private val logger = KotlinLogging.logger { }
 
 data class PlatformInfo(
     val os: OS,
@@ -146,6 +151,23 @@ sealed class OS(
         }
     }
 
+    /**
+     * Catch-all for operating systems we have no specifics for (FreeBSD, Solaris, ...). Keeps
+     * [Platform.current] - and therefore every setting that consults the OS - usable on
+     * any JVM instead of crashing during `ServerConfig` construction.
+     */
+    class UNKNOWN(
+        name: String,
+    ) : OS(name) {
+        override val details: OSInfo by lazy(::loadDetails)
+
+        override fun loadDetails(): OSInfo =
+            OSInfo(
+                name = name,
+                version = version,
+            )
+    }
+
     val isLinux: Boolean get() = this is LINUX
     val isMacOS: Boolean get() = this is MACOS
     val isWindows: Boolean get() = this is WINDOWS
@@ -157,18 +179,38 @@ sealed class OS(
     private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
 
     protected fun runCommand(vararg command: String): List<String> {
-        val process = ProcessBuilder(*command).start()
+        val process =
+            try {
+                ProcessBuilder(*command)
+                    .redirectErrorStream(true)
+                    .start()
+            } catch (e: Exception) {
+                logger.debug(e) { "Could not run command ${command.joinToString(" ")}" }
+                return emptyList()
+            }
 
-        if (process.waitFor() != 0) {
+        // drain stdout asynchronously so a noisy child can't deadlock on a full pipe buffer
+        val output =
+            CompletableFuture.supplyAsync {
+                process.inputStream.bufferedReader().readLines()
+            }
+
+        val exited = process.waitFor(RUN_COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        if (!exited) {
+            process.destroyForcibly()
             return emptyList()
         }
 
-        return process.inputStream
-            .bufferedReader()
-            .readLines()
+        if (process.exitValue() != 0) {
+            return emptyList()
+        }
+
+        return runCatching { output.get(5, TimeUnit.SECONDS) }.getOrElse { emptyList() }
     }
 
     companion object {
+        private const val RUN_COMMAND_TIMEOUT_SECONDS = 10L
+
         private val types =
             listOf(
                 ::MACOS,
@@ -180,7 +222,9 @@ sealed class OS(
             types
                 .map { it(name) }
                 .firstOrNull { it.matches(name) }
-                ?: throw UnsupportedOperationException("Unsupported OS: $name")
+                ?: UNKNOWN(name).also {
+                    logger.warn { "Unsupported OS '$name', treating it as unknown" }
+                }
     }
 }
 
@@ -208,6 +252,13 @@ sealed class ARCH(
         name: String,
     ) : ARCH(name, "riscv", "riscv32", "riscv64")
 
+    /**
+     * Catch-all for architectures we have no specifics for; see [OS.UNKNOWN].
+     */
+    class UNKNOWN(
+        name: String,
+    ) : ARCH(name)
+
     private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
 
     companion object {
@@ -224,6 +275,8 @@ sealed class ARCH(
             types
                 .map { it(name) }
                 .firstOrNull { it.matches(name) }
-                ?: throw UnsupportedOperationException("Unsupported architecture: $name")
+                ?: UNKNOWN(name).also {
+                    logger.warn { "Unsupported architecture '$name', treating it as unknown" }
+                }
     }
 }

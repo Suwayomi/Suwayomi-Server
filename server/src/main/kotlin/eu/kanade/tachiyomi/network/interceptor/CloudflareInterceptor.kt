@@ -20,6 +20,7 @@ import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
@@ -32,12 +33,19 @@ import java.io.IOException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 class CloudflareInterceptor(
-    private val setUserAgent: (String) -> Unit,
+    /**
+     * Records the User-Agent a successful bypass solved the challenge with,
+     * per request host. `cf_clearance` is bound to the solving UA, so requests
+     * to that host must keep sending it — but one host's bypass must not
+     * stomp the global default UA (and with it every registered source).
+     */
+    private val setUserAgentForHost: (host: String, userAgent: String) -> Unit,
 ) : Interceptor {
     private val logger = KotlinLogging.logger {}
 
@@ -54,7 +62,25 @@ class CloudflareInterceptor(
         }
 
         if (!serverConfig.flareSolverrEnabled.value) {
+            // close before throwing: a leaked CF 403/503 response leaks the
+            // connection on every challenge hit
+            originalResponse.close()
             throw IOException("Cloudflare bypass currently disabled")
+        }
+
+        // FlareSolverr only supports `request.get`/`request.post`, and a POST
+        // body is serialized into the bypass payload. A one-shot body would be
+        // consumed here and the retried request would then fail — give up on
+        // the bypass instead of corrupting the request.
+        val originalBody = originalRequest.body
+        if ((originalRequest.method != "GET" && originalRequest.method != "POST") ||
+            originalBody?.isOneShot() == true
+        ) {
+            originalResponse.close()
+            throw IOException(
+                "Cloudflare bypass not possible for ${originalRequest.method} request " +
+                    "with ${if (originalBody?.isOneShot() == true) "a one-shot" else "no"} body",
+            )
         }
 
         logger.debug { "Cloudflare anti-bot is on, CloudflareInterceptor is kicking in..." }
@@ -111,13 +137,17 @@ class CloudflareInterceptor(
                         CFClearance.resolveWithFlareSolver(originalRequest, !flareResponseFallback)
                     }
 
+                // Detection by protocol fields, not message text: a solved
+                // challenge yields a clearance cookie — the same condition
+                // requestWithFlareSolverr checks downstream.
                 val cloudflareDetected =
-                    !flareResponse.message.contains("not detected", ignoreCase = true)
+                    flareResponse.status.equals("ok", ignoreCase = true) &&
+                        flareResponse.solution.cookies.any { it.name in COOKIE_NAMES }
                 return if (cloudflareDetected) {
                     val request =
                         CFClearance.requestWithFlareSolverr(
                             flareResponse,
-                            setUserAgent,
+                            setUserAgentForHost,
                             originalRequest,
                         )
                     bypassRequest.complete(
@@ -128,6 +158,9 @@ class CloudflareInterceptor(
 
                     chain.proceed(request)
                 } else {
+                    logger.debug {
+                        "FlareSolverr reported no solved challenge for $host (status=${flareResponse.status}, message=${flareResponse.message})"
+                    }
                     CFClearance.inflightCalls.remove(host, bypassRequest)
                     bypassRequest.complete(CFClearance.Result.CloudflareNotDetected)
 
@@ -166,12 +199,35 @@ class CloudflareInterceptor(
             if (!isImage) {
                 logger.debug { "Falling back to FlareSolverr response" }
 
-                setUserAgent(flareResponse.solution.userAgent)
+                setUserAgentForHost(originalRequest.url.host, flareResponse.solution.userAgent)
+
+                // Synthesize the response from the solver's own metadata: the
+                // original 403 headers (content-length/type of the CF error
+                // page) don't describe the solver body. Content-Length is
+                // dropped so OkHttp derives it from the new body.
+                val solutionHeaders =
+                    Headers
+                        .Builder()
+                        .apply {
+                            flareResponse.solution.headers.orEmpty().forEach { (name, value) ->
+                                if (!name.equals("Content-Length", ignoreCase = true)) {
+                                    add(name, value)
+                                }
+                            }
+                        }.build()
+                val contentType =
+                    flareResponse.solution.headers
+                        .orEmpty()
+                        .entries
+                        .firstOrNull { it.key.equals("Content-Type", ignoreCase = true) }
+                        ?.value
+                        ?.toMediaTypeOrNull()
 
                 return originalResponse
                     .newBuilder()
                     .code(flareResponse.solution.status)
-                    .body(flareResponse.solution.response.toResponseBody())
+                    .headers(solutionHeaders)
+                    .body(flareResponse.solution.response.toResponseBody(contentType))
                     .build()
             } else {
                 logger.debug { "FlareSolverr response is an image html template, not falling back" }
@@ -179,20 +235,25 @@ class CloudflareInterceptor(
         }
 
         val request =
-            CFClearance.requestWithFlareSolverr(flareResponse, setUserAgent, originalRequest)
+            CFClearance.requestWithFlareSolverr(flareResponse, setUserAgentForHost, originalRequest)
 
         return chain.proceed(request)
     }
 
     private fun awaitInflightResult(future: CompletableFuture<CFClearance.Result>): CFClearance.Result {
-        while (true) {
-            try {
-                return future.get()
-            } catch (_: TimeoutException) {
-                continue
-            } catch (e: ExecutionException) {
-                throw e.cause ?: e
-            }
+        // Bounded wait: an unbounded get() would hang this request forever if the
+        // in-flight bypass never completes (the TimeoutException catch below was
+        // dead code before because get() had no timeout).
+        val timeoutMillis =
+            serverConfig.flareSolverrTimeout.value.seconds
+                .plus(15.seconds)
+                .inWholeMilliseconds
+        try {
+            return future.get(timeoutMillis, TimeUnit.MILLISECONDS)
+        } catch (e: TimeoutException) {
+            throw IOException("Timed out waiting for the in-flight Cloudflare bypass", e)
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
         }
     }
 
@@ -225,7 +286,16 @@ object CFClearance {
     }
     private val json: Json by injectLazy()
     private val jsonMediaType = "application/json".toMediaType()
-    private val mutex = Mutex()
+
+    /**
+     * FlareSolverr calls are serialized per target host (not globally):
+     * bypasses for different sites may proceed in parallel, while two bypasses
+     * for the same host cannot stampede the solver. The map is bounded by the
+     * number of distinct Cloudflare-protected hosts seen — small in practice.
+     */
+    private val hostMutexes = ConcurrentHashMap<String, Mutex>()
+
+    private fun mutexFor(host: String): Mutex = hostMutexes.computeIfAbsent(host) { Mutex() }
 
     sealed class Result {
         data class CloudflareBypassed(
@@ -323,14 +393,24 @@ object CFClearance {
     ): FlareSolverResponse {
         val timeout = serverConfig.flareSolverrTimeout.value.seconds
         val socksProxy = buildSocksProxyUrl()
+        if (socksProxy != null) {
+            // withRequestProxy() clears session/sessionTtlMinutes below: a
+            // FlareSolverr browser session cannot be pinned to a specific
+            // proxy, so session reuse is disabled for proxied calls.
+            logger.debug { "SOCKS proxy configured: FlareSolverr session reuse is disabled for this request" }
+        }
 
         return with(json) {
-            mutex.withLock {
+            mutexFor(originalRequest.url.host).withLock {
                 client.value
                     .newCall(
                         POST(
                             url = serverConfig.flareSolverrUrl.value.removeSuffix("/") + "/v1",
                             headers = socksProxy?.let { Headers.headersOf("X-Proxy-Server", it) } ?: Headers.headersOf(),
+                            // Trust boundary: the FlareSolverr endpoint (serverConfig.flareSolverrUrl —
+                            // typically a third-party container) receives the full request URL, every
+                            // cookie this host would get (minus cf_clearance), and — for POST — the
+                            // request body. Only point it at hosts you trust it with.
                             body =
                                 Json
                                     .encodeToString(
@@ -348,17 +428,7 @@ object CFClearance {
                                                     },
                                             returnOnlyCookies = onlyCookies,
                                             maxTimeout = timeout.inWholeMilliseconds.toInt(),
-                                            postData =
-                                                if (originalRequest.method == "POST") {
-                                                    originalRequest.body
-                                                        ?.let { body ->
-                                                            Buffer()
-                                                                .also { body.writeTo(it) }
-                                                                .readUtf8()
-                                                        }.orEmpty()
-                                                } else {
-                                                    null
-                                                },
+                                            postData = originalRequest.flareSolverrPostData(),
                                         ).withRequestProxy(socksProxy),
                                     ).toRequestBody(jsonMediaType),
                         ),
@@ -368,16 +438,38 @@ object CFClearance {
         }
     }
 
+    /**
+     * The request body to hand to FlareSolverr for `request.post`, or null when
+     * it should not be forwarded. Only replayable, textual bodies are safe to
+     * serialize: a binary body would be corrupted by readUtf8() and a one-shot
+     * body is already rejected by the interceptor before we get here.
+     */
+    private fun Request.flareSolverrPostData(): String? {
+        if (method != "POST") return null
+        val body = body ?: return null
+        val contentType = body.contentType()
+        val isTextual =
+            contentType == null ||
+                contentType.type == "text" ||
+                contentType.subtype.let {
+                    "json" in it || "xml" in it || it == "x-www-form-urlencoded" || it == "javascript"
+                }
+        if (!isTextual) return null
+        return Buffer()
+            .also { body.writeTo(it) }
+            .readUtf8()
+    }
+
     fun requestWithFlareSolverr(
         flareSolverResponse: FlareSolverResponse,
-        setUserAgent: (String) -> Unit,
+        setUserAgentForHost: (host: String, userAgent: String) -> Unit,
         originalRequest: Request,
     ): Request {
         if (flareSolverResponse.solution.cookies.none { it.name in CloudflareInterceptor.COOKIE_NAMES }) {
             logger.debug { "Cloudflare challenge failed to resolve" }
             throw CloudflareBypassException()
         } else {
-            setUserAgent(flareSolverResponse.solution.userAgent)
+            setUserAgentForHost(originalRequest.url.host, flareSolverResponse.solution.userAgent)
             val cookies =
                 flareSolverResponse.solution.cookies
                     .map { cookie ->

@@ -37,8 +37,6 @@ public final class SQLiteGlobal {
     private static final Object sLock = new Object();
     private static int sDefaultPageSize;
 
-    private static native int nativeReleaseMemory();
-
     private SQLiteGlobal() {
     }
 
@@ -49,7 +47,9 @@ public final class SQLiteGlobal {
      * @return The number of bytes that were freed.
      */
     public static int releaseMemory() {
-        return nativeReleaseMemory();
+        // AOSP delegated to a nativeReleaseMemory() native method; the JDBC-backed
+        // compat layer does not control sqlite's page cache, so this is a no-op.
+        return 0;
     }
 
     /**

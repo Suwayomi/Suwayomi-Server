@@ -14,6 +14,8 @@ import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.requirePermissions
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -48,11 +50,14 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
                 DownloadManager.start()
             },
             withResults = {
                 httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.FORBIDDEN)
             },
         )
 
@@ -66,7 +71,9 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
                 ctx.future {
                     future { DownloadManager.stop() }
                         .thenApply { ctx.status(HttpStatus.OK) }
@@ -74,6 +81,7 @@ object DownloadController {
             },
             withResults = {
                 httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.FORBIDDEN)
             },
         )
 
@@ -87,7 +95,9 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
                 ctx.future {
                     future { DownloadManager.clear() }
                         .thenApply { ctx.status(HttpStatus.OK) }
@@ -95,82 +105,7 @@ object DownloadController {
             },
             withResults = {
                 httpCode(HttpStatus.OK)
-            },
-        )
-
-    /** Queue single chapter for download */
-    val queueChapter =
-        handler(
-            pathParam<Int>("chapterIndex"),
-            pathParam<Int>("mangaId"),
-            documentWith = {
-                withOperation {
-                    summary("Downloader add single chapter")
-                    description("Queue single chapter for download")
-                }
-            },
-            behaviorOf = { ctx, _, _ ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                throw NullPointerException("Removed support for downloads in v1 REST API")
-            },
-            withResults = {
-                httpCode(HttpStatus.OK)
-                httpCode(HttpStatus.NOT_FOUND)
-            },
-        )
-
-    val queueChapters =
-        handler(
-            documentWith = {
-                withOperation {
-                    summary("Downloader add multiple chapters")
-                    description("Queue multiple chapters for download")
-                }
-            },
-            behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                throw NullPointerException("Removed support for downloads in v1 REST API")
-            },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
-        )
-
-    /** delete multiple chapters from download queue */
-    val unqueueChapters =
-        handler(
-            documentWith = {
-                withOperation {
-                    summary("Downloader remove multiple downloads")
-                    description("Remove multiple chapters downloads from queue")
-                }
-            },
-            behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                throw NullPointerException("Removed support for downloads in v1 REST API")
-            },
-            withResults = {
-                httpCode(HttpStatus.OK)
-            },
-        )
-
-    /** delete chapter from download queue */
-    val unqueueChapter =
-        handler(
-            pathParam<Int>("chapterIndex"),
-            pathParam<Int>("mangaId"),
-            documentWith = {
-                withOperation {
-                    summary("Downloader remove chapter")
-                    description("Delete chapter from download queue")
-                }
-            },
-            behaviorOf = { ctx, _, _ ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                throw NullPointerException("Removed support for downloads in v1 REST API")
-            },
-            withResults = {
-                httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.FORBIDDEN)
             },
         )
 
@@ -187,11 +122,14 @@ object DownloadController {
                 }
             },
             behaviorOf = { ctx, chapterIndex, mangaId, to ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
                 DownloadManager.reorder(chapterIndex, mangaId, to)
             },
             withResults = {
                 httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.FORBIDDEN)
             },
         )
 }

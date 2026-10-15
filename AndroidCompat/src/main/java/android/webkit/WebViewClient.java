@@ -530,7 +530,7 @@ public class WebViewClient {
     }
 
     private void onUnhandledInputEventInternal(WebView view, InputEvent event) {
-        throw new RuntimeException("Stub!");
+        // Input events are not dispatched in this environment; treat as handled.
     }
 
     /**

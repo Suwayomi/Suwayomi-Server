@@ -16,12 +16,12 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
-import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import io.javalin.http.HttpStatus
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.CacheControl
@@ -43,7 +43,6 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
-import suwayomi.tachidesk.manga.impl.util.network.await
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
@@ -60,8 +59,10 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.columns.validateMetaValueLength
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.manga.model.table.updateStrategyOrDefault
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
@@ -112,7 +113,7 @@ object Manga {
                 description = mangaEntry[MangaTable.description]
                 genre = mangaEntry[MangaTable.genre]
                 status = mangaEntry[MangaTable.status]
-                update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
+                update_strategy = updateStrategyOrDefault(mangaEntry[MangaTable.updateStrategy])
                 memo = mangaEntry[MangaTable.memo]
                 initialized = mangaEntry[MangaTable.initialized]
             }
@@ -196,21 +197,26 @@ object Manga {
         source: Source,
         sManga: SManga,
     ): SManga {
+        val mangaId = mangaEntry[MangaTable.id].value
+        val currentTitle = mangaEntry[MangaTable.title]
+        val remoteTitle =
+            try {
+                sManga.title
+            } catch (_: UninitializedPropertyAccessException) {
+                ""
+            }
+
+        // Filesystem work runs outside the transaction: the download-dir rename only
+        // depends on values already resolved here and its result gates the title write.
+        // If the tx rolls back afterwards the renamed dir is orphaned — the next update
+        // reconciles directory drift instead of holding IO inside the DB transaction.
+        val hasChangedTitle = remoteTitle.isNotEmpty() && remoteTitle != currentTitle
+        val canUpdateTitle =
+            hasChangedTitle &&
+                updateMangaDownloadDir(mangaId, currentTitle, source.toString(), remoteTitle)
+        val thumbnailChanged = !sManga.thumbnail_url.isNullOrEmpty()
+
         suspendTransaction {
-            val mangaId = mangaEntry[MangaTable.id].value
-            val currentTitle = mangaEntry[MangaTable.title]
-            val remoteTitle =
-                try {
-                    sManga.title
-                } catch (_: UninitializedPropertyAccessException) {
-                    ""
-                }
-
-            val hasChangedTitle = remoteTitle.isNotEmpty() && remoteTitle != currentTitle
-            val canUpdateTitle =
-                hasChangedTitle &&
-                    updateMangaDownloadDir(mangaId, currentTitle, source.toString(), remoteTitle)
-
             MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id] }) {
                 if (canUpdateTitle) {
                     it[MangaTable.title] = remoteTitle
@@ -223,10 +229,9 @@ object Manga {
                     ?: mangaEntry[MangaTable.description]
                 it[MangaTable.genre] = sManga.genre ?: mangaEntry[MangaTable.genre]
                 it[MangaTable.status] = sManga.status
-                if (!sManga.thumbnail_url.isNullOrEmpty()) {
+                if (thumbnailChanged) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
                     it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                    clearThumbnail(mangaId)
                 }
 
                 it[MangaTable.realUrl] =
@@ -252,6 +257,12 @@ object Manga {
                 it[MangaTable.updateStrategy] = sManga.update_strategy.name
                 it[MangaTable.memo] = sManga.memo
             }
+        }
+
+        // clear cached thumbnails only after the update committed — clearing inside the
+        // transaction would leave rolled-back rows pointing at already-deleted files
+        if (thumbnailChanged) {
+            clearThumbnail(mangaId)
         }
 
         return sManga
@@ -326,6 +337,9 @@ object Manga {
         userId: Int,
         metaByMangaId: Map<Int, Map<String, String>>,
     ) {
+        // MANGAMETA.value is varchar(4096): reject oversized input instead of letting the
+        // write die on an opaque SQL truncation error mid-transaction
+        metaByMangaId.values.forEach { it.values.forEach(::validateMetaValueLength) }
         transaction {
             val mangaIds = metaByMangaId.keys
             val metaKeys = metaByMangaId.flatMap { it.value.keys }
@@ -477,7 +491,7 @@ object Manga {
                     network.client
                         .newCall(
                             GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                        ).await()
+                        ).awaitSuccess()
                 }
             }
 
@@ -506,11 +520,24 @@ object Manga {
             }
 
         if (mangaInLibrary && mangaSource != LocalSource.ID) {
-            return try {
-                ThumbnailDownloadHelper.getImage(mangaId)
+            try {
+                return ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
-                ThumbnailDownloadHelper.download(mangaId)
-                ThumbnailDownloadHelper.getImage(mangaId)
+                // no stored thumbnail yet — download it and serve the file
+                try {
+                    ThumbnailDownloadHelper.download(mangaId)
+                    return ThumbnailDownloadHelper.getImage(mangaId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.warn(e) { "Thumbnail download failed for manga $mangaId, falling back to a direct fetch" }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // a corrupt or unreadable stored thumbnail must not 500 — fall back to
+                // fetching the image from the source directly
+                logger.warn(e) { "Serving the stored thumbnail failed for manga $mangaId, falling back to a direct fetch" }
             }
         }
 
@@ -529,7 +556,9 @@ object Manga {
             ChapterTable
                 .selectAll()
                 .where { ChapterTable.manga eq mangaId }
-                .maxByOrNull { it[ChapterTable.sourceOrder] }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                .limit(1)
+                .firstOrNull()
         }?.let { ChapterTable.toDataClass(it) }
 
     fun getUnreadChapters(
@@ -550,7 +579,7 @@ object Manga {
         logContext: KLogger = logger,
         mangaId: Int,
     ): Boolean {
-        val log = KotlinLogging.logger("${logContext.name}::isInExcludedDownloadCategory($mangaId)")
+        val log = KotlinLogging.logger("${logContext.name}::isInIncludedDownloadCategory($mangaId)")
 
         // Verify the manga is configured to be downloaded based on it's categories.
         var mangaCategories = CategoryManga.getMangaCategories(userId, mangaId).toSet()

@@ -45,7 +45,6 @@ import kotlin.io.path.absolutePathString
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createTempDirectory
 import kotlin.io.path.deleteExisting
-import kotlin.io.path.deleteIfExists
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.div
 import kotlin.io.path.exists
@@ -68,7 +67,10 @@ private val logger = KotlinLogging.logger {}
 
 @OptIn(ExperimentalPathApi::class)
 object CEFManager {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + Dispatchers.IO)
+    // NOTE: `Dispatchers.Default + Dispatchers.IO` was previously stacked here —
+    // for the same context key the later element wins, so Default was a dead
+    // element. IO alone is what this scope actually ran on.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val applicationDirs by lazy { Injekt.get<ApplicationDirs>() }
     private val cefDir by lazy { Path(applicationDirs.dataRoot) / "bin/kcef" }
     private val releaseFile by lazy { cefDir / "release" }
@@ -90,11 +92,22 @@ object CEFManager {
 
     private suspend fun initAsync(): Unit =
         try {
-            CefHelper.cefApp.value = Result.success(null)
-
             if (!serverConfig.kcefEnabled.value) {
                 logger.info { "CEF is disabled" }
+                // dispose an already-running CefApp instead of leaving it alive when CEF
+                // is disabled at runtime
+                CefHelper.cefApp.value.getOrNull()?.let {
+                    runCatching { it.dispose() }
+                        .onFailure { t -> logger.warn(t) { "Failed to dispose CEF" } }
+                }
                 CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
+                return
+            }
+
+            // signal "initializing" via failure-without-disabling — previously a bogus
+            // `Result.success(null)` intermediate state was published
+            if (CefHelper.cefApp.value.getOrNull() != null) {
+                logger.debug { "CEF already initialized, skipping re-init" }
                 return
             }
 
@@ -198,6 +211,8 @@ object CEFManager {
         }
     }
 
+    // Known residual: no retry — a transient network failure aborts CEF setup until
+    // the kcefEnabled setting is toggled or the server is restarted.
     internal suspend fun downloadRelease(installDir: Path) {
         logger.info { "Downloading CEF from Github (${BuildConfig.JCEF_JBR_RELEASE})" }
         installDir.deleteRecursively()
@@ -283,7 +298,7 @@ object CEFManager {
 
             val packageUrlList =
                 urlRegex
-                    .findAll(release.body)
+                    .findAll(release.body.orEmpty())
                     .toList()
                     .map { it.value }
                     .filterNot {
@@ -348,7 +363,8 @@ object CEFManager {
 
         @Serializable
         private data class GitHubRelease(
-            val body: String,
+            // GitHub returns null body for releases without a description
+            val body: String? = null,
             val assets: List<Asset> = emptyList(),
         ) {
             @Serializable
@@ -483,10 +499,7 @@ object CEFManager {
 
             foundDir?.let {
                 val target = it.moveTo(installDir / "lib")
-                foundParent?.let { p ->
-                    p.deleteRecursively()
-                    p.deleteIfExists()
-                }
+                foundParent?.let { p -> p.deleteRecursively() }
 
                 installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {
@@ -523,10 +536,7 @@ object CEFManager {
                     target / "Frameworks",
                 )
 
-                foundParent?.let { p ->
-                    p.deleteRecursively()
-                    p.deleteIfExists()
-                }
+                foundParent?.let { p -> p.deleteRecursively() }
 
                 installDir.listDirectoryEntries().forEach { deleteCandidate ->
                     if (!deleteCandidate.isSame(target)) {

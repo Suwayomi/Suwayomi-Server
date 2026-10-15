@@ -17,6 +17,7 @@ public class ListPreference extends Preference {
 
     private CharSequence[] entries;
     private CharSequence[] entryValues;
+    private String mValue;
 
     public ListPreference(Context context) {
         super(context);
@@ -50,13 +51,23 @@ public class ListPreference extends Preference {
     }
 
     @JsonIgnore
-    public void setValueIndex(int index) { throw new RuntimeException("Stub!"); }
+    public void setValueIndex(int index) {
+        if (entryValues != null && index >= 0 && index < entryValues.length) {
+            setValue(entryValues[index].toString());
+        }
+    }
 
     @JsonIgnore
-    public String getValue() { throw new RuntimeException("Stub!"); }
+    public String getValue() { return mValue; }
 
     @JsonIgnore
-    public void setValue(String value) { throw new RuntimeException("Stub!"); }
+    public void setValue(String value) {
+        if (!callChangeListener(value)) {
+            return;
+        }
+        mValue = value;
+        saveNewValue(value);
+    }
 
     /** Tachidesk specific API */
     @Override

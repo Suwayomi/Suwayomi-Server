@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.shikimori
 
-import io.github.reactivecircus.cache4k.Cache
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
@@ -11,7 +12,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.shikimori.dto.SMOAuth
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.hours
 
 class Shikimori(
     id: Int,
@@ -32,24 +32,33 @@ class Shikimori(
 
     private val json: Json by injectLazy()
 
+    // ConcurrentHashMap.computeIfAbsent guarantees a single instance per user —
+    // getOrPut/cache loaders can construct duplicates under concurrent first
+    // access.
     private val interceptors = ConcurrentHashMap<Int, ShikimoriInterceptor>()
-    private val apis =
-        Cache
-            .Builder<Int, ShikimoriApi>()
-            .expireAfterAccess(1.hours)
-            .build()
+    private val apis = ConcurrentHashMap<Int, ShikimoriApi>()
+
+    private val logger = KotlinLogging.logger {}
 
     fun interceptor(userId: Int): ShikimoriInterceptor =
-        interceptors.getOrPut(userId) {
+        interceptors.computeIfAbsent(userId) {
             ShikimoriInterceptor(userId, this)
         }
 
     suspend fun api(userId: Int): ShikimoriApi =
-        apis.get(userId) {
+        apis.computeIfAbsent(userId) {
             ShikimoriApi(id, client, interceptor(userId))
         }
 
     override fun getScoreList(userId: Int): List<String> = SCORE_LIST
+
+    override fun indexToScore(
+        userId: Int,
+        index: Int,
+    ): Double =
+        // the API only accepts 0-10; an out-of-list index (e.g. from an
+        // invalid scoreString, pre-U1-G) must not escape as "score":-1
+        index.coerceIn(0, 10).toDouble()
 
     override fun displayScore(
         userId: Int,
@@ -68,7 +77,7 @@ class Shikimori(
     ): Track {
         if (track.status != COMPLETED) {
             if (didReadChapter) {
-                if (track.last_chapter_read.toInt() == track.total_chapters && track.total_chapters > 0) {
+                if (track.total_chapters > 0 && track.last_chapter_read.toInt() >= track.total_chapters) {
                     track.status = COMPLETED
                 } else if (track.status != REREADING) {
                     track.status = READING
@@ -93,7 +102,9 @@ class Shikimori(
     ): Track {
         val remoteTrack = api(userId).findLibManga(track, getUsername(userId))
         return if (remoteTrack != null) {
-            track.copyPersonalFrom(remoteTrack)
+            // SMUserListEntry.toTrack never populates `private` — copying it
+            // from the remote would always reset the local flag to false
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
             track.library_id = remoteTrack.library_id
 
             if (track.status != COMPLETED) {
@@ -121,9 +132,10 @@ class Shikimori(
     ): Track {
         api(userId).findLibManga(track, getUsername(userId))?.let { remoteTrack ->
             track.library_id = remoteTrack.library_id
-            track.copyPersonalFrom(remoteTrack)
+            // see bind(): SMUserListEntry.toTrack never populates `private`
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
             track.total_chapters = remoteTrack.total_chapters
-        } ?: throw Exception("Could not find manga")
+        } ?: throw IOException("Could not find manga")
         return track
     }
 
@@ -154,7 +166,7 @@ class Shikimori(
         userId: Int,
         url: String,
     ) {
-        val token = url.extractToken("code") ?: throw IOException("cannot find token")
+        val token = url.extractToken("code") ?: throw IOException("cannot find code")
         login(userId, token)
     }
 
@@ -168,23 +180,36 @@ class Shikimori(
         userId: Int,
         code: String,
     ) {
-        val oauth = api(userId).accessToken(code)
-        interceptor(userId).newAuth(oauth)
-        val user = api(userId).getCurrentUser()
-        saveCredentials(userId, user.toString(), oauth.accessToken)
+        try {
+            val oauth = api(userId).accessToken(code)
+            interceptor(userId).newAuth(oauth)
+            val user = api(userId).getCurrentUser()
+            saveCredentials(userId, user.toString(), oauth.accessToken)
+        } catch (e: Throwable) {
+            // newAuth persisted the token before getCurrentUser could fail —
+            // never leave a working interceptor behind while not logged in
+            interceptor(userId).newAuth(null)
+            logout(userId)
+            throw e
+        }
     }
 
     fun saveToken(
         userId: Int,
         oauth: SMOAuth?,
     ) {
-        trackPreferences.setTrackToken(userId, this, json.encodeToString(oauth))
+        // encoding a null oauth produced the literal string "null", which was
+        // then handed to the decoder — persist real nulls instead
+        trackPreferences.setTrackToken(userId, this, oauth?.let { json.encodeToString(it) })
     }
 
     fun restoreToken(userId: Int): SMOAuth? =
         try {
-            trackPreferences.getTrackToken(userId, this)?.let { json.decodeFromString<SMOAuth>(it) }
-        } catch (e: Exception) {
+            trackPreferences
+                .getTrackToken(userId, this)
+                ?.let { json.decodeFromString<SMOAuth>(it) }
+        } catch (e: SerializationException) {
+            logger.warn(e) { "restoreToken: dropping undecodable persisted token" }
             null
         }
 

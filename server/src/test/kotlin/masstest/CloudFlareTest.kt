@@ -17,6 +17,7 @@ import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.server.applicationSetup
 import suwayomi.tachidesk.server.settings.SettingsRegistry
+import suwayomi.tachidesk.server.util.AppMutex
 import suwayomi.tachidesk.test.BASE_PATH
 import suwayomi.tachidesk.test.setLoggingEnabled
 import xyz.nulldev.ts.config.CONFIG_PREFIX
@@ -32,6 +33,9 @@ class CloudFlareTest {
         System.setProperty("$CONFIG_PREFIX.server.rootDir", dataRoot)
         Looper.clearMainLooperForTest()
         SettingsRegistry.clear()
+        // the production setup runs the real app-mutex probe — a port hit
+        // would exitProcess and kill the test worker (see AppMutex)
+        AppMutex.bypassForTests = true
         applicationSetup()
         setLoggingEnabled(false)
         return

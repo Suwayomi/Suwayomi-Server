@@ -27,6 +27,7 @@ import suwayomi.tachidesk.manga.model.dataclass.toGenreList
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.updateStrategyOrDefault
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
@@ -95,7 +96,7 @@ class MangaType(
         row[MangaTable.description],
         row[MangaTable.genre].toGenreList(),
         MangaStatus.valueOf(row[MangaTable.status]),
-        UpdateStrategy.valueOf(row[MangaTable.updateStrategy]),
+        updateStrategyOrDefault(row[MangaTable.updateStrategy]),
         row[MangaTable.realUrl],
         row[MangaTable.lastFetchedAt],
         row[MangaTable.chaptersLastFetchedAt],

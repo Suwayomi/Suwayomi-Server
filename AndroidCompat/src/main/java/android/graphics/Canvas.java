@@ -86,16 +86,33 @@ public final class Canvas {
     }
 
     public void drawRoundRect(@NonNull RectF rect, float rx, float ry, @NonNull Paint paint) {
-        throw new RuntimeException("Stub!");
+        drawRoundRect(rect.left, rect.top, rect.right, rect.bottom, rx, ry, paint);
     }
 
     public void drawRoundRect(float left, float top, float right, float bottom, float rx, float ry,
             @NonNull Paint paint) {
-        throw new RuntimeException("Stub!");
+        applyPaint(paint);
+        Shape shape = new java.awt.geom.RoundRectangle2D.Float(
+                left, top, right - left, bottom - top, rx * 2, ry * 2);
+        switch (paint.getStyle()) {
+            case FILL:
+                canvas.fill(shape);
+                break;
+            case STROKE:
+                canvas.draw(shape);
+                break;
+            case FILL_AND_STROKE:
+                canvas.fill(shape);
+                canvas.draw(shape);
+                break;
+        }
     }
 
     public void drawPath(@NonNull Path path, @NonNull Paint paint) {
-        throw new RuntimeException("Stub!");
+        // android.graphics.Path is an unimplemented stub in this environment,
+        // so there is no path geometry to draw.
+        throw new UnsupportedOperationException(
+                "Path drawing is not supported in Suwayomi AndroidCompat");
     }
 
     public void translate(float dx, float dy) {

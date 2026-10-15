@@ -29,10 +29,15 @@ object MangaAPI {
         path("extension") {
             get("list", ExtensionController.list)
 
+            // Deprecated: GET variants kept for REST v1 compat; state changes via GET are
+            // CSRF-exposed under cookie auth — clients should use POST/DELETE instead
             get("install/{pkgName}", ExtensionController.install)
+            post("install/{pkgName}", ExtensionController.install)
             post("install", ExtensionController.installFile)
             get("update/{pkgName}", ExtensionController.update)
+            post("update/{pkgName}", ExtensionController.update)
             get("uninstall/{pkgName}", ExtensionController.uninstall)
+            delete("uninstall/{pkgName}", ExtensionController.uninstall)
 
             get("icon/{pkgName}", ExtensionController.icon)
         }
@@ -61,10 +66,14 @@ object MangaAPI {
             get("{mangaId}/thumbnail", MangaController.thumbnail)
 
             get("{mangaId}/category", MangaController.categoryList)
+            // Deprecated: GET kept for REST v1 compat; use PUT (write via GET is CSRF-exposed)
             get("{mangaId}/category/{categoryId}", MangaController.addToCategory)
+            put("{mangaId}/category/{categoryId}", MangaController.addToCategory)
             delete("{mangaId}/category/{categoryId}", MangaController.removeFromCategory)
 
+            // Deprecated: GET kept for REST v1 compat; use PUT (write via GET is CSRF-exposed)
             get("{mangaId}/library", MangaController.addToLibrary)
+            put("{mangaId}/library", MangaController.addToLibrary)
             delete("{mangaId}/library", MangaController.removeFromLibrary)
 
             patch("{mangaId}/meta", MangaController.meta)
@@ -116,17 +125,20 @@ object MangaAPI {
         path("downloads") {
             ws("", DownloadController::downloadsWS)
 
+            // GET variants deprecated (write side effects, CSRF-prone); use POST
             get("start", DownloadController.start)
+            post("start", DownloadController.start)
             get("stop", DownloadController.stop)
+            post("stop", DownloadController.stop)
             get("clear", DownloadController.clear)
+            post("clear", DownloadController.clear)
         }
 
         path("download") {
-            get("{mangaId}/chapter/{chapterIndex}", DownloadController.queueChapter)
-            delete("{mangaId}/chapter/{chapterIndex}", DownloadController.unqueueChapter)
+            // the v1 download-queue endpoints (get/delete "{mangaId}/chapter/{chapterIndex}",
+            // post/delete "batch") were removed: they only ever threw "Removed support for
+            // downloads in v1 REST API"
             patch("{mangaId}/chapter/{chapterIndex}/reorder/{to}", DownloadController.reorderChapter)
-            post("batch", DownloadController.queueChapters)
-            delete("batch", DownloadController.unqueueChapters)
         }
 
         path("update") {

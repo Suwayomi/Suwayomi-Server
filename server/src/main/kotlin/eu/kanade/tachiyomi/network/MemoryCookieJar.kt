@@ -61,11 +61,12 @@ class WrappedCookie private constructor(
     override fun equals(other: Any?): Boolean {
         if (other !is WrappedCookie) return false
 
+        // RFC 6265 cookie identity is (name, domain, path) — secure/hostOnly
+        // are attributes, not part of the key; including them lets a same-name
+        // cookie re-issued with different flags coexist instead of replacing.
         return other.cookie.name == cookie.name &&
             other.cookie.domain == cookie.domain &&
-            other.cookie.path == cookie.path &&
-            other.cookie.secure == cookie.secure &&
-            other.cookie.hostOnly == cookie.hostOnly
+            other.cookie.path == cookie.path
     }
 
     override fun hashCode(): Int {
@@ -73,8 +74,6 @@ class WrappedCookie private constructor(
         hash = 31 * hash + cookie.name.hashCode()
         hash = 31 * hash + cookie.domain.hashCode()
         hash = 31 * hash + cookie.path.hashCode()
-        hash = 31 * hash + if (cookie.secure) 0 else 1
-        hash = 31 * hash + if (cookie.hostOnly) 0 else 1
         return hash
     }
 

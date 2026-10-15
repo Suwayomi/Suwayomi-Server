@@ -35,8 +35,10 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.formatStringKeyCursor
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.validatePagination
 import suwayomi.tachidesk.graphql.types.GlobalMetaNodeList
 import suwayomi.tachidesk.graphql.types.GlobalMetaType
 import java.util.concurrent.CompletableFuture
@@ -71,7 +73,10 @@ class MetaQuery {
             val value =
                 when (this) {
                     KEY -> type.key
-                    VALUE -> type.key + "\\-" + type.value
+
+                    // length-prefixed composite: meta keys may themselves contain '-',
+                    // so a plain "key-value" cursor can't be split unambiguously
+                    VALUE -> formatStringKeyCursor(type.key, type.value)
                 }
             return Cursor(value)
         }
@@ -133,6 +138,8 @@ class MetaQuery {
         last: Int? = null,
         offset: Int? = null,
     ): GlobalMetaNodeList {
+        validatePagination(first, last, offset)
+
         val queryResults =
             transaction {
                 val res = GlobalMetaTable.selectAll().where { GlobalMetaTable.user eq userId }
@@ -146,16 +153,17 @@ class MetaQuery {
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
                         actualSort,
-                        before,
                         last,
                         PaginationNeeds.of(dataFetchingEnvironment),
                     ) { it?.get(GlobalMetaTable.key) }
 
+                // the cursor predicate and cursor producer use the *effective* first sort key,
+                // which may also come from the deprecated orderBy/orderByType arguments
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: MetaOrderBy.KEY,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = order?.firstOrNull()?.by ?: orderBy ?: MetaOrderBy.KEY,
+                    orderByType = order?.firstOrNull()?.byType ?: orderByType,
                 )
 
                 if (first != null) {
@@ -164,10 +172,12 @@ class MetaQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                // `last` fetches the tail in reversed order; flip it back to forward order
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (GlobalMetaType) -> Cursor = (order?.firstOrNull()?.by ?: MetaOrderBy.KEY)::asCursor
+        val getAsCursor: (GlobalMetaType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: MetaOrderBy.KEY)::asCursor
 
         val resultsAsType = queryResults.results.map { GlobalMetaType(it) }
 

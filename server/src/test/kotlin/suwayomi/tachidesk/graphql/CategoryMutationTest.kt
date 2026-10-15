@@ -6,6 +6,7 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -18,10 +19,18 @@ import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
+import suwayomi.tachidesk.test.ensureDefaultCategory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CategoryMutationTest : GraphQLTest() {
+    @BeforeEach
+    fun setUp() {
+        // other test classes clear the CATEGORY table without restoring user 1's default
+        // row; payload assertions below count it (e.g. updateCategoryOrder returns all rows)
+        ensureDefaultCategory(1)
+    }
+
     @Test
     fun createCategory() {
         val response =

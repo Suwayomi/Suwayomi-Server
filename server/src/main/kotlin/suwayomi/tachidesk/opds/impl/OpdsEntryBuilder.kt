@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.opds.impl
 
 import dev.icerock.moko.resources.StringResource
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.withTimeoutOrNull
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
@@ -21,15 +23,19 @@ import suwayomi.tachidesk.opds.model.OpdsSummaryXml
 import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatFileSizeForOpds
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
 import java.util.Locale
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * A builder class responsible for creating OPDS Entry XML objects from data transfer objects.
  */
 object OpdsEntryBuilder {
+    private val logger = KotlinLogging.logger {}
+
     private fun currentFormattedTime() = OpdsDateUtil.formatCurrentInstantForOpds()
 
     /**
@@ -102,7 +108,8 @@ object OpdsEntryBuilder {
         entry: OpdsMangaAcqEntry,
     ): OpdsEntryXml {
         val displayThumbnailUrl = entry.thumbnailUrl?.let { proxyThumbnailUrl(entry.id) }
-        val categoryScheme = if (entry.inLibrary) "$baseUrl/library/genres" else "$baseUrl/genres"
+        // `/genres` is not a registered route — the genre taxonomy nav feed is.
+        val categoryScheme = "$baseUrl/library/genres"
 
         val links = mutableListOf<OpdsLinkXml>()
         links.add(
@@ -132,7 +139,8 @@ object OpdsEntryBuilder {
         return OpdsEntryXml(
             id = "urn:suwayomi:manga:${entry.id}",
             title = entry.title,
-            updated = OpdsDateUtil.formatEpochMillisForOpds(entry.lastFetchedAt * 1000),
+            // unset `last_fetched_at` would otherwise render as the 1970 epoch
+            updated = OpdsDateUtil.formatEpochMillisForOpdsOrNow(entry.lastFetchedAt * 1000),
             authors = entry.author?.let { listOf(OpdsAuthorXml(name = it)) },
             categories =
                 entry.genres.filter { it.isNotBlank() }.map { genre ->
@@ -201,7 +209,16 @@ object OpdsEntryBuilder {
         var effectiveLastReadAt = chapter.lastReadAt
 
         if (skipMetadataFeed) {
-            val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+            // KOReader progress sync performs a (remote) call per chapter entry — bounded by
+            // the page size. A sync outage must not take down the whole feed, so the pull
+            // is time-boxed the same way as MangaController's page-loading path.
+            val syncResult =
+                runCatching {
+                    withTimeoutOrNull(10.seconds) {
+                        KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                    }
+                }.onFailure { logger.warn(it) { "KOReader progress sync failed for chapter ${chapter.id}" } }
+                    .getOrNull()
 
             // If sync strategy dictates an update (e.g. KEEP_REMOTE), use remote data.
             // If sync strategy is PROMPT (isConflict=true), we ignore it here (effectively KEEP_LOCAL/DISABLED)
@@ -299,7 +316,8 @@ object OpdsEntryBuilder {
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}",
             title = entryTitle,
-            updated = OpdsDateUtil.formatEpochMillisForOpds(chapter.uploadDate),
+            // unset `date_upload` would otherwise render as the 1970 epoch
+            updated = OpdsDateUtil.formatEpochMillisForOpdsOrNow(chapter.uploadDate),
             authors =
                 listOfNotNull(
                     manga.author?.let { OpdsAuthorXml(name = it) },
@@ -327,8 +345,15 @@ object OpdsEntryBuilder {
         chapter: OpdsChapterMetadataAcqEntry,
         manga: OpdsMangaDetails,
     ): Pair<OpdsEntryXml, OpdsEntryXml?> {
-        // Check remote progress before building the entry
-        val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+        // Check remote progress before building the entry; a sync outage must not 500 the feed,
+        // so the remote pull is time-boxed the same way as MangaController's page-loading path.
+        val syncResult =
+            runCatching {
+                withTimeoutOrNull(10.seconds) {
+                    KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                }
+            }.onFailure { logger.warn(it) { "KOReader progress sync failed for chapter ${chapter.id}" } }
+                .getOrNull()
 
         // Exists a conflict if the sync service reports a conflict and the page numbers differ.
         val hasConflict = syncResult?.isConflict == true && syncResult.pageRead != chapter.lastPageRead
@@ -429,7 +454,7 @@ object OpdsEntryBuilder {
 
             is ProgressSource.Remote -> {
                 idSuffix = ":remote"
-                titlePrefix = MR.strings.opds_chapter_status_synced.localized(locale, progressSource.device)
+                titlePrefix = MR.strings.opds_chapter_status_synced.localized(locale)
             }
         }
 
@@ -530,7 +555,8 @@ object OpdsEntryBuilder {
         return OpdsEntryXml(
             id = "urn:suwayomi:chapter:${chapter.id}:metadata$idSuffix",
             title = entryTitle,
-            updated = OpdsDateUtil.formatEpochMillisForOpds(chapter.uploadDate),
+            // unset `date_upload` would otherwise render as the 1970 epoch
+            updated = OpdsDateUtil.formatEpochMillisForOpdsOrNow(chapter.uploadDate),
             authors =
                 listOfNotNull(
                     manga.author?.let { OpdsAuthorXml(name = it) },
@@ -596,26 +622,31 @@ object OpdsEntryBuilder {
             )
         }
 
+        // `currentSort`/`currentFilter` are normalized upstream; encode defensively anyway
+        val sortEnc = currentSort.encodeForOpdsURL()
+        val filterEnc = currentFilter.encodeForOpdsURL()
+        val langEnc = locale.toLanguageTag().encodeForOpdsURL()
+
         addSortFacet(
-            "$baseUrl?sort=number_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=number_asc&filter=$filterEnc&lang=$langEnc",
             MR.strings.opds_facet_sort_oldest_first,
             sortGroup,
             currentSort == "number_asc",
         )
         addSortFacet(
-            "$baseUrl?sort=number_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=number_desc&filter=$filterEnc&lang=$langEnc",
             MR.strings.opds_facet_sort_newest_first,
             sortGroup,
             currentSort == "number_desc",
         )
         addSortFacet(
-            "$baseUrl?sort=date_asc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=date_asc&filter=$filterEnc&lang=$langEnc",
             MR.strings.opds_facet_sort_date_asc,
             sortGroup,
             currentSort == "date_asc",
         )
         addSortFacet(
-            "$baseUrl?sort=date_desc&filter=$currentFilter&lang=${locale.toLanguageTag()}",
+            "$baseUrl?sort=date_desc&filter=$filterEnc&lang=$langEnc",
             MR.strings.opds_facet_sort_date_desc,
             sortGroup,
             currentSort == "date_desc",
@@ -623,7 +654,7 @@ object OpdsEntryBuilder {
 
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=all&sort=$currentSort&lang=${locale.toLanguageTag()}",
+            "$baseUrl?filter=all&sort=$sortEnc&lang=$langEnc",
             MR.strings.opds_facet_filter_all_chapters.localized(locale),
             filterGroup,
             currentFilter == "all",
@@ -631,7 +662,7 @@ object OpdsEntryBuilder {
         )
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=unread&sort=$currentSort&lang=${locale.toLanguageTag()}",
+            "$baseUrl?filter=unread&sort=$sortEnc&lang=$langEnc",
             MR.strings.opds_facet_filter_unread_only.localized(locale),
             filterGroup,
             currentFilter == "unread",
@@ -639,7 +670,7 @@ object OpdsEntryBuilder {
         )
         addFacet(
             feedBuilder,
-            "$baseUrl?filter=read&sort=$currentSort&lang=${locale.toLanguageTag()}",
+            "$baseUrl?filter=read&sort=$sortEnc&lang=$langEnc",
             MR.strings.opds_facet_filter_read_only.localized(locale),
             filterGroup,
             currentFilter == "read",
@@ -667,9 +698,11 @@ object OpdsEntryBuilder {
 
         val buildUrl = { newFilters: OpdsMangaFilter, newSort: String, newFilter: String ->
             val crossFilterParams = newFilters.toCrossFilterQueryParameters()
-            val sortParam = "sort=$newSort"
-            val filterParam = "filter=$newFilter"
-            val langParam = "lang=${locale.toLanguageTag()}"
+            // sort/filter are raw client strings — encode them like the chapter facets
+            // above do, so a `&` or `=` can't inject extra params into the facet href
+            val sortParam = "sort=${newSort.encodeForOpdsURL()}"
+            val filterParam = "filter=${newFilter.encodeForOpdsURL()}"
+            val langParam = "lang=${locale.toLanguageTag().encodeForOpdsURL()}"
             val allParams = listOfNotNull(crossFilterParams, sortParam, filterParam, langParam).filter { it.isNotEmpty() }
             "$baseUrl/library/series?${allParams.joinToString("&")}"
         }

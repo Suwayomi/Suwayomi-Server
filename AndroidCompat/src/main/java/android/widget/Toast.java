@@ -7,85 +7,128 @@ package android.widget;
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import android.util.Log;
+
+/**
+ * Minimal no-UI Toast implementation. There is no UI surface in this
+ * environment, so toasts are logged instead of displayed. All state
+ * setters store their values so getters behave sanely.
+ */
 public class Toast {
+    private static final String TAG = "Toast";
+
     public static final int LENGTH_LONG = 1;
     public static final int LENGTH_SHORT = 0;
 
+    private final android.content.Context context;
     private CharSequence text;
+    private android.view.View view;
+    private int duration = LENGTH_SHORT;
+    private float horizontalMargin;
+    private float verticalMargin;
+    private int gravity;
+    private int xOffset;
+    private int yOffset;
 
-    private Toast(CharSequence text) {
+    private Toast(android.content.Context context, CharSequence text, int duration) {
+        this.context = context;
         this.text = text;
+        this.duration = duration;
     }
 
     public Toast(android.content.Context context) {
-        throw new RuntimeException("Stub!");
+        this.context = context;
     }
 
     public void show() {
-        System.out.printf("made a Toast: \"%s\"\n", text.toString());
+        if (view == null && text == null) {
+            Log.w(TAG, "Show called for an empty toast");
+            return;
+        }
+        Log.i(TAG, "Toast: " + (text != null ? text : "(custom view)"));
     }
 
     public void cancel() {
-        throw new RuntimeException("Stub!");
+        // No UI surface: nothing to cancel.
     }
 
     public void setView(android.view.View view) {
-        throw new RuntimeException("Stub!");
+        this.view = view;
     }
 
     public android.view.View getView() {
-        throw new RuntimeException("Stub!");
+        return view;
     }
 
     public void setDuration(int duration) {
-        throw new RuntimeException("Stub!");
+        this.duration = duration;
     }
 
     public int getDuration() {
-        throw new RuntimeException("Stub!");
+        return duration;
     }
 
     public void setMargin(float horizontalMargin, float verticalMargin) {
-        throw new RuntimeException("Stub!");
+        this.horizontalMargin = horizontalMargin;
+        this.verticalMargin = verticalMargin;
     }
 
     public float getHorizontalMargin() {
-        throw new RuntimeException("Stub!");
+        return horizontalMargin;
     }
 
     public float getVerticalMargin() {
-        throw new RuntimeException("Stub!");
+        return verticalMargin;
     }
 
     public void setGravity(int gravity, int xOffset, int yOffset) {
-        throw new RuntimeException("Stub!");
+        this.gravity = gravity;
+        this.xOffset = xOffset;
+        this.yOffset = yOffset;
     }
 
     public int getGravity() {
-        throw new RuntimeException("Stub!");
+        return gravity;
     }
 
     public int getXOffset() {
-        throw new RuntimeException("Stub!");
+        return xOffset;
     }
 
     public int getYOffset() {
-        throw new RuntimeException("Stub!");
+        return yOffset;
     }
 
     public static Toast makeText(android.content.Context context, java.lang.CharSequence text, int duration) {
-        return new Toast(text);
+        return new Toast(context, text, duration);
     }
 
     public static android.widget.Toast makeText(android.content.Context context, int resId, int duration) throws android.content.res.Resources.NotFoundException {
-        throw new RuntimeException("Stub!");
+        CharSequence text;
+        try {
+            text = context.getResources().getText(resId);
+        } catch (RuntimeException e) {
+            // No resource subsystem: fall back to the raw resource id so the
+            // toast can still be logged.
+            text = "#" + resId;
+        }
+        return new Toast(context, text, duration);
     }
 
     public void setText(int resId) {
-        throw new RuntimeException("Stub!");
+        CharSequence resolved;
+        try {
+            resolved = context != null ? context.getResources().getText(resId) : null;
+        } catch (RuntimeException e) {
+            resolved = null;
+        }
+        text = resolved != null ? resolved : "#" + resId;
     }
 
     public void setText(java.lang.CharSequence s) {
-        throw new RuntimeException("Stub!");
+        if (view != null) {
+            throw new RuntimeException("This Toast was already created with a custom view");
+        }
+        text = s;
     }
 }

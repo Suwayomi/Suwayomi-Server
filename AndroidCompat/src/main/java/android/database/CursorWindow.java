@@ -18,10 +18,8 @@ package android.database;
 import android.database.sqlite.SQLiteClosable;
 import android.database.sqlite.SQLiteException;
 import android.os.Parcel;
-import kotlin.NotImplementedError;
 import xyz.nulldev.androidcompat.db.ScrollableResultSet;
 
-import java.sql.SQLException;
 
 /**
  * A buffer containing multiple cursor rows.
@@ -32,11 +30,28 @@ import java.sql.SQLException;
  * will be allocated by the producer, filled with data, and then sent to the
  * consumer for reading.
  * </p>
+ * <p>
+ * This compatibility implementation is backed by a {@link ScrollableResultSet}
+ * and always exposes the whole materialized result set to the window.
+ * </p>
  */
 public class CursorWindow extends SQLiteClosable {
     private ScrollableResultSet resultSet;
+    private int startPosition = 0;
+    private int numColumns = -1;
+
     public CursorWindow(ScrollableResultSet resultSet) {
         this.resultSet = resultSet;
+    }
+
+    /**
+     * Points this window at a different result set and resets the start
+     * position. Package/internal API used when the underlying query is
+     * re-executed.
+     */
+    public void setResultSet(ScrollableResultSet resultSet) {
+        this.resultSet = resultSet;
+        this.startPosition = 0;
     }
     /**
      * Clears out the existing contents of the window, making it safe to reuse
@@ -47,6 +62,14 @@ public class CursorWindow extends SQLiteClosable {
      * </p>
      */
     public void clear() {
+        acquireReference();
+        try {
+            startPosition = 0;
+            numColumns = -1;
+            resultSet = new ScrollableResultSet();
+        } finally {
+            releaseReference();
+        }
     }
     /**
      * Gets the start position of this cursor window.
@@ -58,7 +81,7 @@ public class CursorWindow extends SQLiteClosable {
      * @return The zero-based start position.
      */
     public int getStartPosition() {
-        return 0;
+        return startPosition;
     }
     /**
      * Sets the start position of this cursor window.
@@ -70,6 +93,7 @@ public class CursorWindow extends SQLiteClosable {
      * @param pos The new zero-based start position.
      */
     public void setStartPosition(int pos) {
+        startPosition = pos;
     }
     /**
      * Gets the number of rows in this window.
@@ -77,7 +101,10 @@ public class CursorWindow extends SQLiteClosable {
      * @return The number of rows in this cursor window.
      */
     public int getNumRows() {
-        return resultSet.getResultSetLength();
+        if (resultSet == null) {
+            return 0;
+        }
+        return Math.max(0, resultSet.getResultSetLength() - startPosition);
     }
     /**
      * Sets the number of columns in this window.
@@ -91,7 +118,16 @@ public class CursorWindow extends SQLiteClosable {
      * @return True if successful.
      */
     public boolean setNumColumns(int columnNum) {
-        return true;
+        acquireReference();
+        try {
+            if (columnNum < 0) {
+                return false;
+            }
+            numColumns = columnNum;
+            return true;
+        } finally {
+            releaseReference();
+        }
     }
     /**
      * Allocates a new row at the end of this cursor window.
@@ -99,12 +135,24 @@ public class CursorWindow extends SQLiteClosable {
      * @return True if successful, false if the cursor window is out of memory.
      */
     public boolean allocRow() {
-        return true;
+        acquireReference();
+        try {
+            resultSet.addRow(effectiveColumnCount());
+            return true;
+        } finally {
+            releaseReference();
+        }
     }
     /**
      * Frees the last row in this cursor window.
      */
     public void freeLastRow(){
+        acquireReference();
+        try {
+            resultSet.removeLastRow();
+        } finally {
+            releaseReference();
+        }
     }
     /**
      * Returns true if the field at the specified row and column index
@@ -196,19 +244,19 @@ public class CursorWindow extends SQLiteClosable {
         acquireReference();
         try {
             jumpToRow(row);
-            String clazz = resultSet.getMetaData().getColumnClassName(column + 1);
-            resultSet.getObject(column + 1);
-            if(resultSet.wasNull())
+            Object value = resultSet.getObject(column + 1);
+            if (value == null) {
                 return Cursor.FIELD_TYPE_NULL;
-            if(clazz.equals(String.class.getName()))
-                return Cursor.FIELD_TYPE_STRING;
-            else if(clazz.equals(Integer.class.getName()) || clazz.equals(Long.class.getName()) || clazz.equals(Short.class.getName()) || clazz.equals(Byte.class.getName()) || clazz.equals(Boolean.class.getName()))
-                return Cursor.FIELD_TYPE_INTEGER;
-            else if(clazz.equals(Double.class.getName()) || clazz.equals(Float.class.getName()))
+            } else if (value instanceof byte[]) {
+                return Cursor.FIELD_TYPE_BLOB;
+            } else if (value instanceof Double || value instanceof Float) {
                 return Cursor.FIELD_TYPE_FLOAT;
-            else
-                throw new SQLiteException("Unknown field type: " + clazz);
-        } catch (SQLException e) {
+            } else if (value instanceof Number || value instanceof Boolean) {
+                return Cursor.FIELD_TYPE_INTEGER;
+            } else {
+                return Cursor.FIELD_TYPE_STRING;
+            }
+        } catch (Exception e) {
             throw new SQLiteException("Failed to get type of field at: (" + row + ", " + column + ")!", e);
         } finally {
             releaseReference();
@@ -236,7 +284,15 @@ public class CursorWindow extends SQLiteClosable {
      * @return The value of the field as a byte array.
      */
     public byte[] getBlob(int row, int column) {
-        throw new NotImplementedError("Not implemented!");
+        acquireReference();
+        try {
+            jumpToRow(row);
+            return resultSet.getBytes(column + 1);
+        } catch (Exception e) {
+            throw new SQLiteException("Failed to get blob at: (" + row + ", " + column + ")!", e);
+        } finally {
+            releaseReference();
+        }
     }
     /**
      * Gets the value of the field at the specified row and column index as a string.
@@ -269,6 +325,8 @@ public class CursorWindow extends SQLiteClosable {
         try {
             jumpToRow(row);
             return resultSet.getString(column + 1);
+        } catch (Exception e) {
+            throw new SQLiteException("Failed to get string at: (" + row + ", " + column + ")!", e);
         } finally {
             releaseReference();
         }
@@ -310,7 +368,21 @@ public class CursorWindow extends SQLiteClosable {
         acquireReference();
         try {
             jumpToRow(row);
-            buffer.data = resultSet.getString(column + 1).toCharArray();
+            String value = resultSet.getString(column + 1);
+            if (value == null) {
+                // NULL fields copy nothing.
+                buffer.sizeCopied = 0;
+            } else {
+                char[] data = buffer.data;
+                if (data == null || data.length < value.length()) {
+                    buffer.data = value.toCharArray();
+                } else {
+                    value.getChars(0, value.length(), data, 0);
+                }
+                buffer.sizeCopied = value.length();
+            }
+        } catch (Exception e) {
+            throw new SQLiteException("Failed to copy string to buffer at: (" + row + ", " + column + ")!", e);
         } finally {
             releaseReference();
         }
@@ -342,6 +414,8 @@ public class CursorWindow extends SQLiteClosable {
         try {
             jumpToRow(row);
             return resultSet.getLong(column + 1);
+        } catch (Exception e) {
+            throw new SQLiteException("Failed to get long at: (" + row + ", " + column + ")!", e);
         } finally {
             releaseReference();
         }
@@ -374,13 +448,14 @@ public class CursorWindow extends SQLiteClosable {
         try {
             jumpToRow(row);
             return resultSet.getDouble(column + 1);
+        } catch (Exception e) {
+            throw new SQLiteException("Failed to get double at: (" + row + ", " + column + ")!", e);
         } finally {
             releaseReference();
         }
     }
     /**
-     * Gets the value of the field at the specified row and column index as a
-     * <code>short</code>.
+     * Gets the value of the field at the specified row and column index as a <code>short</code>.
      * <p>
      * The result is determined by invoking {@link #getLong} and converting the
      * result to <code>short</code>.
@@ -432,7 +507,7 @@ public class CursorWindow extends SQLiteClosable {
      * @return True if successful.
      */
     public boolean putBlob(byte[] value, int row, int column) {
-        return true;
+        return putValue(value == null ? null : value.clone(), row, column);
     }
     /**
      * Copies a string into the field at the specified row and column index.
@@ -443,7 +518,7 @@ public class CursorWindow extends SQLiteClosable {
      * @return True if successful.
      */
     public boolean putString(String value, int row, int column) {
-        return true;
+        return putValue(value, row, column);
     }
     /**
      * Puts a long integer into the field at the specified row and column index.
@@ -454,7 +529,7 @@ public class CursorWindow extends SQLiteClosable {
      * @return True if successful.
      */
     public boolean putLong(long value, int row, int column) {
-        return true;
+        return putValue(value, row, column);
     }
     /**
      * Puts a double-precision floating point value into the field at the
@@ -466,7 +541,7 @@ public class CursorWindow extends SQLiteClosable {
      * @return True if successful.
      */
     public boolean putDouble(double value, int row, int column) {
-        return true;
+        return putValue(value, row, column);
     }
     /**
      * Puts a null value into the field at the specified row and column index.
@@ -476,18 +551,41 @@ public class CursorWindow extends SQLiteClosable {
      * @return True if successful.
      */
     public boolean putNull(int row, int column) {
-        return true;
+        return putValue(null, row, column);
+    }
+
+    private boolean putValue(Object value, int row, int column) {
+        acquireReference();
+        try {
+            int index = row - startPosition;
+            if (index < 0 || index >= resultSet.getResultSetLength()) {
+                return false;
+            }
+            int columns = effectiveColumnCount();
+            if (column < 0 || column >= columns) {
+                return false;
+            }
+            resultSet.writeCell(index, column, value);
+            return true;
+        } finally {
+            releaseReference();
+        }
+    }
+
+    private int effectiveColumnCount() {
+        return numColumns >= 0 ? numColumns : resultSet.getColumnCount();
     }
 
     @Override
     protected void onAllReferencesReleased() {
+        resultSet = null;
     }
 
     private void jumpToRow(int row) {
-        // TODO Optimize
-        resultSet.first();
-        for(int i = 0; i < row; i++) {
-            resultSet.next();
+        int index = row - startPosition;
+        if (resultSet == null || index < 0 || !resultSet.absolute(index + 1)) {
+            throw new SQLiteException(
+                    "Row out of bounds: " + row + " (startPosition=" + startPosition + ")");
         }
     }
 }

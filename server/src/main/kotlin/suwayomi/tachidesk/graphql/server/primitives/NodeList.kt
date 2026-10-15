@@ -11,7 +11,10 @@ abstract class NodeList {
     @GraphQLDescription("A list of [T] objects.")
     abstract val nodes: List<Node>
 
-    @GraphQLDescription("A list of edges which contains the [T] and cursor to aid in pagination.")
+    @GraphQLDescription(
+        "A list of edges which contains the [T] and cursor to aid in pagination. " +
+            "Only the first and last edge of the page are populated — iterate 'nodes' for the page contents.",
+    )
     abstract val edges: List<Edge>
 
     @GraphQLDescription("Information to aid in pagination.")

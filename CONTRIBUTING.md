@@ -24,14 +24,14 @@ This project has two components:
 
 ### API
 #### GraphQL
-The GraphQL API can be queried with a POST request to `/api/graphql`. There is also the GraphiQL IDE accessible by the browser at `/api/graphql` to perform ad-hoc queries and explore the API.
+The GraphQL API can be queried with a POST request to `/api/graphql`. There is also the GraphQL Playground accessible by the browser at `/api/graphql` to perform ad-hoc queries and explore the API.
 
 #### REST
 > [!WARNING]
 >
 > Soon to be deprecated
 
-The REST API can be queried at `/api/v1`. An interactive Swagger API explorer is available at `/api/swagger-ui`.
+The REST API can be queried at `/api/v1`.
 
 ### Tracker client authorization
 #### OAuth
@@ -70,10 +70,16 @@ Run `./gradlew server:downloadWebUI server:shadowJar`, the resulting built jar f
 Delete `server/src/main/resources/WebUI.zip` if exists from previous runs, then run `./gradlew server:shadowJar`, the resulting built jar file will be `server/build/Suwayomi-Server-vX.Y.Z-rxxx.jar`.
 
 ### building the Windows package
-First Build the jar, then cd into the `scripts` directory and run `./windows-bundler.sh win32` or `./windows-bundler.sh win64` depending on the target architecture, the resulting built zip package file will be `server/build/Suwayomi-Server-vX.Y.Z-rxxx-winXX.zip`.
+First build the jar, then run `./scripts/bundler.sh windows-x64` from the repository root. The resulting zip bundle is `Suwayomi-Server-vX.Y.Z-rxxx-windows-x64.zip` and the installer is `Suwayomi-Server-vX.Y.Z-rxxx-windows-x64.msi` (building the `.msi` additionally requires `wixl`, which is only packaged for Linux).
 
 ## Running in development mode
 run `./gradlew :server:run --stacktrace` to run the server
+
+## Translations
+
+Server strings live in `server/i18n/src/commonMain/moko-resources/` (`values/base/strings.xml` is the English fallback, one `values/<locale>/` directory per language, and `files/languages.json` lists the locales selectable at runtime — regenerate it with `./gradlew :server:i18n:generateLocales` after adding a locale).
+
+Translations are crowdsourced and several locales are **incomplete**: a missing key in a locale simply falls back to the base English string, so partial translations are safe to ship — the audit (`i18n` checks / missing-key reports in CI) reports per-locale key counts for visibility but does not block on them. When editing a shared placeholder signature (e.g. `%2$s`), keep it in sync across `base` and **all** locale files, and match positional argument indexes exactly.
 
 ## Running tests
 run `./gradlew :server:test` to execute all tests

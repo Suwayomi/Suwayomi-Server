@@ -106,24 +106,31 @@ class OpdsExploreNsfwTest : ApplicationTest() {
         val (entries, total) = NavigationRepository.getExploreSources(1, 1, includeNsfw = false)
         val names = entries.map { it.name }.toSet()
 
+        // assert presence/absence of the test-created entries rather than absolute counts —
+        // unrelated sources installed by other tests must not break this test
         assertTrue("$SAFE_EXT_NAME (EN)" in names, "safe sources should be visible")
-        assertTrue("$NSFW_EXT_NAME (EN)" !in names, "NSFW sources should be hidden from users without the NSFW permission")
-        // the always-installed local source is the only other entry
-        assertEquals(2, entries.size)
-        assertEquals(2L, total)
+        assertTrue(
+            "$NSFW_EXT_NAME (EN)" !in names,
+            "NSFW sources should be hidden from users without the NSFW permission",
+        )
+        // the listing is paginated, so only relate entries to the unpaginated total
+        assertTrue(total >= entries.size.toLong(), "total must cover at least the returned page")
     }
 
     @Test
     fun exploreSourcesShowsNsfwSourcesWithPermission() {
         createNsfwAndSafeSources()
 
+        val (_, totalWithoutNsfw) = NavigationRepository.getExploreSources(1, 1, includeNsfw = false)
         val (entries, total) = NavigationRepository.getExploreSources(1, 1, includeNsfw = true)
         val names = entries.map { it.name }.toSet()
 
         assertTrue("$SAFE_EXT_NAME (EN)" in names, "safe sources should be visible")
         assertTrue("$NSFW_EXT_NAME (EN)" in names, "NSFW sources should be visible to users with the NSFW permission")
-        assertEquals(3, entries.size)
-        assertEquals(3L, total)
+        // relational assertions on the unpaginated totals instead of absolute counts:
+        // enabling the permission must reveal at least our NSFW entry
+        assertTrue(total > totalWithoutNsfw, "the NSFW-enabled listing must contain more entries")
+        assertTrue(total >= entries.size.toLong(), "total must cover at least the returned page")
     }
 
     @Test

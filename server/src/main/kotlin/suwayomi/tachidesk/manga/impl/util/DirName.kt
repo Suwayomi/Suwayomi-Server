@@ -48,6 +48,12 @@ private suspend fun getMangaDir(mangaId: Int): String =
         getMangaDir(mangaEntry[MangaTable.title], source.toString())
     }
 
+/**
+ * Maps titles/scanlator names to filesystem-safe directory names. The mapping is lossy:
+ * distinct titles can collapse ("a:b" vs "a?b" both become "a_b"), names are truncated
+ * at 240 UTF-8 bytes and case can fold — collisions are accepted because the scheme must
+ * stay stable for download directories created by earlier versions.
+ */
 private suspend fun getChapterDir(
     mangaId: Int,
     title: String,
@@ -174,21 +180,30 @@ suspend fun updateChapterDownloadDir(
         return false
     }
 
-    return mutexByManga.getOrPut(oldChapter.mangaId) { Mutex() }.withLock {
-        val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
-        val newDownloadDir = getChapterDownloadPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
-        val currentDownloadCbz = getChapterCbzPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
-        val newDownloadCbz = getChapterCbzPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
+    val mutex = mutexByManga.getOrPut(oldChapter.mangaId) { Mutex() }
+    return try {
+        mutex.withLock {
+            val currentDownloadDir = getChapterDownloadPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
+            val newDownloadDir = getChapterDownloadPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
+            val currentDownloadCbz = getChapterCbzPath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
+            val newDownloadCbz = getChapterCbzPath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
 
-        val currentCacheDir = getChapterCachePath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
-        val newCacheDir = getChapterCachePath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
+            val currentCacheDir = getChapterCachePath(oldChapter.mangaId, oldChapter.name, oldChapter.scanlator)
+            val newCacheDir = getChapterCachePath(oldChapter.mangaId, newChapter.name, newChapter.scanlator)
 
-        withIOContext {
-            val dirRename = updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
-            val cbzRename = updateDownloadDir(currentDownloadCbz, newDownloadCbz, currentCacheDir, newCacheDir)
+            withIOContext {
+                val dirRename = updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
+                // the .cbz sits next to the chapter dir; the cache dir was already moved
+                // above — the second updateDownloadDir call used to no-op on it
+                val cbzRename = updateDir(currentDownloadCbz, newDownloadCbz)
 
-            dirRename && cbzRename
+                dirRename && cbzRename
+            }
         }
+    } finally {
+        // renames are rare — keep the mutex map bounded instead of growing it for every
+        // manga ever renamed (paired remove is a no-op if a new mutex was installed)
+        mutexByManga.remove(oldChapter.mangaId, mutex)
     }
 }
 
@@ -198,15 +213,21 @@ suspend fun updateMangaDownloadDir(
     title: String,
     sourceName: String,
     newTitle: String,
-): Boolean =
-    mutexByManga.getOrPut(mangaId) { Mutex() }.withLock {
-        val currentDownloadDir = getMangaDownloadDir(title, sourceName)
-        val newDownloadDir = getMangaDownloadDir(newTitle, sourceName)
+): Boolean {
+    val mutex = mutexByManga.getOrPut(mangaId) { Mutex() }
+    return try {
+        mutex.withLock {
+            val currentDownloadDir = getMangaDownloadDir(title, sourceName)
+            val newDownloadDir = getMangaDownloadDir(newTitle, sourceName)
 
-        val currentCacheDir = getMangaCacheDir(title, sourceName)
-        val newCacheDir = getMangaCacheDir(newTitle, sourceName)
+            val currentCacheDir = getMangaCacheDir(title, sourceName)
+            val newCacheDir = getMangaCacheDir(newTitle, sourceName)
 
-        withIOContext {
-            updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
+            withIOContext {
+                updateDownloadDir(currentDownloadDir, newDownloadDir, currentCacheDir, newCacheDir)
+            }
         }
+    } finally {
+        mutexByManga.remove(mangaId, mutex)
     }
+}

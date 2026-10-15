@@ -60,6 +60,7 @@ interface SManga : Serializable {
             it.thumbnail_url = thumbnail_url
             it.update_strategy = update_strategy
             it.initialized = initialized
+            it.memo = memo
         }
 
     companion object {

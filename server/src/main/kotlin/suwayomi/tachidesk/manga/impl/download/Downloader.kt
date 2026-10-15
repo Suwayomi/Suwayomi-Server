@@ -15,9 +15,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -52,11 +54,23 @@ class Downloader(
 ) {
     companion object {
         private const val MAX_RETRIES = 3
+        private const val RETRY_DELAY_MS = 2_000L
+        private const val STOP_TIMEOUT_MS = 10_000L
     }
 
     private val logger = KotlinLogging.logger("${Downloader::class.java.name} source($sourceId)")
 
     private var job: Job? = null
+
+    /**
+     * Set once [stop] was called. A stopped downloader instance is never restarted;
+     * [suwayomi.tachidesk.manga.impl.download.DownloadManager] replaces it with a
+     * fresh instance when the source should be downloaded from again.
+     */
+    @Volatile
+    var stopped = false
+        private set
+
     private val availableSourceDownloads
         get() = downloadQueue.filter { it.sourceId == sourceId }
 
@@ -70,7 +84,9 @@ class Downloader(
         immediate: Boolean,
         update: DownloadUpdate? = null,
     ) {
-        val isDownloadCanceled = !downloadQueue.contains(update?.downloadQueueItem)
+        // a null update is a lifecycle signal (e.g. "started") and must go through;
+        // only suppress updates that refer to items no longer queued
+        val isDownloadCanceled = update != null && !downloadQueue.contains(update.downloadQueueItem)
         if (isDownloadCanceled) {
             return
         }
@@ -106,7 +122,7 @@ class Downloader(
         get() = job?.isActive == true
 
     fun start() {
-        if (!isActive) {
+        if (!isActive && !stopped) {
             job =
                 scope
                     .launch {
@@ -125,7 +141,17 @@ class Downloader(
     }
 
     suspend fun stop() {
-        job?.cancelAndJoin()
+        stopped = true
+        // a job stuck in a blocking call (DB transaction, source request) would
+        // otherwise suspend cancelAndJoin forever and with it the whole stop()
+        val completed =
+            withTimeoutOrNull(STOP_TIMEOUT_MS) {
+                job?.cancelAndJoin()
+                true
+            }
+        if (completed != true) {
+            logger.warn { "stop() timed out after ${STOP_TIMEOUT_MS}ms waiting for the download job to finish" }
+        }
         logger.debug { "stopped" }
     }
 
@@ -141,9 +167,12 @@ class Downloader(
 
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
+            // an item is only ever in Error state after tries reached MAX_RETRIES, so
+            // retryable items are the Queued ones (a failed attempt stays Queued with
+            // an incremented try counter until the counter is exhausted)
             val download =
                 availableSourceDownloads.firstOrNull {
-                    (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
+                    (it.state == Queued || it.state == Finished)
                 } ?: break
 
             val logContext = "${logger.name} - downloadChapter($download))"
@@ -225,10 +254,15 @@ class Downloader(
             } catch (e: Exception) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries++
-                download.state = Queued
                 if (download.tries >= MAX_RETRIES) {
                     download.state = Error
                     notify(false, ERROR, download)
+                } else {
+                    download.state = Queued
+                    // the failed item stays at the head of this source's queue; back off
+                    // exponentially (2s, 4s, ...) instead of instantly retrying it, or a
+                    // broken source burns through all retries in a split second
+                    delay(RETRY_DELAY_MS shl (download.tries - 1))
                 }
             }
         }

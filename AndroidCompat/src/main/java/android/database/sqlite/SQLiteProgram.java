@@ -16,7 +16,6 @@
 
 package android.database.sqlite;
 
-import android.database.DatabaseUtils;
 import android.os.CancellationSignal;
 import xyz.nulldev.androidcompat.db.ScrollableResultSet;
 
@@ -50,19 +49,12 @@ public abstract class SQLiteProgram extends SQLiteClosable {
             metaData = preparedStatement.getParameterMetaData();
             mNumParameters = metaData.getParameterCount();
         } catch (SQLException e) {
-            throw new SQLiteException("Could not compile SQL statement: " + mSql, e);
+            throw toSQLiteException("Could not compile SQL statement: " + mSql, e);
         }
 
-        int n = DatabaseUtils.getSqlStatementType(mSql);
-        switch (n) {
-            case DatabaseUtils.STATEMENT_BEGIN:
-            case DatabaseUtils.STATEMENT_COMMIT:
-            case DatabaseUtils.STATEMENT_ABORT:
-                break;
-
-            default:
-                break;
-        }
+        // (AOSP switches on the statement type here for session bookkeeping that
+        // this JDBC-backed implementation doesn't need — the empty switch was
+        // removed during the cleanup pass.)
 
         if (bindArgs != null && bindArgs.length > mNumParameters) {
             throw new IllegalArgumentException("Too many bind arguments.  "
@@ -191,11 +183,66 @@ public abstract class SQLiteProgram extends SQLiteClosable {
     protected void onAllReferencesReleased() {
         clearBindings();
 
-        // Close prepared statement
+        // Close prepared statement (previously the condition was inverted and
+        // only closed the statement if it was already closed, leaking it).
         try {
-            if (preparedStatement.isClosed())
+            if (preparedStatement != null && !preparedStatement.isClosed())
                 preparedStatement.close();
         } catch(SQLException ignored) {}
+    }
+
+    /**
+     * Maps a JDBC {@link SQLException} to the most specific Android
+     * {@link SQLiteException} subclass using the SQLite primary error code
+     * ({@code errorCode & 0xFF}), matching AOSP's
+     * android_database_SQLiteCommon error mapping.
+     */
+    static SQLiteException toSQLiteException(String message, SQLException e) {
+        SQLiteException result;
+        switch (e.getErrorCode() & 0xFF) {
+            case 4:  // SQLITE_ABORT
+                result = new SQLiteAbortException(message);
+                break;
+            case 5:  // SQLITE_BUSY
+            case 6:  // SQLITE_LOCKED
+                result = new SQLiteDatabaseLockedException(message);
+                break;
+            case 7:  // SQLITE_NOMEM
+                result = new SQLiteOutOfMemoryException(message);
+                break;
+            case 8:  // SQLITE_READONLY
+                result = new SQLiteReadOnlyDatabaseException(message);
+                break;
+            case 10: // SQLITE_IOERR
+                result = new SQLiteDiskIOException(message);
+                break;
+            case 11: // SQLITE_CORRUPT
+                result = new SQLiteDatabaseCorruptException(message);
+                break;
+            case 13: // SQLITE_FULL
+                result = new SQLiteFullException(message);
+                break;
+            case 14: // SQLITE_CANTOPEN
+                result = new SQLiteCantOpenDatabaseException(message);
+                break;
+            case 19: // SQLITE_CONSTRAINT
+                result = new SQLiteConstraintException(message);
+                break;
+            case 20: // SQLITE_MISMATCH
+                result = new SQLiteDatatypeMismatchException(message);
+                break;
+            case 26: // SQLITE_NOTADB
+                result = new SQLiteDatabaseCorruptException(message);
+                break;
+            case 101: // SQLITE_DONE
+                result = new SQLiteDoneException(message);
+                break;
+            default:
+                result = new SQLiteException(message);
+                break;
+        }
+        result.initCause(e);
+        return result;
     }
 
     private void bind(int index, Object value) {
@@ -208,6 +255,8 @@ public abstract class SQLiteProgram extends SQLiteClosable {
     }
 
     protected void B_setBindArgs() {
+        // New bindings invalidate any previously materialized result set.
+        invalidateResultSet();
         Object[] bindArgs = getBindArgs();
         if(bindArgs == null) bindArgs = new Object[0];
         for(int i = 0; i < bindArgs.length; i++) {
@@ -215,18 +264,51 @@ public abstract class SQLiteProgram extends SQLiteClosable {
             try {
                 getPreparedStatement().setObject(i + 1, obj);
             } catch (SQLException e) {
-                throw new SQLiteException("Failed to bind argument: (" + i + ", " + obj + ")");
+                // the bound value is deliberately excluded from the message — bind
+                // args can carry sensitive data (passwords, tokens) that must not
+                // end up in logs/exception reports; the cause still carries it.
+                throw toSQLiteException("Failed to bind argument at index " + i, e);
             }
         }
     }
 
     private ScrollableResultSet resultSet = null;
+
+    /**
+     * Invalidates the cached materialized result set. Must be called whenever
+     * the prepared statement is (re-)executed or bindings change so a stale
+     * snapshot is never returned to callers.
+     */
+    void invalidateResultSet() {
+        resultSet = null;
+    }
+
+    /**
+     * Executes the prepared statement and invalidates the cached result set.
+     * @throws SQLiteException if the statement could not be executed
+     */
+    void B_execute() {
+        invalidateResultSet();
+        try {
+            getPreparedStatement().execute();
+        } catch (SQLException e) {
+            throw toSQLiteException("Failed to execute SQL statement: " + getSql(), e);
+        }
+    }
+
     ScrollableResultSet getResultSet() {
         if(resultSet == null) {
             try {
-                resultSet = new ScrollableResultSet(getPreparedStatement().getResultSet());
+                java.sql.ResultSet jdbcResultSet = getPreparedStatement().getResultSet();
+                // PreparedStatement.getResultSet() returns null when the last
+                // execution did not produce a result set (e.g. non-SELECT
+                // statements); expose an empty scrollable result set instead of
+                // crashing so callers see a valid, empty cursor.
+                resultSet = jdbcResultSet != null
+                        ? new ScrollableResultSet(jdbcResultSet)
+                        : new ScrollableResultSet();
             } catch (SQLException e) {
-                throw new SQLiteException("Failed to get result set!", e);
+                throw toSQLiteException("Failed to get result set!", e);
             }
         }
 

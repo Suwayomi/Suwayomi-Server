@@ -20,6 +20,10 @@ open class Filter<T>(
         state: Int = 0,
     ) : Filter<Int>(name, state) {
         val displayValues get() = values.map { it.toString() }
+
+        override fun equals(other: Any?): Boolean = super.equals(other) && values.contentEquals((other as Select<*>).values)
+
+        override fun hashCode(): Int = 31 * super.hashCode() + values.contentHashCode()
     }
 
     abstract class Text(
@@ -63,11 +67,16 @@ open class Filter<T>(
             val index: Int,
             val ascending: Boolean,
         )
+
+        override fun equals(other: Any?): Boolean = super.equals(other) && values.contentEquals((other as Sort).values)
+
+        override fun hashCode(): Int = 31 * super.hashCode() + values.contentHashCode()
     }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Filter<*>) return false
+        if (this::class != other::class) return false
 
         return name == other.name && state == other.state
     }

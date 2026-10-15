@@ -70,4 +70,9 @@ fun OkHttpClient.Builder.rateLimitHost(
     url: String,
     permits: Int,
     period: Duration = 1.seconds,
-): OkHttpClient.Builder = addInterceptor(RateLimitInterceptor(url.toHttpUrlOrNull()?.host, permits, period))
+): OkHttpClient.Builder {
+    // A host-less interceptor would apply the rate limit to *every* request:
+    // an unparseable URL must silently add nothing rather than a global limit.
+    val host = url.toHttpUrlOrNull()?.host ?: return this
+    return addInterceptor(RateLimitInterceptor(host, permits, period))
+}

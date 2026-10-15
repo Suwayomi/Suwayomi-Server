@@ -277,7 +277,7 @@ class UserMutationTest : GraphQLTest() {
                     }
                 }
                 """.trimIndent(),
-                mapOf("input" to mapOf("username" to "newuser", "password" to "newpass")),
+                mapOf("input" to mapOf("username" to "newuser", "password" to "newpass1")),
             )
 
         response.assertNoErrors()
@@ -503,14 +503,14 @@ class UserMutationTest : GraphQLTest() {
         val userId = createTestUser("recoveryuser")
         val (code, _) = createRecoveryCodeFor(userId)
 
-        val redeemResponse = redeemRecoveryCode(code, "newpass")
+        val redeemResponse = redeemRecoveryCode(code, "newpass1")
         redeemResponse.assertNoErrors()
         assertEquals(userId, (redeemResponse.dataPath("redeemRecoveryCode", "user", "id") as Number).toInt())
         assertNotNull(redeemResponse.dataPath("redeemRecoveryCode", "accessToken"), "accessToken should be present")
         assertNotNull(redeemResponse.dataPath("redeemRecoveryCode", "refreshToken"), "refreshToken should be present")
 
         // login with the new password works
-        login("recoveryuser", "newpass").assertNoErrors()
+        login("recoveryuser", "newpass1").assertNoErrors()
 
         // login with the old password fails
         login("recoveryuser", "password").assertHasError()
@@ -521,7 +521,7 @@ class UserMutationTest : GraphQLTest() {
         val userId = createTestUser("singleuseuser")
         val (code, _) = createRecoveryCodeFor(userId)
 
-        redeemRecoveryCode(code, "newpass").assertNoErrors()
+        redeemRecoveryCode(code, "newpass1").assertNoErrors()
 
         redeemRecoveryCode(code, "otherpass").assertHasError()
     }
@@ -531,14 +531,14 @@ class UserMutationTest : GraphQLTest() {
         val userId = createTestUser("expireduser")
         val code = seedExpiredRecoveryCode(userId)
 
-        redeemRecoveryCode(code, "newpass").assertHasError()
+        redeemRecoveryCode(code, "newpass1").assertHasError()
     }
 
     @Test
     fun registrationCodeRedemptionFailsWhenExpired() {
         val code = seedExpiredRegistrationCode()
 
-        redeemRegistrationCode(code, "reguser", "regpass").assertHasError()
+        redeemRegistrationCode(code, "reguser", "regpass1").assertHasError()
 
         // no account was created
         val exists =
@@ -605,17 +605,17 @@ class UserMutationTest : GraphQLTest() {
         val (code2, _) = createRecoveryCodeFor(userId)
 
         // the first code was superseded by issuing the second one
-        redeemRecoveryCode(code1, "newpass").assertHasError()
+        redeemRecoveryCode(code1, "newpass1").assertHasError()
 
         // the second code still works
-        redeemRecoveryCode(code2, "newpass").assertNoErrors()
+        redeemRecoveryCode(code2, "newpass1").assertNoErrors()
     }
 
     @Test
     fun registrationCodeRoundTrip() {
         val (code, _) = createRegistrationCode()
 
-        val redeemResponse = redeemRegistrationCode(code, "reguser", "regpass")
+        val redeemResponse = redeemRegistrationCode(code, "reguser", "regpass1")
         redeemResponse.assertNoErrors()
         assertNotNull(redeemResponse.dataPath("redeemRegistrationCode", "accessToken"), "accessToken should be present")
         assertNotNull(redeemResponse.dataPath("redeemRegistrationCode", "refreshToken"), "refreshToken should be present")
@@ -643,7 +643,7 @@ class UserMutationTest : GraphQLTest() {
         assertEquals(listOf(UserRole.USER.name), roles)
 
         // login works
-        login("reguser", "regpass").assertNoErrors()
+        login("reguser", "regpass1").assertNoErrors()
     }
 
     @Test
@@ -689,7 +689,7 @@ class UserMutationTest : GraphQLTest() {
         assertEquals(0, (response.dataPath("userCodes") as List<*>).size)
 
         // redeeming the registration code consumes it
-        redeemRegistrationCode(registrationCode, "reguser2", "regpass").assertNoErrors()
+        redeemRegistrationCode(registrationCode, "reguser2", "regpass1").assertNoErrors()
 
         response = userCodes()
         response.assertNoErrors()
@@ -708,7 +708,7 @@ class UserMutationTest : GraphQLTest() {
         revokeUserCode(codeId).assertNoErrors()
 
         // the revoked code can no longer be redeemed
-        redeemRecoveryCode(code, "newpass").assertHasError()
+        redeemRecoveryCode(code, "newpass1").assertHasError()
 
         // revoking it again fails
         revokeUserCode(codeId).assertHasError()
@@ -754,7 +754,7 @@ class UserMutationTest : GraphQLTest() {
                         }
                     }
                     """.trimIndent(),
-                    mapOf("input" to mapOf("newPassword" to "newpass", "oldPassword" to "password")),
+                    mapOf("input" to mapOf("newPassword" to "newpass1", "oldPassword" to "password")),
                     user = UserType.User(userId, listOf(UserPermission.DOWNLOAD_CHAPTERS)),
                 )
             response.assertNoErrors()
@@ -785,6 +785,212 @@ class UserMutationTest : GraphQLTest() {
             assertEquals(6, SessionVersion.current(userId))
         }
 
+    /**
+     * Grant permissions to a user directly in the database. [hasPermission] resolves the
+     * issuer's *current* DB state, so the caller's UserType claims alone are not enough for
+     * the delegation check to see them.
+     */
+    private fun grantDbPermissions(
+        userId: Int,
+        vararg permissions: UserPermission,
+    ) {
+        transaction {
+            permissions.forEach { permission ->
+                UserPermissionsTable.insert {
+                    it[UserPermissionsTable.user] = userId
+                    it[UserPermissionsTable.permission] = permission.name
+                }
+            }
+        }
+    }
+
+    private fun registerUser(
+        username: String,
+        permissions: List<String>?,
+        user: UserType = admin,
+    ): GraphQLResponse<*> =
+        graphql(
+            """
+            mutation(${'$'}input: RegisterInput!) {
+                register(input: ${'$'}input) {
+                    clientMutationId
+                }
+            }
+            """.trimIndent(),
+            mapOf(
+                "input" to
+                    mapOf(
+                        "username" to username,
+                        "password" to "newpass1",
+                        "userPermissions" to permissions,
+                    ),
+            ),
+            user = user,
+        )
+
+    private fun createRegistrationCodeWith(
+        permissions: List<String>?,
+        user: UserType,
+    ): GraphQLResponse<*> =
+        graphql(
+            """
+            mutation(${'$'}input: CreateRegistrationCodeInput!) {
+                createRegistrationCode(input: ${'$'}input) {
+                    code
+                }
+            }
+            """.trimIndent(),
+            mapOf("input" to mapOf("permissions" to permissions)),
+            user = user,
+        )
+
+    private fun updateUserPermissions(
+        targetUserId: Int,
+        permissions: List<String>?,
+        user: UserType = admin,
+    ): GraphQLResponse<*> =
+        graphql(
+            """
+            mutation(${'$'}input: UpdateUserInput!) {
+                updateUser(input: ${'$'}input) {
+                    user {
+                        id
+                    }
+                }
+            }
+            """.trimIndent(),
+            mapOf("input" to mapOf("userId" to targetUserId, "permissions" to permissions)),
+            user = user,
+        )
+
+    @Test
+    fun registerCanOnlyDelegatePermissionsTheCallerHolds() {
+        val callerId = createTestUser("delegatingmanager")
+        grantDbPermissions(callerId, UserPermission.MANAGE_USERS, UserPermission.DOWNLOAD_CHAPTERS)
+        val caller =
+            UserType.User(
+                callerId,
+                listOf(UserPermission.MANAGE_USERS, UserPermission.DOWNLOAD_CHAPTERS),
+            )
+
+        // the caller holds MANAGE_USERS but not MANAGE_SETTINGS
+        registerUser("overgrantuser", listOf("DOWNLOAD_CHAPTERS", "MANAGE_SETTINGS"), caller)
+            .assertForbidden()
+
+        // a subset of the caller's own permissions is fine
+        registerUser("subsetuser", listOf("DOWNLOAD_CHAPTERS"), caller).assertNoErrors()
+
+        // and no permissions at all is fine
+        registerUser("nopermuser", emptyList(), caller).assertNoErrors()
+    }
+
+    @Test
+    fun adminCanDelegateAnyPermission() {
+        registerUser(
+            "admindelegated",
+            UserPermission.entries.map { it.name },
+        ).assertNoErrors()
+    }
+
+    @Test
+    fun registrationCodeCanOnlyDelegatePermissionsTheIssuerHolds() {
+        val callerId = createTestUser("codemanager")
+        grantDbPermissions(callerId, UserPermission.MANAGE_USERS)
+        val caller = UserType.User(callerId, listOf(UserPermission.MANAGE_USERS))
+
+        createRegistrationCodeWith(listOf("MANAGE_SETTINGS"), caller).assertForbidden()
+        createRegistrationCodeWith(listOf("MANAGE_USERS"), caller).assertNoErrors()
+        createRegistrationCodeWith(emptyList(), caller).assertNoErrors()
+    }
+
+    @Test
+    fun updateUserCanOnlyDelegatePermissionsTheCallerHolds() {
+        val callerId = createTestUser("updatemanager")
+        grantDbPermissions(callerId, UserPermission.MANAGE_USERS, UserPermission.DOWNLOAD_CHAPTERS)
+        val caller =
+            UserType.User(
+                callerId,
+                listOf(UserPermission.MANAGE_USERS, UserPermission.DOWNLOAD_CHAPTERS),
+            )
+        val targetId = createTestUser("updatetarget")
+
+        updateUserPermissions(targetId, listOf("MANAGE_SETTINGS"), caller).assertForbidden()
+        updateUserPermissions(targetId, listOf("DOWNLOAD_CHAPTERS"), caller).assertNoErrors()
+    }
+
+    @Test
+    fun registrationCodeRedemptionFailsWhenIssuerWasDemoted() {
+        // the issuer held MANAGE_USERS and DOWNLOAD_CHAPTERS when the code was created
+        val issuerId = createTestUser("driftissuer")
+        grantDbPermissions(issuerId, UserPermission.MANAGE_USERS, UserPermission.DOWNLOAD_CHAPTERS)
+        val issuer =
+            UserType.User(
+                issuerId,
+                listOf(UserPermission.MANAGE_USERS, UserPermission.DOWNLOAD_CHAPTERS),
+            )
+
+        val response = createRegistrationCodeWith(listOf("DOWNLOAD_CHAPTERS"), issuer)
+        response.assertNoErrors()
+        val code = response.dataPath("createRegistrationCode", "code") as String
+
+        // the issuer is demoted afterwards: the code must no longer grant what the issuer
+        // cannot delegate anymore
+        transaction {
+            UserPermissionsTable.deleteWhere { UserPermissionsTable.user eq issuerId }
+        }
+
+        redeemRegistrationCode(code, "driftuser", "driftpass").assertHasError()
+    }
+
+    @Test
+    fun updateUserRevokesTheTargetsExistingTokens() =
+        runTest {
+            val targetId = createTestUser("revokedtarget")
+            val tokens = Jwt.generateJwt(targetId)
+            assertTrue(Jwt.verifyJwt(tokens.accessToken) is UserType.User)
+
+            updateUserPermissions(targetId, listOf("DOWNLOAD_CHAPTERS")).assertNoErrors()
+
+            // the permission change bumped the session version, invalidating old tokens
+            assertTrue(Jwt.verifyJwt(tokens.accessToken) is UserType.Visitor)
+        }
+
+    @Test
+    fun updateUserWithoutChangesKeepsExistingTokens() =
+        runTest {
+            val targetId = createTestUser("kepttarget")
+            val tokens = Jwt.generateJwt(targetId)
+
+            // a no-op update (no permissions, no role) does not bump the session version
+            graphql(
+                """
+                mutation(${'$'}input: UpdateUserInput!) {
+                    updateUser(input: ${'$'}input) {
+                        user {
+                            id
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("userId" to targetId)),
+            ).assertNoErrors()
+
+            assertTrue(Jwt.verifyJwt(tokens.accessToken) is UserType.User)
+        }
+
+    @Test
+    fun sessionVersionForDeletedUserIsMinusOne() =
+        runTest {
+            val userId = createTestUser("deleteduser")
+            transaction {
+                UserAccountTable.deleteWhere { UserAccountTable.id eq userId }
+            }
+
+            // instead of a NoSuchElementException -> 404, a deleted user reports -1 which
+            // never matches a JWT's token_version and thus fails closed
+            assertEquals(-1, SessionVersion.current(userId))
+        }
+
     @AfterEach
     internal fun tearDown() {
         transaction {
@@ -793,8 +999,9 @@ class UserMutationTest : GraphQLTest() {
                 it[UserAccountTable.username] = "admin"
                 it[UserAccountTable.password] = Bcrypt.encryptPassword("password")
             }
-            UserAccountTable.deleteWhere { UserAccountTable.id neq 1 }
+            // codes reference their issuer via createdBy, so they must go first
             UserCodeTable.deleteAll()
+            UserAccountTable.deleteWhere { UserAccountTable.id neq 1 }
         }
     }
 }

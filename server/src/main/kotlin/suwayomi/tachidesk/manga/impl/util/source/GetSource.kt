@@ -11,6 +11,8 @@ import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -29,12 +31,29 @@ object GetSource {
     private val sourceCache = ConcurrentHashMap<Long, Source>()
     private val applicationDirs: ApplicationDirs by injectLazy()
 
+    // single-flight per source id: concurrent misses must not each run the expensive
+    // jar load in loadExtensionSources
+    private val loadMutexBySourceId = ConcurrentHashMap<Long, Mutex>()
+
     private suspend fun getSource(sourceId: Long): Source? {
         val cachedResult: Source? = sourceCache[sourceId]
         if (cachedResult != null) {
             return cachedResult
         }
 
+        val mutex = loadMutexBySourceId.getOrPut(sourceId) { Mutex() }
+        return try {
+            mutex.withLock {
+                sourceCache[sourceId] ?: loadSource(sourceId)
+            }
+        } finally {
+            // paired removal keeps the map bounded; a concurrent waiter that obtained a
+            // different mutex instance is not evicted
+            loadMutexBySourceId.remove(sourceId, mutex)
+        }
+    }
+
+    private suspend fun loadSource(sourceId: Long): Source? {
         val sourceRecord =
             transaction {
                 SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull()
@@ -43,8 +62,8 @@ object GetSource {
         val extensionId = sourceRecord[SourceTable.extension]
         val extensionRecord =
             transaction {
-                ExtensionTable.selectAll().where { ExtensionTable.id eq extensionId }.first()
-            }
+                ExtensionTable.selectAll().where { ExtensionTable.id eq extensionId }.firstOrNull()
+            } ?: return null
 
         val apkName =
             extensionRecord[ExtensionTable.apkName]
@@ -58,9 +77,15 @@ object GetSource {
             is SourceFactory -> instance.createSources()
             else -> throw Exception("Unknown source class type! ${instance.javaClass}")
         }.forEach {
-            sourceCache[it.id] = it as HttpSource
+            // non-http sources (e.g. LocalSource) are handled by the caller; stub
+            // sources are not online-capable — only HttpSource instances get cached
+            if (it is HttpSource) {
+                sourceCache[it.id] = it
+            }
         }
-        return sourceCache[sourceId]!!
+        // the requested sourceId can be absent from the loaded list (e.g. a
+        // SourceFactory that does not return it) — report null instead of `!!`
+        return sourceCache[sourceId]
     }
 
     suspend fun getSourceOrNull(sourceId: Long): Source? =
@@ -82,6 +107,7 @@ object GetSource {
     }
 
     fun unregisterAllSources() {
+        // 0L == LocalSource.ID: the built-in local source stays registered
         (sourceCache - 0L).forEach { (id, _) ->
             sourceCache.remove(id)
         }

@@ -13,16 +13,29 @@ import io.mockk.coEvery
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import kotlinx.coroutines.test.runTest
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.types.StartSyncResult
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
+import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
+import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.server.settings.value
@@ -32,6 +45,7 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
@@ -100,34 +114,204 @@ class SyncManagerTest : ApplicationTest() {
     @Test
     fun startSyncForEnabledUserReturnsSuccessAndReachesTerminalState() =
         runTest {
-            // Mock the network layer so no real HTTP call is made; returning null simulates a
-            // network failure, which drives the sync state machine to its terminal Error state.
+            // Mock the network layer so no real HTTP call is made; a thrown exception
+            // simulates a sync failure, which drives the state machine to Error.
             mockkObject(SyncYomiSyncService)
+            try {
+                coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } throws
+                    Exception("Network error")
 
-            coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } returns
-                SyncYomiSyncService.SyncResult(null, true, false)
+                userSettings.set(userId, userConfig.syncYomiEnabled, true)
 
-            userSettings.set(userId, userConfig.syncYomiEnabled, true)
+                // an enabled user: startSync returns SUCCESS (not SYNC_DISABLED)
+                assertEquals(StartSyncResult.SUCCESS, SyncManager.startSync(userId))
 
-            // an enabled user: startSync returns SUCCESS (not SYNC_DISABLED)
-            assertEquals(StartSyncResult.SUCCESS, SyncManager.startSync(userId))
+                // wait for the background sync to reach a terminal state
+                val deadline = System.currentTimeMillis() + 5_000
+                while (
+                    SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Error &&
+                    SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Success &&
+                    System.currentTimeMillis() < deadline
+                ) {
+                    Thread.sleep(50)
+                }
 
-            // wait for the background sync to reach a terminal state
-            val deadline = System.currentTimeMillis() + 5_000
-            while (
-                SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Error &&
-                SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Success &&
-                System.currentTimeMillis() < deadline
-            ) {
-                Thread.sleep(50)
+                // the (mocked) network failure produced a terminal Error state
+                val state = SyncManager.lastSyncState(userId).value
+                assertIs<SyncManager.SyncState.Error>(state)
+                assertTrue(state.message.endsWith("Network error"), "unexpected error message: ${state.message}")
+            } finally {
+                // an object mock poisons every later test in the fork when an assertion
+                // above fails — release it unconditionally
+                unmockkObject(SyncYomiSyncService)
+            }
+        }
+
+    /**
+     * U2-E: local category order values are 1-based (the default category holds 0) while
+     * the wire carries 0-based ranks, so `isMangaDifferent` must rebase before comparing —
+     * otherwise a manga whose categories match the remote is flagged different on every sync.
+     */
+    @Test
+    fun isMangaDifferentRebasesLocalCategoryOrders() {
+        val mangaRowId =
+            transaction {
+                MangaTable
+                    .insertAndGetId {
+                        it[MangaTable.url] = "/u2e/manga"
+                        it[MangaTable.title] = "u2e"
+                        it[MangaTable.sourceReference] = 0
+                    }.value
+            }
+        val categoryRowId =
+            transaction {
+                CategoryTable
+                    .insertAndGetId {
+                        it[CategoryTable.name] = "Reading-u2e"
+                        it[CategoryTable.user] = userId
+                        it[CategoryTable.order] = 1
+                    }.value
+            }
+        try {
+            transaction {
+                // link first: the insert trigger bumps MangaUserTable.version, so the
+                // user row must be created afterwards to keep its expected version
+                CategoryMangaTable.insert {
+                    it[CategoryMangaTable.category] = categoryRowId
+                    it[CategoryMangaTable.manga] = mangaRowId
+                    it[CategoryMangaTable.user] = userId
+                }
+                MangaUserTable.insertAndGetId {
+                    it[MangaUserTable.manga] = mangaRowId
+                    it[MangaUserTable.user] = userId
+                    it[MangaUserTable.inLibrary] = true
+                    it[MangaUserTable.version] = 5
+                }
             }
 
-            // the (mocked) network failure produced a terminal Error state
-            val state = SyncManager.lastSyncState(userId).value
-            assertIs<SyncManager.SyncState.Error>(state)
-            assertEquals("Network error", state.message)
+            val localManga =
+                transaction {
+                    MangaTable
+                        .selectAll()
+                        .where { MangaTable.id eq mangaRowId }
+                        .map { MangaTable.toDataClass(it) }
+                        .single()
+                }
+            // local order 1 (a user category) is wire rank 0
+            val remoteManga =
+                BackupManga(source = 0, url = "/u2e/manga", version = 5, categories = listOf(0))
 
-            unmockkObject(SyncYomiSyncService)
+            assertFalse(SyncManager.isMangaDifferent(userId, localManga, remoteManga))
+            // sanity check: a genuinely different remote category set is still detected
+            assertTrue(SyncManager.isMangaDifferent(userId, localManga, remoteManga.copy(categories = listOf(1))))
+        } finally {
+            transaction {
+                CategoryMangaTable.deleteWhere {
+                    (CategoryMangaTable.manga eq mangaRowId) and (CategoryMangaTable.user eq userId)
+                }
+                MangaUserTable.deleteWhere {
+                    (MangaUserTable.manga eq mangaRowId) and (MangaUserTable.user eq userId)
+                }
+                CategoryTable.deleteWhere { CategoryTable.id eq categoryRowId }
+                MangaTable.deleteWhere { MangaTable.id eq mangaRowId }
+            }
+        }
+    }
+
+    /**
+     * U2-G: a remote change that only unfavorites a manga still runs the restore path.
+     * updateNonFavorites writes the row with is_syncing set, and only the restore's
+     * cleanup clears it — an early "nothing changed" exit would leave the flag stuck and
+     * swallow later user edits (the version triggers skip syncing rows).
+     */
+    @Test
+    fun nonFavoriteOnlyChangeStillRunsRestore() =
+        runTest {
+            val (sourceId, sourceName) =
+                transaction {
+                    SourceTable
+                        .selectAll()
+                        .limit(1)
+                        .single()
+                        .let { it[SourceTable.id].value to it[SourceTable.name] }
+                }
+            val mangaRowId =
+                transaction {
+                    MangaTable
+                        .insertAndGetId {
+                            it[MangaTable.url] = "/u2g/manga"
+                            it[MangaTable.title] = "u2g"
+                            it[MangaTable.sourceReference] = sourceId
+                        }.value
+                }
+
+            try {
+                transaction {
+                    MangaUserTable.insertAndGetId {
+                        it[MangaUserTable.manga] = mangaRowId
+                        it[MangaUserTable.user] = userId
+                        it[MangaUserTable.inLibrary] = true
+                    }
+                }
+
+                // the remote reports the same manga as a non-favorite and nothing else
+                val remote =
+                    Backup(
+                        backupManga =
+                            listOf(
+                                BackupManga(
+                                    source = sourceId,
+                                    url = "/u2g/manga",
+                                    favorite = false,
+                                    lastModifiedAt = 1,
+                                ),
+                            ),
+                        backupCategories = emptyList(),
+                        backupSources = listOf(BackupSource(name = sourceName, sourceId = sourceId)),
+                    )
+
+                mockkObject(SyncYomiSyncService)
+                coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } returns
+                    SyncYomiSyncService.SyncResult(remote, changed = true, protocolV2 = true)
+
+                userSettings.set(userId, userConfig.syncYomiEnabled, true)
+                assertEquals(StartSyncResult.SUCCESS, SyncManager.startSync(userId))
+
+                // the restore runs for real, so allow it more time than a pure mock path
+                val deadline = System.currentTimeMillis() + 60_000
+                while (
+                    SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Error &&
+                    SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Success &&
+                    System.currentTimeMillis() < deadline
+                ) {
+                    Thread.sleep(100)
+                }
+
+                val state = SyncManager.lastSyncState(userId).value
+                assertIs<SyncManager.SyncState.Success>(state)
+
+                val (inLibrary, isSyncing) =
+                    transaction {
+                        MangaUserTable
+                            .select(MangaUserTable.inLibrary, MangaUserTable.isSyncing)
+                            .where {
+                                (MangaUserTable.manga eq mangaRowId) and (MangaUserTable.user eq userId)
+                            }.single()
+                            .let { it[MangaUserTable.inLibrary] to it[MangaUserTable.isSyncing] }
+                    }
+                // the remote unfavorite was mirrored locally ...
+                assertFalse(inLibrary)
+                // ... and the restore's cleanup cleared the flag instead of leaving it stuck
+                assertFalse(isSyncing)
+            } finally {
+                unmockkObject(SyncYomiSyncService)
+                transaction {
+                    MangaUserTable.deleteWhere {
+                        (MangaUserTable.manga eq mangaRowId) and (MangaUserTable.user eq userId)
+                    }
+                    MangaTable.deleteWhere { MangaTable.id eq mangaRowId }
+                }
+            }
         }
 
     @Test

@@ -50,6 +50,7 @@ import java.io.ByteArrayInputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class PermissionsTest : GraphQLTest() {
     companion object {
@@ -143,8 +144,10 @@ class PermissionsTest : GraphQLTest() {
         val byteStream = Buffer()
         (byteStream as Sink).gzip().buffer().use { it.write(byteArray) }
 
+        val bytes = byteStream.readByteArray()
         val part = mockk<Part>()
-        every { part.inputStream } returns ByteArrayInputStream(byteStream.readByteArray())
+        every { part.inputStream } returns ByteArrayInputStream(bytes)
+        every { part.size } returns bytes.size.toLong()
         every { part.submittedFileName } returns "test.tachibk"
 
         return UploadedFile(part)
@@ -206,7 +209,7 @@ class PermissionsTest : GraphQLTest() {
                     }
                 }
                 """.trimIndent(),
-                mapOf("input" to mapOf("username" to "permregister", "password" to "newpass")),
+                mapOf("input" to mapOf("username" to "permregister", "password" to "newpass1")),
             )
 
         response.assertNoErrors()
@@ -311,7 +314,7 @@ class PermissionsTest : GraphQLTest() {
     }
 
     @Test
-    fun updateExtensionsUpdateAllowedWithoutInstallPermission() {
+    fun updateExtensionsUpdateForbiddenWithoutInstallPermission() {
         val userId = createTestUser("extupdate1")
         val user = userWithPermissions(userId)
 
@@ -330,7 +333,31 @@ class PermissionsTest : GraphQLTest() {
                 user = user,
             )
 
-        // plain updates do not require the install/uninstall permissions
+        // an update installs a new APK over the existing extension, so it is gated on
+        // INSTALL_EXTENSIONS just like install and the REST `extension/update` endpoint
+        response.assertForbidden()
+    }
+
+    @Test
+    fun updateExtensionsUpdateAllowedWithInstallPermission() {
+        val userId = createTestUser("extupdate2")
+        val user = userWithPermissions(userId, UserPermission.INSTALL_EXTENSIONS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: UpdateExtensionsInput!) {
+                    updateExtensions(input: ${'$'}input) {
+                        extensions {
+                            pkgName
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("ids" to listOf(SAFE_EXT_NAME), "patch" to mapOf("update" to true))),
+                user = user,
+            )
+
         response.assertNoErrors()
     }
 
@@ -393,8 +420,10 @@ class PermissionsTest : GraphQLTest() {
     }
 
     @Test
-    fun deleteDownloadedChapterAllowedWithoutPermission() {
-        // deleting downloads is not permission-gated: the shared file state is reference-counted
+    fun deleteDownloadedChapterForbiddenWithoutPermission() {
+        // download deletion mutates the same shared download/file state as the other
+        // download operations, so it is gated on DOWNLOAD_CHAPTERS like the rest of
+        // DownloadMutation
         val userId = createTestUser("dldelete1")
         val user = userWithPermissions(userId)
 
@@ -425,273 +454,308 @@ class PermissionsTest : GraphQLTest() {
                 user = user,
             )
 
+        response.assertForbidden()
+    }
+
+    @Test
+    fun deleteDownloadedChapterAllowedWithPermission() {
+        val userId = createTestUser("dldelete2")
+        val user = userWithPermissions(userId, UserPermission.DOWNLOAD_CHAPTERS)
+
+        val mangaId = createLibraryManga("PERM_DELETE_MANGA2", userId)
+        mangaIdsToClean += mangaId
+        val chapterId =
+            transaction {
+                createChapters(mangaId, 1, false)
+                ChapterTable
+                    .selectAll()
+                    .where { ChapterTable.manga eq mangaId }
+                    .first()[ChapterTable.id]
+                    .value
+            }
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: DeleteDownloadedChapterInput!) {
+                    deleteDownloadedChapter(input: ${'$'}input) {
+                        chapters {
+                            id
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("id" to chapterId)),
+                user = user,
+            )
+
         response.assertNoErrors()
     }
 
-    // @Test
-    // fun fetchSourceMangaForbiddenForNsfwSourceWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwfetch1")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             mutation(${'$'}input: FetchSourceMangaInput!) {
-    //                 fetchSourceManga(input: ${'$'}input) {
-    //                     hasNextPage
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("input" to mapOf("source" to NSFW_SOURCE_ID.toString(), "type" to "SEARCH", "page" to 1)),
-    //             user = user,
-    //         )
-    //
-    //     response.assertForbidden()
-    // }
+    @Test
+    fun fetchSourceMangaForbiddenForNsfwSourceWithoutPermission() {
+        createNsfwAndSafeSources()
 
-    // @Test
-    // fun fetchSourceMangaAllowedForNsfwSourceWithPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwfetch2")
-    //     val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             mutation(${'$'}input: FetchSourceMangaInput!) {
-    //                 fetchSourceManga(input: ${'$'}input) {
-    //                     hasNextPage
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("input" to mapOf("source" to NSFW_SOURCE_ID.toString(), "type" to "SEARCH", "page" to 1)),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    // }
-    //
-    // @Test
-    // fun fetchSourceMangaAllowedForSafeSourceWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwfetch3")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             mutation(${'$'}input: FetchSourceMangaInput!) {
-    //                 fetchSourceManga(input: ${'$'}input) {
-    //                     hasNextPage
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("input" to mapOf("source" to SAFE_SOURCE_ID.toString(), "type" to "SEARCH", "page" to 1)),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    // }
-    //
-    // @Test
-    // fun sourcesHidesNsfwSourcesWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwsources1")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query {
-    //                 sources {
-    //                     nodes {
-    //                         id
-    //                         contentWarning
-    //                     }
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //
-    //     val sourceIds =
-    //         (response.dataPath("sources", "nodes") as List<*>)
-    //             .map { ((it as Map<*, *>)["id"] as String).toLong() }
-    //             .toSet()
-    //
-    //     assertTrue(SAFE_SOURCE_ID in sourceIds, "safe sources should be visible")
-    //     assertTrue(NSFW_SOURCE_ID !in sourceIds, "NSFW sources should be hidden from users without the NSFW permission")
-    // }
-    //
-    // @Test
-    // fun sourcesShowsNsfwSourcesWithPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwsources2")
-    //     val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query {
-    //                 sources {
-    //                     nodes {
-    //                         id
-    //                         contentWarning
-    //                     }
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //
-    //     val sourceIds =
-    //         (response.dataPath("sources", "nodes") as List<*>)
-    //             .map { ((it as Map<*, *>)["id"] as String).toLong() }
-    //             .toSet()
-    //
-    //     assertTrue(SAFE_SOURCE_ID in sourceIds, "safe sources should be visible")
-    //     assertTrue(NSFW_SOURCE_ID in sourceIds, "NSFW sources should be visible to users with the NSFW permission")
-    // }
-    //
-    // @Test
-    // fun extensionsHidesNsfwExtensionsWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwext1")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query {
-    //                 extensions {
-    //                     nodes {
-    //                         pkgName
-    //                         contentWarning
-    //                     }
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //
-    //     val pkgNames =
-    //         (response.dataPath("extensions", "nodes") as List<*>)
-    //             .map { (it as Map<*, *>)["pkgName"] as String }
-    //             .toSet()
-    //
-    //     assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
-    //     assertTrue(NSFW_EXT_NAME !in pkgNames, "NSFW extensions should be hidden from users without the NSFW permission")
-    // }
-    //
-    // @Test
-    // fun extensionsShowsNsfwExtensionsWithPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwext2")
-    //     val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query {
-    //                 extensions {
-    //                     nodes {
-    //                         pkgName
-    //                         contentWarning
-    //                     }
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //
-    //     val pkgNames =
-    //         (response.dataPath("extensions", "nodes") as List<*>)
-    //             .map { (it as Map<*, *>)["pkgName"] as String }
-    //             .toSet()
-    //
-    //     assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
-    //     assertTrue(NSFW_EXT_NAME in pkgNames, "NSFW extensions should be visible to users with the NSFW permission")
-    // }
-    //
-    // @Test
-    // fun fetchExtensionsHidesNsfwExtensionsWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwfetchext1")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             mutation {
-    //                 fetchExtensions(input: {}) {
-    //                     extensions {
-    //                         pkgName
-    //                     }
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //
-    //     val pkgNames =
-    //         (response.dataPath("fetchExtensions", "extensions") as List<*>)
-    //             .map { (it as Map<*, *>)["pkgName"] as String }
-    //             .toSet()
-    //
-    //     assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
-    //     assertTrue(NSFW_EXT_NAME !in pkgNames, "NSFW extensions should be hidden from users without the NSFW permission")
-    // }
-    //
-    // @Test
-    // fun fetchExtensionsShowsNsfwExtensionsWithPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwfetchext2")
-    //     val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             mutation {
-    //                 fetchExtensions(input: {}) {
-    //                     extensions {
-    //                         pkgName
-    //                     }
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //
-    //     val pkgNames =
-    //         (response.dataPath("fetchExtensions", "extensions") as List<*>)
-    //             .map { (it as Map<*, *>)["pkgName"] as String }
-    //             .toSet()
-    //
-    //     assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
-    //     assertTrue(NSFW_EXT_NAME in pkgNames, "NSFW extensions should be visible to users with the NSFW permission")
-    // }
+        val userId = createTestUser("nsfwfetch1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: FetchSourceMangaInput!) {
+                    fetchSourceManga(input: ${'$'}input) {
+                        hasNextPage
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("source" to NSFW_SOURCE_ID.toString(), "type" to "SEARCH", "page" to 1)),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun fetchSourceMangaAllowedForNsfwSourceWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwfetch2")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: FetchSourceMangaInput!) {
+                    fetchSourceManga(input: ${'$'}input) {
+                        hasNextPage
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("source" to NSFW_SOURCE_ID.toString(), "type" to "SEARCH", "page" to 1)),
+                user = user,
+            )
+
+        response.assertNoErrors()
+    }
+
+    @Test
+    fun fetchSourceMangaAllowedForSafeSourceWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwfetch3")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: FetchSourceMangaInput!) {
+                    fetchSourceManga(input: ${'$'}input) {
+                        hasNextPage
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("source" to SAFE_SOURCE_ID.toString(), "type" to "SEARCH", "page" to 1)),
+                user = user,
+            )
+
+        response.assertNoErrors()
+    }
+
+    @Test
+    fun sourcesHidesNsfwSourcesWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsources1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query {
+                    sources {
+                        nodes {
+                            id
+                            contentWarning
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val sourceIds =
+            (response.dataPath("sources", "nodes") as List<*>)
+                .map { ((it as Map<*, *>)["id"] as String).toLong() }
+                .toSet()
+
+        assertTrue(SAFE_SOURCE_ID in sourceIds, "safe sources should be visible")
+        assertTrue(NSFW_SOURCE_ID !in sourceIds, "NSFW sources should be hidden from users without the NSFW permission")
+    }
+
+    @Test
+    fun sourcesShowsNsfwSourcesWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsources2")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                query {
+                    sources {
+                        nodes {
+                            id
+                            contentWarning
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val sourceIds =
+            (response.dataPath("sources", "nodes") as List<*>)
+                .map { ((it as Map<*, *>)["id"] as String).toLong() }
+                .toSet()
+
+        assertTrue(SAFE_SOURCE_ID in sourceIds, "safe sources should be visible")
+        assertTrue(NSFW_SOURCE_ID in sourceIds, "NSFW sources should be visible to users with the NSFW permission")
+    }
+
+    @Test
+    fun extensionsHidesNsfwExtensionsWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query {
+                    extensions {
+                        nodes {
+                            pkgName
+                            contentWarning
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val pkgNames =
+            (response.dataPath("extensions", "nodes") as List<*>)
+                .map { (it as Map<*, *>)["pkgName"] as String }
+                .toSet()
+
+        assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
+        assertTrue(NSFW_EXT_NAME !in pkgNames, "NSFW extensions should be hidden from users without the NSFW permission")
+    }
+
+    @Test
+    fun extensionsShowsNsfwExtensionsWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext2")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                query {
+                    extensions {
+                        nodes {
+                            pkgName
+                            contentWarning
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val pkgNames =
+            (response.dataPath("extensions", "nodes") as List<*>)
+                .map { (it as Map<*, *>)["pkgName"] as String }
+                .toSet()
+
+        assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
+        assertTrue(NSFW_EXT_NAME in pkgNames, "NSFW extensions should be visible to users with the NSFW permission")
+    }
+
+    @Test
+    fun fetchExtensionsHidesNsfwExtensionsWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwfetchext1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                mutation {
+                    fetchExtensions(input: {}) {
+                        extensions {
+                            pkgName
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val pkgNames =
+            (response.dataPath("fetchExtensions", "extensions") as List<*>)
+                .map { (it as Map<*, *>)["pkgName"] as String }
+                .toSet()
+
+        assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
+        assertTrue(NSFW_EXT_NAME !in pkgNames, "NSFW extensions should be hidden from users without the NSFW permission")
+    }
+
+    @Test
+    fun fetchExtensionsShowsNsfwExtensionsWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwfetchext2")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                mutation {
+                    fetchExtensions(input: {}) {
+                        extensions {
+                            pkgName
+                        }
+                    }
+                }
+                """.trimIndent(),
+                user = user,
+            )
+
+        response.assertNoErrors()
+
+        val pkgNames =
+            (response.dataPath("fetchExtensions", "extensions") as List<*>)
+                .map { (it as Map<*, *>)["pkgName"] as String }
+                .toSet()
+
+        assertTrue(SAFE_EXT_NAME in pkgNames, "safe extensions should be visible")
+        assertTrue(NSFW_EXT_NAME in pkgNames, "NSFW extensions should be visible to users with the NSFW permission")
+    }
 
     @Test
     fun settingsReturnsMaskedViewWithoutPermission() {
@@ -818,8 +882,8 @@ class PermissionsTest : GraphQLTest() {
     }
 
     @Test
-    fun webUIUpdateStatusResetAllowedWithoutPermission() {
-        // WebUI update operations stay open to all authenticated users
+    fun webUIUpdateStatusResetForbiddenWithoutPermission() {
+        // mutating the shared WebUI download state requires MANAGE_SETTINGS, like updateWebUI
         val userId = createTestUser("webui1")
         val user = userWithPermissions(userId)
 
@@ -835,7 +899,7 @@ class PermissionsTest : GraphQLTest() {
                 user = user,
             )
 
-        response.assertNoErrors()
+        response.assertForbidden()
     }
 
     @Test
@@ -1005,156 +1069,157 @@ class PermissionsTest : GraphQLTest() {
                     }
                 }
                 """.trimIndent(),
-                mapOf("input" to emptyMap<String, Any?>()),
+                // at least one flag must be true; clearing the temp page cache is safe in tests
+                mapOf("input" to mapOf("cachedPages" to true)),
                 user = user,
             )
 
         response.assertNoErrors()
     }
-    //
-    // @Test
-    // fun sourceForbiddenForNsfwSourceWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwsource1")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query(${'$'}id: LongString!) {
-    //                 source(id: ${'$'}id) {
-    //                     id
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("id" to NSFW_SOURCE_ID.toString()),
-    //             user = user,
-    //         )
-    //
-    //     response.assertForbidden()
-    // }
-    //
-    // @Test
-    // fun sourceAllowedForNsfwSourceWithPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwsource2")
-    //     val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query(${'$'}id: LongString!) {
-    //                 source(id: ${'$'}id) {
-    //                     id
-    //                     contentWarning
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("id" to NSFW_SOURCE_ID.toString()),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //     assertEquals(NSFW_SOURCE_ID.toString(), response.dataPath("source", "id"))
-    // }
-    //
-    // @Test
-    // fun sourceAllowedForSafeSourceWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwsource3")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query(${'$'}id: LongString!) {
-    //                 source(id: ${'$'}id) {
-    //                     id
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("id" to SAFE_SOURCE_ID.toString()),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //     assertEquals(SAFE_SOURCE_ID.toString(), response.dataPath("source", "id"))
-    // }
-    //
-    // @Test
-    // fun extensionForbiddenForNsfwExtensionWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwext3")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query(${'$'}pkgName: String!) {
-    //                 extension(pkgName: ${'$'}pkgName) {
-    //                     pkgName
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("pkgName" to NSFW_EXT_NAME),
-    //             user = user,
-    //         )
-    //
-    //     response.assertForbidden()
-    // }
-    //
-    // @Test
-    // fun extensionAllowedForNsfwExtensionWithPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwext4")
-    //     val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query(${'$'}pkgName: String!) {
-    //                 extension(pkgName: ${'$'}pkgName) {
-    //                     pkgName
-    //                     contentWarning
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("pkgName" to NSFW_EXT_NAME),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //     assertEquals(NSFW_EXT_NAME, response.dataPath("extension", "pkgName"))
-    // }
-    //
-    // @Test
-    // fun extensionAllowedForSafeExtensionWithoutPermission() {
-    //     createNsfwAndSafeSources()
-    //
-    //     val userId = createTestUser("nsfwext5")
-    //     val user = userWithPermissions(userId)
-    //
-    //     val response =
-    //         graphql(
-    //             """
-    //             query(${'$'}pkgName: String!) {
-    //                 extension(pkgName: ${'$'}pkgName) {
-    //                     pkgName
-    //                 }
-    //             }
-    //             """.trimIndent(),
-    //             mapOf("pkgName" to SAFE_EXT_NAME),
-    //             user = user,
-    //         )
-    //
-    //     response.assertNoErrors()
-    //     assertEquals(SAFE_EXT_NAME, response.dataPath("extension", "pkgName"))
-    // }
+
+    @Test
+    fun sourceForbiddenForNsfwSourceWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsource1")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}id: LongString!) {
+                    source(id: ${'$'}id) {
+                        id
+                    }
+                }
+                """.trimIndent(),
+                mapOf("id" to NSFW_SOURCE_ID.toString()),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun sourceAllowedForNsfwSourceWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsource2")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}id: LongString!) {
+                    source(id: ${'$'}id) {
+                        id
+                        contentWarning
+                    }
+                }
+                """.trimIndent(),
+                mapOf("id" to NSFW_SOURCE_ID.toString()),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(NSFW_SOURCE_ID.toString(), response.dataPath("source", "id"))
+    }
+
+    @Test
+    fun sourceAllowedForSafeSourceWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwsource3")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}id: LongString!) {
+                    source(id: ${'$'}id) {
+                        id
+                    }
+                }
+                """.trimIndent(),
+                mapOf("id" to SAFE_SOURCE_ID.toString()),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(SAFE_SOURCE_ID.toString(), response.dataPath("source", "id"))
+    }
+
+    @Test
+    fun extensionForbiddenForNsfwExtensionWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext3")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}pkgName: String!) {
+                    extension(pkgName: ${'$'}pkgName) {
+                        pkgName
+                    }
+                }
+                """.trimIndent(),
+                mapOf("pkgName" to NSFW_EXT_NAME),
+                user = user,
+            )
+
+        response.assertForbidden()
+    }
+
+    @Test
+    fun extensionAllowedForNsfwExtensionWithPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext4")
+        val user = userWithPermissions(userId, UserPermission.ACCESS_NSFW)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}pkgName: String!) {
+                    extension(pkgName: ${'$'}pkgName) {
+                        pkgName
+                        contentWarning
+                    }
+                }
+                """.trimIndent(),
+                mapOf("pkgName" to NSFW_EXT_NAME),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(NSFW_EXT_NAME, response.dataPath("extension", "pkgName"))
+    }
+
+    @Test
+    fun extensionAllowedForSafeExtensionWithoutPermission() {
+        createNsfwAndSafeSources()
+
+        val userId = createTestUser("nsfwext5")
+        val user = userWithPermissions(userId)
+
+        val response =
+            graphql(
+                """
+                query(${'$'}pkgName: String!) {
+                    extension(pkgName: ${'$'}pkgName) {
+                        pkgName
+                    }
+                }
+                """.trimIndent(),
+                mapOf("pkgName" to SAFE_EXT_NAME),
+                user = user,
+            )
+
+        response.assertNoErrors()
+        assertEquals(SAFE_EXT_NAME, response.dataPath("extension", "pkgName"))
+    }
 
     @Test
     fun restoreBackupDoesNotChangeServerSettingsForNonAdmin() {

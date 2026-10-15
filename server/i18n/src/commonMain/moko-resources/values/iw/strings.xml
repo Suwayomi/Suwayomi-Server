@@ -25,7 +25,7 @@
     <string name="opds_feeds_genre_specific_title">⁧ז׳אנר: ‏%1$s‏⁩</string>
     <string name="opds_feeds_status_specific_title">⁧סטטוס: ‏%1$s‏⁩</string>
     <string name="opds_feeds_language_specific_title">⁧שפה: ‏%1$s‏⁩</string>
-    <string name="opds_feeds_source_specific_title">⁧מקור: ‏%1$s‏⁩</string>
+
     <string name="opds_feeds_library_source_specific_title">⁧ספרייה - מקור: ‏%1$s‏⁩</string>
     <string name="opds_feeds_source_specific_popular_title">⁧מקור: ‏%1$s‏ - פופולרי⁩</string>
     <string name="opds_feeds_source_specific_latest_title">⁧מקור: ‏%1$s‏ - עדכני⁩</string>
@@ -80,7 +80,7 @@
     <string name="opds_linktitle_view_chapter_details">הצגת פרטי הפרק וקבלת עמודים</string>
     <string name="opds_chapter_details_base">⁧סדרה: ‏%1$s‏ | ‏%2$s‏⁩</string>
     <string name="opds_chapter_details_scanlator">⁧ | תרגום: ‏%1$s‏⁩</string>
-    <string name="opds_chapter_details_progress">⁧ | התקדמות: ‏%1$d‏ מתוך ‏%2$d‏⁩</string>
+    <string name="opds_chapter_details_progress">⁧ | התקדמות: ‏%1$d‏ מתוך ‏%2$s‏⁩</string>
     <string name="opds_manga_summary_status">⁧סטטוס: ‏%1$s‏⁩</string>
     <string name="opds_manga_summary_source">⁧מקור: ‏%1$s‏⁩</string>
     <string name="opds_manga_summary_language">⁧שפה: ‏%1$s‏⁩</string>

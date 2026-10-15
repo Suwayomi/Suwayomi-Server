@@ -5,12 +5,20 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 fun Track.toApiStatus() =
     when (status) {
         Anilist.READING -> "CURRENT"
+
         Anilist.COMPLETED -> "COMPLETED"
+
         Anilist.ON_HOLD -> "PAUSED"
+
         Anilist.DROPPED -> "DROPPED"
+
         Anilist.PLAN_TO_READ -> "PLANNING"
+
         Anilist.REREADING -> "REPEATING"
-        else -> throw NotImplementedError("Unknown status: $status")
+
+        // NotImplementedError is an Error, not an Exception — it escaped
+        // the per-record catch in Track.trackChapter and aborted the batch
+        else -> throw IllegalArgumentException("Unknown status: $status")
     }
 
 fun Track.toApiScore(scoreType: String?): String =
@@ -53,6 +61,6 @@ fun Track.toApiScore(scoreType: String?): String =
         }
 
         else -> {
-            throw NotImplementedError("Unknown score type")
+            throw IllegalArgumentException("Unknown score type")
         }
     }

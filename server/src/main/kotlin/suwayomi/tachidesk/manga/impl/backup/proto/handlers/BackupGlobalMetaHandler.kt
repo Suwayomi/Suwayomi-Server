@@ -11,6 +11,12 @@ import suwayomi.tachidesk.global.impl.GlobalMeta
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 
 object BackupGlobalMetaHandler {
+    /**
+     * The global meta is a per-user key/value store owned by the client: backup exports
+     * the full map, restore *merges* it into the existing one (backup keys win on
+     * conflict, keys absent from the backup are kept). Union semantics are deliberate —
+     * restoring a backup must not silently delete client data.
+     */
     fun backup(
         userId: Int,
         flags: BackupFlags,
