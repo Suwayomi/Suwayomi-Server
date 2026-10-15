@@ -1,8 +1,10 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.handlers
 
+import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
+import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -90,5 +93,27 @@ class BackupMangaHandlerSinceTest : ApplicationTest() {
         assertEquals(setOf("early", "late"), titles(15))
         assertEquals(setOf("early"), titles(25))
         assertEquals(emptySet<String>(), titles(35))
+    }
+
+    @Test
+    fun `a chapter fetched after the given time is part of the delta`() {
+        val manga = createLibraryManga("fresh")
+        stampManga(manga, 10)
+        transaction {
+            ChapterTable.insert {
+                it[url] = "/new"
+                it[name] = "new"
+                it[sourceOrder] = 1
+                it[ChapterTable.manga] = manga
+                it[fetchedAt] = 40
+                it[memo] = JsonObject.EMPTY
+            }
+        }
+
+        val delta = BackupMangaHandler.backup(1, flags, 35)
+
+        assertEquals(setOf("fresh"), delta.map { it.title }.toSet())
+        val chapter = delta.single().chapters.single()
+        assertEquals(40L, chapter.lastModifiedAt)
     }
 }
