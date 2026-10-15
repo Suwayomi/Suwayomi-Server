@@ -30,16 +30,27 @@ class ArchiveProvider(
     chapterId: Int,
 ) : ChaptersFilesProvider<FileType.ZipFile>(mangaId, chapterId) {
     override suspend fun getImageFiles(): List<FileType.ZipFile> {
-        val zipFile = ZipFile.builder().setFile(getChapterCbzPath(mangaId, chapterId)).get()
+        val cbzPath = getChapterCbzPath(mangaId, chapterId)
+        if (!File(cbzPath).exists()) {
+            // provider contract: "no download present" surfaces as NoSuchElementException
+            // (same as FolderProvider), so callers can tell it apart from a real read failure
+            throw NoSuchElementException("CBZ archive does not exist")
+        }
+        val zipFile = ZipFile.builder().setFile(cbzPath).get()
         return zipFile.entries.toList().map { FileType.ZipFile(it) }
     }
 
-    override suspend fun getImageInputStream(image: FileType.ZipFile): InputStream =
-        ZipFile
+    override suspend fun getImageInputStream(image: FileType.ZipFile): InputStream {
+        val cbzPath = getChapterCbzPath(mangaId, chapterId)
+        if (!File(cbzPath).exists()) {
+            throw NoSuchElementException("CBZ archive does not exist")
+        }
+        return ZipFile
             .builder()
-            .setFile(getChapterCbzPath(mangaId, chapterId))
+            .setFile(cbzPath)
             .get()
             .getInputStream(image.entry)
+    }
 
     override suspend fun extractExistingDownload() {
         val outputFile = File(getChapterCbzPath(mangaId, chapterId))
