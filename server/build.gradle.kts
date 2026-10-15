@@ -87,6 +87,9 @@ dependencies {
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     implementation(libs.bouncycastle)
 
+    // APK signature scheme verification for extension installs
+    implementation(libs.apksig)
+
     // AndroidCompat
     implementation(projects.androidCompat)
     implementation(projects.androidCompat.config)

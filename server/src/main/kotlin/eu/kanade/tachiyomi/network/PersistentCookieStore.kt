@@ -79,7 +79,7 @@ class PersistentCookieStore(
 
     override fun removeAll(): Boolean =
         lock.withLock {
-            val wasNotEmpty = cookieMap.isEmpty()
+            val wasNotEmpty = cookieMap.isNotEmpty()
             prefs.edit().clear().apply()
             cookieMap.clear()
             wasNotEmpty
@@ -102,10 +102,7 @@ class PersistentCookieStore(
 
     fun get(url: HttpUrl): List<Cookie> =
         lock.withLock {
-            cookieMap.entries
-                .filter {
-                    url.host.endsWith(it.key)
-                }.flatMap { it.value }
+            cookieMap.values.flatten().filter { !it.hasExpired() && it.matches(url) }
         }
 
     override fun add(
@@ -197,26 +194,35 @@ class PersistentCookieStore(
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 
     private fun HttpCookie.toCookie(urlDomain: String?): Cookie? {
-        return Cookie
-            .Builder()
-            .name(name)
-            .value(value)
-            .domain((domain ?: urlDomain ?: return null).removePrefix("."))
-            .path(path ?: "/")
-            .also {
+        val builder =
+            Cookie
+                .Builder()
+                .name(name)
+                .value(value)
+                .path(path ?: "/")
+        // RFC 6265 §5.2.3: the presence of any Domain attribute yields a domain cookie; a
+        // leading dot is ignored, so `Domain=example.com` and `Domain=.example.com` are
+        // equivalent. Only an absent Domain produces a host-only cookie (scoped to the
+        // request host). Builder.domain() marks the cookie as a domain cookie but rejects a
+        // leading dot instead of stripping it, so normalize it away first.
+        val cookieDomain = domain?.trimStart('.')?.takeIf { it.isNotEmpty() }
+        if (cookieDomain != null) {
+            builder.domain(cookieDomain)
+        } else {
+            builder.hostOnlyDomain(urlDomain ?: return null)
+        }
+        return builder
+            .apply {
                 if (maxAge != -1L) {
-                    it.expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
+                    expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
                 } else {
-                    it.expiresAt(Long.MAX_VALUE)
+                    expiresAt(Long.MAX_VALUE)
                 }
                 if (secure) {
-                    it.secure()
+                    secure()
                 }
                 if (isHttpOnly) {
-                    it.httpOnly()
-                }
-                if (domain != null && !domain.startsWith('.')) {
-                    it.hostOnlyDomain(domain.removePrefix("."))
+                    httpOnly()
                 }
             }.build()
     }
@@ -234,9 +240,9 @@ class PersistentCookieStore(
             secure = it.secure
             maxAge =
                 if (it.persistent) {
-                    -1
-                } else {
                     (it.expiresAt.milliseconds - System.currentTimeMillis().milliseconds).inWholeSeconds
+                } else {
+                    -1
                 }
 
             isHttpOnly = it.httpOnly

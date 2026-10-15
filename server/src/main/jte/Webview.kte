@@ -611,6 +611,10 @@
                         case "copy":
                             copy(obj.content);
                             break;
+                        case "error":
+                            messageDiv.textContent = "${MR.strings.label_error.localized(locale)}: " + obj.message;
+                            messageDiv.classList.add('error');
+                            break;
                         default:
                             console.warn("Unknown event", obj.type)
                             break;

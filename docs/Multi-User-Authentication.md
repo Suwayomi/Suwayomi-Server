@@ -18,6 +18,8 @@ Restart the server. With `ui_login` enabled:
 - Every request authenticates via the `Authorization: Bearer <token>` header (or the `suwayomi-server-token` cookie / `?token=` query param as fallbacks).
 - Data is scoped per account: each user sees only their own library, chapters, categories, downloads, and settings.
 
+**`Authorization: Basic …` headers are only honored in `basic_auth` mode.** In `ui_login` (as well as `simple_login` and `none`) a Basic credentials header is ignored: it does not authenticate the request and it never falls back to the built-in admin account. API clients must use the Bearer token (or the cookie / `?token=` fallbacks) in `ui_login` mode.
+
 The `jwt*` settings tune session duration:
 
 ```
@@ -42,13 +44,15 @@ There are three ways to create an account. All require the `MANAGE_USERS` permis
 
 Use the `register` mutation (requires `MANAGE_USERS`). The new account gets the `USER` role and, by default, the default permissions.
 
-The optional `userPermissions` input overrides the permission set for the new account: when provided (non-null), the account is granted exactly the listed permissions — an empty list creates an account with no permissions at all. When omitted, the default set applies (see [Default permissions for new accounts](#default-permissions-for-new-accounts)).
+The optional `userPermissions` input overrides the permission set for the new account: when provided (non-null), the account is granted exactly the listed permissions — an empty list creates an account with no permissions at all, and the set must be a subset of the caller's own permissions (see [Delegating permissions](#delegating-permissions)). When omitted, the default set applies (see [Default permissions for new accounts](#default-permissions-for-new-accounts)).
 
 ### 2. Registration codes (controlled self-signup)
 
 An admin issues a one-time registration code with `createRegistrationCode` (requires `MANAGE_USERS`). The code is returned in plaintext exactly once and is handed to the user out-of-band.
 
 The optional `permissions` input binds a permission set to the code: when provided (non-null), the account created on redemption is granted exactly the listed permissions — an empty list creates an account with no permissions at all. When omitted, the account gets the default set (see [Default permissions for new accounts](#default-permissions-for-new-accounts)).
+
+A bound permission set must be a subset of the permissions the issuing account currently holds, and it is re-checked against the issuer's *current* permissions when the code is redeemed — see [Delegating permissions](#delegating-permissions).
 
 - A registration code is valid for **7 days**.
 - Anyone (even a logged-out visitor) can redeem it with the `redeemRegistrationCode` mutation by providing the code, a chosen username, and a chosen password. This creates the account (`USER` role, plus the permission set bound to the code or the defaults if none) and returns a JWT so the user is logged in immediately.
@@ -79,7 +83,26 @@ Accounts are granted fine-grained permissions. The `ADMIN` role (user `1`) bypas
 | `MANAGE_USERS` | Registering users, listing users, granting/revoking permissions, setting roles, issuing user codes |
 | `MANAGE_EXTENSION_STORES` | Adding/removing extension stores |
 | `MANAGE_SOURCE_PREFERENCES` | Modifying global ConfigurableSource preferences |
-| `MANAGE_CACHE` | Clearing cached images and webview cookies/cache |
+| `MANAGE_CACHE` | Clearing cached images and webview cookies/cache; connecting to the remote WebView WebSocket endpoint (only `http`/`https` URLs may be loaded) |
+
+### REST endpoints
+
+The permission gates apply to the REST API (`/api/v1/…`) with the same semantics as the equivalent GraphQL operations, so a permission means the same thing regardless of which API a client uses:
+
+| REST endpoint | Required permission |
+|---|---|
+| `GET /api/v1/extension/install/{pkgName}` | `INSTALL_EXTENSIONS` |
+| `GET /api/v1/extension/update/{pkgName}` | `INSTALL_EXTENSIONS` |
+| `POST /api/v1/extension/install` (upload an `.apk`/`.jar` file) | `INSTALL_EXTERNAL_EXTENSIONS` |
+| `GET /api/v1/extension/uninstall/{pkgName}` | `UNINSTALL_EXTENSIONS` |
+| `POST /api/v1/source/{sourceId}/preferences` | `MANAGE_SOURCE_PREFERENCES` |
+| `POST /api/v1/source/{sourceId}/filters` | `MANAGE_SOURCE_PREFERENCES` |
+| `GET /api/v1/downloads/start`, `GET /api/v1/downloads/stop`, `GET /api/v1/downloads/clear` | `DOWNLOAD_CHAPTERS` |
+| `GET`/`DELETE /api/v1/download/{mangaId}/chapter/{chapterIndex}` | `DOWNLOAD_CHAPTERS` |
+| `PATCH /api/v1/download/{mangaId}/chapter/{chapterIndex}/reorder/{to}` | `DOWNLOAD_CHAPTERS` |
+| `POST`/`DELETE /api/v1/download/batch` | `DOWNLOAD_CHAPTERS` |
+
+An authenticated account that lacks the required permission gets `403 Forbidden`; an unauthenticated request gets `401 Unauthorized`. Other REST endpoints behave like their GraphQL counterparts: they require a logged-in account and apply the same internal checks (e.g. backup restore only applies global server settings for `MANAGE_SETTINGS` holders — see [Server settings in backups](#server-settings-in-backups)).
 
 ### Default permissions for new accounts
 
@@ -94,18 +117,29 @@ DOWNLOAD_CHAPTERS
 
 This means a self-registered user can install **untrusted** `.jar` extensions. This is intentional (it matches the reader's expected capabilities) but it is a deliberate security choice: in a multi-user deployment, treat all accounts as trusted with respect to extension installation. An admin can trim or expand an account's grants with the `updateUser` mutation.
 
+The default set is also a **deliberate exemption from the delegation subset check** described below: when the permission input is omitted (`null`), the account-creation paths grant `defaultPermissions` without requiring the issuer to hold those permissions. In particular, an account manager holding only `MANAGE_USERS` can create accounts (directly via `register`, or indirectly via a registration code without a bound `permissions` set) that carry the full default set — including `INSTALL_EXTERNAL_EXTENSIONS` — even though the issuer does not hold those permissions themselves. This is the documented baseline grant, not an accident: omitting the input means "give the account the standard reader capabilities". If a deployment wants stricter delegation, always pass an explicit `userPermissions`/`permissions` list — explicit sets are subset-checked against the issuer's permissions.
+
 An admin can change an account's permissions and role with `updateUser` (requires `MANAGE_USERS`):
 
 - `permissions` (non-null) replaces the account's full permission set.
 - `role` (non-null) replaces the account's single role (`USER` or `ADMIN`). The `VISITOR` role cannot be granted, and user `1` cannot be modified.
 
-Note: permission and role changes take effect at the target account's next access-token refresh (up to `jwtTokenExpiry`), because the claims are embedded in the JWT.
+Note: permission and role changes take effect **immediately**. `updateUser` bumps the target account's `SESSION_VERSION` whenever `permissions` or `role` is changed, which revokes all of the account's previously issued access and refresh tokens — old JWTs are rejected on the next request instead of lingering until the next token refresh. The affected account is logged out everywhere and must log in again (see [Session invalidation](#session-invalidation)).
+
+### Delegating permissions
+
+Whenever an explicit permission set is granted — `register`'s `userPermissions`, `createRegistrationCode`'s `permissions`, or `updateUser`'s `permissions` — the granted set must be a **subset of the permissions the issuing account currently holds**. An issuer who lacks a requested permission gets `403 Forbidden` and nothing is granted. (The `ADMIN` role holds every permission, so admins are never limited by this rule; an empty list always passes and creates an account with no permissions.)
+
+- For one-time **registration codes**, the bound permission set is checked twice: when the code is issued, and **again at redemption time** against the issuer's *current* permissions. If the issuer was demoted after issuing the code, redemption fails closed — a code can never grant more than its issuer could delegate right now.
+- **Exception:** omitting the permission input (`null`) on `register` / `createRegistrationCode` is *not* a delegation of an explicit set — it grants the [default permissions](#default-permissions-for-new-accounts) baseline, which is intentionally exempt from the subset check.
+- `updateUser` behaves differently: `permissions = null` means "leave the account's permissions unchanged" (no default grant applies).
 
 ## Session invalidation
 
 Accounts use stateless JWTs (HMAC, no token store). To let the server revoke a session (e.g. after a password change), each account has a `SESSION_VERSION` counter that is embedded in every access and refresh token as the `token_version` claim.
 
 - Changing a password — either the account's own `setPassword` or redeeming a recovery code — bumps the `SESSION_VERSION`.
+- An admin changing an account's `permissions` or `role` via `updateUser` also bumps the `SESSION_VERSION`, so permission/role changes take effect immediately rather than at the next token refresh.
 - Once bumped, **all previously issued access and refresh tokens for that account are rejected** (the `token_version` no longer matches). The account is logged out everywhere.
 - Freshly issued tokens (after the change) verify normally.
 
@@ -151,7 +185,7 @@ Users **with** `MANAGE_SETTINGS` (including the `ADMIN` role) see and write the 
 The following are **not** handled by the multi-user work (documented so they are not mistaken for bugs):
 
 - **page-image and CBZ endpoints** serve content without an ownership check; a user could read page content of a manga another user added.
-- **Shared download queue control** (`start`/`stop`/`clear`/`reorder`/`dequeue`) operates on the shared queue and is not per-user gated.
+- **Shared download queue control** (`start`/`stop`/`clear`/`reorder`/`dequeue`) requires the `DOWNLOAD_CHAPTERS` permission, but operates on the shared queue — the queue itself is not partitioned per user.
 - **`updateStop`** cancels all users' library-update jobs (a per-user reset would be invasive); known limitation.
 - **Shared library-update status** — the `Updater` emits a single global status/updates stream, so all users see the same update progress (a consequence of the shared update queue).
 - **`globalUpdateInterval` is global** — the automatic library-update cadence is shared across all users and is not a per-user setting.

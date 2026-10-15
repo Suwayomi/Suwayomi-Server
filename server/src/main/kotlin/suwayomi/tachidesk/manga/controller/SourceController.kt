@@ -20,6 +20,8 @@ import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.requirePermissions
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -157,12 +159,15 @@ object SourceController {
                 body<SourcePreferenceChange>()
             },
             behaviorOf = { ctx, sourceId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.MANAGE_SOURCE_PREFERENCES)
                 val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
                 ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
             },
             withResults = {
                 httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.FORBIDDEN)
             },
         )
 
@@ -207,7 +212,11 @@ object SourceController {
             behaviorOf = { ctx, sourceId ->
                 ctx.future {
                     future {
-                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        val user = ctx.getAttribute(Attribute.TachideskUser)
+                        user.requireUser()
+                        // filters mutate shared source state; GraphQL gates the equivalent
+                        // write path (updateSourcePreference) on MANAGE_SOURCE_PREFERENCES
+                        user.requirePermissions(UserPermission.MANAGE_SOURCE_PREFERENCES)
                         val filterChange =
                             try {
                                 json.decodeFromString<List<FilterChange>>(ctx.body())
@@ -221,6 +230,7 @@ object SourceController {
             },
             withResults = {
                 httpCode(HttpStatus.OK)
+                httpCode(HttpStatus.FORBIDDEN)
             },
         )
 

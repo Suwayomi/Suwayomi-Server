@@ -184,6 +184,25 @@ object JavalinSetup {
         )
     }
 
+    /**
+     * Validates the request's Basic credentials against the configured auth credentials.
+     *
+     * Always returns false when the configured credentials are blank (the default): without
+     * this guard, the empty credentials `user:pass` -> `:` would compare equal to the empty
+     * defaults and be accepted as valid, which [UserType.requireUserWithBasicFallback] would
+     * then treat as a reason to escalate to the built-in admin user.
+     */
+    internal fun credentialsValid(ctx: Context): Boolean {
+        if (serverConfig.authUsername.value.isBlank() || serverConfig.authPassword.value.isBlank()) {
+            return false
+        }
+
+        val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
+        val (username, password) = basicAuthCredentials
+        return username == serverConfig.authUsername.value &&
+            password == serverConfig.authPassword.value
+    }
+
     fun RoutesConfig.defineCore() {
         val loginPath = ServerSubpath.maybeAddAsPrefix("/login.html")
 
@@ -204,8 +223,12 @@ object JavalinSetup {
         post(loginPath) { ctx ->
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
+            // reject outright when no credentials are configured: otherwise submitting the
+            // empty form matches the empty defaults and logs in without any credentials
             val isValid =
-                username == serverConfig.authUsername.value &&
+                serverConfig.authUsername.value.isNotBlank() &&
+                    serverConfig.authPassword.value.isNotBlank() &&
+                    username == serverConfig.authUsername.value &&
                     password == serverConfig.authPassword.value
 
             if (isValid) {
@@ -253,16 +276,10 @@ object JavalinSetup {
 
             val authMode = serverConfig.authMode.value
 
-            fun credentialsValid(): Boolean {
-                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
-                val (username, password) = basicAuthCredentials
-                return username == serverConfig.authUsername.value &&
-                    password == serverConfig.authPassword.value
-            }
-
             fun cookieValid(): Boolean {
                 val username = ctx.sessionAttribute<String>("logged-in") ?: return false
-                return username == serverConfig.authUsername.value
+                return serverConfig.authUsername.value.isNotBlank() &&
+                    username == serverConfig.authUsername.value
             }
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
@@ -273,26 +290,19 @@ object JavalinSetup {
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
-            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid(ctx)) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
             }
 
             ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromContext(ctx) })
-            ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
+            ctx.setAttribute(Attribute.TachideskBasic, credentialsValid(ctx))
         }
 
         wsBeforeUpgrade { ctx ->
             val authMode = serverConfig.authMode.value
 
-            fun credentialsValid(): Boolean {
-                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
-                val (username, password) = basicAuthCredentials
-                return username == serverConfig.authUsername.value &&
-                    password == serverConfig.authPassword.value
-            }
-
-            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid(ctx)) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
             }

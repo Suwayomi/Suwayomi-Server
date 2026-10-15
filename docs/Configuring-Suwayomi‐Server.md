@@ -144,6 +144,7 @@ server.jwtRefreshExpiry = "60d"
 ```
 - `server.authMode = "none"`: Since v2.1.1867, Suwayomi supports two modes of authentication. Enabling authentication is useful when hosting on a public network/the Internet. If you used the original `server.basicAuth*` variables, it will be automatically migrated.  
   - `basic_auth` configures Suwayomi for [Basic access authentication](https://en.wikipedia.org/wiki/Basic_access_authentication).  
+    An `Authorization: Basic …` header is **only honored in this mode** — in `simple_login`, `ui_login` and `none` it is ignored and never falls back to the built-in admin account.
   - `simple_login` works similarly to Basic Authentication, but presents a custom login page. The login is stored via a cookie and needs to be refreshed on every server restart or every 30 minutes.  
   - Starting with v2.1.1894, another mode is available:
     `ui_login` is a new [JWT](https://en.wikipedia.org/wiki/JSON_Web_Token)-based authentication scheme, which tightly integrates with the chosen UI. Instead of restricting access completely, this allows the user to still open the UI (e.g. WebUI). Unlike the other two modes, this means the login page is entirely customizable by the UI. The `jwt*` settings can be used to tune session duration in this mode.
