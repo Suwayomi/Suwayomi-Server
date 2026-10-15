@@ -9,9 +9,11 @@ plugins {
             .get()
             .pluginId,
     )
-    // ktlint intentionally not applied yet: this module has pre-existing
-    // violations and gets a dedicated formatting batch (see root
-    // build.gradle.kts "Exempt:" note).
+    id(
+        libs.plugins.ktlint
+            .get()
+            .pluginId,
+    )
 }
 
 dependencies {

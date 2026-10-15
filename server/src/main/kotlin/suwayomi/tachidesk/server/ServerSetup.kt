@@ -81,6 +81,7 @@ import java.net.CookieManager
 import java.net.CookiePolicy
 import java.net.PasswordAuthentication
 import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
 import java.security.Security
 import java.util.Locale
 import kotlin.random.Random
@@ -345,6 +346,16 @@ fun applicationSetup() {
         if (!dataConfFile.exists()) {
             JavalinSetup::class.java.getResourceAsStream("/server-reference.conf").use { input ->
                 dataConfFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            // server.conf can hold credentials; a fresh file must not be world-readable.
+            // The atomic writer in ConfigManager preserves this on later rewrites.
+            runCatching {
+                Files.setPosixFilePermissions(
+                    dataConfFile.toPath(),
+                    PosixFilePermissions.fromString("rw-------"),
+                )
+            }.onFailure {
+                logger.warn(it) { "Could not restrict permissions of ${dataConfFile.name} to the owner" }
             }
         } else {
             // make sure the user config file is up-to-date

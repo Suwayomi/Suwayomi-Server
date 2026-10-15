@@ -1,10 +1,14 @@
 package suwayomi.tachidesk.graphql
 
+import io.javalin.websocket.WsContext
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import suwayomi.tachidesk.graphql.server.subscriptions.ApolloSubscriptionSessionState
 import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage
+import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -93,5 +97,78 @@ class ApolloSubscriptionSessionStateTest {
 
         state.terminateSession("session-a")
         assertFalse(state.isInitialized("session-a"))
+    }
+
+    // ==== Termination tombstones (P3/U1-A) ====
+    //
+    // The 4408 watchdog runs on its own coroutine while `connection_init` handling
+    // happens on the websocket event thread: terminateSession can complete between
+    // handleConnect and a late init. Without a tombstone that init would re-add the
+    // dead session to initializedSessions and saveContext would register a context
+    // nothing ever removes.
+
+    @Test
+    fun initLosingTheRaceToTerminationCannotResurrectTheSession() {
+        val state = ApolloSubscriptionSessionState()
+
+        // the watchdog/disconnect path ran before the init arrived
+        state.terminateSession("session-a")
+
+        assertFalse(state.markInitialized("session-a"), "a tombstoned session must not become initialized")
+        assertFalse(state.isInitialized("session-a"))
+        assertTrue(state.wasTerminated("session-a"))
+    }
+
+    @Test
+    fun terminateThenInitThenTerminateStaysDead() {
+        val state = ApolloSubscriptionSessionState()
+        assertTrue(state.markInitialized("session-a"))
+        state.terminateSession("session-a")
+
+        // a second connection_init arriving after termination is still refused,
+        // and it is classified as a tombstone (dead session), not a live duplicate
+        assertFalse(state.markInitialized("session-a"))
+        assertTrue(state.wasTerminated("session-a"))
+        assertFalse(state.isInitialized("session-a"))
+    }
+
+    @Test
+    fun duplicateInitOnALiveSessionIsNotATombstone() {
+        val state = ApolloSubscriptionSessionState()
+        assertTrue(state.markInitialized("session-a"))
+
+        assertFalse(state.markInitialized("session-a"))
+        // the session is still alive, so the handler must answer 4429, not 4408
+        assertFalse(state.wasTerminated("session-a"))
+        assertTrue(state.isInitialized("session-a"))
+    }
+
+    @Test
+    fun saveContextRefusesATerminatedSession() {
+        val state = ApolloSubscriptionSessionState()
+        val context =
+            mockk<WsContext> {
+                every { sessionId() } returns "session-a"
+            }
+
+        assertTrue(state.markInitialized("session-a"))
+        state.terminateSession("session-a")
+
+        assertFalse(
+            state.saveContext(context, emptyMap<Any, Any>().toGraphQLContext()),
+            "saveContext must not register a context for a terminated session",
+        )
+    }
+
+    @Test
+    fun saveContextStillWorksForALiveInitializedSession() {
+        val state = ApolloSubscriptionSessionState()
+        val context =
+            mockk<WsContext> {
+                every { sessionId() } returns "session-a"
+            }
+
+        assertTrue(state.markInitialized("session-a"))
+        assertTrue(state.saveContext(context, emptyMap<Any, Any>().toGraphQLContext()))
     }
 }

@@ -159,12 +159,12 @@ class ExtensionQuery {
             // isNsfw is a derived boolean: contentWarning >= MIXED
             opAnd.andWhere(isNsfw) {
                 if (it) {
-                    ExtensionTable.contentWarning greaterEq ContentWarning.MIXED.ordinal
+                    ExtensionTable.contentWarning greaterEq ContentWarning.MIXED.value
                 } else {
-                    ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal
+                    ExtensionTable.contentWarning less ContentWarning.MIXED.value
                 }
             }
-            opAnd.eq(contentWarning?.ordinal, ExtensionTable.contentWarning)
+            opAnd.eq(contentWarning?.value, ExtensionTable.contentWarning)
             opAnd.eq(isInstalled, ExtensionTable.isInstalled)
             opAnd.eq(hasUpdate, ExtensionTable.hasUpdate)
             opAnd.eq(isObsolete, ExtensionTable.isObsolete)
@@ -214,7 +214,7 @@ class ExtensionQuery {
                 andFilterWithCompare(ExtensionTable.versionCode, versionCode?.toLongFilter()),
                 andFilterWithCompare(ExtensionTable.versionCode, versionCodeLong),
                 andFilterWithCompareString(ExtensionTable.lang, lang),
-                andFilterWithDerivedBoolean(ExtensionTable.contentWarning greaterEq ContentWarning.MIXED.ordinal, isNsfw),
+                andFilterWithDerivedBoolean(ExtensionTable.contentWarning greaterEq ContentWarning.MIXED.value, isNsfw),
                 andFilterWithCompareEnum(ExtensionTable.contentWarning, contentWarning),
                 andFilterWithCompare(ExtensionTable.isInstalled, isInstalled),
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
@@ -258,7 +258,7 @@ class ExtensionQuery {
 
                 // hide NSFW extensions from users without the NSFW permission
                 if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
-                    res.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
+                    res.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.value }
                 }
 
                 val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))

@@ -43,8 +43,7 @@ subprojects {
         }
     }
 
-    // Exempt: server-config & server-config-generate — pre-existing
-    // violations need a dedicated formatting batch (tracked follow-up).
+    // Applied to every subproject that opts into the ktlint plugin.
     plugins.withType<KtlintPlugin> {
         extensions.configure<KtlintExtension>("ktlint") {
             version.set(libs.versions.ktlint.get())

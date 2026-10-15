@@ -57,7 +57,15 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         index = chapterEntry[sourceOrder],
         fetchedAt = chapterEntry[fetchedAt],
         realUrl = chapterEntry[realUrl],
+        // per-user columns are only present when the row came from getWithUserData;
+        // getOrNull covers both a missing join and a NULL left-join result
+        read = chapterEntry.getOrNull(ChapterUserTable.isRead) ?: false,
+        bookmarked = chapterEntry.getOrNull(ChapterUserTable.isBookmarked) ?: false,
+        lastPageRead = chapterEntry.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
+        lastReadAt = chapterEntry.getOrNull(ChapterUserTable.lastReadAt) ?: 0,
         downloaded = chapterEntry[isDownloaded],
         pageCount = chapterEntry[pageCount],
+        lastModifiedAt = chapterEntry.getOrNull(ChapterUserTable.lastModifiedAt) ?: 0,
+        version = chapterEntry.getOrNull(ChapterUserTable.version) ?: 0,
         memo = chapterEntry[memo],
     )

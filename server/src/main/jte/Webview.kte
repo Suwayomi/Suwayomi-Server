@@ -1,6 +1,7 @@
 @import suwayomi.tachidesk.i18n.MR
 
 @param locale: java.util.Locale
+@param subpath: String
 
 <!DOCTYPE html>
 <html lang="en">
@@ -374,10 +375,8 @@
         const titleDiv = document.getElementById('title');
         const reverseToggle = document.getElementById('reverseScroll');
         const origTitle = document.title;
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
 
-        function connectWs(socketUrl, token) {
+        function connectWs(socketUrl) {
             return new Promise((resolve, reject) => {
                 const socket = new WebSocket(socketUrl);
                 const f = (msg) => {
@@ -423,9 +422,15 @@
                                 loginForm.querySelectorAll('input, button').forEach(i => i.disabled = false);
                             } else {
                                 const newToken = resp.data.login.accessToken;
-                                const expiry = new Date(JSON.parse(atob(newToken.split('.')[1])).exp * 1000);
+                                // JWT payloads are base64url (with '-'/'_' and no padding), which atob() rejects
+                                const tokenPayloadB64 = newToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+                                const expiry = new Date(JSON.parse(atob(tokenPayloadB64 + '==='.slice(0, (4 - tokenPayloadB64.length % 4) % 4))).exp * 1000);
                                 console.log('Got new token', newToken, 'expires', expiry);
-                                document.cookie = "suwayomi-server-token=" + newToken + "; path=/; samesite=strict; expires=" + expiry.toUTCString() + (window.location.protocol === "https:" ? "; secure" : "");
+                                // the cookie must stay script-writable (non-HttpOnly): the token is
+                                // stored via document.cookie by this page's own login flow — there is
+                                // no Set-Cookie endpoint. Scoped to the configured webUI subpath so the
+                                // token does not leak to other apps served from the same origin.
+                                document.cookie = "suwayomi-server-token=" + newToken + "; path=${subpath}; samesite=strict; expires=" + expiry.toUTCString() + (window.location.protocol === "https:" ? "; secure" : "");
                                 loginDiv.classList.remove('show');
                                 loginForm.querySelectorAll('input, button').forEach(i => i.disabled = true);
                                 const newSocket = new WebSocket(socketUrl);
@@ -452,9 +457,10 @@
         (async function() {
             try {
                 const socketUrl = (window.location.origin + window.location.pathname).replace(/^http/,'ws');
-                // we pass the token as the subprotocol, which is widely considered the best solution to passing tokens
-                // browsers don't support setting custom headers for WebSockets...
-                const socket = await connectWs(socketUrl, token);
+                // auth is carried by the suwayomi-server-token cookie set by the login flow above;
+                // browsers don't support setting custom headers for WebSockets, so the cookie is the
+                // credential channel (the server reads it during the WS upgrade).
+                const socket = await connectWs(socketUrl);
 
                 urlInput.disabled = false;
                 goButton.disabled = false;

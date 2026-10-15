@@ -159,7 +159,7 @@ object NavigationRepository {
 
             // hide NSFW sources from users without the NSFW permission
             if (!includeNsfw) {
-                query.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.ordinal }
+                query.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.value }
             }
 
             val totalCount = query.count()

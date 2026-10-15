@@ -62,6 +62,8 @@ object WebViewController {
                     "Webview.jte",
                     mapOf(
                         "locale" to locale,
+                        // "/" when no webUI subpath is configured, else "/<subpath>"
+                        "subpath" to ServerSubpath.normalized(),
                     ),
                 )
             },

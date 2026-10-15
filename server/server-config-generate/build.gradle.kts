@@ -4,9 +4,11 @@ plugins {
             .get()
             .pluginId,
     )
-    // ktlint intentionally not applied yet: this module has pre-existing
-    // violations and gets a dedicated formatting batch (see root
-    // build.gradle.kts "Exempt:" note).
+    id(
+        libs.plugins.ktlint
+            .get()
+            .pluginId,
+    )
 }
 
 dependencies {
@@ -61,8 +63,12 @@ tasks {
             serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/graphql/types/UserSettingsType.kt"),
             serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models/BackupServerSettings.kt"),
             serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/models/BackupUserSettings.kt"),
-            serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupSettingsHandler.kt"),
-            serverProject.file("build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupUserSettingsHandler.kt"),
+            serverProject.file(
+                "build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupSettingsHandler.kt",
+            ),
+            serverProject.file(
+                "build/generated/src/main/kotlin/suwayomi/tachidesk/manga/impl/backup/proto/handlers/BackupUserSettingsHandler.kt",
+            ),
         )
     }
 }

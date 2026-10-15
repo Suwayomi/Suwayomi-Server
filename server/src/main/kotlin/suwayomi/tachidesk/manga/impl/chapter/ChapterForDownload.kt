@@ -31,6 +31,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import java.io.IOException
 import kotlin.time.Duration.Companion.minutes
@@ -257,6 +258,7 @@ private class ChapterForDownload(
         optMangaId: Int? = null,
     ) = transaction {
         ChapterTable
+            .getWithUserData(userId)
             .selectAll()
             .where {
                 if (optChapterId != null) {

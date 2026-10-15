@@ -13,6 +13,7 @@ import kotlin.io.path.exists
 import kotlin.io.path.readBytes
 import kotlin.io.path.writeBytes
 import kotlin.test.assertContentEquals
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -168,6 +169,30 @@ class H2MigrationTest {
         ZipOutputStream(out).use { }
         jar.writeBytes(out.toByteArray())
         assertFalse(H2Migration.isPlausibleJar(jar, 0))
+    }
+
+    @Test
+    fun `sha256Hex produces the canonical lowercase digest`(
+        @TempDir rootDir: java.nio.file.Path,
+    ) {
+        val file = rootDir / "data.bin"
+        file.writeBytes("hello".toByteArray())
+        assertEquals(
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+            H2Migration.sha256Hex(file),
+        )
+    }
+
+    @Test
+    fun `pinned toolchain digests are well-formed and cover the migrated versions`() {
+        val hex64 = Regex("[0-9a-f]{64}")
+        assertTrue(hex64.matches(H2Migration.TOOL_JAR_SHA256), "tool jar pin must be a 64-char hex digest")
+        // migrate() is called with fixed versions (see Migration.migrateH2DatabaseToV24240);
+        // an unpinned version fails closed in downloadToolchain, so both must be covered
+        assertEquals(setOf("1.4.200", "2.4.240"), H2Migration.H2_JAR_SHA256.keys)
+        H2Migration.H2_JAR_SHA256.forEach { (version, digest) ->
+            assertTrue(hex64.matches(digest), "h2 $version pin must be a 64-char hex digest")
+        }
     }
 
     /** A zip with one STORED (uncompressed) entry so byte offsets inside it are stable. */

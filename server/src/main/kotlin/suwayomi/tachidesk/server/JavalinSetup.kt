@@ -46,6 +46,7 @@ import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.manga.impl.NoChaptersFoundException
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.chapter.SourceException
+import suwayomi.tachidesk.manga.impl.extension.InvalidExtensionException
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
@@ -407,6 +408,13 @@ object JavalinSetup {
         exception(NoChaptersFoundException::class.java) { e, ctx ->
             logger.warn { "No chapters found while handling ${ctx.path()}: ${e.message}" }
             ctx.status(404)
+        }
+        // rejected extension packages (unsigned, malformed, wrong signature, …) are
+        // client errors — the message is safe to echo because it carries no internals
+        exception(InvalidExtensionException::class.java) { e, ctx ->
+            logger.warn { "Rejected extension package while handling ${ctx.path()}: ${e.message}" }
+            ctx.status(400)
+            ctx.result(e.message ?: "Bad Request")
         }
         // business errors thrown by sources/extensions (permission denied, paywalled
         // chapters, …) are upstream faults — the message is the source's own and is

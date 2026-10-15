@@ -79,6 +79,11 @@ class DatabaseUpTest : ApplicationTest() {
     fun `setup failure requests shutdown instead of running on without a database`() {
         // U1-D: a database that cannot be set up is fatal. The shutdown handler seam
         // captures the request instead of exiting the test JVM.
+        // The shared in-memory H2 survives this failure path only because
+        // ApplicationTest.databaseSetup connects with DB_CLOSE_DELAY=-1 (keeps the DB
+        // alive across connection closes) and DBManager.connectedDb is null in tests,
+        // so setupDatabase() never closeAndUnregister()s the test Database. If that
+        // changes, this test must re-run databaseSetup() to re-register the shared db.
         val captured = mutableListOf<ExitCode>()
         val originalHandler = databaseShutdownHandler
         databaseShutdownHandler = { captured += it }

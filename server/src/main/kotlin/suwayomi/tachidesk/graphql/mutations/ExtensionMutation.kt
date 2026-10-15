@@ -194,7 +194,7 @@ class ExtensionMutation {
                     // hide NSFW extensions from users without the NSFW permission —
                     // same gate as the extensions() query
                     if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
-                        query.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
+                        query.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.value }
                     }
 
                     query.map { ExtensionType(it) }

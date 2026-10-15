@@ -33,40 +33,54 @@ fun GET(
         .Builder()
         .url(url)
         .headers(headers)
+        .cacheControl(cache)
         .build()
+
+// The `cache` parameters on POST/PUT/DELETE are part of the extensions-lib ABI:
+// extensions compiled against the extension API call the Kotlin `$default`
+// synthetics that carry this parameter. Removing it breaks already-installed
+// extension jars with NoSuchMethodError even though cacheControl on non-GET
+// requests is a no-op. Keep the signature; the value is applied for parity with
+// upstream.
 
 fun POST(
     url: String,
     headers: Headers = DEFAULT_HEADERS,
     body: RequestBody = DEFAULT_BODY,
+    cache: CacheControl = DEFAULT_CACHE_CONTROL,
 ): Request =
     Request
         .Builder()
         .url(url)
         .post(body)
         .headers(headers)
+        .cacheControl(cache)
         .build()
 
 fun PUT(
     url: String,
     headers: Headers = DEFAULT_HEADERS,
     body: RequestBody = DEFAULT_BODY,
+    cache: CacheControl = DEFAULT_CACHE_CONTROL,
 ): Request =
     Request
         .Builder()
         .url(url)
         .put(body)
         .headers(headers)
+        .cacheControl(cache)
         .build()
 
 fun DELETE(
     url: String,
     headers: Headers = DEFAULT_HEADERS,
     body: RequestBody = DEFAULT_BODY,
+    cache: CacheControl = DEFAULT_CACHE_CONTROL,
 ): Request =
     Request
         .Builder()
         .url(url)
         .delete(body)
         .headers(headers)
+        .cacheControl(cache)
         .build()

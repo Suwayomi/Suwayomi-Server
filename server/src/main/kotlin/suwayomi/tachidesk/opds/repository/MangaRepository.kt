@@ -300,7 +300,7 @@ object MangaRepository {
                         .select(SourceTable.contentWarning)
                         .where { SourceTable.id eq sourceId }
                         .firstOrNull()
-                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal }
+                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.value }
                         ?: false
                 }
 

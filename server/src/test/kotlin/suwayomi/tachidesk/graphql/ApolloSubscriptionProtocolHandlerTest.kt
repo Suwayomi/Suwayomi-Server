@@ -97,6 +97,25 @@ class ApolloSubscriptionProtocolHandlerTest : ApplicationTest() {
     }
 
     @Test
+    fun initAfterDisconnectDoesNotResurrectTheSession() {
+        val sessionId = "s-init-after-disconnect"
+        val disconnectCtx =
+            mockk<WsConnectContext>(relaxed = true).also {
+                every { it.sessionId() } returns sessionId
+            }
+        handler.handleDisconnect(disconnectCtx)
+
+        // a connection_init arriving after the session was terminated (watchdog or
+        // disconnect) must not resurrect it — the tombstone makes markInitialized
+        // fail and no ack is emitted to the dead session
+        val ctx = messageContext(sessionId, """{"type":"connection_init"}""")
+        val messages = runBlocking { handler.handleMessage(ctx).toList() }
+
+        assertEquals(emptyList(), messages)
+        verify { ctx.closeSession(match<CloseStatus> { it.code == 4408 }) }
+    }
+
+    @Test
     fun initAcksAndCancelsTheTimeout() {
         val connectCtx =
             mockk<WsConnectContext>(relaxed = true).also {

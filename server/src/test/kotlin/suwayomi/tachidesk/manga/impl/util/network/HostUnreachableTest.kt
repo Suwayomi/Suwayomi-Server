@@ -6,6 +6,7 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -28,5 +29,14 @@ class HostUnreachableTest {
         assertFalse(HttpException(404).isHostUnreachable())
         assertFalse(IOException("unexpected end of stream").isHostUnreachable())
         assertFalse(IOException("timeout", SocketTimeoutException()).isHostUnreachable())
+    }
+
+    @Test
+    fun httpExceptionIsAnIOException() {
+        // contract since P3/U1-B: catch(IOException) covers HTTP error responses too;
+        // catch(HttpException) declared first still matches first
+        val e = HttpException(500)
+        assertTrue(e is IOException)
+        assertEquals("HTTP error 500", e.message)
     }
 }

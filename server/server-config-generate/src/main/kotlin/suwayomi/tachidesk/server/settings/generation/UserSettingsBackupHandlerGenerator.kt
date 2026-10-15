@@ -108,9 +108,10 @@ object UserSettingsBackupHandlerGenerator {
             )
             if (needsConversion) {
                 appendLine(
-                    "userConfig.${setting.key}.set(userId, UserSettingsRegistry.get(\"${setting.key}\")!!.typeInfo!!.restoreLegacy!!(it) as ${setting.internalType ?: setting.type.simpleName})".addIndentation(
-                        contentIndentation * 2,
-                    ),
+                    "userConfig.${setting.key}.set(userId, UserSettingsRegistry.get(\"${setting.key}\")!!.typeInfo!!.restoreLegacy!!(it) as ${setting.internalType ?: setting.type.simpleName})"
+                        .addIndentation(
+                            contentIndentation * 2,
+                        ),
                 )
             } else {
                 appendLine(
