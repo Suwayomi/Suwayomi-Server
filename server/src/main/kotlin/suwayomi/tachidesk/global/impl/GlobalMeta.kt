@@ -10,6 +10,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.GlobalMetaTable
+import suwayomi.tachidesk.manga.model.table.columns.validateMetaValueLength
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -31,6 +32,8 @@ object GlobalMeta {
         userId: Int,
         meta: Map<String, String>,
     ) {
+        // GLOBALMETA.value is varchar(4096): reject oversized input before the transaction
+        meta.values.forEach(::validateMetaValueLength)
         transaction {
             val dbMetaMap =
                 GlobalMetaTable

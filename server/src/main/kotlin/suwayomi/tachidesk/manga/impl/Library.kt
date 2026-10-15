@@ -8,6 +8,8 @@ package suwayomi.tachidesk.manga.impl
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.source.local.LocalSource
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +28,7 @@ import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import java.time.Instant
 
 object Library {
+    private val logger = KotlinLogging.logger {}
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun addMangaToLibrary(
@@ -49,7 +52,13 @@ object Library {
                                 (CategoryTable.isDefault eq true) and
                                 (CategoryTable.isDefaultCategory eq false)
                         }.toList()
-                val existingCategories = CategoryMangaTable.selectAll().where { CategoryMangaTable.manga eq mangaId }.toList()
+                // scoped to this user's rows: another user having categorized the manga must not
+                // suppress this user's default-category assignment
+                val existingCategories =
+                    CategoryMangaTable
+                        .selectAll()
+                        .where { CategoryMangaTable.manga eq mangaId and (CategoryMangaTable.user eq userId) }
+                        .toList()
 
                 MangaUserTable.upsert(MangaUserTable.user, MangaUserTable.manga) {
                     it[MangaUserTable.manga] = mangaId
@@ -60,7 +69,15 @@ object Library {
 
                 if (existingCategories.isEmpty()) {
                     defaultCategories.forEach { category ->
-                        CategoryMangaTable.upsert(CategoryMangaTable.manga, CategoryMangaTable.category) {
+                        // the conflict key must match the (user, category, manga) unique
+                        // index: Exposed forwards a non-empty key list verbatim into
+                        // ON CONFLICT, so a (manga, category) target matches no unique
+                        // index on PostgreSQL and fails with 42P10
+                        CategoryMangaTable.upsert(
+                            CategoryMangaTable.user,
+                            CategoryMangaTable.category,
+                            CategoryMangaTable.manga,
+                        ) {
                             it[CategoryMangaTable.category] = category[CategoryTable.id].value
                             it[CategoryMangaTable.manga] = mangaId
                             it[CategoryMangaTable.user] = userId
@@ -124,8 +141,10 @@ object Library {
                     ThumbnailDownloadHelper
                         .delete(mangaId)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                // ignore
+                logger.warn(e) { "Thumbnail handling failed for manga $mangaId" }
             }
         }
     }

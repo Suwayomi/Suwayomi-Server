@@ -16,7 +16,6 @@
 
 package android.database.sqlite;
 
-import android.database.DatabaseUtils;
 import android.os.CancellationSignal;
 import xyz.nulldev.androidcompat.db.ScrollableResultSet;
 
@@ -53,16 +52,9 @@ public abstract class SQLiteProgram extends SQLiteClosable {
             throw toSQLiteException("Could not compile SQL statement: " + mSql, e);
         }
 
-        int n = DatabaseUtils.getSqlStatementType(mSql);
-        switch (n) {
-            case DatabaseUtils.STATEMENT_BEGIN:
-            case DatabaseUtils.STATEMENT_COMMIT:
-            case DatabaseUtils.STATEMENT_ABORT:
-                break;
-
-            default:
-                break;
-        }
+        // (AOSP switches on the statement type here for session bookkeeping that
+        // this JDBC-backed implementation doesn't need — the empty switch was
+        // removed during the cleanup pass.)
 
         if (bindArgs != null && bindArgs.length > mNumParameters) {
             throw new IllegalArgumentException("Too many bind arguments.  "
@@ -272,7 +264,10 @@ public abstract class SQLiteProgram extends SQLiteClosable {
             try {
                 getPreparedStatement().setObject(i + 1, obj);
             } catch (SQLException e) {
-                throw new SQLiteException("Failed to bind argument: (" + i + ", " + obj + ")");
+                // the bound value is deliberately excluded from the message — bind
+                // args can carry sensitive data (passwords, tokens) that must not
+                // end up in logs/exception reports; the cause still carries it.
+                throw toSQLiteException("Failed to bind argument at index " + i, e);
             }
         }
     }

@@ -206,8 +206,17 @@ class ApolloSubscriptionProtocolHandler(
 
         // graphql-transport-ws: a connection only ever gets a single connection_init
         if (!sessionState.markInitialized(sessionId)) {
-            sessionState.terminateSession(context, CloseStatus(4429, "Too many initialisation requests"))
-            logger.info { "Session $sessionId sent a second connection_init" }
+            // markInitialized also fails when the 4408 watchdog or a disconnect already
+            // terminated the session between handleConnect and this init — the socket is
+            // dead, so re-terminating is a no-op and the init work below must not run.
+            // A live session failing it sent a second connection_init (4429).
+            if (sessionState.wasTerminated(sessionId)) {
+                sessionState.terminateSession(context, CloseStatus(4408, "Connection initialisation timeout"))
+                logger.debug { "Session $sessionId sent connection_init after it was already terminated" }
+            } else {
+                sessionState.terminateSession(context, CloseStatus(4429, "Too many initialisation requests"))
+                logger.info { "Session $sessionId sent a second connection_init" }
+            }
             return emptyFlow()
         }
         initTimeoutJobs.remove(sessionId)?.cancel()
@@ -235,7 +244,13 @@ class ApolloSubscriptionProtocolHandler(
 
             // generateContextMap is not suspending and is cheap: call it directly
             val graphQLContext = contextFactory.generateContextMap(user, context).toGraphQLContext()
-            sessionState.saveContext(context, graphQLContext)
+            // The 4408 watchdog or a disconnect may already have terminated this session
+            // while the deferred init work ran — do not write an orphan context or ack
+            // a dead session. saveContext performs the isInitialized check and the
+            // registration as one critical section with terminateSession.
+            if (!sessionState.saveContext(context, graphQLContext)) {
+                return@flow
+            }
             emit(acknowledgeMessage)
         }.flowOn(Dispatchers.IO)
     }

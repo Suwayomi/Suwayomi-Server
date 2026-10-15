@@ -288,7 +288,9 @@ public class JSONObject {
                     o instanceof String) {
                 return o;
             }
-            if (o.getClass().getPackage().getName().startsWith("java.")) {
+            // Class.getPackage() can return null for bootstrap-loaded classes;
+            // getPackageName() never returns null.
+            if (o.getClass().getPackageName().startsWith("java.")) {
                 return o.toString();
             }
         } catch (Exception ignored) {
@@ -818,6 +820,10 @@ public class JSONObject {
             writeTo(stringer);
             return stringer.toString();
         } catch (JSONException e) {
+            // Diverges from the @NonNull contract: retained for compatibility
+            // with the upstream org.json behavior, where a put()-time bypass of
+            // validation (e.g. a raw map injected via the Map constructor) can
+            // still fail to encode at toString() time.
             return null;
         }
     }

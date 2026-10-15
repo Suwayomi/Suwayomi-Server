@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.graphql.server.primitives
 
+import graphql.schema.CoercingParseValueException
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Expression
@@ -101,7 +102,7 @@ fun validatePagination(
  *
  * Both bounds are applied independently so a client may pass `after` and `before`
  * together to select the window between two cursors. Cursor values that fail to
- * parse are reported as a client-facing [IllegalArgumentException] instead of an
+ * parse are reported as a client-facing [CoercingParseValueException] instead of an
  * uncontrolled [NumberFormatException]/index error.
  */
 fun <T> Query.applyBeforeAfter(
@@ -119,7 +120,7 @@ fun <T> Query.applyBeforeAfter(
                 }
             }
         } catch (e: RuntimeException) {
-            throw IllegalArgumentException("Invalid cursor format", e)
+            throw CoercingParseValueException("Invalid cursor format", e)
         }
     }
     if (before != null) {
@@ -131,7 +132,7 @@ fun <T> Query.applyBeforeAfter(
                 }
             }
         } catch (e: RuntimeException) {
-            throw IllegalArgumentException("Invalid cursor format", e)
+            throw CoercingParseValueException("Invalid cursor format", e)
         }
     }
 }
@@ -245,7 +246,7 @@ private fun <R> parseCursorValue(block: () -> R): R =
     try {
         block()
     } catch (e: RuntimeException) {
-        throw IllegalArgumentException("Invalid cursor format", e)
+        throw CoercingParseValueException("Invalid cursor format", e)
     }
 
 @JvmName("greaterNotUniqueIntKey")

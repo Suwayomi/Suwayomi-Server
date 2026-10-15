@@ -22,29 +22,40 @@ object SettingsUpdater {
                     .memberProperties
                     .find { it.name == name } as? KProperty1<ServerConfig, MutableStateFlow<*>>
 
-            if (property != null) {
-                val stateFlow = property.get(serverConfig)
-
-                val validationError = SettingsValidator.validate(name, value)
-                val isValid = validationError == null
-
-                if (!isValid) {
-                    logger.warn { "Invalid value for setting $name: $validationError. Ignoring update." }
-
-                    return
-                }
-
-                val maybeConvertedValue =
-                    SettingsRegistry
-                        .get(name)
-                        ?.typeInfo
-                        ?.convertToInternalType
-                        ?.invoke(value) ?: value
-
-                // Normal update - MigratedConfigValue handles deprecated mappings automatically
-                @Suppress("UNCHECKED_CAST")
-                (stateFlow as MutableStateFlow<Any>).value = maybeConvertedValue
+            if (property == null) {
+                logger.warn { "Unknown setting $name, ignoring update" }
+                return
             }
+
+            if (SettingsRegistry.get(name)?.requiresRestart == true) {
+                logger.warn {
+                    "Setting $name requires a restart to take effect, ignoring live update " +
+                        "(edit server.conf and restart instead)"
+                }
+                return
+            }
+
+            val stateFlow = property.get(serverConfig)
+
+            val validationError = SettingsValidator.validate(name, value)
+            val isValid = validationError == null
+
+            if (!isValid) {
+                logger.warn { "Invalid value for setting $name: $validationError. Ignoring update." }
+
+                return
+            }
+
+            val maybeConvertedValue =
+                SettingsRegistry
+                    .get(name)
+                    ?.typeInfo
+                    ?.convertToInternalType
+                    ?.invoke(value) ?: value
+
+            // Normal update - MigratedConfigValue handles deprecated mappings automatically
+            @Suppress("UNCHECKED_CAST")
+            (stateFlow as MutableStateFlow<Any>).value = maybeConvertedValue
         } catch (e: Exception) {
             logger.error(e) { "Failed to update setting $name due to" }
         }

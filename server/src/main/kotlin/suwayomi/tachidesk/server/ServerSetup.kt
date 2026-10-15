@@ -515,8 +515,7 @@ fun applicationSetup() {
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    val updater = Injekt.get<IUpdater>()
-    (updater as Updater).scheduleUpdateTask()
+    Injekt.get<IUpdater>().scheduleUpdateTask()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()

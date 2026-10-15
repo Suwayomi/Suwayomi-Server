@@ -42,8 +42,9 @@ class UserDataLoader : KotlinDataLoader<Int, UserType> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, UserType> =
         newBatchedDataLoaderWithTry { ids ->
             future {
-                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
-                val canManageUsers = graphQLContext.getAttribute(Attribute.TachideskUser).hasPermission(UserPermission.MANAGE_USERS)
+                val user = graphQLContext.getAttribute(Attribute.TachideskUser)
+                val userId = user.requireUser()
+                val canManageUsers = user.hasPermission(UserPermission.MANAGE_USERS)
                 val visibleIds = ids.visibleKeys(userId, canManageUsers)
                 loggedTransaction {
                     val users =
@@ -68,8 +69,9 @@ class PermissionsForUserDataLoader : KotlinDataLoader<Int, List<UserPermission>>
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<UserPermission>> =
         newBatchedDataLoader { ids ->
             future {
-                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
-                val canManageUsers = graphQLContext.getAttribute(Attribute.TachideskUser).hasPermission(UserPermission.MANAGE_USERS)
+                val user = graphQLContext.getAttribute(Attribute.TachideskUser)
+                val userId = user.requireUser()
+                val canManageUsers = user.hasPermission(UserPermission.MANAGE_USERS)
                 val visibleIds = ids.visibleKeys(userId, canManageUsers)
                 loggedTransaction {
                     val permissionsByUserId =
@@ -103,8 +105,9 @@ class RolesForUserDataLoader : KotlinDataLoader<Int, List<UserRole>> {
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, List<UserRole>> =
         newBatchedDataLoader { ids ->
             future {
-                val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
-                val canManageUsers = graphQLContext.getAttribute(Attribute.TachideskUser).hasPermission(UserPermission.MANAGE_USERS)
+                val user = graphQLContext.getAttribute(Attribute.TachideskUser)
+                val userId = user.requireUser()
+                val canManageUsers = user.hasPermission(UserPermission.MANAGE_USERS)
                 val visibleIds = ids.visibleKeys(userId, canManageUsers)
                 loggedTransaction {
                     val rolesByUserId =

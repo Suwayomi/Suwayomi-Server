@@ -7,7 +7,6 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.Op
@@ -49,6 +48,7 @@ import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.manga.model.table.updateStrategyOrDefault
 import suwayomi.tachidesk.server.database.dbTransaction
 import java.util.Date
 import kotlin.math.max
@@ -105,7 +105,7 @@ object BackupMangaHandler {
                         viewer = mangaRow[MangaUserTable.viewer],
                         viewer_flags = mangaRow[MangaUserTable.viewerFlags],
                         chapterFlags = mangaRow[MangaUserTable.chapterFlags],
-                        updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
+                        updateStrategy = updateStrategyOrDefault(mangaRow[MangaTable.updateStrategy]),
                         lastModifiedAt = mangaRow[MangaUserTable.lastModifiedAt],
                         version = mangaRow[MangaUserTable.version],
                         initialized = mangaRow[MangaTable.initialized],

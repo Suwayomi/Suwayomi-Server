@@ -22,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.DownloadConversion
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
@@ -184,7 +185,7 @@ object Page {
                 // HttpException/host-unreachable already map to source-failure statuses
                 throw e
             } catch (e: Exception) {
-                throw e
+                throw SourceException(e.message, e)
             }
         }
     }
@@ -220,8 +221,9 @@ object Page {
                 )
             } catch (e: Exception) {
                 logger.error(e) { "Error while post-processing image" }
-                // re-open cached image in case of an error, since conversion likely (partially) consumed the input stream
-                // so it's likely not possible to serve it
+                // the conversion likely (partially) consumed the input stream so it
+                // cannot be served — close it and re-open the cached image instead
+                inputStream.close()
                 getPageImage(mangaId = mangaId, chapterIndex = chapterIndex, index = index)
             }
         return converted?.also { inputStream.close() } ?: (inputStream to mime)
@@ -387,8 +389,12 @@ object Page {
 
         val writerParams = writer.defaultWriteParam
         compressionLevel?.let {
-            writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
-            writerParams.compressionQuality = it.toFloat()
+            // not every writer supports compression (e.g. BMP); configuring the mode
+            // unconditionally throws UnsupportedOperationException
+            if (writerParams.canWriteCompressed()) {
+                writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
+                writerParams.compressionQuality = it.toFloat()
+            }
         }
 
         return writer to writerParams

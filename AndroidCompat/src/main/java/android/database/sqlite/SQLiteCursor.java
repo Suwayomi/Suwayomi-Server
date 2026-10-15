@@ -35,12 +35,6 @@ import java.util.Map;
 public class SQLiteCursor extends AbstractWindowedCursor {
     static final String TAG = "SQLiteCursor";
 
-    /** Used to find out where a cursor was allocated in case it never got released. */
-    private final Throwable mStackTrace;
-
-    /** The name of the table to edit */
-    private final String mEditTable;
-
     /** The names of the columns in the rows */
     private final String[] mColumns;
 
@@ -87,9 +81,9 @@ public class SQLiteCursor extends AbstractWindowedCursor {
         if (query == null) {
             throw new IllegalArgumentException("query object cannot be null");
         }
-        mStackTrace = null;
+        // note: editTable is accepted for API compatibility but intentionally not
+        // stored — nothing in this implementation consumes it
         mDriver = driver;
-        mEditTable = editTable;
         mColumnNameMap = null;
         mQuery = query;
 
@@ -246,17 +240,6 @@ public class SQLiteCursor extends AbstractWindowedCursor {
         try {
             // if the cursor hasn't been closed yet, close it first
             if (mWindow != null) {
-                //TODO Finish
-//                if (mStackTrace != null) {
-//                    String sql = mQuery.getSql();
-//                    int len = sql.length();
-//                    StrictMode.onSqliteObjectLeaked(
-//                        "Finalizing a Cursor that has not been deactivated or closed. " +
-//                        "database = " + mQuery.getDatabase().getLabel() +
-//                        ", table = " + mEditTable +
-//                        ", query = " + sql.substring(0, (len > 1000) ? 1000 : len),
-//                        mStackTrace);
-//                }
                 close();
             }
         } finally {

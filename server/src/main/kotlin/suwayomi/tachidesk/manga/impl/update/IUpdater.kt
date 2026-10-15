@@ -33,4 +33,10 @@ interface IUpdater {
     fun reset()
 
     fun getStatus(): UpdateUpdates
+
+    /**
+     * (Re-)schedules the automated global update task based on the current
+     * `globalUpdateInterval` config value.
+     */
+    fun scheduleUpdateTask()
 }

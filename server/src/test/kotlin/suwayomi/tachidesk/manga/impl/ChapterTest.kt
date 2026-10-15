@@ -12,6 +12,8 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
 import io.mockk.coEvery
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
@@ -33,6 +35,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
+import suwayomi.tachidesk.manga.model.dataclass.PAGINATION_FACTOR
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -41,9 +44,11 @@ import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
 import java.io.File
+import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class ChapterTest : ApplicationTest() {
@@ -484,6 +489,53 @@ class ChapterTest : ApplicationTest() {
         }
 
     @Test
+    fun getRecentChaptersPaginatesWithHasNextPageSentinel() =
+        runTest {
+            val mangaId = createLibraryManga("recent-chapters-pagination")
+            // inLibraryAt defaults to 0, so any fetchedAt > 0 qualifies as "recent"
+            val chapterCount = PAGINATION_FACTOR + 5
+            transaction {
+                ChapterTable.batchInsert((1..chapterCount).toList()) { i ->
+                    this[ChapterTable.url] = "recent-$i"
+                    this[ChapterTable.name] = "recent-$i"
+                    this[ChapterTable.sourceOrder] = i
+                    this[ChapterTable.fetchedAt] = i.toLong()
+                    this[ChapterTable.manga] = mangaId
+                    this[ChapterTable.memo] = JsonObject.EMPTY
+                }
+            }
+
+            val page0 = Chapter.getRecentChapters(1, 0)
+            assertEquals(PAGINATION_FACTOR, page0.page.size)
+            assertTrue(page0.hasNextPage)
+            // ordered by fetched_at DESC — newest first
+            val newest =
+                page0.page
+                    .first()
+                    .chapter.name
+            val oldestOnPage =
+                page0.page
+                    .last()
+                    .chapter.name
+            assertEquals("recent-$chapterCount", newest)
+            assertEquals("recent-${chapterCount - PAGINATION_FACTOR + 1}", oldestOnPage)
+
+            val page1 = Chapter.getRecentChapters(1, 1)
+            assertEquals(5, page1.page.size)
+            assertEquals(false, page1.hasNextPage)
+
+            // a page past the end is empty instead of throwing
+            val emptyPage = Chapter.getRecentChapters(1, 3)
+            assertTrue(emptyPage.page.isEmpty())
+            assertEquals(false, emptyPage.hasNextPage)
+
+            // negative page numbers clamp to the first page (paginatedFrom semantics)
+            val clamped = Chapter.getRecentChapters(1, -1)
+            assertEquals(page0.page, clamped.page)
+            assertEquals(page0.hasNextPage, clamped.hasNextPage)
+        }
+
+    @Test
     fun deleteChapterClearsUserDownloadState() =
         runTest {
             val mangaId = createLibraryManga("DOWNLOAD_DELETE_CHAPTER_TEST")
@@ -500,6 +552,62 @@ class ChapterTest : ApplicationTest() {
             }
 
             Chapter.deleteChapter(1, mangaId, 1)
+
+            val state =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { (ChapterUserTable.user eq 1) and (ChapterUserTable.chapter eq chapterId) }
+                        .single()
+                }
+            assertEquals(false, state[ChapterUserTable.isDownloadRequested])
+            assertEquals(false, state[ChapterUserTable.isDownloaded])
+
+            val downloaded =
+                transaction {
+                    ChapterTable
+                        .select(ChapterTable.isDownloaded)
+                        .where { ChapterTable.id eq chapterId }
+                        .single()[ChapterTable.isDownloaded]
+                }
+            assertEquals(false, downloaded)
+        }
+
+    @Test
+    fun deleteChapterKeepsCommittedDbStateWhenFilesystemDeleteFails() =
+        runTest {
+            val mangaId = createLibraryManga("DOWNLOAD_DELETE_FS_FAIL_TEST")
+            val chapterId =
+                createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = true).single()
+
+            transaction {
+                ChapterUserTable.batchInsert(listOf(1)) {
+                    this[ChapterUserTable.chapter] = chapterId
+                    this[ChapterUserTable.user] = 1
+                    this[ChapterUserTable.isDownloadRequested] = true
+                    this[ChapterUserTable.isDownloaded] = true
+                }
+            }
+
+            // a filesystem failure during the post-commit cleanup must propagate but
+            // leave the committed DB state intact — leftover files are reclaimed on
+            // the next refresh. Wrapping the delete in a transaction would instead
+            // roll the flags back to "downloaded" while the files are half-gone.
+            mockkObject(ChapterDownloadHelper)
+            try {
+                coEvery {
+                    ChapterDownloadHelper.delete(mangaId, chapterId)
+                } throws IOException("simulated filesystem failure")
+
+                try {
+                    Chapter.deleteChapter(1, mangaId, 1)
+                    fail("deleteChapter should propagate the filesystem failure")
+                } catch (expected: IOException) {
+                    // expected — thrown post-commit
+                }
+            } finally {
+                unmockkObject(ChapterDownloadHelper)
+            }
 
             val state =
                 transaction {

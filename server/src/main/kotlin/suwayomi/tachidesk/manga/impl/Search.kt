@@ -314,8 +314,12 @@ object Search {
         val filter: List<FilterChange>?,
     )
 
+    /**
+     * Global search across all sources is not implemented (the REST endpoint keeps
+     * returning an empty result for API compatibility).
+     */
     @Suppress("UNUSED_PARAMETER")
     fun sourceGlobalSearch(searchTerm: String) {
-        // TODO
+        // intentionally unimplemented — no upstream implementation exists to port
     }
 }

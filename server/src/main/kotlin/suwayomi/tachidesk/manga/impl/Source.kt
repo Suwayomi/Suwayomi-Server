@@ -34,6 +34,7 @@ import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.columns.validateMetaValueLength
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
@@ -42,9 +43,17 @@ object Source {
 
     suspend fun getSourceList(): List<SourceDataClass> {
         return suspendTransaction {
-            SourceTable.selectAll().mapNotNull {
+            val sourceRows = SourceTable.selectAll().toList()
+            // one batched lookup instead of an extension query per source row (N+1)
+            val extensionsById =
+                ExtensionTable
+                    .selectAll()
+                    .where { ExtensionTable.id inList sourceRows.map { it[SourceTable.extension] } }
+                    .associateBy { it[ExtensionTable.id] }
+            sourceRows.mapNotNull {
                 val catalogueSource = getSourceOrNull(it[SourceTable.id].value) ?: return@mapNotNull null
-                val sourceExtension = ExtensionTable.selectAll().where { ExtensionTable.id eq it[SourceTable.extension] }.first()
+                // a source whose extension row is gone is skipped instead of crashing the whole list
+                val sourceExtension = extensionsById[it[SourceTable.extension]] ?: return@mapNotNull null
 
                 SourceDataClass(
                     id = it[SourceTable.id].value.toString(),
@@ -53,7 +62,7 @@ object Source {
                     iconUrl = proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
                     supportsLatest = catalogueSource.supportsLatest,
                     isConfigurable = catalogueSource is ConfigurableSource,
-                    isNsfw = it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+                    isNsfw = it[SourceTable.contentWarning] >= ContentWarning.MIXED.value,
                     displayName = catalogueSource.toString(),
                     baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
                 )
@@ -65,7 +74,10 @@ object Source {
         return suspendTransaction {
             val source = SourceTable.selectAll().where { SourceTable.id eq sourceId }.firstOrNull() ?: return@suspendTransaction null
             val catalogueSource = getSourceOrNull(sourceId) ?: return@suspendTransaction null
-            val extension = ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.first()
+            // tolerate a dangling extension reference instead of crashing with first()
+            val extension =
+                ExtensionTable.selectAll().where { ExtensionTable.id eq source[SourceTable.extension] }.firstOrNull()
+                    ?: return@suspendTransaction null
 
             SourceDataClass(
                 id = sourceId.toString(),
@@ -74,7 +86,7 @@ object Source {
                 iconUrl = proxyExtensionIconUrl(extension[ExtensionTable.pkgName]),
                 supportsLatest = catalogueSource.supportsLatest,
                 isConfigurable = catalogueSource is ConfigurableSource,
-                isNsfw = source[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+                isNsfw = source[SourceTable.contentWarning] >= ContentWarning.MIXED.value,
                 displayName = catalogueSource.toString(),
                 baseUrl = runCatching { (catalogueSource as? HttpSource)?.baseUrl }.getOrNull(),
             )
@@ -198,6 +210,8 @@ object Source {
         userId: Int,
         metaBySourceIds: Map<Long, Map<String, String>>,
     ) {
+        // SOURCEMETA.value is varchar(4096): reject oversized input before the transaction
+        metaBySourceIds.values.forEach { it.values.forEach(::validateMetaValueLength) }
         transaction {
             val sourceIds = metaBySourceIds.keys
             val metaKeys = metaBySourceIds.flatMap { it.value.keys }

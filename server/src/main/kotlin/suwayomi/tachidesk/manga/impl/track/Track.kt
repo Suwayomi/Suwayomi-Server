@@ -173,7 +173,7 @@ object Track {
             TrackerManager.getTracker(input.trackerId)
                 ?: throw NotFoundResponse("Unknown tracker ${input.trackerId}")
         val list = tracker.search(userId, input.title)
-        return list.insertAll().map {
+        return list.insertAll(userId).map {
             TrackSearchDataClass(
                 id = it[TrackSearchTable.id].value,
                 trackerId = it[TrackSearchTable.trackerId],
@@ -220,7 +220,8 @@ object Track {
                     .selectAll()
                     .where {
                         TrackSearchTable.trackerId eq trackerId and
-                            (TrackSearchTable.remoteId eq remoteId)
+                            (TrackSearchTable.remoteId eq remoteId) and
+                            (TrackSearchTable.user eq userId)
                     }.firstOrNull()
                     ?.toTrackFromSearch(mangaId)
                     ?: TrackRecordTable

@@ -5,6 +5,7 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.manga.impl.Category
@@ -14,6 +15,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupCategory
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.test.ApplicationTest
+import suwayomi.tachidesk.test.ensureDefaultCategory
 
 class CategoryOrderRoundTripTest : ApplicationTest() {
     private val backupFlags =
@@ -27,6 +29,13 @@ class CategoryOrderRoundTripTest : ApplicationTest() {
             includeServerSettings = false,
             includeUserSettings = true,
         )
+
+    @BeforeEach
+    fun setUp() {
+        // other test classes clear the CATEGORY table without restoring user 1's default row;
+        // without it normalizeCategories rewrites the restored ranks to 0-based
+        ensureDefaultCategory(1)
+    }
 
     @AfterEach
     fun tearDown() {

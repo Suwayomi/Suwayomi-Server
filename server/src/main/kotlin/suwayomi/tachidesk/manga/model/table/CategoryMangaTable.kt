@@ -17,6 +17,8 @@ object CategoryMangaTable : IntIdTable() {
     val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
 
     init {
+        // upsert callers must pass (user, category, manga) as the conflict key —
+        // a narrower key matches no unique index on PostgreSQL (42P10)
         uniqueIndex(user, category, manga)
     }
 }

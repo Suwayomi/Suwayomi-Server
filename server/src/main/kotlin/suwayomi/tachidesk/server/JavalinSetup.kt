@@ -43,7 +43,9 @@ import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.manga.impl.NoChaptersFoundException
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
@@ -265,6 +267,10 @@ object JavalinSetup {
         }
 
         post(loginPath) { ctx ->
+            // Evaluated and rejected for the self-hosted threat model: no rate limiting,
+            // no post-login session rotation, no CSRF token on this form. The session is
+            // a same-site JSESSIONID cookie and Suwayomi is intended for a trusted network;
+            // hardening here is out of scope for a hygiene batch (recorded in CHANGELOG).
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
             // reject outright when no credentials are configured: otherwise submitting the
@@ -396,6 +402,18 @@ object JavalinSetup {
         exception(NoSuchElementException::class.java) { e, ctx ->
             logger.error(e) { "NoSuchElementException while handling the request" }
             ctx.status(404)
+        }
+        // a manga whose source has no chapters is a missing resource, not a server fault
+        exception(NoChaptersFoundException::class.java) { e, ctx ->
+            logger.warn { "No chapters found while handling ${ctx.path()}: ${e.message}" }
+            ctx.status(404)
+        }
+        // business errors thrown by sources/extensions (permission denied, paywalled
+        // chapters, …) are upstream faults — the message is the source's own and is
+        // what the user needs to act on
+        exception(SourceException::class.java) { e, ctx ->
+            logger.warn { "Source rejected the request while handling ${ctx.path()}: ${e.message}" }
+            ctx.sourceFailed(e.message)
         }
 
         // malformed request bodies are client errors, not server faults:

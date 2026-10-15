@@ -37,15 +37,26 @@ object SafePath {
             return "(invalid)"
         }
         val sb = StringBuilder(name.length)
-        name.forEach { c ->
-            if (isValidFatFilenameChar(c)) {
-                sb.append(c)
+        // iterate code points so surrogate pairs (e.g. emoji) stay intact while isolated
+        // surrogates get replaced
+        var index = 0
+        while (index < name.length) {
+            val codePoint = name.codePointAt(index)
+            if (isValidFatFilenameCodePoint(codePoint)) {
+                sb.appendCodePoint(codePoint)
             } else {
                 sb.append('_')
             }
+            index += Character.charCount(codePoint)
         }
 
-        return disambiguateReservedName(truncateFilename(sb.toString()))
+        // truncation can leave a trailing "." or " " behind — both are illegal filename
+        // endings on Windows
+        val truncated = truncateFilename(sb.toString()).trim('.', ' ')
+        if (truncated.isEmpty()) {
+            return "(invalid)"
+        }
+        return disambiguateReservedName(truncated)
     }
 
     /**
@@ -93,14 +104,24 @@ object SafePath {
         }
 
     /**
-     * Returns true if the given character is a valid filename character, false otherwise.
+     * Returns true if the given code point is a valid filename character, false otherwise.
      */
-    private fun isValidFatFilenameChar(c: Char): Boolean {
-        if (0x00.toChar() <= c && c <= 0x1f.toChar()) {
+    private fun isValidFatFilenameCodePoint(codePoint: Int): Boolean {
+        if (codePoint in 0x00..0x1f) {
             return false
         }
-        return when (c) {
-            '"', '*', '/', ':', '<', '>', '?', '\\', '|', 0x7f.toChar() -> false
+        // isolated UTF-16 surrogates are not real characters — they would otherwise be
+        // written as invalid UTF-8
+        if (codePoint in 0xD800..0xDFFF) {
+            return false
+        }
+        // line/paragraph separators and bidi control characters (e.g. U+202E RLO) can
+        // visually reverse filenames; isolate formatting (U+2066–U+2069) included
+        if (codePoint in 0x2028..0x202E || codePoint in 0x2066..0x2069) {
+            return false
+        }
+        return when (codePoint) {
+            '"'.code, '*'.code, '/'.code, ':'.code, '<'.code, '>'.code, '?'.code, '\\'.code, '|'.code, 0x7f -> false
             else -> true
         }
     }

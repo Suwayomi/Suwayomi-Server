@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.javalin.http.BadRequestResponse
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
@@ -30,6 +31,7 @@ import suwayomi.tachidesk.manga.model.table.CategoryMetaTable
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.columns.validateMetaValueLength
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 
@@ -45,12 +47,21 @@ object Category {
     fun createCategories(
         userId: Int,
         names: List<String>,
-    ): List<Int> =
-        transaction {
+    ): List<Int> {
+        // CATEGORY.name is varchar(64): reject oversized input before the transaction
+        names.forEach { name ->
+            if (name.length > MAX_CATEGORY_NAME_LENGTH) {
+                throw BadRequestResponse("Category name exceeds the $MAX_CATEGORY_NAME_LENGTH character limit")
+            }
+        }
+        return transaction {
             val categoryIdToName = getCategoryList(userId).associate { it.id to it.name.lowercase() }
 
+            // dedupe case-insensitively first: "Foo" + "foo" in one request must not
+            // create two rows (the name uniqueness is case-insensitive by convention)
             val categoriesToCreate =
                 names
+                    .distinctBy { it.lowercase() }
                     .filter {
                         !it.equals(DEFAULT_CATEGORY_NAME, true)
                     }.filter { !categoryIdToName.values.contains(it.lowercase()) }
@@ -61,7 +72,7 @@ object Category {
                         this[CategoryTable.name] = it
                         this[CategoryTable.order] = Int.MAX_VALUE
                         this[CategoryTable.user] = userId
-                    }.associate { it[CategoryTable.name] to it[CategoryTable.id].value }
+                    }.associate { it[CategoryTable.name].lowercase() to it[CategoryTable.id].value }
 
             normalizeCategories(userId)
 
@@ -70,10 +81,14 @@ object Category {
                 if (it.equals(DEFAULT_CATEGORY_NAME, true)) {
                     getDefaultCategoryId(userId)!!
                 } else {
-                    newCategoryIdsByName[it] ?: categoryIdToName.entries.find { (_, name) -> name.equals(it, true) }!!.key
+                    newCategoryIdsByName[it.lowercase()]
+                        ?: categoryIdToName.entries
+                            .find { (_, name) -> name.equals(it, true) }!!
+                            .key
                 }
             }
         }
+    }
 
     fun updateCategory(
         userId: Int,
@@ -89,11 +104,15 @@ object Category {
         }
         transaction {
             CategoryTable.update({ CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }) {
-                if (
-                    categoryId != defaultCategoryId &&
-                    name != null &&
-                    !name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)
-                ) {
+                if (categoryId != defaultCategoryId && name != null) {
+                    // an explicit rename to the reserved name is refused with a visible 400
+                    // instead of being silently ignored, so API callers learn it failed
+                    if (name.equals(DEFAULT_CATEGORY_NAME, ignoreCase = true)) {
+                        throw BadRequestResponse("Cannot rename a category to the reserved \"$DEFAULT_CATEGORY_NAME\" name")
+                    }
+                    if (name.length > MAX_CATEGORY_NAME_LENGTH) {
+                        throw BadRequestResponse("Category name exceeds the $MAX_CATEGORY_NAME_LENGTH character limit")
+                    }
                     it[CategoryTable.name] = name
                 }
                 if (categoryId != defaultCategoryId && isDefault != null) it[CategoryTable.isDefault] = isDefault
@@ -185,7 +204,7 @@ object Category {
         }
     }
 
-    /** make sure category order numbers starts from 1 and is consecutive */
+    /** make sure category order numbers are consecutive, starting from 0 */
     fun normalizeCategories(userId: Int) {
         transaction {
             CategoryTable
@@ -218,6 +237,9 @@ object Category {
         }
 
     const val DEFAULT_CATEGORY_NAME = "Default"
+
+    /** width contract of `CategoryTable.name` (varchar(64)) */
+    const val MAX_CATEGORY_NAME_LENGTH = 64
 
     fun getDefaultCategory(userId: Int): CategoryDataClass? =
         transaction {
@@ -330,6 +352,8 @@ object Category {
         userId: Int,
         metaByCategoryId: Map<Int, Map<String, String>>,
     ) {
+        // CATEGORYMETA.value is varchar(4096): reject oversized input before the transaction
+        metaByCategoryId.values.forEach { it.values.forEach(::validateMetaValueLength) }
         transaction {
             val categoryIds = metaByCategoryId.keys
             val metaKeys = metaByCategoryId.flatMap { it.value.keys }

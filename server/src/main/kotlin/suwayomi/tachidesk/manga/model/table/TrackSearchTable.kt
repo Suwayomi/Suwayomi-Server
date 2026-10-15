@@ -7,16 +7,25 @@ package suwayomi.tachidesk.manga.model.table
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import org.jetbrains.exposed.v1.core.ReferenceOption
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import suwayomi.tachidesk.manga.model.table.columns.truncatingVarchar
 
 object TrackSearchTable : IntIdTable() {
     val trackerId = integer("tracker_id")
     val remoteId = long("remote_id")
+
+    /**
+     * Owning user. Rows carry per-user tracker fields (libraryId, score, read progress,
+     * the `private` flag), so the cache is keyed per user — see M0070, which added this
+     * column and wiped the legacy globally-shared rows that could not be attributed.
+     */
+    val user = reference("user_id", UserAccountTable, ReferenceOption.CASCADE)
     val title = truncatingVarchar("title", 512)
     val totalChapters = integer("total_chapters")
     val trackingUrl = truncatingVarchar("tracking_url", 512)
@@ -36,17 +45,28 @@ object TrackSearchTable : IntIdTable() {
     val artists = truncatingVarchar("artists", 256).nullable().default(null)
 
     init {
-        uniqueIndex(trackerId, remoteId)
+        uniqueIndex(trackerId, remoteId, user)
     }
 }
 
-fun List<TrackSearch>.insertAll(): List<ResultRow> {
+/**
+ * Upserts [userId]'s tracker search results into TRACKSEARCH.
+ *
+ * Layering note (kept deliberately): model table objects carry no transaction/session
+ * scope, so this helper owns its own transaction boundary — a documented precedent, see
+ * the model-layer debt note in `MangaDataClass.kt`.
+ *
+ * The logical key is (tracker_id, remote_id, user_id): the rows cache per-user tracker
+ * state and must never be shared across users.
+ */
+fun List<TrackSearch>.insertAll(userId: Int): List<ResultRow> {
     if (isEmpty()) return emptyList()
     return transaction {
         TrackSearchTable
-            .batchUpsert(this@insertAll, TrackSearchTable.trackerId, TrackSearchTable.remoteId) {
+            .batchUpsert(this@insertAll, TrackSearchTable.trackerId, TrackSearchTable.remoteId, TrackSearchTable.user) {
                 this[TrackSearchTable.trackerId] = it.tracker_id
                 this[TrackSearchTable.remoteId] = it.remote_id
+                this[TrackSearchTable.user] = userId
                 this[TrackSearchTable.title] = it.title
                 this[TrackSearchTable.totalChapters] = it.total_chapters
                 this[TrackSearchTable.trackingUrl] = it.tracking_url

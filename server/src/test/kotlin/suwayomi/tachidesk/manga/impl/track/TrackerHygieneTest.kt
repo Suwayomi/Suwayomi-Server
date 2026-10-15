@@ -16,6 +16,7 @@ import io.mockk.slot
 import io.mockk.unmockkConstructor
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -38,6 +39,8 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.TrackRecordTable
+import suwayomi.tachidesk.manga.model.table.TrackSearchTable
+import suwayomi.tachidesk.manga.model.table.insertAll
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.createLibraryManga
 import java.io.IOException
@@ -549,9 +552,69 @@ class TrackerHygieneTest : ApplicationTest() {
             }
         }
 
+    // ----- U3-D: per-user TRACKSEARCH cache -----
+
+    @Test
+    fun `track search cache is keyed per user`() {
+        val userA = createUser()
+        val userB = createUser()
+        val remoteId = 100L
+
+        fun searchOf(score: Double) =
+            TrackSearch().apply {
+                tracker_id = TrackerManager.MANGA_UPDATES
+                remote_id = remoteId
+                title = "title"
+                total_chapters = 10
+                tracking_url = "https://example.com/t"
+                cover_url = ""
+                summary = ""
+                publishing_status = ""
+                publishing_type = ""
+                start_date = ""
+                this.score = score
+            }
+
+        val insertedA = listOf(searchOf(score = 1.0)).insertAll(userA)
+        val insertedB = listOf(searchOf(score = 9.0)).insertAll(userB)
+        assertEquals(1, insertedA.size)
+        assertEquals(1, insertedB.size)
+        assertEquals(userA, insertedA.single()[TrackSearchTable.user].value)
+        assertEquals(userB, insertedB.single()[TrackSearchTable.user].value)
+
+        // the second user's row must not overwrite the first user's per-user fields
+        val scoresByUser =
+            transaction {
+                TrackSearchTable
+                    .selectAll()
+                    .where {
+                        TrackSearchTable.trackerId eq TrackerManager.MANGA_UPDATES and
+                            (TrackSearchTable.remoteId eq remoteId)
+                    }.associate { it[TrackSearchTable.user].value to it[TrackSearchTable.score] }
+            }
+        assertEquals(mapOf(userA to 1.0, userB to 9.0), scoresByUser)
+
+        // a re-search by the same user upserts the same key instead of duplicating
+        listOf(searchOf(score = 5.0)).insertAll(userA)
+        val scoreA =
+            transaction {
+                TrackSearchTable
+                    .selectAll()
+                    .where {
+                        TrackSearchTable.trackerId eq TrackerManager.MANGA_UPDATES and
+                            (TrackSearchTable.remoteId eq remoteId) and
+                            (TrackSearchTable.user eq userA)
+                    }.map { it[TrackSearchTable.score] }
+            }
+        assertEquals(listOf(5.0), scoreA)
+    }
+
     @AfterEach
     internal fun tearDown() {
         transaction {
+            if (createdUserIds.isNotEmpty()) {
+                TrackSearchTable.deleteWhere { TrackSearchTable.user inList createdUserIds }
+            }
             if (createdMangaIds.isNotEmpty()) {
                 MangaTable.deleteWhere { MangaTable.id inList createdMangaIds }
             }

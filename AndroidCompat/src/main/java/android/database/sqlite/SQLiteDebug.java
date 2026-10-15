@@ -29,7 +29,9 @@ import java.util.ArrayList;
  * {@hide}
  */
 public final class SQLiteDebug {
-    private static native void nativeGetPagerStats(PagerStats stats);
+    // The AOSP version collected pager stats via a nativeGetPagerStats() native
+    // method; the JDBC-based compat layer has no native pager to inspect, so
+    // getDatabaseInfo() only fills in the per-database DbStats below.
 
     /**
      * Controls the printing of informational SQL log messages.
@@ -85,8 +87,6 @@ public final class SQLiteDebug {
 
     /**
      * Contains statistics about the active pagers in the current process.
-     *
-     * @see #nativeGetPagerStats(PagerStats)
      */
     public static class PagerStats {
         /** the current amount of memory checked out by sqlite using sqlite3_malloc().
@@ -149,7 +149,6 @@ public final class SQLiteDebug {
      */
     public static PagerStats getDatabaseInfo() {
         PagerStats stats = new PagerStats();
-        nativeGetPagerStats(stats);
         stats.dbStats = SQLiteDatabase.getDbStats();
         return stats;
     }

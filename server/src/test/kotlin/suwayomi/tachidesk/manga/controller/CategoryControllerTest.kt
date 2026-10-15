@@ -12,13 +12,22 @@ import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import suwayomi.tachidesk.manga.impl.Category
 import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.test.ApplicationTest
+import suwayomi.tachidesk.test.ensureDefaultCategory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CategoryControllerTest : ApplicationTest() {
+    @BeforeEach
+    fun setUp() {
+        // other test classes clear the CATEGORY table without restoring user 1's default
+        // row; the order assertions below assume it keeps occupying position 0
+        ensureDefaultCategory(1)
+    }
+
     @Test
     fun categoryReorder() {
         Category.createCategory(1, "foo")

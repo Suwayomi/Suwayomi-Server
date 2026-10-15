@@ -2,10 +2,10 @@ package suwayomi.tachidesk.global.impl
 
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.awaitSuccess
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import suwayomi.tachidesk.manga.impl.util.network.await
 import uy.kohesive.injekt.injectLazy
 
 /*
@@ -36,7 +36,7 @@ object AppUpdate {
                     network.client
                         .newCall(
                             GET(LATEST_STABLE_CHANNEL_URL),
-                        ).await()
+                        ).awaitSuccess()
                         .body
                         .string(),
                 ).jsonObject
@@ -47,7 +47,7 @@ object AppUpdate {
                     network.client
                         .newCall(
                             GET(LATEST_PREVIEW_CHANNEL_URL),
-                        ).await()
+                        ).awaitSuccess()
                         .body
                         .string(),
                 ).jsonObject

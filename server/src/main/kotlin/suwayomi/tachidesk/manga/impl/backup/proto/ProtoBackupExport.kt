@@ -15,10 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import okio.Buffer
-import okio.Sink
-import okio.buffer
-import okio.gzip
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.global.model.table.UserAccountTable
@@ -36,11 +32,13 @@ import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.util.zip.GZIPOutputStream
 import kotlin.time.Duration.Companion.days
 
 object ProtoBackupExport : ProtoBackupBase() {
@@ -217,12 +215,17 @@ object ProtoBackupExport : ProtoBackupBase() {
 
         val byteArray = parser.encodeToByteArray(Backup.serializer(), backup)
 
-        val byteStream = Buffer()
-        (byteStream as Sink)
-            .gzip()
-            .buffer()
-            .use { it.write(byteArray) }
+        // kotlinx-serialization has no streaming proto encoder, so the serialized
+        // bytes must fully reside in memory anyway — but they are only retained in
+        // their COMPRESSED form: write them through GZIPOutputStream directly instead
+        // of keeping an uncompressed copy inside an okio Buffer on top of the encoded
+        // array (proto→gzip compresses ~5-10×, so the previous shape effectively
+        // doubled peak memory for large libraries).
+        val compressed =
+            ByteArrayOutputStream()
+                .also { out -> GZIPOutputStream(out).use { gzip -> gzip.write(byteArray) } }
+                .toByteArray()
 
-        return byteStream.inputStream()
+        return compressed.inputStream()
     }
 }

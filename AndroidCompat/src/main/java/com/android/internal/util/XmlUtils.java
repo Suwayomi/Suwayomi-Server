@@ -917,6 +917,11 @@ public class XmlUtils {
             throw new XmlPullParserException(
                     "Not a number in num attribute in byte-array");
         }
+        if (num < 0) {
+            // a negative num would otherwise hit NegativeArraySizeException
+            throw new XmlPullParserException(
+                    "Invalid value for num attribute in byte-array: " + num);
+        }
         byte[] array = new byte[num];
         int eventType = parser.getEventType();
         do {
@@ -931,9 +936,11 @@ public class XmlUtils {
                     for (int i = 0; i < num; i ++) {
                         char nibbleHighChar = values.charAt(2 * i);
                         char nibbleLowChar = values.charAt(2 * i + 1);
-                        int nibbleHigh = nibbleHighChar > 'a' ? (nibbleHighChar - 'a' + 10)
+                        // Upstream bug 138482990: 'a' itself must take the
+                        // letter branch ('a'..'f' -> 10..15), not 'a' - '0'.
+                        int nibbleHigh = nibbleHighChar >= 'a' ? (nibbleHighChar - 'a' + 10)
                                 : (nibbleHighChar - '0');
-                        int nibbleLow = nibbleLowChar > 'a' ? (nibbleLowChar - 'a' + 10)
+                        int nibbleLow = nibbleLowChar >= 'a' ? (nibbleLowChar - 'a' + 10)
                                 : (nibbleLowChar - '0');
                         array[i] = (byte) ((nibbleHigh & 0x0F) << 4 | (nibbleLow & 0x0F));
                     }
@@ -1495,7 +1502,7 @@ public class XmlUtils {
         try {
             return Float.parseFloat(value);
         } catch (NumberFormatException e) {
-            throw new ProtocolException("problem parsing " + name + "=" + value + " as long");
+            throw new ProtocolException("problem parsing " + name + "=" + value + " as float");
         }
     }
     public static void writeFloatAttribute(XmlSerializer out, String name, float value)

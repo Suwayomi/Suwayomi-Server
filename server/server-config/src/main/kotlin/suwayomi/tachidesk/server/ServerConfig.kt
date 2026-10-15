@@ -32,14 +32,10 @@ import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
 import suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy
-import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionHeaderType
-import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
 import suwayomi.tachidesk.graphql.types.WebUIChannel
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionHeaderType
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.manga.impl.extension.repoMatchRegex
 import suwayomi.tachidesk.server.settings.BooleanSetting
 import suwayomi.tachidesk.server.settings.DisableableDoubleSetting
@@ -59,6 +55,7 @@ import suwayomi.tachidesk.server.util.downloadConversionTypeInfo
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.ts.config.GlobalConfigManager
 import xyz.nulldev.ts.config.SystemPropertyOverridableConfigModule
+import java.net.URI
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
@@ -71,11 +68,16 @@ const val SERVER_CONFIG_MODULE_NAME = "server"
 
 val serverConfig: ServerConfig by lazy { GlobalConfigManager.module() }
 
-val userSettingDeprecated = SettingsRegistry.SettingDeprecated.Remove(
-    message = "Now per-user",
-)
+val userSettingDeprecated =
+    SettingsRegistry.SettingDeprecated.Remove(
+        message = "Now per-user",
+    )
 
 private val application: Application by injectLazy()
+
+private fun isHttpUrl(url: String): Boolean =
+    runCatching { URI(url).toURL().protocol.let { it == "http" || it == "https" } }
+        .getOrDefault(false)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 fun <T> subscribeTo(
@@ -89,7 +91,11 @@ fun <T> subscribeTo(
         } else {
             flow
         }
-    return actualFlow.distinctUntilChanged().conflate().onEach { onChange(it) }.launchIn(mutableConfigValueScope)
+    return actualFlow
+        .distinctUntilChanged()
+        .conflate()
+        .onEach { onChange(it) }
+        .launchIn(mutableConfigValueScope)
 }
 
 // Settings are ordered by "protoNumber".
@@ -146,6 +152,15 @@ class ServerConfig(
         group = SettingGroup.PROXY,
         privacySafe = false,
         defaultValue = "",
+        // empty means "not configured"; a configured port must be numeric and in range
+        pattern = "^\\d{0,5}$".toRegex(),
+        customValidator = { value ->
+            if (value.isEmpty() || value.toIntOrNull() in 1..65535) {
+                null
+            } else {
+                "Value must be a valid port number (1-65535)"
+            }
+        },
     )
 
     val socksProxyUsername: MutableStateFlow<String> by StringSetting(
@@ -262,7 +277,7 @@ class ServerConfig(
             SettingsRegistry.SettingDeprecated.Migrate.ConfigValue(
                 replaceWith = "autoDownloadNewChaptersLimit",
                 message = "Replaced with autoDownloadNewChaptersLimit",
-                migrateConfigValue = { it.unwrapped() as? Int }
+                migrateConfigValue = { it.unwrapped() as? Int },
             ),
         readMigrated = { autoDownloadNewChaptersLimit.value },
         setMigrated = { autoDownloadNewChaptersLimit.value = it },
@@ -394,7 +409,7 @@ class ServerConfig(
                     } else {
                         null
                     }
-                }
+                },
             ),
         readMigrated = { authMode.value == AuthMode.BASIC_AUTH },
         setMigrated = { authMode.value = if (it) AuthMode.BASIC_AUTH else AuthMode.NONE },
@@ -645,7 +660,6 @@ class ServerConfig(
         excludeFromBackup = true,
     )
 
-
     fun createDownloadConversionsMap(
         protoNumber: Int,
         key: String,
@@ -689,16 +703,17 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "https://sync.koreader.rocks/",
-        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
-            replaceWith = "MOVE TO PREFERENCES",
-            message = "Moved to preference store. User is supposed to use a login/logout mutation",
-            migrateConfig = { value, config ->
-                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
-                koreaderPreferences.edit().putString("server_address", value.unwrapped() as? String).apply()
+        deprecated =
+            SettingsRegistry.SettingDeprecated.Migrate.Config(
+                replaceWith = "MOVE TO PREFERENCES",
+                message = "Moved to preference store. User is supposed to use a login/logout mutation",
+                migrateConfig = { value, config ->
+                    val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                    koreaderPreferences.edit().putString("server_address", value.unwrapped() as? String).apply()
 
-                config
-            }
-        ),
+                    config
+                },
+            ),
     )
 
     @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
@@ -707,16 +722,17 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "",
-        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
-            replaceWith = "MOVE TO PREFERENCES",
-            message = "Moved to preference store. User is supposed to use a login/logout mutation",
-            migrateConfig = { value, config ->
-                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
-                koreaderPreferences.edit().putString("username", value.unwrapped() as? String).apply()
+        deprecated =
+            SettingsRegistry.SettingDeprecated.Migrate.Config(
+                replaceWith = "MOVE TO PREFERENCES",
+                message = "Moved to preference store. User is supposed to use a login/logout mutation",
+                migrateConfig = { value, config ->
+                    val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                    koreaderPreferences.edit().putString("username", value.unwrapped() as? String).apply()
 
-                config
-            }
-        ),
+                    config
+                },
+            ),
     )
 
     @Deprecated("Moved to preference store. User is supposed to use a login/logout mutation")
@@ -725,16 +741,17 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "",
-        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
-            replaceWith = "MOVE TO PREFERENCES",
-            message = "Moved to preference store. User is supposed to use a login/logout mutation",
-            migrateConfig = { value, config ->
-                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
-                koreaderPreferences.edit().putString("user_key", value.unwrapped() as? String).apply()
+        deprecated =
+            SettingsRegistry.SettingDeprecated.Migrate.Config(
+                replaceWith = "MOVE TO PREFERENCES",
+                message = "Moved to preference store. User is supposed to use a login/logout mutation",
+                migrateConfig = { value, config ->
+                    val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                    koreaderPreferences.edit().putString("user_key", value.unwrapped() as? String).apply()
 
-                config
-            }
-        ),
+                    config
+                },
+            ),
     )
 
     @Deprecated("Moved to preference store. Is supposed to be random and gets auto generated")
@@ -743,16 +760,17 @@ class ServerConfig(
         group = SettingGroup.KOREADER_SYNC,
         privacySafe = false,
         defaultValue = "",
-        deprecated = SettingsRegistry.SettingDeprecated.Migrate.Config(
-            replaceWith = "MOVE TO PREFERENCES",
-            message = "Moved to preference store. Is supposed to be random and gets auto generated",
-            migrateConfig = { value, config ->
-                val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
-                koreaderPreferences.edit().putString("device_id", value.unwrapped() as? String).apply()
+        deprecated =
+            SettingsRegistry.SettingDeprecated.Migrate.Config(
+                replaceWith = "MOVE TO PREFERENCES",
+                message = "Moved to preference store. Is supposed to be random and gets auto generated",
+                migrateConfig = { value, config ->
+                    val koreaderPreferences = application.getSharedPreferences("koreader_sync", Context.MODE_PRIVATE)
+                    koreaderPreferences.edit().putString("device_id", value.unwrapped() as? String).apply()
 
-                config
-            }
-        ),
+                    config
+                },
+            ),
     )
 
     @Deprecated("Now per-user")
@@ -777,40 +795,55 @@ class ServerConfig(
                 imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncLegacyStrategy"),
             ),
         deprecated =
-        SettingsRegistry.SettingDeprecated.Migrate.Config(
-            replaceWith = "koreaderSyncStrategyForward, koreaderSyncStrategyBackward",
-            message = "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward",
-            migrateConfig = { value, config ->
-                val oldStrategy = (value.unwrapped() as? String)?.uppercase()
+            SettingsRegistry.SettingDeprecated.Migrate.Config(
+                replaceWith = "koreaderSyncStrategyForward, koreaderSyncStrategyBackward",
+                message = "Replaced with koreaderSyncStrategyForward and koreaderSyncStrategyBackward",
+                migrateConfig = { value, config ->
+                    val oldStrategy = (value.unwrapped() as? String)?.uppercase()
 
-                val (forward, backward) =
-                    when (oldStrategy) {
-                        "PROMPT" -> "PROMPT" to "PROMPT"
-                        "SILENT" -> "KEEP_REMOTE" to "KEEP_LOCAL"
-                        "SEND" -> "KEEP_LOCAL" to "KEEP_LOCAL"
-                        "RECEIVE" -> "KEEP_REMOTE" to "KEEP_REMOTE"
-                        "DISABLED" -> "DISABLED" to "DISABLED"
-                        else -> null to null
+                    val (forward, backward) =
+                        when (oldStrategy) {
+                            "PROMPT" -> "PROMPT" to "PROMPT"
+                            "SILENT" -> "KEEP_REMOTE" to "KEEP_LOCAL"
+                            "SEND" -> "KEEP_LOCAL" to "KEEP_LOCAL"
+                            "RECEIVE" -> "KEEP_REMOTE" to "KEEP_REMOTE"
+                            "DISABLED" -> "DISABLED" to "DISABLED"
+                            else -> null to null
+                        }
+
+                    if (forward != null && backward != null) {
+                        config
+                            .withValue("server.koreaderSyncStrategyForward", forward.toConfig("internal").getValue("internal"))
+                            .withValue("server.koreaderSyncStrategyBackward", backward.toConfig("internal").getValue("internal"))
+                            .withoutPath("server.koreaderSyncStrategy")
+                    } else {
+                        config
                     }
-
-                if (forward != null && backward != null) {
-                    config
-                        .withValue("server.koreaderSyncStrategyForward", forward.toConfig("internal").getValue("internal"))
-                        .withValue("server.koreaderSyncStrategyBackward", backward.toConfig("internal").getValue("internal"))
-                        .withoutPath("server.koreaderSyncStrategy")
-                } else {
-                    config
-                }
-            }
-        ),
+                },
+            ),
         readMigrated = {
             // This is a best-effort reverse mapping. It's not perfect but covers common cases.
+            val backward = koreaderSyncStrategyBackward.value
             when (koreaderSyncStrategyForward.value) {
-                KoreaderSyncConflictStrategy.PROMPT if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.PROMPT -> KoreaderSyncLegacyStrategy.PROMPT
-                KoreaderSyncConflictStrategy.KEEP_REMOTE if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SILENT
-                KoreaderSyncConflictStrategy.KEEP_LOCAL if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_LOCAL -> KoreaderSyncLegacyStrategy.SEND
-                KoreaderSyncConflictStrategy.KEEP_REMOTE if koreaderSyncStrategyBackward.value == KoreaderSyncConflictStrategy.KEEP_REMOTE -> KoreaderSyncLegacyStrategy.RECEIVE
-                else -> KoreaderSyncLegacyStrategy.DISABLED
+                KoreaderSyncConflictStrategy.PROMPT if backward == KoreaderSyncConflictStrategy.PROMPT -> {
+                    KoreaderSyncLegacyStrategy.PROMPT
+                }
+
+                KoreaderSyncConflictStrategy.KEEP_REMOTE if backward == KoreaderSyncConflictStrategy.KEEP_LOCAL -> {
+                    KoreaderSyncLegacyStrategy.SILENT
+                }
+
+                KoreaderSyncConflictStrategy.KEEP_LOCAL if backward == KoreaderSyncConflictStrategy.KEEP_LOCAL -> {
+                    KoreaderSyncLegacyStrategy.SEND
+                }
+
+                KoreaderSyncConflictStrategy.KEEP_REMOTE if backward == KoreaderSyncConflictStrategy.KEEP_REMOTE -> {
+                    KoreaderSyncLegacyStrategy.RECEIVE
+                }
+
+                else -> {
+                    KoreaderSyncLegacyStrategy.DISABLED
+                }
             }
         },
         setMigrated = { value ->
@@ -819,18 +852,22 @@ class ServerConfig(
                     koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.PROMPT
                     koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.PROMPT
                 }
+
                 KoreaderSyncLegacyStrategy.SILENT -> {
                     koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.KEEP_REMOTE // Remote is newer
-                    koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.KEEP_LOCAL  // Local is newer
+                    koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.KEEP_LOCAL // Local is newer
                 }
+
                 KoreaderSyncLegacyStrategy.SEND -> {
                     koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.KEEP_LOCAL
                     koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.KEEP_LOCAL
                 }
+
                 KoreaderSyncLegacyStrategy.RECEIVE -> {
                     koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.KEEP_REMOTE
                     koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.KEEP_REMOTE
                 }
+
                 KoreaderSyncLegacyStrategy.DISABLED -> {
                     koreaderSyncStrategyForward.value = KoreaderSyncConflictStrategy.DISABLED
                     koreaderSyncStrategyBackward.value = KoreaderSyncConflictStrategy.DISABLED
@@ -853,7 +890,8 @@ class ServerConfig(
         group = SettingGroup.AUTH,
         privacySafe = true,
         defaultValue = 5.minutes,
-        min = 0.seconds,
+        // 0 has no "disabled" semantics here - it would just produce instantly-expired tokens
+        min = 1.seconds,
     )
 
     val jwtRefreshExpiry: MutableStateFlow<Duration> by DurationSetting(
@@ -861,7 +899,7 @@ class ServerConfig(
         group = SettingGroup.AUTH,
         privacySafe = true,
         defaultValue = 60.days,
-        min = 0.seconds,
+        min = 1.seconds,
     )
 
     val webUIEnabled: MutableStateFlow<Boolean> by BooleanSetting(
@@ -931,7 +969,9 @@ class ServerConfig(
         group = SettingGroup.WEB_UI,
         privacySafe = true,
         defaultValue = "",
-        pattern = "^(/[a-zA-Z0-9._-]+)*$".toRegex(),
+        // dot segments are rejected outright: `/.`/`/..` have path-traversal semantics and no
+        // legitimate use in a URL subpath
+        pattern = "^(/[a-zA-Z0-9_-]+)*$".toRegex(),
         description = "Serve WebUI under a subpath (e.g., /manga). Leave empty for root path. Must start with / if specified.",
         requiresRestart = true,
         excludeFromBackup = true,
@@ -1015,20 +1055,24 @@ class ServerConfig(
         description = "Use Hikari Connection Pool to connect to the database.",
     )
 
+    // KCEF only ships binaries for Linux and Windows - on any other OS (MacOS, FreeBSD, ...)
+    // the setting must stay off rather than silently defaulting to enabled
     val kcefEnabled: MutableStateFlow<Boolean> by BooleanSetting(
         protoNumber = 86,
         group = SettingGroup.WEB_VIEW,
         privacySafe = true,
-        defaultValue = !Platform.current.os.isMacOS,
-        validator = {
-            if (Platform.current.os.isMacOS) {
-                return@BooleanSetting "KCEF is not supported on MacOS"
+        defaultValue = Platform.current.os.let { it.isLinux || it.isWindows },
+        validator = { value ->
+            // only `true` is platform-gated: erroring on `false` too would make the startup
+            // correction warn + rewrite server.conf on every launch without ever converging
+            if (value && !Platform.current.os.let { it.isLinux || it.isWindows }) {
+                "KCEF is only supported on Linux and Windows"
+            } else {
+                null
             }
-
-            return@BooleanSetting null
         },
-        toValidValue = { !Platform.current.os.isMacOS && it },
-        description = "Enable the WebView via CEF (Chromium) - Not supported on MacOS",
+        toValidValue = { it && Platform.current.os.let { os -> os.isLinux || os.isWindows } },
+        description = "Enable the WebView via CEF (Chromium) - supported on Linux and Windows only",
     )
 
     @Deprecated("Now per-user")
@@ -1128,20 +1172,20 @@ class ServerConfig(
         defaultValue = emptyList(),
         requiresRestart = true,
         itemValidator = { url ->
-            if (url.isNotEmpty()) {
+            if (isHttpUrl(url)) {
                 null
             } else {
-                "Invalid store URL format"
+                "Invalid store URL: must be a valid http(s) URL"
             }
         },
         itemToValidValue = { url ->
-            url.ifEmpty { null }
+            url.takeIf(::isHttpUrl)
         },
         typeInfo =
             SettingsRegistry.PartialTypeInfo(
                 specificType = "List<String>",
             ),
-        description = "List of extension store index URLs",
+        description = "List of extension store index URLs (http/https only)",
     )
 
     val autoBackupIncludeUserSettings: MutableStateFlow<Boolean> by BooleanSetting(
@@ -1157,7 +1201,10 @@ class ServerConfig(
         privacySafe = true,
         defaultValue = 6,
         min = 1,
-        description = "the maximum number of actual connections to the database; see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
+        max = 200,
+        description =
+            "the maximum number of actual connections to the database; " +
+                "see https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing",
     )
 
     val databaseSchema: MutableStateFlow<String> by StringSetting(
@@ -1165,7 +1212,15 @@ class ServerConfig(
         group = SettingGroup.DATABASE,
         privacySafe = true,
         defaultValue = "suwayomi",
-        minLength = 1
+        // PostgreSQL identifier syntax
+        pattern = "^[A-Za-z_][A-Za-z0-9_]*$".toRegex(),
+        // fail-fast instead of silently correcting to "suwayomi": a schema name that used to
+        // work quoted (e.g. "my-schema") is rejected by the identifier pattern, and a silent
+        // reset would point the server at an empty schema - existing data would look lost
+        failFastOnInvalidValue = true,
+        description =
+            "PostgreSQL schema name - must be a valid unquoted identifier " +
+                "([A-Za-z_][A-Za-z0-9_]*); the server refuses to start on an invalid value",
     )
 
     // Extension store egress is restricted to http(s) URLs whose host does not
@@ -1205,11 +1260,12 @@ class ServerConfig(
                 "force-closed on expiry",
     )
 
-    /** ****************************************************************** **/
-    /**                                                                    **/
-    /**                          Renamed settings                          **/
-    /**                                                                    **/
-    /** ****************************************************************** **/
+    // ******************************************************************
+    //
+    // Renamed settings
+    //
+
+    // ******************************************************************
 
     @Deprecated("Removed - prefer authUsername", replaceWith = ReplaceWith("authUsername"))
     val basicAuthUsername: MutableStateFlow<String> by MigratedConfigValue(

@@ -167,10 +167,13 @@ class DisplayScoreForTrackSearchDataLoader : KotlinDataLoader<Int, String> {
             future {
                 val userId = graphQLContext.getAttribute(Attribute.TachideskUser).requireUser()
                 loggedTransaction {
+                    // TrackSearch rows are per-user state (keyed on
+                    // (trackerId, remoteId, user) since M0070): ids must not resolve to
+                    // another user's cached search result
                     val trackRecords =
                         TrackSearchTable
                             .selectAll()
-                            .where { TrackSearchTable.id inIds ids }
+                            .where { TrackSearchTable.id inIds ids and (TrackSearchTable.user eq userId) }
                             .toList()
                             .map { it.toTrackSearch() }
                             .mapNotNull { track -> track.id?.let { id -> id to track } }

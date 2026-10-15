@@ -549,6 +549,12 @@ class TrackQuery {
         val trackSearches: List<TrackSearchType>,
     )
 
+    /**
+     * Side effect: although this is a query, the search results are cached server-side
+     * ([insertAll] writes them to TRACKSEARCH) so that a later `bindTracker`-style call
+     * can reference them. Kept as a query for client compatibility; do not strip the
+     * `insertAll` call or searches would stop populating the cache.
+     */
     @RequireAuth
     fun searchTracker(
         @GraphQLIgnore
@@ -564,7 +570,7 @@ class TrackQuery {
                 "Tracker needs to be logged-in to search"
             }
             SearchTrackerPayload(
-                tracker.search(userId, input.query).insertAll().map {
+                tracker.search(userId, input.query).insertAll(userId).map {
                     TrackSearchType(it)
                 },
             )

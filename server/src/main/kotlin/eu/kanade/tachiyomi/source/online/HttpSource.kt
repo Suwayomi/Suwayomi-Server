@@ -371,8 +371,8 @@ abstract class HttpSource : CatalogueSource {
     protected open fun pageListParse(response: Response): List<Page> = throw UnsupportedOperationException()
 
     /**
-     * Returns an observable with the page containing the source url of the image. If there's any
-     * error, it will return null instead of throwing an exception.
+     * Returns an observable with the page containing the source url of the image.
+     * Errors are propagated to the observer.
      *
      * @param page the page whose source image has to be fetched.
      */
@@ -461,7 +461,8 @@ abstract class HttpSource : CatalogueSource {
     private fun getUrlWithoutDomain(orig: String): String =
         try {
             val uri = URI(orig.replace(" ", "%20"))
-            var out = uri.path
+            // path is null for opaque URIs (e.g. "scheme:opaque"); fall back to "/"
+            var out = uri.path ?: "/"
             if (uri.query != null) {
                 out += "?" + uri.query
             }
@@ -470,6 +471,8 @@ abstract class HttpSource : CatalogueSource {
             }
             out
         } catch (_: URISyntaxException) {
+            // Deliberate fallback: callers always prepend baseUrl for relative urls,
+            // so a malformed url is kept in its absolute form instead of throwing.
             orig
         }
 

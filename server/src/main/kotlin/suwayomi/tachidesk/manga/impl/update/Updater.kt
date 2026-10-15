@@ -224,7 +224,7 @@ class Updater : IUpdater {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun scheduleUpdateTask() {
+    override fun scheduleUpdateTask() {
         // any exception escaping here would kill the globalUpdateInterval config-subscription
         // collector for good, so it has to be contained
         try {

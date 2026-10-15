@@ -591,6 +591,24 @@ class JavaSharedPreferences(
 
                     val tempFile = file.resolveSibling("${file.name}.tmp")
 
+                    // Create the temp file owner-only up front: outputStream() would
+                    // otherwise create it with the process umask (typically 644),
+                    // leaving a small window where written credentials are readable
+                    // by other users before restrictToOwnerOnly runs.
+                    try {
+                        if (tempFile.fileSystem.supportedFileAttributeViews().contains("posix")) {
+                            Files.deleteIfExists(tempFile)
+                            Files.createFile(
+                                tempFile,
+                                PosixFilePermissions.asFileAttribute(
+                                    PosixFilePermissions.fromString("rw-------"),
+                                ),
+                            )
+                        }
+                    } catch (e: Exception) {
+                        logger.warn(e) { "Could not pre-create restricted temp file ${tempFile.name}" }
+                    }
+
                     tempFile.outputStream().use {
                         snapshot.storeToXML(it, null)
                     }

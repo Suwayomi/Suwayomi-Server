@@ -9,6 +9,7 @@ import java.net.URLClassLoader
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 import java.sql.DriverManager
 import java.sql.SQLException
 import java.util.zip.ZipFile
@@ -50,6 +51,24 @@ object H2Migration {
     // real artifact sizes when bumping TOOL_VERSION / the h2 versions.
     internal const val TOOL_JAR_MIN_SIZE_BYTES = 10L * 1024 * 1024 // ~10MB
     internal const val H2_JAR_MIN_SIZE_BYTES = 2L * 1024 * 1024 // ~2MB
+
+    // Pinned SHA-256 digests for the migration toolchain. Provenance (verified when
+    // pinning, P3/U1-D): the h2 jars were cross-checked against the official .sha1
+    // files published on repo1.maven.org (Maven Central serves .sha1/.md5 but no
+    // .sha256); the migration tool jar is hosted on manticore-projects.com which
+    // publishes no digest at all, so its pin is trust-on-first-use from a verified
+    // download. Where the size/zip-magic checks only prove "a plausible jar", the
+    // digest pin proves "the expected jar" — it closes the poisoned-cache/mid-download
+    // tamper surface for artifacts that end up on the classpath via URLClassLoader.
+    // When bumping TOOL_VERSION or the h2 versions: download the new artifact,
+    // for h2 cross-check `sha1sum` against the official .sha1, then re-pin here.
+    internal const val TOOL_JAR_SHA256 = "1b9da146505a33cfe478d2de642d1f8b048e1bb75318606fe8764fc4c1aa8fa0"
+
+    internal val H2_JAR_SHA256 =
+        mapOf(
+            "1.4.200" to "3ad9ac4b6aae9cd9d3ac1c447465e1ed06019b851b893dd6a8d76ddb6d85bca6",
+            "2.4.240" to "29b70e427cc1c40cdc376283adbb0cc62853073797bb5fe5761f81fe73d57ce0",
+        )
 
     // The toolchain download is behind a var so tests can stub the network out.
     internal var toolchainDownloader: (toolsDir: Path, libsDir: Path, h2Old: String, h2New: String) -> Unit =
@@ -187,12 +206,19 @@ object H2Migration {
             TOOL_URL,
             toolsDir.resolve("H2MigrationTool-$TOOL_VERSION-all.jar"),
             TOOL_JAR_MIN_SIZE_BYTES,
+            TOOL_JAR_SHA256,
         )
         for (h2Version in listOf(h2Old, h2New).distinct()) {
             downloadIfNeeded(
                 "$MAVEN_BASE/$h2Version/h2-$h2Version.jar",
                 libsDir.resolve("h2-$h2Version.bin"),
                 H2_JAR_MIN_SIZE_BYTES,
+                // fail closed on an unpinned version: a version bump without a matching
+                // pin must be loud, not silently skip the digest check
+                H2_JAR_SHA256[h2Version]
+                    ?: throw IllegalStateException(
+                        "No SHA-256 digest pinned for h2-$h2Version.jar — pin the official artifact in H2_JAR_SHA256",
+                    ),
             )
         }
     }
@@ -252,17 +278,41 @@ object H2Migration {
         }
     }
 
+    /**
+     * Streams [path] through SHA-256 and returns the lowercase hex digest.
+     */
+    internal fun sha256Hex(path: Path): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        path.inputStream().use { input ->
+            val scratch = ByteArray(128 * 1024)
+            while (true) {
+                val read = input.read(scratch)
+                if (read == -1) break
+                digest.update(scratch, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
     private fun downloadIfNeeded(
         url: String,
         output: Path,
         minSizeBytes: Long,
+        expectedSha256: String,
     ) {
         if (output.exists()) {
-            if (isPlausibleJar(output, minSizeBytes)) {
+            val plausible = isPlausibleJar(output, minSizeBytes)
+            if (plausible && sha256Hex(output).equals(expectedSha256, ignoreCase = true)) {
                 logger.debug { "Already downloaded: ${output.name}" }
                 return
             }
-            logger.warn { "Cached file ${output.name} failed the integrity check; re-downloading." }
+            // a structurally-valid jar with the wrong digest is a poisoned cache —
+            // treat it exactly like a corrupt download and never leave it in place
+            logger.warn {
+                "Cached file ${output.name} failed the integrity check" +
+                    (if (plausible) " (SHA-256 mismatch)" else "") +
+                    "; re-downloading."
+            }
             output.deleteIfExists()
         }
 
@@ -286,6 +336,10 @@ object H2Migration {
 
                     if (!isPlausibleJar(tmp, minSizeBytes)) {
                         throw RuntimeException("Downloaded file from $url failed the integrity check")
+                    }
+
+                    if (!sha256Hex(tmp).equals(expectedSha256, ignoreCase = true)) {
+                        throw RuntimeException("Downloaded file from $url does not match its pinned SHA-256")
                     }
 
                     val tmpSize = tmp.fileSize()

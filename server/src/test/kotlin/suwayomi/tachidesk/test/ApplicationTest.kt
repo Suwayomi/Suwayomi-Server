@@ -89,12 +89,6 @@ open class ApplicationTest {
             }
         }
 
-        /** Marks the shared runtime as uninitialized so the next [ensureAppInitialized] re-runs the bootstrap. */
-        @JvmStatic
-        fun markAppUninitialized() {
-            initializedTheApp = false
-        }
-
         fun testingSetup() {
             // register Tachidesk's config which is dubbed "ServerConfig"
             SettingsRegistry.clear()

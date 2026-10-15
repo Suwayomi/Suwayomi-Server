@@ -1917,6 +1917,10 @@ public final class SQLiteDatabase extends SQLiteClosable {
                 return false;
             }
 
+            // Divergence from AOSP: this only records the flag. The actual
+            // `PRAGMA journal_mode=WAL` is not applied — issuing it would have to
+            // happen per-connection and interact with the connection lifecycle,
+            // which is out of scope for this compatibility layer.
             mConfigurationLocked.openFlags |= ENABLE_WRITE_AHEAD_LOGGING;
         }
         return true;
@@ -2246,7 +2250,11 @@ public final class SQLiteDatabase extends SQLiteClosable {
             if(B_inTransaction()) {
                 connection.commit();
                 connection.setAutoCommit(true);
-                Thread.sleep(sleepAfterYieldDelay);
+                // yieldIfContended()/yieldIfContendedSafely() pass -1; Thread.sleep
+                // throws IllegalArgumentException for negative values
+                if (sleepAfterYieldDelay > 0) {
+                    Thread.sleep(sleepAfterYieldDelay);
+                }
                 connection.setAutoCommit(false);
                 return true;
             } else {

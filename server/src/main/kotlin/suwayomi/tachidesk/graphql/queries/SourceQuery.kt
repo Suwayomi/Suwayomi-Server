@@ -123,12 +123,12 @@ class SourceQuery {
             opAnd.eq(lang, SourceTable.lang)
             opAnd.andWhere(isNsfw) {
                 if (it) {
-                    SourceTable.contentWarning greaterEq ContentWarning.MIXED.ordinal
+                    SourceTable.contentWarning greaterEq ContentWarning.MIXED.value
                 } else {
-                    SourceTable.contentWarning less ContentWarning.MIXED.ordinal
+                    SourceTable.contentWarning less ContentWarning.MIXED.value
                 }
             }
-            opAnd.andWhere(contentWarning) { SourceTable.contentWarning eq it.ordinal }
+            opAnd.andWhere(contentWarning) { SourceTable.contentWarning eq it.value }
 
             return opAnd.op
         }
@@ -150,7 +150,7 @@ class SourceQuery {
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
                 andFilterWithCompareString(SourceTable.lang, lang),
-                andFilterWithDerivedBoolean(SourceTable.contentWarning greaterEq ContentWarning.MIXED.ordinal, isNsfw),
+                andFilterWithDerivedBoolean(SourceTable.contentWarning greaterEq ContentWarning.MIXED.value, isNsfw),
                 andFilterWithCompareEnum(SourceTable.contentWarning, contentWarning),
             )
     }
@@ -190,7 +190,7 @@ class SourceQuery {
 
                     // hide NSFW sources from users without the NSFW permission
                     if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
-                        res.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.ordinal }
+                        res.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.value }
                     }
 
                     val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
