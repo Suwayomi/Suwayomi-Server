@@ -45,10 +45,10 @@ class M0057_AddNewExtensionApiFields : SQLMigration() {
         }
         ALTER TABLE EXTENSION ADD COLUMN apk_url VARCHAR(2048);
         ALTER TABLE EXTENSION ADD COLUMN content_warning INTEGER DEFAULT 0;
-        UPDATE EXTENSION SET content_warning = ${ContentWarning.MIXED.ordinal} WHERE is_nsfw = TRUE;
+        UPDATE EXTENSION SET content_warning = ${ContentWarning.MIXED.value} WHERE is_nsfw = TRUE;
         ALTER TABLE EXTENSION DROP COLUMN is_nsfw;
         ALTER TABLE SOURCE ADD COLUMN content_warning INTEGER DEFAULT 0;
-        UPDATE SOURCE SET content_warning = ${ContentWarning.MIXED.ordinal} WHERE is_nsfw = TRUE;
+        UPDATE SOURCE SET content_warning = ${ContentWarning.MIXED.value} WHERE is_nsfw = TRUE;
         ALTER TABLE SOURCE DROP COLUMN is_nsfw;
         
 

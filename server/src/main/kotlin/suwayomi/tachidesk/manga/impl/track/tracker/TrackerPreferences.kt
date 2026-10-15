@@ -2,15 +2,12 @@ package suwayomi.tachidesk.manga.impl.track.tracker
 
 import android.app.Application
 import android.content.Context
-import io.github.oshai.kotlinlogging.KotlinLogging
-import suwayomi.tachidesk.manga.impl.track.tracker.anilist.Anilist
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 object TrackerPreferences {
     private val preferenceStore =
         Injekt.get<Application>().getSharedPreferences("tracker", Context.MODE_PRIVATE)
-    private val logger = KotlinLogging.logger {}
 
     fun getTrackUsername(
         userId: Int,
@@ -44,17 +41,30 @@ object TrackerPreferences {
             .apply()
     }
 
+    /**
+     * Returns the persisted token, or null when there is none. Blank strings
+     * and the literal `"null"` (written by `Json.encodeToString(null)` calls in
+     * tracker `saveOAuth`/`saveToken` paths) are normalized to null so readers
+     * never try to decode placeholder garbage.
+     */
     fun getTrackToken(
         userId: Int,
         sync: Tracker,
-    ) = preferenceStore.getString(trackToken(userId, sync.id), "")
+    ) = preferenceStore
+        .getString(trackToken(userId, sync.id), "")
+        .takeUnless { it.isNullOrBlank() || it == "null" }
 
+    /**
+     * Persists [token]; `null` — and the literal `"null"` produced by
+     * `Json.encodeToString(null)` — removes the key instead of storing the
+     * placeholder string back. Clearing also resets the expired flag.
+     */
     fun setTrackToken(
         userId: Int,
         sync: Tracker,
         token: String?,
     ) {
-        if (token == null) {
+        if (token == null || token == "null") {
             preferenceStore
                 .edit()
                 .remove(trackToken(userId, sync.id))
@@ -82,7 +92,8 @@ object TrackerPreferences {
     fun getScoreType(
         userId: Int,
         sync: Tracker,
-    ) = preferenceStore.getString(scoreType(userId, sync.id), Anilist.POINT_10)
+        defaultValue: String = "POINT_10",
+    ) = preferenceStore.getString(scoreType(userId, sync.id), defaultValue)
 
     fun setScoreType(
         userId: Int,
@@ -93,9 +104,7 @@ object TrackerPreferences {
         .putString(scoreType(userId, sync.id), scoreType)
         .apply()
 
-    fun autoUpdateTrack(userId: Int) = preferenceStore.getBoolean("pref_auto_update_manga_sync_$userId", true)
-
-    fun trackUsername(
+    private fun trackUsername(
         userId: Int,
         trackerId: Int,
     ) = "pref_mangasync_username_${userId}_$trackerId"

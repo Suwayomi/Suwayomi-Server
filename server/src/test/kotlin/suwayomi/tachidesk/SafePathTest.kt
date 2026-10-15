@@ -1,8 +1,10 @@
 package suwayomi.tachidesk
 
+import suwayomi.tachidesk.manga.impl.extension.requireSafePathComponent
 import xyz.nulldev.androidcompat.util.SafePath
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class SafePathTest {
@@ -46,5 +48,88 @@ class SafePathTest {
         assertEquals(mixed256.take(120), result)
         assertEquals(240, result.toByteArray(Charsets.UTF_8).size)
         assertTrue(result.toByteArray(Charsets.UTF_8).size == 240)
+    }
+
+    @Test
+    fun bidiAndIsolateControlCharactersAreReplaced() {
+        // U+202E (RLO) can visually reverse "file.png" into "gnp.elif" in listings
+        assertEquals("file_name", SafePath.buildValidFilename("file‮name"))
+        assertEquals("a_b", SafePath.buildValidFilename("a\u2066b"))
+        assertEquals("a_b", SafePath.buildValidFilename("a\u2028b"))
+    }
+
+    @Test
+    fun isolatedSurrogatesAreReplacedButPairsSurvive() {
+        assertEquals("a_b", SafePath.buildValidFilename("a\uD800b"))
+        assertEquals("a_b", SafePath.buildValidFilename("a\uDC00b"))
+        // a complete surrogate pair (emoji) is a legal code point and stays intact
+        assertEquals("a\uD83D\uDE00b", SafePath.buildValidFilename("a\uD83D\uDE00b"))
+    }
+
+    @Test
+    fun truncationCannotLeaveATrailingDotOrSpace() {
+        // 239 chars + '.' = 240 bytes: truncation keeps the dot, the post-trim removes it
+        val input = "a".repeat(239) + "." + "b".repeat(10)
+
+        val result = SafePath.buildValidFilename(input)
+
+        assertEquals("a".repeat(239), result)
+        assertTrue(!result.endsWith('.') && !result.endsWith(' '))
+    }
+
+    // The extension install/update/uninstall paths resolve pkgName/versionName/apkName into
+    // filesystem components via requireSafePathComponent — the regression net for zip-slip
+    // and traversal payloads coming from a malicious manifest or store index
+    @Test
+    fun requireSafePathComponentAcceptsPlainNames() {
+        listOf(
+            "eu.kanade.tachiyomi.extension",
+            "extension.apk",
+            "1.4.2",
+            "name_with_underscores-1",
+        ).forEach { requireSafePathComponent(it) }
+    }
+
+    @Test
+    fun requireSafePathComponentRejectsTraversalAndSeparators() {
+        listOf(
+            "..",
+            "../escape.apk",
+            "a/../b.apk",
+            "a/b.apk",
+            "a\\b.apk",
+            "/absolute.apk",
+            "\\absolute.apk",
+        ).forEach {
+            assertFailsWith<IllegalArgumentException>("expected rejection of \"$it\"") {
+                requireSafePathComponent(it)
+            }
+        }
+    }
+
+    @Test
+    fun requireSafePathComponentRejectsNamesThatWouldBeRewritten() {
+        // anything the sanitizer would change must be rejected outright (the file would not
+        // land where the caller intended): edge dots/spaces, control chars, empty names
+        listOf(
+            "",
+            " ",
+            ".",
+            " .apk",
+            ".hidden.apk",
+            "trailing.apk ",
+            "trailing.apk.",
+            "a:b.apk",
+            "a?b.apk",
+            "a*b.apk",
+            "a|b.apk",
+            "a<b.apk",
+            "a>b.apk",
+            "a\"b.apk",
+        ).forEach {
+            assertFailsWith<IllegalArgumentException>("expected rejection of \"$it\"") {
+                requireSafePathComponent(it)
+            }
+        }
     }
 }

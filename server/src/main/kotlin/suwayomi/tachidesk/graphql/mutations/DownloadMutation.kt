@@ -5,8 +5,10 @@ package suwayomi.tachidesk.graphql.mutations
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -37,6 +39,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
     fun deleteDownloadedChapters(
         @GraphQLIgnore
         userId: Int,
@@ -72,6 +75,7 @@ class DownloadMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
     fun deleteDownloadedChapter(
         @GraphQLIgnore
         userId: Int,
@@ -91,7 +95,7 @@ class DownloadMutation {
                                 .getWithUserData(userId)
                                 .selectAll()
                                 .where { ChapterTable.id eq chapter }
-                                .first(),
+                                .firstOrNull() ?: throw IllegalArgumentException("Chapter not found: $chapter"),
                         )
                     },
             )
@@ -128,7 +132,19 @@ class DownloadMutation {
                             DownloadStatus(
                                 DownloadManager.updates
                                     .first {
-                                        DownloadManager.getStatus().queue.any { it.chapterId in chapterIdsToEnqueue }
+                                        // accept the status once the chapters show in the queue — or
+                                        // when they already raced through it and are downloaded, so an
+                                        // instant completion can't strand this wait for the full timeout
+                                        DownloadManager.getStatus().queue.any { it.chapterId in chapterIdsToEnqueue } ||
+                                            chapterIdsToEnqueue.all { id ->
+                                                transaction {
+                                                    ChapterTable
+                                                        .select(ChapterTable.id)
+                                                        .where {
+                                                            ChapterTable.id eq id and (ChapterTable.isDownloaded eq true)
+                                                        }.count() == 1L
+                                                }
+                                            }
                                     }.let { DownloadManager.getStatus() },
                             )
                         }
@@ -391,6 +407,12 @@ class DownloadMutation {
     @RequirePermissions(UserPermission.DOWNLOAD_CHAPTERS)
     fun reorderChapterDownloads(input: ReorderChapterDownloadsInput): CompletableFuture<ReorderChapterDownloadPayload?> {
         val (clientMutationId, reorders) = input
+
+        require(reorders.isNotEmpty()) { "'reorders' must not be empty" }
+        val queueSize = DownloadManager.getStatus().queue.size
+        reorders.forEach {
+            require(it.to in 0..queueSize) { "'to' must be within the queue bounds (0..$queueSize)" }
+        }
 
         return future {
             DownloadManager.reorder(reorders)

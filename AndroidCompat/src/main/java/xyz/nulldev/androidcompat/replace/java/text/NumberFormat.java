@@ -27,6 +27,11 @@ public class NumberFormat extends java.text.NumberFormat {
         this.delegate = delegate;
     }
 
+    /** Returns the underlying ICU number format. */
+    public com.ibm.icu.text.NumberFormat getDelegate() {
+        return delegate;
+    }
+
     public StringBuffer format(Object number, StringBuffer toAppendTo, FieldPosition pos) {
         return delegate.format(number, toAppendTo, pos);
     }
@@ -166,12 +171,18 @@ public class NumberFormat extends java.text.NumberFormat {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof NumberFormat) {
+            return delegate.equals(((NumberFormat) obj).delegate);
+        }
         return delegate.equals(obj);
     }
 
     @Override
     public Object clone() {
-        return delegate.clone();
+        return new NumberFormat((com.ibm.icu.text.NumberFormat) delegate.clone());
     }
 
     public boolean isGroupingUsed() {
@@ -218,8 +229,19 @@ public class NumberFormat extends java.text.NumberFormat {
         delegate.setCurrency(theCurrency);
     }
 
+    @Override
+    public void setCurrency(java.util.Currency currency) {
+        if (currency == null) {
+            delegate.setCurrency(null);
+        } else {
+            delegate.setCurrency(Currency.getInstance(currency.getCurrencyCode()));
+        }
+    }
+
+    @Override
     public java.util.Currency getCurrency() {
-        return java.util.Currency.getInstance(delegate.getCurrency().getCurrencyCode());
+        com.ibm.icu.util.Currency currency = delegate.getCurrency();
+        return currency == null ? null : java.util.Currency.getInstance(currency.getCurrencyCode());
     }
 
     public void setRoundingMode(int roundingMode) {

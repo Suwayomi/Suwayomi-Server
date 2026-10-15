@@ -10,11 +10,16 @@ package suwayomi.tachidesk.manga.model.dataclass
 import com.fasterxml.jackson.annotation.JsonIgnore
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.json.JsonObject
-import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
-import suwayomi.tachidesk.manga.impl.util.lang.trimAll
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import java.time.Instant
 
+// Architecture debt note: this model/dataclass package still reaches back into `impl`
+// in a few places (e.g. `MangaTable.toDataClass` calls `MangaList.proxyThumbnailUrl`,
+// `ChapterDataClass.chapterCount` opens its own transaction, `TrackSearchTable` maps to
+// `tracker.model.TrackSearch`, `TruncatingVarCharColumn` reads server config). The
+// single-line helpers (`JsonObject.EMPTY`, `trimAll`) were copied into `Lang.kt` in this
+// package so at least the trivial imports stop crossing the layer boundary; a full
+// model/impl package split is deferred to a dedicated refactor.
 data class MangaDataClass(
     val id: Int,
     val sourceId: String,

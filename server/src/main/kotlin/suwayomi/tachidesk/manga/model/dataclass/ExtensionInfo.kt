@@ -31,13 +31,28 @@ data class ExtensionSource(
     val contentWarning: ContentWarning,
 )
 
-enum class ContentWarning {
-    SAFE,
-    MIXED,
-    NSFW,
+/**
+ * Persisted content-warning level (`EXTENSION.content_warning` / `SOURCE.content_warning`
+ * integer columns).
+ *
+ * NOTE: whether the wire values in extension indexes/manifests are ordinals or explicit
+ * codes is unconfirmed upstream; the server treats its own model ordering as the persisted
+ * contract, so [value] is pinned explicitly instead of relying on `ordinal`. Comparisons
+ * like `>= MIXED` are severity thresholds.
+ */
+enum class ContentWarning(
+    val value: Int,
+) {
+    SAFE(0),
+    MIXED(1),
+    NSFW(2),
     ;
 
     companion object {
-        fun valueOf(contentWarning: Int) = entries.find { it.ordinal == contentWarning } ?: SAFE
+        val maxValue = entries.maxOf { it.value }
+
+        fun fromValue(value: Int) = entries.find { it.value == value } ?: SAFE
+
+        fun valueOf(contentWarning: Int) = fromValue(contentWarning)
     }
 }

@@ -457,7 +457,10 @@ public class BitmapFactory {
     public static Bitmap decodeStream(@Nullable InputStream is, @Nullable Rect outPadding,
             @Nullable Options opts) {
         if (is == null) return null;
-        if (outPadding != null) throw new RuntimeException("OutPadding is not implemented");
+        if (outPadding != null) {
+            // No nine-patch padding info is extracted from decoded streams.
+            outPadding.set(-1, -1, -1, -1);
+        }
         Options.validate(opts);
         Bitmap bitmap = null;
         // TODO: Support options with in parameters

@@ -16,13 +16,18 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
 import kotlin.time.Duration
 
-private fun maybeRedact(value: Any, privacySafe: Boolean): String {
-    return if (privacySafe) {
+@PublishedApi
+internal val logger = KotlinLogging.logger { }
+
+private fun maybeRedact(
+    value: Any,
+    privacySafe: Boolean,
+): String =
+    if (privacySafe) {
         value.toString()
     } else {
         "[REDACTED]"
     }
-}
 
 /**
  * Base delegate for settings to read values from the config file with automatic setting registration and validation
@@ -32,6 +37,13 @@ open class SettingDelegate<T : Any>(
     val defaultValue: T,
     val validator: ((T) -> String?)? = null,
     val toValidValue: ((T) -> T)? = null,
+    /**
+     * When true, a persisted value that cannot be read or fails validation is fatal instead
+     * of being silently corrected: for keys like a database schema name a silent reset to the
+     * default would point the server at an empty schema and make existing data look lost.
+     */
+    @PublishedApi
+    internal val failFastOnInvalidValue: Boolean = false,
     protected val group: SettingGroup,
     protected val requiresRestart: Boolean? = null,
     protected val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
@@ -40,6 +52,7 @@ open class SettingDelegate<T : Any>(
     protected val excludeFromBackup: Boolean? = null,
     val privacySafe: Boolean,
 ) {
+    @Volatile
     var flow: MutableStateFlow<T>? = null
     lateinit var propertyName: String
     lateinit var moduleName: String
@@ -105,45 +118,105 @@ open class SettingDelegate<T : Any>(
         thisRef: ServerConfig,
         property: KProperty<*>,
     ): ReifiedT {
-        if (flow != null) {
-            return flow as ReifiedT
-        }
+        flow?.let { return it as ReifiedT }
 
-        val stateFlow = thisRef.overridableConfig.getValue<ServerConfig, ReifiedT>(thisRef, property)
-        @Suppress("UNCHECKED_CAST")
-        flow = stateFlow as MutableStateFlow<T>
+        synchronized(this) {
+            flow?.let { return it as ReifiedT }
 
-        // Validate config value and optionally fallback to default value
-        validator?.let { validate ->
-            @Suppress("UNCHECKED_CAST")
-            val initialValue = stateFlow.value
-            val error = validate(initialValue)
-            if (error != null) {
-                KotlinLogging.logger { }.warn {
-                    "Invalid config value for $moduleName.$propertyName: $error. Using default value: $defaultValue"
+            val stateFlow =
+                try {
+                    thisRef.overridableConfig.getValue<ServerConfig, ReifiedT>(thisRef, property)
+                } catch (e: Exception) {
+                    if (failFastOnInvalidValue) {
+                        throw IllegalStateException(
+                            "Unreadable value for $moduleName.$propertyName: ${e.message} - " +
+                                "fix or remove the entry in server.conf",
+                            e,
+                        )
+                    }
+                    // an unreadable stored value (e.g. a malformed duration like
+                    // `javaScriptEngineTimeout = "abc"`) must not hard-crash startup - fall
+                    // back to the default and persist it once so the warning does not repeat.
+                    // (the default is a code constant, never a user secret - safe to print)
+                    logger.warn(e) {
+                        "Unreadable value for $moduleName.$propertyName, falling back to default: $defaultValue"
+                    }
+                    runCatching {
+                        GlobalConfigManager.updateValue("$moduleName.$propertyName", defaultValue)
+                    }.onFailure {
+                        logger.warn(it) { "Failed to persist corrected value for $moduleName.$propertyName" }
+                    }
+                    @Suppress("UNCHECKED_CAST")
+                    MutableStateFlow(defaultValue) as ReifiedT
                 }
 
-                stateFlow.value = toValidValue?.let { it(initialValue) } ?: defaultValue
-            }
-        }
+            @Suppress("UNCHECKED_CAST")
+            val typedStateFlow = stateFlow as MutableStateFlow<T>
 
-        stateFlow
-            .drop(1)
-            .distinctUntilChanged()
-            .filter { it != thisRef.overridableConfig.getConfig().getValue<ServerConfig, R>(thisRef, property) }
-            .onEach { value ->
-                validator?.let { validate ->
-                    @Suppress("UNCHECKED_CAST")
-                    val error = validate(value as T)
-                    if (error != null) {
-                        throw IllegalArgumentException("Setting $propertyName: $error")
+            // Validate config value and optionally fallback to default value
+            validator?.let { validate ->
+                val initialValue = typedStateFlow.value
+                val error = validate(initialValue)
+                if (error != null) {
+                    if (failFastOnInvalidValue) {
+                        throw IllegalStateException(
+                            "Invalid value for $moduleName.$propertyName: $error - " +
+                                "fix or remove the entry in server.conf",
+                        )
+                    }
+                    val correctedValue = toValidValue?.let { it(initialValue) } ?: defaultValue
+                    // A correction that still fails validation (e.g. a custom validator rejecting the
+                    // corrected value) falls back to the default
+                    val newValue = if (validate(correctedValue) == null) correctedValue else defaultValue
+
+                    logger.warn {
+                        "Invalid config value for $moduleName.$propertyName: $error. Using value: $newValue"
+                    }
+
+                    typedStateFlow.value = newValue
+
+                    // persist the correction once so the warning isn't repeated on every start
+                    runCatching {
+                        GlobalConfigManager.updateValue("$moduleName.$propertyName", newValue)
+                    }.onFailure {
+                        logger.warn(it) { "Failed to persist corrected value for $moduleName.$propertyName" }
                     }
                 }
+            }
 
-                GlobalConfigManager.updateValue("$moduleName.$propertyName", value as Any)
-            }.launchIn(mutableConfigValueScope)
+            // only cache the flow once the initial value is usable - a fail-fast throw above
+            // must keep failing on the next access instead of returning the bad flow
+            flow = typedStateFlow
 
-        return stateFlow
+            stateFlow
+                .drop(1)
+                .distinctUntilChanged()
+                .filter { it != thisRef.overridableConfig.getConfig().getValue<ServerConfig, R>(thisRef, property) }
+                .onEach { value ->
+                    runCatching {
+                        validator?.let { validate ->
+                            @Suppress("UNCHECKED_CAST")
+                            val error = validate(value as T)
+                            if (error != null) {
+                                throw IllegalArgumentException("Setting $propertyName: $error")
+                            }
+                        }
+
+                        GlobalConfigManager.updateValue("$moduleName.$propertyName", value as Any)
+                    }.onFailure { e ->
+                        // never let a rejected/failed write kill this collector: roll the flow back to
+                        // the last persisted value so memory and file converge again
+                        logger.warn(e) {
+                            "Rejected value for $moduleName.$propertyName, reverting to persisted value"
+                        }
+                        @Suppress("UNCHECKED_CAST")
+                        typedStateFlow.value =
+                            thisRef.overridableConfig.getConfig().getValue<ServerConfig, R>(thisRef, property) as T
+                    }
+                }.launchIn(mutableConfigValueScope)
+
+            return stateFlow
+        }
     }
 }
 
@@ -155,9 +228,14 @@ class MigratedConfigValue<T : Any>(
     private val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     private val deprecated: SettingsRegistry.SettingDeprecated,
     private val readMigrated: (() -> T) = { defaultValue },
-    private val setMigrated: ((T) -> Unit) = {},
-    private val privacySafe: Boolean
+    private val setMigrated: ((T) -> Unit) = {
+        logger.warn {
+            "Write to migrated/removed setting has no persistent effect - write the corresponding user setting instead"
+        }
+    },
+    private val privacySafe: Boolean,
 ) {
+    @Volatile
     var flow: MutableStateFlow<T>? = null
     lateinit var propertyName: String
     lateinit var moduleName: String
@@ -201,23 +279,28 @@ class MigratedConfigValue<T : Any>(
         thisRef: ServerConfig,
         property: KProperty<*>,
     ): MutableStateFlow<T> {
-        if (flow != null) {
-            return flow!!
+        flow?.let { return it }
+
+        synchronized(this) {
+            flow?.let { return it }
+
+            val value = readMigrated()
+
+            val stateFlow = MutableStateFlow(value)
+            flow = stateFlow
+
+            stateFlow
+                .drop(1)
+                .distinctUntilChanged()
+                .filter { it != readMigrated() }
+                .onEach { value ->
+                    // a throwing write-back must not kill this collector
+                    runCatching { setMigrated(value) }
+                        .onFailure { logger.warn(it) { "Failed to write migrated setting $moduleName.$propertyName" } }
+                }.launchIn(mutableConfigValueScope)
+
+            return stateFlow
         }
-
-        val value = readMigrated()
-
-        val stateFlow = MutableStateFlow(value)
-        flow = stateFlow
-
-        stateFlow
-            .drop(1)
-            .distinctUntilChanged()
-            .filter { it != readMigrated() }
-            .onEach(setMigrated)
-            .launchIn(mutableConfigValueScope)
-
-        return stateFlow
     }
 }
 
@@ -228,6 +311,8 @@ class StringSetting(
     pattern: Regex? = null,
     minLength: Int? = null,
     maxLength: Int? = null,
+    customValidator: ((String) -> String?)? = null,
+    failFastOnInvalidValue: Boolean = false,
     group: SettingGroup,
     deprecated: SettingsRegistry.SettingDeprecated? = null,
     requiresRestart: Boolean? = null,
@@ -239,22 +324,31 @@ class StringSetting(
         defaultValue = defaultValue,
         validator = { value ->
             when {
-                pattern != null && !value.matches(pattern) ->
+                pattern != null && !value.matches(pattern) -> {
                     "Value (${maybeRedact(value, privacySafe)}) must match pattern: ${pattern.pattern}"
-                minLength != null && value.length < minLength ->
+                }
+
+                minLength != null && value.length < minLength -> {
                     "Value (${maybeRedact(value, privacySafe)}) must have at least $minLength characters"
-                maxLength != null && value.length > maxLength ->
+                }
+
+                maxLength != null && value.length > maxLength -> {
                     "Value (${maybeRedact(value, privacySafe)}) must not exceed $maxLength characters"
-                else -> null
+                }
+
+                else -> {
+                    customValidator?.invoke(value)
+                }
             }
         },
         toValidValue = { value ->
-            if (pattern != null && !value.matches(pattern)) {
-                defaultValue
-            } else {
-                maxLength?.let { value.take(it) } ?: value
+            when {
+                pattern != null && !value.matches(pattern) -> defaultValue
+                minLength != null && value.length < minLength -> defaultValue
+                else -> maxLength?.let { value.take(it) } ?: value
             }
         },
+        failFastOnInvalidValue = failFastOnInvalidValue,
         group = group,
         deprecated = deprecated,
         requiresRestart = requiresRestart,
@@ -291,7 +385,7 @@ abstract class RangeSetting<T : Comparable<T>>(
         toValidValue =
             toValidValue ?: { value ->
                 val coerceAtLeast = min?.let { value.coerceAtLeast(min) } ?: value
-                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: value
+                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: coerceAtLeast
 
                 coerceAtMost
             },
@@ -370,7 +464,7 @@ class DisableableIntSetting(
                 value
             } else {
                 val coerceAtLeast = min?.let { value.coerceAtLeast(min) } ?: value
-                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: value
+                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: coerceAtLeast
 
                 coerceAtMost
             }
@@ -447,7 +541,7 @@ class DisableableDoubleSetting(
                 value
             } else {
                 val coerceAtLeast = min?.let { value.coerceAtLeast(min) } ?: value
-                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: value
+                val coerceAtMost = max?.let { coerceAtLeast.coerceAtMost(max) } ?: coerceAtLeast
 
                 coerceAtMost
             }

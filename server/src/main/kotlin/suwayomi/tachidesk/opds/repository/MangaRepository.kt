@@ -2,6 +2,7 @@ package suwayomi.tachidesk.opds.repository
 
 import eu.kanade.tachiyomi.source.model.MangasPage
 import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -42,10 +43,36 @@ import suwayomi.tachidesk.opds.dto.OpdsMangaDetails
 import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.dto.PrimaryFilterType
+import suwayomi.tachidesk.opds.util.OpdsPaging
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
 import suwayomi.tachidesk.server.user.ForbiddenException
+
+/** Escape character used for SQL `LIKE` patterns built by this repository. */
+private const val OPDS_LIKE_ESCAPE = '\\'
+
+/** Escapes `LIKE` wildcards (`%`, `_`) and the escape char itself in a literal value. */
+private fun escapeLikeLiteral(value: String): String =
+    value
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+
+/**
+ * `MANGA.GENRE` stores a comma-separated list whose separator is `", "` in current data
+ * but `","` in older rows; match [genre] as a *list element* under both separators and
+ * treat `%`/`_` in the input as literals (a genre of `%` must not match everything).
+ */
+private fun genreListContains(genre: String): Op<Boolean> {
+    val escaped = escapeLikeLiteral(genre)
+    return (MangaTable.genre eq genre) or
+        (MangaTable.genre like LikePattern("$escaped,%", OPDS_LIKE_ESCAPE)) or // "g, ..." (covers "g, " too)
+        (MangaTable.genre like LikePattern("%, $escaped", OPDS_LIKE_ESCAPE)) or // "..., g"
+        (MangaTable.genre like LikePattern("%,$escaped", OPDS_LIKE_ESCAPE)) or // "...,g"
+        (MangaTable.genre like LikePattern("%, $escaped,%", OPDS_LIKE_ESCAPE)) or // "..., g, ..."
+        (MangaTable.genre like LikePattern("%,$escaped,%", OPDS_LIKE_ESCAPE)) // "...,g,..."
+}
 
 /**
  * Applies dynamic filters based on the current user configuration and cross-filters.
@@ -74,16 +101,11 @@ fun Query.applyOpdsMangaFilter(
     if (excludeField != "genre") {
         criteria.genre?.let { genre ->
             val genreTrimmed = genre.trim()
-            andWhere {
-                (MangaTable.genre like "%, $genreTrimmed, %") or
-                    (MangaTable.genre like "$genreTrimmed, %") or
-                    (MangaTable.genre like "%, $genreTrimmed") or
-                    (MangaTable.genre eq genreTrimmed)
-            }
+            andWhere { genreListContains(genreTrimmed) }
         }
     }
     if (excludeField != "filter") {
-        criteria.filter?.let { filterVal ->
+        criteria.filter?.lowercase()?.let { filterVal ->
             when (filterVal) {
                 "unread" -> {
                     andWhere {
@@ -132,7 +154,8 @@ object MangaRepository {
             description = this[MangaTable.description],
             thumbnailUrl = this[MangaTable.thumbnail_url],
             sourceLang = this[SourceTable.lang],
-            inLibrary = this[MangaUserTable.inLibrary],
+            // LEFT JOIN user row: absent for manga the user never interacted with
+            inLibrary = this.getOrNull(MangaUserTable.inLibrary) ?: false,
             status = this[MangaTable.status],
             sourceName = formatSourceName(this[SourceTable.name], this[SourceTable.lang]),
             lastFetchedAt = this[MangaTable.lastFetchedAt],
@@ -196,7 +219,9 @@ object MangaRepository {
             query.applyOpdsMangaFilter(userId, criteria)
             applyMangaLibrarySort(query, sort)
 
-            query.groupBy(MangaTable.id, SourceTable.lang, SourceTable.name)
+            // `MangaUserTable.id` is grouped so its columns are covered by PostgreSQL's
+            // functional-dependency rule (the unique (manga, user) index keeps it 1:1).
+            query.groupBy(MangaTable.id, SourceTable.lang, SourceTable.name, MangaUserTable.id)
 
             // Efficiently get the name of the primary filter item
             val specificFilterName =
@@ -215,7 +240,8 @@ object MangaRepository {
                         criteria.categoryId?.let {
                             CategoryTable
                                 .select(CategoryTable.name)
-                                .where { CategoryTable.id eq it }
+                                // categories are per-user; don't leak another user's name
+                                .where { (CategoryTable.id eq it) and (CategoryTable.user eq userId) }
                                 .firstOrNull()
                                 ?.get(CategoryTable.name)
                         }
@@ -241,10 +267,11 @@ object MangaRepository {
                 }
 
             val totalCount = query.count()
+            val perPage = opdsItemsPerPage(userId)
             val mangas =
                 query
-                    .limit(opdsItemsPerPage(userId))
-                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
+                    .limit(perPage)
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
                     .map { it.toOpdsMangaAcqEntry() }
 
             OpdsLibraryFeedResult(mangas, totalCount, specificFilterName)
@@ -273,7 +300,7 @@ object MangaRepository {
                         .select(SourceTable.contentWarning)
                         .where { SourceTable.id eq sourceId }
                         .firstOrNull()
-                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal }
+                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.value }
                         ?: false
                 }
 
@@ -310,29 +337,32 @@ object MangaRepository {
     /**
      * Finds manga in the library based on search criteria (query, author, title).
      * @param criteria The search criteria.
+     * @param pageNum The 1-based page number for pagination.
      * @return A pair containing the list of matching [OpdsMangaAcqEntry] and the total count.
      */
     fun findMangaByCriteria(
         userId: Int,
         criteria: OpdsSearchCriteria,
+        pageNum: Int,
     ): Pair<List<OpdsMangaAcqEntry>, Long> =
         transaction {
+            fun containsPattern(raw: String): LikePattern = LikePattern("%${escapeLikeLiteral(raw.lowercase())}%", OPDS_LIKE_ESCAPE)
+
             val conditions = mutableListOf<Op<Boolean>>()
             conditions += (MangaUserTable.inLibrary eq true)
 
             criteria.query?.takeIf { it.isNotBlank() }?.let { q ->
-                val lowerQ = q.lowercase()
                 conditions += (
-                    (MangaTable.title.lowerCase() like "%$lowerQ%") or
-                        (MangaTable.author.lowerCase() like "%$lowerQ%") or
-                        (MangaTable.genre.lowerCase() like "%$lowerQ%")
+                    (MangaTable.title.lowerCase() like containsPattern(q)) or
+                        (MangaTable.author.lowerCase() like containsPattern(q)) or
+                        (MangaTable.genre.lowerCase() like containsPattern(q))
                 )
             }
             criteria.author?.takeIf { it.isNotBlank() }?.let { author ->
-                conditions += (MangaTable.author.lowerCase() like "%${author.lowercase()}%")
+                conditions += (MangaTable.author.lowerCase() like containsPattern(author))
             }
             criteria.title?.takeIf { it.isNotBlank() }?.let { title ->
-                conditions += (MangaTable.title.lowerCase() like "%${title.lowercase()}%")
+                conditions += (MangaTable.title.lowerCase() like containsPattern(title))
             }
 
             val finalCondition = conditions.reduce { acc, op -> acc and op }
@@ -346,13 +376,16 @@ object MangaRepository {
                         { SourceTable.id },
                     ).select(MangaTable.columns + MangaUserTable.columns + SourceTable.name + SourceTable.lang)
                     .where(finalCondition)
-                    .groupBy(MangaTable.id, SourceTable.name, SourceTable.lang)
-                    .orderBy(MangaTable.title to SortOrder.ASC)
+                    // `MangaUserTable.id` grouped for PostgreSQL's functional-dependency rule
+                    .groupBy(MangaTable.id, SourceTable.name, SourceTable.lang, MangaUserTable.id)
+                    .orderBy(MangaTable.title to SortOrder.ASC, MangaTable.id to SortOrder.ASC)
 
             val totalCount = query.count()
+            val perPage = opdsItemsPerPage(userId)
             val mangas =
                 query
-                    .limit(opdsItemsPerPage(userId))
+                    .limit(perPage)
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
                     .map { it.toOpdsMangaAcqEntry() }
             Pair(mangas, totalCount)
         }
@@ -397,15 +430,16 @@ object MangaRepository {
         val lastReadAtExpr = ChapterUserTable.lastReadAt.max()
         val latestChapterDateExpr = ChapterTable.date_upload.max()
 
-        // Apply sorting
+        // Apply sorting; `MangaTable.id` is a deterministic tiebreaker so pages don't
+        // overlap/drift when many rows share the same sort key.
         when (sort) {
-            "alpha_asc" -> query.orderBy(MangaTable.title to SortOrder.ASC)
-            "alpha_desc" -> query.orderBy(MangaTable.title to SortOrder.DESC)
-            "last_read_desc" -> query.orderBy(lastReadAtExpr to SortOrder.DESC_NULLS_LAST)
-            "latest_chapter_desc" -> query.orderBy(latestChapterDateExpr to SortOrder.DESC_NULLS_LAST)
-            "date_added_desc" -> query.orderBy(MangaUserTable.inLibraryAt to SortOrder.DESC)
-            "unread_desc" -> query.orderBy(unreadCountExpr to SortOrder.DESC)
-            else -> query.orderBy(MangaTable.title to SortOrder.ASC) // Default sort
+            "alpha_asc" -> query.orderBy(MangaTable.title to SortOrder.ASC, MangaTable.id to SortOrder.ASC)
+            "alpha_desc" -> query.orderBy(MangaTable.title to SortOrder.DESC, MangaTable.id to SortOrder.ASC)
+            "last_read_desc" -> query.orderBy(lastReadAtExpr to SortOrder.DESC_NULLS_LAST, MangaTable.id to SortOrder.ASC)
+            "latest_chapter_desc" -> query.orderBy(latestChapterDateExpr to SortOrder.DESC_NULLS_LAST, MangaTable.id to SortOrder.ASC)
+            "date_added_desc" -> query.orderBy(MangaUserTable.inLibraryAt to SortOrder.DESC, MangaTable.id to SortOrder.ASC)
+            "unread_desc" -> query.orderBy(unreadCountExpr to SortOrder.DESC, MangaTable.id to SortOrder.ASC)
+            else -> query.orderBy(MangaTable.title to SortOrder.ASC, MangaTable.id to SortOrder.ASC) // Default sort
         }
     }
 

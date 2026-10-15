@@ -81,7 +81,7 @@ object ExtensionsList {
                     versionName = it[ExtensionTable.versionName],
                     versionCode = it[ExtensionTable.versionCode].toInt(),
                     lang = it[ExtensionTable.lang],
-                    isNsfw = it[ExtensionTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+                    isNsfw = it[ExtensionTable.contentWarning] >= ContentWarning.MIXED.value,
                     installed = it[ExtensionTable.isInstalled],
                     hasUpdate = it[ExtensionTable.hasUpdate],
                     obsolete = it[ExtensionTable.isObsolete],
@@ -182,10 +182,12 @@ object ExtensionsList {
                                     this[ExtensionTable.storeIndexUrl] = foundExtension.storeIndexUrl
                                     this[ExtensionTable.name] = foundExtension.name
                                     this[ExtensionTable.extensionLib] = foundExtension.extensionLib
-                                    this[ExtensionTable.versionName] = foundExtension.versionName
+                                    // version_name is varchar(16); extension-store values are
+                                    // unvalidated external input, so truncate at the write point
+                                    this[ExtensionTable.versionName] = foundExtension.versionName.take(16)
                                     this[ExtensionTable.versionCode] = foundExtension.versionCode
                                     this[ExtensionTable.lang] = foundExtension.lang
-                                    this[ExtensionTable.contentWarning] = foundExtension.contentWarning.ordinal
+                                    this[ExtensionTable.contentWarning] = foundExtension.contentWarning.value
                                     this[ExtensionTable.apkUrl] = foundExtension.apkUrl
                                     this[ExtensionTable.jarUrl] = foundExtension.jarUrl
                                     this[ExtensionTable.iconUrl] = foundExtension.iconUrl
@@ -201,10 +203,12 @@ object ExtensionsList {
                         this[ExtensionTable.name] = foundExtension.name
                         this[ExtensionTable.pkgName] = foundExtension.pkgName
                         this[ExtensionTable.extensionLib] = foundExtension.extensionLib
-                        this[ExtensionTable.versionName] = foundExtension.versionName
+                        // version_name is varchar(16); extension-store values are
+                        // unvalidated external input, so truncate at the write point
+                        this[ExtensionTable.versionName] = foundExtension.versionName.take(16)
                         this[ExtensionTable.versionCode] = foundExtension.versionCode
                         this[ExtensionTable.lang] = foundExtension.lang
-                        this[ExtensionTable.contentWarning] = foundExtension.contentWarning.ordinal
+                        this[ExtensionTable.contentWarning] = foundExtension.contentWarning.value
                         this[ExtensionTable.apkUrl] = foundExtension.apkUrl
                         this[ExtensionTable.jarUrl] = foundExtension.jarUrl
                         this[ExtensionTable.iconUrl] = foundExtension.iconUrl

@@ -61,11 +61,12 @@ object SettingsBackupServerSettingsGenerator {
             val deprecated = setting.deprecated
 
             if (deprecated != null) {
-                val replaceWithSuffix = if (deprecated is SettingsRegistry.SettingDeprecated.Migrate) {
-                    deprecated.replaceWith.let { ", ReplaceWith(\"$it\")" }
-                } else {
-                    ""
-                }
+                val replaceWithSuffix =
+                    if (deprecated is SettingsRegistry.SettingDeprecated.Migrate) {
+                        deprecated.replaceWith.let { ", ReplaceWith(\"$it\")" }
+                    } else {
+                        ""
+                    }
 
                 appendLine(
                     "@Deprecated(\"${deprecated.message}\"$replaceWithSuffix)".addIndentation(

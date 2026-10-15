@@ -4,6 +4,7 @@ import android.content.Context
 import okhttp3.Cookie
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.internal.publicsuffix.PublicSuffixDatabase
 import okio.withLock
 import java.net.CookieStore
 import java.net.HttpCookie
@@ -18,18 +19,25 @@ class PersistentCookieStore(
 ) : CookieStore {
     private val cookieMap = mutableMapOf<String, List<Cookie>>()
     private val prefs = context.getSharedPreferences("cookie_store", Context.MODE_PRIVATE)
+    private val publicSuffixDatabase = PublicSuffixDatabase.get()
 
     private val lock = ReentrantLock()
 
     init {
         lock.withLock {
-            val domains =
-                prefs.all.keys
-                    .map { it.substringBeforeLast(".") }
-                    .toSet()
+            // `prefs.all` already returns *logical* keys: flattened set sub-keys
+            // (`domain.0`, `domain.size`) are collapsed to their parent by
+            // JavaSharedPreferences, so no last-segment stripping is needed here
+            val domains = prefs.all.keys.toSet()
             val domainsToSave = mutableSetOf<String>()
             domains.forEach { domain ->
-                val cookies = prefs.getStringSet(domain, emptySet())
+                // skip non-set entries rather than crashing init on a ClassCastException
+                val cookies =
+                    try {
+                        prefs.getStringSet(domain, emptySet())
+                    } catch (_: ClassCastException) {
+                        null
+                    }
                 if (!cookies.isNullOrEmpty()) {
                     try {
                         val url = "http://$domain".toHttpUrlOrNull() ?: return@forEach
@@ -38,7 +46,7 @@ class PersistentCookieStore(
                                 .mapNotNull { Cookie.parse(url, it) }
                                 .filter { !it.hasExpired() }
                                 .groupBy { it.domain }
-                                .mapValues { it.value.distinctBy { it.name } }
+                                .mapValues { it.value.distinctBy { it.name to it.path } }
                         nonExpiredCookies.forEach { (domain, cookies) ->
                             cookieMap[domain] = cookies
                             domainsToSave.add(domain)
@@ -62,8 +70,10 @@ class PersistentCookieStore(
             // Append or replace the cookies for this domain.
             for (cookie in cookies) {
                 val cookiesForDomain = cookieMap[cookie.domain].orEmpty().toMutableList()
-                // Find a cookie with the same name. Replace it if found, otherwise add a new one.
-                val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
+                // RFC 6265 cookie identity is (name, domain, path): find a cookie with
+                // the same name AND path — same-name cookies scoped to different paths
+                // must coexist (same match rule as add()/remove()).
+                val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name && it.path == cookie.path }
                 if (pos == -1) {
                     cookiesForDomain.add(cookie)
                 } else {
@@ -79,33 +89,49 @@ class PersistentCookieStore(
 
     override fun removeAll(): Boolean =
         lock.withLock {
-            val wasNotEmpty = cookieMap.isEmpty()
+            val wasNotEmpty = cookieMap.isNotEmpty()
             prefs.edit().clear().apply()
             cookieMap.clear()
             wasNotEmpty
         }
 
     fun remove(uri: URI) {
-        val url = uri.toURL()
+        // cookieMap is keyed by the *cookie domain*, which can be a parent
+        // domain of the URI host (e.g. a Domain=example.com cookie lives under
+        // "example.com" but is also sent to sub.example.com). Delete every key
+        // whose domain the host matches, not just the literal host key.
+        val host = uri.host ?: return
         lock.withLock {
-            prefs.edit().remove(url.host).apply()
-            cookieMap.remove(url.host)
+            val matchingDomains =
+                cookieMap.keys.filter { domain ->
+                    host.equals(domain, ignoreCase = true) ||
+                        host.endsWith(".$domain", ignoreCase = true)
+                }
+            if (matchingDomains.isEmpty()) return@withLock
+            prefs
+                .edit()
+                .apply {
+                    matchingDomains.forEach { remove(it) }
+                }.apply()
+            matchingDomains.forEach { cookieMap.remove(it) }
         }
     }
 
     override fun get(uri: URI): List<HttpCookie> {
-        val url = uri.toURL()
-        return get(url.toHttpUrlOrNull()!!).map {
+        // CookieHandler callers may hand us non-http(s) URIs (e.g. jar:/file:);
+        // toHttpUrlOrNull() is null there — the old `!!` turned that into an NPE
+        // escaping the CookieStore contract. Empty list = "no cookies for this URI".
+        val url =
+            runCatching { uri.toURL().toHttpUrlOrNull() }.getOrNull()
+                ?: return emptyList()
+        return get(url).map {
             it.toHttpCookie()
         }
     }
 
     fun get(url: HttpUrl): List<Cookie> =
         lock.withLock {
-            cookieMap.entries
-                .filter {
-                    url.host.endsWith(it.key)
-                }.flatMap { it.value }
+            cookieMap.values.flatten().filter { !it.hasExpired() && it.matches(url) }
         }
 
     override fun add(
@@ -115,8 +141,10 @@ class PersistentCookieStore(
         lock.withLock {
             val cookie = cookie.toCookie(uri?.host) ?: return@withLock
             val cookiesForDomain = cookieMap[cookie.domain].orEmpty().toMutableList()
-            // Find a cookie with the same name. Replace it if found, otherwise add a new one.
-            val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name }
+            // RFC 6265 cookie identity is (name, domain, path): replace only a
+            // cookie with the same name AND path — same-name cookies scoped to
+            // different paths must coexist (mirrors remove()'s name+path match).
+            val pos = cookiesForDomain.indexOfFirst { it.name == cookie.name && it.path == cookie.path }
             if (pos == -1) {
                 cookiesForDomain.add(cookie)
             } else {
@@ -130,7 +158,7 @@ class PersistentCookieStore(
     override fun getCookies(): List<HttpCookie> =
         lock.withLock {
             cookieMap.values.flatMap {
-                it.map {
+                it.filter { !it.hasExpired() }.map {
                     it.toHttpCookie()
                 }
             }
@@ -138,7 +166,9 @@ class PersistentCookieStore(
 
     fun getStoredCookies(): List<Cookie> =
         lock.withLock {
-            cookieMap.values.flatMap { it }
+            // CEF/WebView sync pushes these to setCookie; expired cookies must
+            // not be resurrected into a fresh cookie jar.
+            cookieMap.values.flatMap { it }.filter { !it.hasExpired() }
         }
 
     override fun getURIs(): List<URI> =
@@ -196,27 +226,58 @@ class PersistentCookieStore(
 
     private fun Cookie.hasExpired() = System.currentTimeMillis() >= expiresAt
 
+    /**
+     * True when [domain] is itself a public suffix ("github.io", "co.uk"), which
+     * RFC 6265 §5.3 forbids as a Domain attribute value. IP literals are *not*
+     * public suffixes — the PSL's implicit `*` rule still yields an eTLD+1 for
+     * them — so `Domain=<ip>` is accepted and stored as a domain cookie that,
+     * having no subdomains, behaves like the host cookie RFC 6265 permits.
+     * Falls back to rejecting bare single-label suffixes (".com") when the
+     * embedded public-suffix list cannot be read.
+     */
+    private fun isPublicSuffix(domain: String): Boolean =
+        try {
+            publicSuffixDatabase.getEffectiveTldPlusOne(domain) == null
+        } catch (_: Exception) {
+            domain.indexOf('.') < 0
+        }
+
     private fun HttpCookie.toCookie(urlDomain: String?): Cookie? {
-        return Cookie
-            .Builder()
-            .name(name)
-            .value(value)
-            .domain((domain ?: urlDomain ?: return null).removePrefix("."))
-            .path(path ?: "/")
-            .also {
+        val builder =
+            Cookie
+                .Builder()
+                .name(name)
+                .value(value)
+                .path(path ?: "/")
+        // RFC 6265 §5.2.3: the presence of any Domain attribute yields a domain cookie; a
+        // leading dot is ignored, so `Domain=example.com` and `Domain=.example.com` are
+        // equivalent. Only an absent Domain produces a host-only cookie (scoped to the
+        // request host). Builder.domain() marks the cookie as a domain cookie but rejects a
+        // leading dot instead of stripping it, so normalize it away first.
+        val cookieDomain = domain?.trimStart('.')?.takeIf { it.isNotEmpty() }
+        if (cookieDomain != null) {
+            // RFC 6265 §5.3: a Domain attribute that is a public suffix must be
+            // rejected — Domain=.github.io would otherwise be stored and leak
+            // to every *.github.io site.
+            if (isPublicSuffix(cookieDomain)) {
+                return null
+            }
+            builder.domain(cookieDomain)
+        } else {
+            builder.hostOnlyDomain(urlDomain ?: return null)
+        }
+        return builder
+            .apply {
                 if (maxAge != -1L) {
-                    it.expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
+                    expiresAt(System.currentTimeMillis() + maxAge.seconds.inWholeMilliseconds)
                 } else {
-                    it.expiresAt(Long.MAX_VALUE)
+                    expiresAt(Long.MAX_VALUE)
                 }
                 if (secure) {
-                    it.secure()
+                    secure()
                 }
                 if (isHttpOnly) {
-                    it.httpOnly()
-                }
-                if (domain != null && !domain.startsWith('.')) {
-                    it.hostOnlyDomain(domain.removePrefix("."))
+                    httpOnly()
                 }
             }.build()
     }
@@ -234,9 +295,9 @@ class PersistentCookieStore(
             secure = it.secure
             maxAge =
                 if (it.persistent) {
-                    -1
-                } else {
                     (it.expiresAt.milliseconds - System.currentTimeMillis().milliseconds).inWholeSeconds
+                } else {
+                    -1
                 }
 
             isHttpOnly = it.httpOnly

@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.buildconfig) apply false
-    alias(libs.plugins.download)
+    alias(libs.plugins.download) apply false
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.moko) apply false
     alias(libs.plugins.jte) apply false
@@ -16,8 +16,6 @@ plugins {
 
 allprojects {
     group = "suwayomi"
-
-    version = "1.0"
 
     repositories {
         mavenCentral()
@@ -29,6 +27,13 @@ allprojects {
     }
 }
 
+// NOTE on `java` vs `java-library`: every module applies plain `java`, so all
+// `implementation` dependencies leak onto consumers' compile classpaths via
+// apiElements (e.g. AndroidCompat's polyfill/jcef and server-config's
+// exposed/graphql reach :server's compile classpath). Switching to
+// `java-library` and promoting the types each module actually exposes to `api`
+// is a large, per-module audit and is left as a follow-up; the leaky
+// convention is documented here so it is a known decision, not an accident.
 subprojects {
     plugins.withType<JavaPlugin> {
         extensions.configure<JavaPluginExtension> {
@@ -38,6 +43,7 @@ subprojects {
         }
     }
 
+    // Applied to every subproject that opts into the ktlint plugin.
     plugins.withType<KtlintPlugin> {
         extensions.configure<KtlintExtension>("ktlint") {
             version.set(libs.versions.ktlint.get())
@@ -49,12 +55,13 @@ subprojects {
 
     tasks {
         withType<KotlinJvmCompile> {
-            if (plugins.hasPlugin(KtlintPlugin::class)) {
-                dependsOn("ktlintFormat")
-            }
+            // Formatting is an explicit, check-only concern: format via
+            // `./gradlew ktlintFormat` and verify via `ktlintCheck`.
+            // Compilation must never rewrite sources, so no ktlintFormat
+            // dependency is wired into the compile tasks.
             compilerOptions {
                 jvmTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
-                freeCompilerArgs.add("-Xcontext-parameters")
+                // Context parameters are enabled by default since Kotlin 2.4
             }
         }
     }

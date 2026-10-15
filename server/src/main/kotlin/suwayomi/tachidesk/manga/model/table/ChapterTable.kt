@@ -35,6 +35,14 @@ object ChapterTable : IntIdTable() {
     val manga = reference("manga", MangaTable, ReferenceOption.CASCADE)
 
     val memo = jsonObject("memo")
+
+    init {
+        // Ordinary lookup index for chapter-url resolution during chapter-list updates
+        // (created by M0070). Deliberately NON-unique like MangaTable's (source, url):
+        // duplicates can exist from historical data and concurrent updates; deduplication
+        // stays an application-layer invariant.
+        index("chapter_manga_url", false, manga, url)
+    }
 }
 
 fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
@@ -49,7 +57,15 @@ fun ChapterTable.toDataClass(chapterEntry: ResultRow) =
         index = chapterEntry[sourceOrder],
         fetchedAt = chapterEntry[fetchedAt],
         realUrl = chapterEntry[realUrl],
+        // per-user columns are only present when the row came from getWithUserData;
+        // getOrNull covers both a missing join and a NULL left-join result
+        read = chapterEntry.getOrNull(ChapterUserTable.isRead) ?: false,
+        bookmarked = chapterEntry.getOrNull(ChapterUserTable.isBookmarked) ?: false,
+        lastPageRead = chapterEntry.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
+        lastReadAt = chapterEntry.getOrNull(ChapterUserTable.lastReadAt) ?: 0,
         downloaded = chapterEntry[isDownloaded],
         pageCount = chapterEntry[pageCount],
+        lastModifiedAt = chapterEntry.getOrNull(ChapterUserTable.lastModifiedAt) ?: 0,
+        version = chapterEntry.getOrNull(ChapterUserTable.version) ?: 0,
         memo = chapterEntry[memo],
     )

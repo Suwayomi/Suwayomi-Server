@@ -200,6 +200,6 @@ public abstract class UriCodec {
     }
     private static void appendHex(StringBuilder sb, byte b) {
         sb.append('%');
-        sb.append(String.format("0x%x", b));
+        sb.append(String.format("%02X", b & 0xff));
     }
 }

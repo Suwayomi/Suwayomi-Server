@@ -18,9 +18,14 @@ import org.cef.handler.CefLifeSpanHandlerAdapter
 import org.cef.handler.CefLoadHandler
 import org.cef.handler.CefLoadHandlerAdapter
 import org.cef.handler.CefRenderHandlerAdapter
+import org.cef.handler.CefRequestHandlerAdapter
+import org.cef.handler.CefResourceRequestHandler
+import org.cef.handler.CefResourceRequestHandlerAdapter
 import org.cef.input.CefTouchEvent
+import org.cef.misc.BoolRef
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
+import org.cef.network.CefRequest
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import xyz.nulldev.androidcompat.webkit.dispose
@@ -53,6 +58,8 @@ class KcefWebView {
     private var height = 1000
 
     companion object {
+        private const val MAX_VIEWPORT_DIMENSION = 8192
+
         private val networkHelper: NetworkHelper by injectLazy()
 
         fun Cookie.toCefCookie(): CefCookie {
@@ -187,6 +194,50 @@ class KcefWebView {
         }
     }
 
+    // Defense in depth behind the WebViewUrlPolicy checks at the WebSocket message
+    // boundary: cancel any non-http(s) navigation or resource load inside CEF so
+    // e.g. file:, data:, chrome: or javascript: targets can never be reached via
+    // redirects, iframes or sub-resources either.
+    private inner class RequestHandler : CefRequestHandlerAdapter() {
+        override fun onBeforeBrowse(
+            browser: CefBrowser,
+            frame: CefFrame,
+            request: CefRequest,
+            userGesture: Boolean,
+            isRedirect: Boolean,
+        ): Boolean {
+            if (!WebViewUrlPolicy.isAllowed(request.url)) {
+                logger.warn { "CEF blocked navigation to disallowed URL: ${request.url}" }
+                return true
+            }
+            return false
+        }
+
+        override fun getResourceRequestHandler(
+            browser: CefBrowser,
+            frame: CefFrame,
+            request: CefRequest,
+            isNavigation: Boolean,
+            isDownload: Boolean,
+            requestInitiator: String,
+            disableDefaultHandling: BoolRef,
+        ): CefResourceRequestHandler = ResourceRequestHandler()
+    }
+
+    private inner class ResourceRequestHandler : CefResourceRequestHandlerAdapter() {
+        override fun onBeforeResourceLoad(
+            browser: CefBrowser,
+            frame: CefFrame,
+            request: CefRequest,
+        ): Boolean {
+            if (!WebViewUrlPolicy.isAllowed(request.url)) {
+                logger.warn { "CEF blocked resource load of disallowed URL: ${request.url}" }
+                return true
+            }
+            return false
+        }
+    }
+
     private inner class LoadHandler : CefLoadHandlerAdapter() {
         override fun onLoadEnd(
             browser: CefBrowser,
@@ -257,6 +308,7 @@ class KcefWebView {
                     addLifeSpanHandler(LifeSpanHandler())
                     addDisplayHandler(DisplayHandler())
                     addLoadHandler(LoadHandler())
+                    addRequestHandler(RequestHandler())
                 }
             }
 
@@ -289,6 +341,7 @@ class KcefWebView {
     }
 
     fun loadUrl(url: String) {
+        require(WebViewUrlPolicy.isAllowed(url)) { "Refused to load URL, only http/https URLs are allowed: $url" }
         browser?.close(true)
         browser?.dispose()
         browser =
@@ -308,9 +361,10 @@ class KcefWebView {
         width: Int,
         height: Int,
     ) {
-        this.width = width
-        this.height = height
-        browser?.wasResized(width, height)
+        // Clamp client-controlled dimensions to avoid oversized BufferedImage allocations
+        this.width = width.coerceIn(1, MAX_VIEWPORT_DIMENSION)
+        this.height = height.coerceIn(1, MAX_VIEWPORT_DIMENSION)
+        browser?.wasResized(this.width, this.height)
     }
 
     private fun flush() {

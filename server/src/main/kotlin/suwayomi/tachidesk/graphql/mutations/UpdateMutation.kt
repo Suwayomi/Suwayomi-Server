@@ -69,12 +69,13 @@ class UpdateMutation {
         userId: Int,
         input: UpdateLibraryMangaInput,
     ): CompletableFuture<UpdateLibraryMangaPayload?> {
-        updateLibrary(
+        // same enqueue as updateLibrary(categories = null), inlined — calling updateLibrary
+        // here would build a CompletableFuture that's discarded unused
+        updater.addCategoriesToUpdateQueue(
             userId,
-            UpdateLibraryInput(
-                clientMutationId = input.clientMutationId,
-                categories = null,
-            ),
+            Category.getCategoryList(userId),
+            clear = true,
+            forceAll = false,
         )
 
         return future {
@@ -104,12 +105,13 @@ class UpdateMutation {
         userId: Int,
         input: UpdateCategoryMangaInput,
     ): CompletableFuture<UpdateCategoryMangaPayload?> {
-        updateLibrary(
+        // same enqueue as updateLibrary(categories = input.categories), inlined — calling
+        // updateLibrary here would build a CompletableFuture that's discarded unused
+        updater.addCategoriesToUpdateQueue(
             userId,
-            UpdateLibraryInput(
-                clientMutationId = input.clientMutationId,
-                categories = input.categories,
-            ),
+            Category.getCategoryList(userId).filter { input.categories.contains(it.id) },
+            clear = true,
+            forceAll = true,
         )
 
         return future {
@@ -133,6 +135,9 @@ class UpdateMutation {
 
     @RequireAuth
     fun updateStop(input: UpdateStopInput): UpdateStopPayload {
+        // the update queue is shared process-wide state: reset() cancels every user's
+        // in-flight updates, not just the caller's — same shared semantics as the REST
+        // update/stop endpoint
         updater.reset()
         return UpdateStopPayload(input.clientMutationId)
     }

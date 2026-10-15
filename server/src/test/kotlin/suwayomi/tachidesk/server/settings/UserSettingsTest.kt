@@ -14,6 +14,7 @@ import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.upsert
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
@@ -157,6 +158,76 @@ class UserSettingsTest : ApplicationTest() {
             userConfig.opdsItemsPerPage.defaultValue,
             userConfig.opdsItemsPerPage.value(userId),
         )
+    }
+
+    private fun writeRawStoredValue(
+        userId: Int,
+        key: String,
+        rawValue: String,
+    ) {
+        transaction {
+            UserSettingsTable.upsert(UserSettingsTable.user, UserSettingsTable.key) {
+                it[UserSettingsTable.user] = userId
+                it[UserSettingsTable.key] = key
+                it[UserSettingsTable.value] = rawValue
+            }
+        }
+    }
+
+    @Test
+    fun corruptEnumRowFallsBackToDefaultAndCanBeOverwritten() {
+        // simulate a stale/undecodable stored value (e.g. enum constant renamed across versions)
+        writeRawStoredValue(userId, "opdsChapterSortOrder", "NOT_A_SORT_ORDER")
+
+        // the corrupt row must not take the settings read down: the default is served instead
+        assertEquals(
+            userConfig.opdsChapterSortOrder.defaultValue,
+            userConfig.opdsChapterSortOrder.value(userId),
+        )
+
+        // a later valid write heals the row
+        userSettings.set(userId, userConfig.opdsChapterSortOrder, SortOrder.ASC)
+        assertEquals(SortOrder.ASC, userConfig.opdsChapterSortOrder.value(userId))
+    }
+
+    @Test
+    fun corruptPrimitiveRowFallsBackToDefault() {
+        writeRawStoredValue(userId, "opdsItemsPerPage", "not-a-number")
+
+        assertEquals(
+            userConfig.opdsItemsPerPage.defaultValue,
+            userConfig.opdsItemsPerPage.value(userId),
+        )
+    }
+
+    @Test
+    fun nonStrictBooleanRowFallsBackToDefault() {
+        // "yes" used to silently decode to false via toBoolean() - a silent flip for a
+        // default-true setting. Strict decoding treats it as a corrupt row instead
+        writeRawStoredValue(userId, "excludeUnreadChapters", "yes")
+
+        assertEquals(
+            userConfig.excludeUnreadChapters.defaultValue,
+            userConfig.excludeUnreadChapters.value(userId),
+        )
+    }
+
+    @Test
+    fun corruptRowDoesNotAffectOtherUsersOrKeys() {
+        writeRawStoredValue(userId, "opdsItemsPerPage", "not-a-number")
+
+        assertEquals(
+            userConfig.opdsItemsPerPage.defaultValue,
+            userConfig.opdsItemsPerPage.value(userId),
+        )
+        assertEquals(
+            userConfig.opdsItemsPerPage.defaultValue,
+            userConfig.opdsItemsPerPage.value(userId2),
+        )
+
+        // other keys of the same user still decode fine
+        userSettings.set(userId, userConfig.excludeUnreadChapters, false)
+        assertEquals(false, userConfig.excludeUnreadChapters.value(userId))
     }
 
     @Test

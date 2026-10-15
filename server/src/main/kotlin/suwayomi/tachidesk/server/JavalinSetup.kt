@@ -15,6 +15,8 @@ import io.javalin.Javalin
 import io.javalin.apibuilder.ApiBuilder.after
 import io.javalin.apibuilder.ApiBuilder.path
 import io.javalin.config.RoutesConfig
+import io.javalin.config.SizeUnit
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
@@ -34,12 +36,17 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.SerializationException
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.manga.impl.NoChaptersFoundException
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
+import suwayomi.tachidesk.manga.impl.extension.InvalidExtensionException
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
@@ -50,10 +57,10 @@ import suwayomi.tachidesk.server.user.getUserFromWsContext
 import suwayomi.tachidesk.server.util.Browser
 import suwayomi.tachidesk.server.util.ServerSubpath
 import suwayomi.tachidesk.server.util.WebInterfaceManager
+import tools.jackson.core.JacksonException
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.NetworkInterface
-import java.net.URI
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.CompletableFuture
@@ -64,6 +71,10 @@ import org.eclipse.jetty.http.HttpException as JettyHttpException
 
 object JavalinSetup {
     private val logger = KotlinLogging.logger {}
+
+    // Slack on top of the per-file upload cap (Backup.MAX_UPLOAD_SIZE) for the multipart
+    // envelope — boundaries, headers and auxiliary parts like GraphQL's "operations"/"map".
+    private const val MULTIPART_REQUEST_OVERHEAD_BYTES = 10L * 1024 * 1024 // ~10MB
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -80,6 +91,15 @@ object JavalinSetup {
                 WebInterfaceManager.setup(config)
 
                 // config.registerPlugin(OpenApiPlugin(getOpenApiOptions()))
+
+                // Multipart uploads are buffered by Jetty before an endpoint gets to check
+                // their size — cap the whole request so oversized backup/extension uploads
+                // are rejected while being read. The endpoints still enforce the per-file
+                // cap (Backup.MAX_UPLOAD_SIZE) themselves to report a proper 413.
+                config.jetty.multipartConfig.maxTotalRequestSize(
+                    Backup.MAX_UPLOAD_SIZE + MULTIPART_REQUEST_OVERHEAD_BYTES,
+                    SizeUnit.BYTES,
+                )
 
                 var connectorAdded = false
                 config.jetty.modifyServer { server ->
@@ -100,12 +120,30 @@ object JavalinSetup {
                                 val oldIp = connector.host
                                 val oldPort = connector.port
 
-                                connector.host = newIp
-                                connector.port = newPort
-                                connector.stop()
-                                connector.start()
+                                // a failed re-bind must not propagate: the exception would
+                                // cancel this subscription job (silently disabling all
+                                // further ip/port changes) and leave the connector stopped
+                                try {
+                                    connector.host = newIp
+                                    connector.port = newPort
+                                    connector.stop()
+                                    connector.start()
 
-                                logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+                                    logger.info { "Server ip and/or port changed from $oldIp:$oldPort to $newIp:$newPort " }
+                                } catch (e: Exception) {
+                                    logger.error(
+                                        e,
+                                    ) { "Failed to rebind the server connector to $newIp:$newPort, staying on $oldIp:$oldPort" }
+                                    connector.host = oldIp
+                                    connector.port = oldPort
+                                    runCatching {
+                                        if (!connector.isStarted) {
+                                            connector.start()
+                                        }
+                                    }.onFailure {
+                                        logger.error(it) { "Failed to restart the connector on the previous address $oldIp:$oldPort" }
+                                    }
+                                }
                             },
                         )
                         connectorAdded = true
@@ -184,8 +222,36 @@ object JavalinSetup {
         )
     }
 
+    /**
+     * Validates the request's Basic credentials against the configured auth credentials.
+     *
+     * Always returns false when the configured credentials are blank (the default): without
+     * this guard, the empty credentials `user:pass` -> `:` would compare equal to the empty
+     * defaults and be accepted as valid, which [UserType.requireUserWithBasicFallback] would
+     * then treat as a reason to escalate to the built-in admin user.
+     */
+    internal fun credentialsValid(ctx: Context): Boolean {
+        if (serverConfig.authUsername.value.isBlank() || serverConfig.authPassword.value.isBlank()) {
+            return false
+        }
+
+        val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
+        val (username, password) = basicAuthCredentials
+        return username == serverConfig.authUsername.value &&
+            password == serverConfig.authPassword.value
+    }
+
     fun RoutesConfig.defineCore() {
         val loginPath = ServerSubpath.maybeAddAsPrefix("/login.html")
+        val pingPath = ServerSubpath.maybeAddAsPrefix("/api/v1/ping")
+
+        // unauthenticated liveness/identity probe (used by AppMutex to detect a running
+        // instance regardless of the configured authMode); intentionally exposes nothing
+        // beyond "this is a Suwayomi-Server"
+        get(pingPath) { ctx ->
+            ctx.contentType("text/plain")
+            ctx.result("pong")
+        }
 
         get(loginPath) { ctx ->
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
@@ -202,17 +268,36 @@ object JavalinSetup {
         }
 
         post(loginPath) { ctx ->
+            // Evaluated and rejected for the self-hosted threat model: no rate limiting,
+            // no post-login session rotation, no CSRF token on this form. The session is
+            // a same-site JSESSIONID cookie and Suwayomi is intended for a trusted network;
+            // hardening here is out of scope for a hygiene batch (recorded in CHANGELOG).
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
+            // reject outright when no credentials are configured: otherwise submitting the
+            // empty form matches the empty defaults and logs in without any credentials
             val isValid =
-                username == serverConfig.authUsername.value &&
+                serverConfig.authUsername.value.isNotBlank() &&
+                    serverConfig.authPassword.value.isNotBlank() &&
+                    username == serverConfig.authUsername.value &&
                     password == serverConfig.authPassword.value
 
             if (isValid) {
                 val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
-                val uri = URI(redirect)
-                if (uri.host != null || uri.scheme != null) {
-                    throw IllegalArgumentException("Given redirect is not relative, refusing")
+                // only plain same-site relative paths: must start with a single '/' — the
+                // second char must not be '/' or '\' (network-path reference `//evil.com`
+                // and the WHATWG `\`-as-`/` quirk like `\evil.com`), and the value must not
+                // contain '\' or a NUL escape anywhere. ASCII control characters and DEL are
+                // rejected too: the WHATWG URL parser silently strips TAB/LF/CR, so a header
+                // value like "/\t/evil.com" would be followed as "//evil.com"
+                val isSafeRedirect =
+                    redirect.startsWith('/') &&
+                        (redirect.length == 1 || (redirect[1] != '/' && redirect[1] != '\\')) &&
+                        !redirect.contains('\\') &&
+                        !redirect.contains("%00", ignoreCase = true) &&
+                        redirect.none { it <= ' ' || it == '\u007f' }
+                if (!isSafeRedirect) {
+                    throw BadRequestResponse("Given redirect is not a relative path, refusing")
                 }
                 // NOTE: We currently have no session handler attached.
                 // Thus, all sessions are stored in memory and not persisted.
@@ -235,34 +320,41 @@ object JavalinSetup {
         }
 
         beforeMatched { ctx ->
+            // only exact root-level paths are auth-exempt (a suffix match would also let
+            // e.g. "/api/v1/…site.webmanifest" slip through)
             val isWebManifest =
                 listOf("site.webmanifest", "manifest.json", "login.html").any {
-                    ctx.path().endsWith(it)
+                    ctx.path() == ServerSubpath.maybeAddAsPrefix("/$it")
                 }
             val isPageIcon =
-                ctx.path().startsWith('/') &&
-                    !ctx.path().substring(1).contains('/') &&
-                    listOf(".png", ".jpg", ".ico").any { ctx.path().endsWith(it) }
+                ctx
+                    .path()
+                    // strip a configured webUISubpath first so "/s/favicon.ico" still
+                    // counts as a page icon (the leftover must be a single segment)
+                    .removePrefix(ServerSubpath.normalized())
+                    .removePrefix("/")
+                    .let {
+                        !it.contains('/') && listOf(".png", ".jpg", ".ico").any(it::endsWith)
+                    }
+            val isPing = ctx.path() == ServerSubpath.maybeAddAsPrefix("/api/v1/ping")
             val isPreFlight = ctx.method() == HandlerType.OPTIONS
             val isApi = ctx.path().startsWith(ServerSubpath.maybeAddAsPrefix("/api/"))
 
-            val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest
+            // Design decision: /api/ paths are intentionally NOT hard-blocked for visitors
+            // here — GraphQL exposes anonymous operations (login, refreshToken, redeem
+            // codes) that must stay reachable, so endpoint-level `requireUser`/
+            // `requirePermissions` checks are the only line of defense.
+            val requiresAuthentication = !isPreFlight && !isPageIcon && !isWebManifest && !isPing
             if (!requiresAuthentication) {
                 return@beforeMatched
             }
 
             val authMode = serverConfig.authMode.value
 
-            fun credentialsValid(): Boolean {
-                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
-                val (username, password) = basicAuthCredentials
-                return username == serverConfig.authUsername.value &&
-                    password == serverConfig.authPassword.value
-            }
-
             fun cookieValid(): Boolean {
                 val username = ctx.sessionAttribute<String>("logged-in") ?: return false
-                return username == serverConfig.authUsername.value
+                return serverConfig.authUsername.value.isNotBlank() &&
+                    username == serverConfig.authUsername.value
             }
 
             if (authMode == AuthMode.SIMPLE_LOGIN && !cookieValid() && !isApi) {
@@ -273,26 +365,19 @@ object JavalinSetup {
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
-            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid(ctx)) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
             }
 
             ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromContext(ctx) })
-            ctx.setAttribute(Attribute.TachideskBasic, credentialsValid())
+            ctx.setAttribute(Attribute.TachideskBasic, credentialsValid(ctx))
         }
 
         wsBeforeUpgrade { ctx ->
             val authMode = serverConfig.authMode.value
 
-            fun credentialsValid(): Boolean {
-                val basicAuthCredentials = ctx.basicAuthCredentials() ?: return false
-                val (username, password) = basicAuthCredentials
-                return username == serverConfig.authUsername.value &&
-                    password == serverConfig.authPassword.value
-            }
-
-            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
+            if (authMode == AuthMode.BASIC_AUTH && !credentialsValid(ctx)) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
             }
@@ -308,6 +393,9 @@ object JavalinSetup {
     }
 
     fun RoutesConfig.defineExceptionHandlers() {
+        // Legacy "not found" signaling: a lot of impl code still surfaces missing entities
+        // as NPE/`first()`-style failures. Keep the 404 mapping for those; new code should
+        // throw io.javalin.http.NotFoundResponse instead.
         exception(NullPointerException::class.java) { e, ctx ->
             logger.error(e) { "NullPointerException while handling the request" }
             ctx.status(404)
@@ -316,6 +404,41 @@ object JavalinSetup {
             logger.error(e) { "NoSuchElementException while handling the request" }
             ctx.status(404)
         }
+        // a manga whose source has no chapters is a missing resource, not a server fault
+        exception(NoChaptersFoundException::class.java) { e, ctx ->
+            logger.warn { "No chapters found while handling ${ctx.path()}: ${e.message}" }
+            ctx.status(404)
+        }
+        // rejected extension packages (unsigned, malformed, wrong signature, …) are
+        // client errors — the message is safe to echo because it carries no internals
+        exception(InvalidExtensionException::class.java) { e, ctx ->
+            logger.warn { "Rejected extension package while handling ${ctx.path()}: ${e.message}" }
+            ctx.status(400)
+            ctx.result(e.message ?: "Bad Request")
+        }
+        // business errors thrown by sources/extensions (permission denied, paywalled
+        // chapters, …) are upstream faults — the message is the source's own and is
+        // what the user needs to act on
+        exception(SourceException::class.java) { e, ctx ->
+            logger.warn { "Source rejected the request while handling ${ctx.path()}: ${e.message}" }
+            ctx.sourceFailed(e.message)
+        }
+
+        // malformed request bodies are client errors, not server faults:
+        // kotlinx.serialization decode failures (SerializationException is an
+        // IllegalArgumentException and would already hit the 400 mapping below) and
+        // Jackson3 failures from ctx.bodyAsClass / JsonMapper.fromJsonString
+        exception(SerializationException::class.java) { e, ctx ->
+            logger.debug(e) { "Request body could not be deserialized (kotlinx.serialization)" }
+            ctx.status(400)
+            ctx.result("Bad Request")
+        }
+        exception(JacksonException::class.java) { e, ctx ->
+            logger.debug(e) { "Request body could not be deserialized (jackson)" }
+            ctx.status(400)
+            ctx.result("Bad Request")
+        }
+
         exception(IOException::class.java) { e, ctx ->
             if (e.isHostUnreachable()) {
                 // A source host being down isn't a server fault
@@ -324,9 +447,10 @@ object JavalinSetup {
                 return@exception
             }
 
+            // don't echo internal exception details to the client
             logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
-            ctx.result(e.message ?: "Internal Server Error")
+            ctx.result("Internal Server Error")
         }
 
         exception(HttpException::class.java) { e, ctx ->
@@ -338,7 +462,7 @@ object JavalinSetup {
         exception(IllegalArgumentException::class.java) { e, ctx ->
             logger.error(e) { "IllegalArgumentException while handling the request" }
             ctx.status(400)
-            ctx.result(e.message ?: "Bad Request")
+            ctx.result("Bad Request")
         }
 
         exception(UnauthorizedException::class.java) { e, ctx ->

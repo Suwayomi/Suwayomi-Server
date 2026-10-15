@@ -23,7 +23,6 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupChapter
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSource
 import suwayomi.tachidesk.server.settings.userConfig
-import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.server.settings.value
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -31,7 +30,6 @@ import uy.kohesive.injekt.injectLazy
 import java.util.UUID
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -49,7 +47,7 @@ object SyncYomiSyncService {
     private data class SyncEvent(
         val event: SyncEventStatus,
         val device_id: String? = null,
-        val device_Name: String? = null,
+        val device_name: String? = null,
         val message: String? = null,
     )
 
@@ -67,7 +65,13 @@ object SyncYomiSyncService {
     private const val PREF_PENDING_DELETED_CATEGORIES = "pending_deleted_category_uids"
     private const val PREF_V2_PROBED_HOST = "v2_probed_host"
     private const val PREF_V2_SUPPORTED = "server_supports_v2"
+    private const val LAST_SYNC_TIMESTAMP_PREF = "last_sync_timestamp"
+
+    // any sane epoch-milliseconds timestamp is past this point (~Sep 2001); smaller
+    // values in last_sync_timestamp can only be legacy epoch-seconds watermarks
+    private const val MILLIS_TIMESTAMP_FLOOR = 1_000_000_000_000L
     private val fullSyncInterval = 24.hours
+    private val syncClientTimeout = 30.seconds
 
     @Serializable
     private enum class SyncEventStatus {
@@ -133,12 +137,11 @@ object SyncYomiSyncService {
             setSyncState(SyncManager.SyncState.Uploading(startDate))
         }
 
-        val success = pushSyncData(userId, finalSyncData, etag)
-        if (success) {
-            reportSyncEvent(userId, SyncEventStatus.SYNC_SUCCESS)
-        } else {
-            reportSyncEvent(userId, SyncEventStatus.SYNC_FAILED, "Failed to push sync data")
-        }
+        // a failed push (412 precondition or any other non-2xx) is a sync failure, not a
+        // "try again next time" success — throwing keeps the watermarks untouched and
+        // reports the error instead of letting the caller restore/finish as if it worked
+        pushSyncData(userId, finalSyncData, etag)
+        reportSyncEvent(userId, SyncEventStatus.SYNC_SUCCESS)
 
         return SyncResult(finalSyncData.backup, changed = remoteData != null, protocolV2 = false)
     }
@@ -152,7 +155,7 @@ object SyncYomiSyncService {
         setSyncState: (SyncManager.SyncState) -> Unit,
     ): SyncResult {
         val backup = syncData.backup ?: return SyncResult(null, changed = false, protocolV2 = true)
-        val host = userConfig.syncYomiHost.value(userId)
+        val host = syncHost(userId)
         val apiKey = userConfig.syncYomiApiKey.value(userId)
 
         val pendingDeleted = pendingDeletedCategories(userId)
@@ -175,6 +178,11 @@ object SyncYomiSyncService {
         if (!response.isSuccessful) {
             val responseBody = response.body.string()
             logger.error { "SyncError (${response.code}): $responseBody" }
+            if (response.code == HttpStatus.NOT_FOUND.code) {
+                // a 404 from the v2 endpoint means the cached probe is stale (the server
+                // was downgraded); drop it so the next sync re-probes and falls back to v1
+                invalidateV2ProbeCache(userId)
+            }
             reportSyncEvent(userId, SyncEventStatus.SYNC_FAILED, "Server answered ${response.code}")
             throw SyncYomiException("Failed to sync: ${response.code} $responseBody")
         }
@@ -189,6 +197,12 @@ object SyncYomiSyncService {
                 reportSyncEvent(userId, SyncEventStatus.SYNC_FAILED, "Bad content responded from server")
                 throw SyncYomiException("Bad content responded from server: ${e.message}")
             }
+        // v2 response contract:
+        //  - X-Sync-Cursor (required): opaque server cursor echoed on the next request;
+        //    a client cursor of 0 asks for — and the response then contains — a full library
+        //  - X-Sync-Changed (optional): whether the merged remote actually differs from the
+        //    upload; absent means "changed" (conservative default, the restore is cheap)
+        //  - X-Sync-Full-Requested (optional): the server demands a full library next time
         val cursor =
             response.headers["X-Sync-Cursor"]?.toLongOrNull()
                 ?: throw SyncYomiException("Missing X-Sync-Cursor")
@@ -200,10 +214,9 @@ object SyncYomiSyncService {
             .putLong("${PREF_CURSOR}_$userId", cursor)
             .putBoolean("${PREF_FULL_REQUESTED}_$userId", fullRequested)
             .putStringSet("${PREF_PENDING_DELETED_CATEGORIES}_$userId", pendingDeletedCategories(userId) - pendingDeleted)
-            .apply()
-        if (full) {
-            syncPreferences.edit().putLong("${PREF_LAST_FULL_SYNC}_$userId", startDate.toEpochMilliseconds()).apply()
-        }
+            .apply {
+                if (full) putLong("${PREF_LAST_FULL_SYNC}_$userId", startDate.toEpochMilliseconds())
+            }.apply()
         logger.debug { "SyncYomi v2 merge done: cursor=$cursor changed=$changed fullRequested=$fullRequested" }
 
         reportSyncEvent(userId, SyncEventStatus.SYNC_SUCCESS)
@@ -219,7 +232,7 @@ object SyncYomiSyncService {
     }
 
     suspend fun supportsV2(userId: Int): Boolean {
-        val host = userConfig.syncYomiHost.value(userId)
+        val host = syncHost(userId)
         if (syncPreferences.getString("${PREF_V2_PROBED_HOST}_$userId", null) == host) {
             return syncPreferences.getBoolean("${PREF_V2_SUPPORTED}_$userId", false)
         }
@@ -243,6 +256,14 @@ object SyncYomiSyncService {
         return supported
     }
 
+    private fun invalidateV2ProbeCache(userId: Int) {
+        syncPreferences
+            .edit()
+            .remove("${PREF_V2_PROBED_HOST}_$userId")
+            .remove("${PREF_V2_SUPPORTED}_$userId")
+            .apply()
+    }
+
     fun syncCursor(userId: Int): Long = syncPreferences.getLong("${PREF_CURSOR}_$userId", 0L)
 
     fun deviceId(userId: Int): String {
@@ -263,8 +284,60 @@ object SyncYomiSyncService {
             .apply()
     }
 
+    /**
+     * Drop [uids] from the pending-deletion tombstones. [rememberDeletedCategory] records
+     * user-initiated deletions for the next v2 upload, but a deletion driven by the sync
+     * merge itself must not be re-propagated as if the user deleted it on this device.
+     */
+    fun forgetDeletedCategories(
+        userId: Int,
+        uids: Collection<Long>,
+    ) {
+        if (uids.isEmpty()) return
+        syncPreferences
+            .edit()
+            .putStringSet(
+                "${PREF_PENDING_DELETED_CATEGORIES}_$userId",
+                pendingDeletedCategories(userId) - uids.mapTo(mutableSetOf()) { it.toString() },
+            ).apply()
+    }
+
     private fun pendingDeletedCategories(userId: Int): Set<String> =
         syncPreferences.getStringSet("${PREF_PENDING_DELETED_CATEGORIES}_$userId", emptySet()).orEmpty().toSet()
+
+    /**
+     * The configured SyncYomi host, normalized for URL concatenation. A cleartext http
+     * host sends the X-API-Token unencrypted — legal for LAN setups but worth a warning.
+     */
+    private fun syncHost(userId: Int): String {
+        val host = userConfig.syncYomiHost.value(userId).removeSuffix("/")
+        if (host.startsWith("http://")) {
+            logger.warn { "SyncYomi host for user $userId uses cleartext http; the API token is sent unencrypted" }
+        }
+        return host
+    }
+
+    /**
+     * The last successful sync's watermark in epoch milliseconds. SyncManager's
+     * finishWithSuccess writes milliseconds today, but early installs stored seconds;
+     * a value too small to be a sane millisecond timestamp (< ~Sep 2001 in ms) is
+     * converted on read.
+     */
+    internal fun lastSyncTimestampMs(userId: Int): Long {
+        val raw = syncPreferences.getLong("${LAST_SYNC_TIMESTAMP_PREF}_$userId", 0L)
+        return if (raw in 1 until MILLIS_TIMESTAMP_FLOOR) raw * 1000 else raw
+    }
+
+    /**
+     * Backup `lastModifiedAt` values are only second-granular, so a modification inside
+     * the same second as the last sync cannot be proven to predate it. Keeping such an
+     * entry (and maybe re-uploading it once) beats silently inferring it as deleted —
+     * the deletion inference propagates to the server and every other device.
+     */
+    internal fun modifiedSinceLastSync(
+        lastModifiedAtSeconds: Long,
+        lastSyncTimeMs: Long,
+    ): Boolean = lastSyncTimeMs == 0L || (lastModifiedAtSeconds + 1).seconds.inWholeMilliseconds > lastSyncTimeMs
 
     private fun baseHeaders(
         apiKey: String,
@@ -279,13 +352,13 @@ object SyncYomiSyncService {
     private fun syncClient() =
         network.client
             .newBuilder()
-            .connectTimeout(30.seconds)
-            .readTimeout(30.seconds)
-            .writeTimeout(30.seconds)
+            .connectTimeout(syncClientTimeout)
+            .readTimeout(syncClientTimeout)
+            .writeTimeout(syncClientTimeout)
             .build()
 
     private suspend fun pullSyncData(userId: Int): Pair<SyncData?, String> {
-        val host = userConfig.syncYomiHost.value(userId)
+        val host = syncHost(userId)
         val apiKey = userConfig.syncYomiApiKey.value(userId)
         val downloadUrl = "$host/api/sync/content"
 
@@ -310,7 +383,9 @@ object SyncYomiSyncService {
             logger.info { "Remote server not modified" }
             return Pair(null, lastETag)
         } else if (response.code == HttpStatus.NOT_FOUND.code) {
-            // maybe got deleted from remote
+            // the remote backup is gone; drop the stale etag so no If-None-Match is sent
+            // for a resource that no longer exists
+            syncPreferences.edit().remove("last_sync_etag_$userId").apply()
             return Pair(null, "")
         }
 
@@ -321,14 +396,15 @@ object SyncYomiSyncService {
 
             val byteArray = response.body.bytes()
 
-            return try {
+            try {
                 val backup = ProtoBuf.decodeFromByteArray(Backup.serializer(), byteArray)
                 return Pair(SyncData(backup = backup), newETag)
-            } catch (_: SerializationException) {
-                logger.info { "Bad content responsed from server" }
-                // the body is invalid
-                // return default value so we can overwrite it
-                Pair(null, "")
+            } catch (e: SerializationException) {
+                // undecodable remote data is an error, not "remote is empty": returning
+                // null here would drop the etag and let the push below overwrite the
+                // whole remote library with local data
+                logger.error(e) { "Bad content responded from server" }
+                throw SyncYomiException("Failed to decode remote backup: ${e.message}")
             }
         } else {
             val responseBody = response.body.string()
@@ -341,10 +417,10 @@ object SyncYomiSyncService {
         userId: Int,
         syncData: SyncData,
         eTag: String,
-    ): Boolean {
-        val backup = syncData.backup ?: return true
+    ) {
+        val backup = syncData.backup ?: return
 
-        val host = userConfig.syncYomiHost.value(userId)
+        val host = syncHost(userId)
         val apiKey = userConfig.syncYomiApiKey.value(userId)
         val uploadUrl = "$host/api/sync/content"
 
@@ -370,7 +446,7 @@ object SyncYomiSyncService {
 
         val response = client.newCall(uploadRequest).await()
 
-        return if (response.isSuccessful) {
+        if (response.isSuccessful) {
             val newETag =
                 response.headers["ETag"]
                     ?.takeIf { it.isNotEmpty() } ?: throw SyncYomiException("Missing ETag")
@@ -379,16 +455,18 @@ object SyncYomiSyncService {
                 .putString("last_sync_etag_$userId", newETag)
                 .apply()
             logger.debug { "SyncYomi sync completed for user $userId" }
-            true
-        } else if (response.code == HttpStatus.PRECONDITION_FAILED.code) {
-            // other clients updated remote data, will try next time
-            logger.debug { "SyncYomi sync failed with 412" }
-            false
-        } else {
-            val responseBody = response.body.string()
-            logger.error { "SyncError: $responseBody" }
-            false
+            return
         }
+
+        if (response.code == HttpStatus.PRECONDITION_FAILED.code) {
+            // another client updated the remote backup since our pull — the push fails
+            // and the whole sync is retried on the next run instead of being marked ok
+            throw SyncYomiException("Failed to push sync data: remote backup was changed by another client (412)")
+        }
+
+        val responseBody = response.body.string()
+        logger.error { "SyncError: $responseBody" }
+        throw SyncYomiException("Failed to push sync data: ${response.code} $responseBody")
     }
 
     private suspend fun reportSyncEvent(
@@ -397,7 +475,7 @@ object SyncYomiSyncService {
         message: String? = null,
     ) {
         try {
-            val host = userConfig.syncYomiHost.value(userId)
+            val host = syncHost(userId)
             val apiKey = userConfig.syncYomiApiKey.value(userId)
             val url = "$host/api/sync/event"
 
@@ -407,7 +485,7 @@ object SyncYomiSyncService {
                 SyncEvent(
                     event = event,
                     device_id = deviceId(userId),
-                    device_Name = DEVICE_NAME,
+                    device_name = DEVICE_NAME,
                     message = message,
                 )
 
@@ -489,6 +567,9 @@ object SyncYomiSyncService {
 
         val localCategoriesMapByOrder = localCategories.associateBy { it.order }
         val remoteCategoriesMapByOrder = remoteCategories.associateBy { it.order }
+        // Distinct categories may share a name: resolve the merged category by uid
+        // first and fall back to name only when no uid is available.
+        val mergedCategoriesMapByUid = mergedCategories.filter { it.uid != 0L }.associateBy { it.uid }
         val mergedCategoriesMapByName = mergedCategories.associateBy { it.name }
 
         fun updateCategories(
@@ -499,12 +580,12 @@ object SyncYomiSyncService {
                 categories =
                     theManga.categories.mapNotNull {
                         theMap[it]?.let { category ->
-                            mergedCategoriesMapByName[category.name]?.order
+                            (mergedCategoriesMapByUid[category.uid] ?: mergedCategoriesMapByName[category.name])?.order
                         }
                     },
             )
 
-        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp_$userId", 0).milliseconds.inWholeSeconds
+        val lastSyncTimeMs = lastSyncTimestampMs(userId)
         val syncingChapters = userConfig.syncDataChapters.value(userId)
 
         val mergedList =
@@ -515,7 +596,7 @@ object SyncYomiSyncService {
                 // New version comparison logic
                 when {
                     local != null && remote == null -> {
-                        if (lastSyncTime == 0L || local.lastModifiedAt > lastSyncTime) {
+                        if (modifiedSinceLastSync(local.lastModifiedAt, lastSyncTimeMs)) {
                             updateCategories(local, localCategoriesMapByOrder)
                         } else {
                             logger.debug { "Dropping local manga deleted on remote: ${local.title}." }
@@ -524,7 +605,7 @@ object SyncYomiSyncService {
                     }
 
                     local == null && remote != null -> {
-                        if (lastSyncTime == 0L || remote.lastModifiedAt > lastSyncTime) {
+                        if (modifiedSinceLastSync(remote.lastModifiedAt, lastSyncTimeMs)) {
                             updateCategories(remote, remoteCategoriesMapByOrder)
                         } else {
                             logger.debug { "Dropping deleted remote manga: ${remote.title}." }
@@ -533,8 +614,12 @@ object SyncYomiSyncService {
                     }
 
                     local != null && remote != null -> {
-                        // Compare versions to decide which manga to keep
-                        if (local.version >= remote.version) {
+                        // Compare versions to decide which manga to keep; ties resolve by
+                        // lastModifiedAt, and a full tie takes remote so every device
+                        // converges on the server copy instead of flip-flopping
+                        if (local.version > remote.version ||
+                            (local.version == remote.version && local.lastModifiedAt > remote.lastModifiedAt)
+                        ) {
                             logger.debug { "Keeping local version of ${local.title} with merged chapters." }
                             updateCategories(
                                 local.copy(
@@ -542,7 +627,7 @@ object SyncYomiSyncService {
                                         mergeChapters(
                                             local.chapters,
                                             remote.chapters,
-                                            lastSyncTime,
+                                            lastSyncTimeMs,
                                             syncingChapters,
                                         ),
                                 ),
@@ -556,7 +641,7 @@ object SyncYomiSyncService {
                                         mergeChapters(
                                             local.chapters,
                                             remote.chapters,
-                                            lastSyncTime,
+                                            lastSyncTimeMs,
                                             syncingChapters,
                                         ),
                                 ),
@@ -584,7 +669,7 @@ object SyncYomiSyncService {
     private fun mergeChapters(
         localChapters: List<BackupChapter>,
         remoteChapters: List<BackupChapter>,
-        lastSyncTime: Long,
+        lastSyncTimeMs: Long,
         syncingChapters: Boolean,
     ): List<BackupChapter> {
         if (!syncingChapters) {
@@ -610,7 +695,7 @@ object SyncYomiSyncService {
 
                 when {
                     localChapter != null && remoteChapter == null -> {
-                        if (lastSyncTime == 0L || localChapter.lastModifiedAt > lastSyncTime) {
+                        if (modifiedSinceLastSync(localChapter.lastModifiedAt, lastSyncTimeMs)) {
                             logger.debug { "Keeping local chapter: ${localChapter.name}." }
                             localChapter
                         } else {
@@ -620,7 +705,7 @@ object SyncYomiSyncService {
                     }
 
                     localChapter == null && remoteChapter != null -> {
-                        if (lastSyncTime == 0L || remoteChapter.lastModifiedAt > lastSyncTime) {
+                        if (modifiedSinceLastSync(remoteChapter.lastModifiedAt, lastSyncTimeMs)) {
                             logger.debug { "Taking remote chapter: ${remoteChapter.name}." }
                             remoteChapter
                         } else {
@@ -630,20 +715,25 @@ object SyncYomiSyncService {
                     }
 
                     localChapter != null && remoteChapter != null -> {
-                        // Use version number to decide which chapter to keep
+                        // Same tie-break as manga: a full tie takes remote so all devices
+                        // converge on the server copy
+                        val localWins =
+                            localChapter.version > remoteChapter.version ||
+                                (
+                                    localChapter.version == remoteChapter.version &&
+                                        localChapter.lastModifiedAt > remoteChapter.lastModifiedAt
+                                )
                         val chosenChapter =
-                            if (localChapter.version >= remoteChapter.version) {
-                                // If there are more chapter on remote, local sourceOrder will need to be updated to maintain correct source order.
-                                if (localChapters.size < remoteChapters.size) {
-                                    localChapter.copy(sourceOrder = remoteChapter.sourceOrder)
-                                } else {
-                                    localChapter
-                                }
+                            if (localWins) {
+                                // The remote list is the ordering reference for shared
+                                // urls (e.g. it may carry renumbered positions), so the
+                                // chosen local content keeps the remote sourceOrder
+                                localChapter.copy(sourceOrder = remoteChapter.sourceOrder)
                             } else {
                                 remoteChapter
                             }
                         logger.debug {
-                            "Merging chapter: ${chosenChapter.name}. Chosen version from: ${if (localChapter.version >= remoteChapter.version) "Local" else "Remote"}, Local version: ${localChapter.version}, Remote version: ${remoteChapter.version}."
+                            "Merging chapter: ${chosenChapter.name}. Chosen version from: ${if (localWins) "Local" else "Remote"}, Local version: ${localChapter.version}, Remote version: ${remoteChapter.version}."
                         }
                         chosenChapter
                     }
@@ -668,30 +758,50 @@ object SyncYomiSyncService {
         if (localCategoriesList == null) return remoteCategoriesList ?: emptyList()
         if (remoteCategoriesList == null) return localCategoriesList
         val result = mutableListOf<BackupCategory>()
-        val processedLocals = mutableSetOf<BackupCategory>()
 
-        val localMapByUid = localCategoriesList.filter { it.uid != 0L }.associateBy { it.uid }
-        val localMapByName = localCategoriesList.associateBy { it.name }
+        // Match and mark by list index: distinct categories may share a name, and two
+        // structurally equal entries are still different rows — value lookups and a
+        // data-class-equality processed-set would collapse both cases into one
+        val processedLocalIndices = mutableSetOf<Int>()
+        val localIndexByUid =
+            localCategoriesList
+                .mapIndexedNotNull { index, category ->
+                    if (category.uid != 0L) category.uid to index else null
+                }.toMap()
+        val localIndicesByName =
+            localCategoriesList
+                .mapIndexed { index, category -> category.name to index }
+                .groupBy({ it.first }, { it.second })
 
-        val lastSyncTime = syncPreferences.getLong("last_sync_timestamp_$userId", 0)
+        val lastSyncTimeMs = lastSyncTimestampMs(userId)
 
         remoteCategoriesList.forEach { remote ->
-            var localMatch: BackupCategory? = null
+            var localIndex: Int? = null
 
             // 1. Try match by UID
             if (remote.uid != 0L) {
-                localMatch = localMapByUid[remote.uid]
+                localIndex = localIndexByUid[remote.uid]
             }
 
-            // 2. Try match by Name (fallback)
-            if (localMatch == null) {
-                localMatch = localMapByName[remote.name]
+            // 2. Try match by Name (fallback), but only when the uid cannot contradict
+            //    it — a same-named category with a different uid is a different category
+            if (localIndex == null) {
+                localIndex =
+                    localIndicesByName[remote.name]?.firstOrNull { index ->
+                        index !in processedLocalIndices &&
+                            (remote.uid == 0L || localCategoriesList[index].uid == 0L || localCategoriesList[index].uid == remote.uid)
+                    }
             }
 
-            if (localMatch != null) {
-                processedLocals.add(localMatch)
-                // Conflict resolution
-                if (localMatch.version >= remote.version) {
+            if (localIndex != null) {
+                val localMatch = localCategoriesList[localIndex]
+                processedLocalIndices.add(localIndex)
+                // Conflict resolution — same tie-break as the manga merge: local only
+                // wins when strictly newer (version, then lastModifiedAt); a full tie
+                // takes remote so all devices converge on the server copy.
+                if (localMatch.version > remote.version ||
+                    (localMatch.version == remote.version && localMatch.lastModifiedAt > remote.lastModifiedAt)
+                ) {
                     logger.debug { "Keeping local category: ${localMatch.name} (UID: ${localMatch.uid})" }
                     result.add(localMatch)
                 } else {
@@ -703,8 +813,7 @@ object SyncYomiSyncService {
                     result.add(remote)
                 }
             } else {
-                val remoteModifiedTimeMillis = remote.lastModifiedAt.seconds.inWholeMilliseconds
-                if (lastSyncTime == 0L || remoteModifiedTimeMillis > lastSyncTime) {
+                if (modifiedSinceLastSync(remote.lastModifiedAt, lastSyncTimeMs)) {
                     logger.debug { "Adding new remote category: ${remote.name} (UID: ${remote.uid})" }
                     result.add(remote)
                 } else {
@@ -714,10 +823,9 @@ object SyncYomiSyncService {
         }
 
         // Add remaining Local Categories
-        localCategoriesList.forEach { local ->
-            if (local !in processedLocals) {
-                val localModifiedTimeMillis = local.lastModifiedAt.seconds.inWholeMilliseconds
-                if (lastSyncTime == 0L || localModifiedTimeMillis > lastSyncTime) {
+        localCategoriesList.forEachIndexed { index, local ->
+            if (index !in processedLocalIndices) {
+                if (modifiedSinceLastSync(local.lastModifiedAt, lastSyncTimeMs)) {
                     logger.debug { "Keeping local only category: ${local.name} (UID: ${local.uid})" }
                     result.add(local)
                 } else {

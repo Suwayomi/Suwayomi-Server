@@ -14,13 +14,25 @@ import okhttp3.Response
 import rx.Observable
 import rx.Producer
 import rx.Subscription
+import suwayomi.tachidesk.server.serverConfig
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.resumeWithException
 
 val jsonMime = "application/json; charset=utf-8".toMediaType()
 
+/**
+ * Exposes this call as a cold [Observable]: each subscriber triggers one
+ * `execute()` on the caller's thread once it requests demand (first `request(n>0)`).
+ * The emitted [Response] is the raw network response — unsuccessful statuses are
+ * still delivered via `onNext` (see [asObservableSuccess] for the checked variant),
+ * and the caller owns closing the body. Unsubscription cancels the call.
+ *
+ * Retained only for source-level RxJava interop; new code should use the suspend
+ * [await]/[awaitSuccess] variants.
+ */
 @OptIn(ExperimentalAtomicApi::class)
 @Deprecated("Use suspend APIs instead")
 fun Call.asObservable(): Observable<Response> {
@@ -74,7 +86,7 @@ fun Call.asObservableSuccess(): Observable<Response> {
 
 // Based on https://github.com/square/okhttp/blob/master/okhttp-coroutines/src/main/kotlin/okhttp3/coroutines/ExecuteAsync.kt
 // and https://github.com/gildor/kotlin-coroutines-okhttp
-private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
+private suspend fun Call.await(callStack: Array<StackTraceElement>?): Response {
     return suspendCancellableCoroutine { continuation ->
         continuation.invokeOnCancellation {
             try {
@@ -91,8 +103,13 @@ private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
                     e: IOException,
                 ) {
                     if (continuation.isCancelled) return
-                    val exception = IOException(e.message, e).apply { stackTrace = callStack }
-                    continuation.resumeWithException(exception)
+                    // Preserve the original exception type so callers can still
+                    // distinguish SocketTimeoutException, SSLException, ... —
+                    // under debug logging only, prepend the await() callsite so
+                    // the origin remains diagnosable without a type-erasing
+                    // IOException wrapper.
+                    callStack?.let { e.stackTrace = it + e.stackTrace }
+                    continuation.resumeWithException(e)
                 }
 
                 override fun onResponse(
@@ -108,20 +125,29 @@ private suspend fun Call.await(callStack: Array<StackTraceElement>): Response {
     }
 }
 
-suspend fun Call.await(): Response {
-    val callStack = Exception().stackTrace.run { copyOfRange(1, size) }
-    return await(callStack)
-}
+/**
+ * Captures the callsite stack for exception rewriting — only when debug logging
+ * is enabled, since allocating + filling a stack trace on every request is not
+ * free and the rewrite discards the original exception type.
+ */
+private fun captureCallStack(): Array<StackTraceElement>? =
+    if (serverConfig.debugLogsEnabled.value) {
+        Exception().stackTrace.run { copyOfRange(1, size) }
+    } else {
+        null
+    }
+
+suspend fun Call.await(): Response = await(captureCallStack())
 
 /**
  * Similar to [await] but throws [HttpException] if [Response.isSuccessful] returns false
  */
 suspend fun Call.awaitSuccess(): Response {
-    val callStack = Exception().stackTrace.run { copyOfRange(1, size) }
+    val callStack = captureCallStack()
     val response = await(callStack)
     if (!response.isSuccessful) {
         response.close()
-        throw HttpException(response.code).apply { stackTrace = callStack }
+        throw HttpException(response.code).apply { callStack?.let { stackTrace = it + stackTrace } }
     }
     return response
 }
@@ -133,6 +159,10 @@ fun OkHttpClient.newCachelessCallWithProgress(
     val progressClient =
         newBuilder()
             .cache(null)
+            // Downloads run through this call path: the base client's 2-minute
+            // callTimeout would abort large chapter downloads, so the whole-call
+            // cap is lifted here — stall protection still applies via readTimeout.
+            .callTimeout(0, TimeUnit.MINUTES)
             .addNetworkInterceptor { chain ->
                 val originalResponse = chain.proceed(chain.request())
                 originalResponse

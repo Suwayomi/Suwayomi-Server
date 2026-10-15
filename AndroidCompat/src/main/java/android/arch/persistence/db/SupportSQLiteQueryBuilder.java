@@ -61,12 +61,18 @@ public final class SupportSQLiteQueryBuilder {
      */
     private static void appendColumns(StringBuilder s, String[] columns) {
         int n = columns.length;
+        boolean appended = false;
         for (int i = 0; i < n; i++) {
             String column = columns[i];
-            if (i > 0) {
+            if (column == null) {
+                // Skip null column entries instead of emitting "null".
+                continue;
+            }
+            if (appended) {
                 s.append(", ");
             }
             s.append(column);
+            appended = true;
         }
         s.append(' ');
     }

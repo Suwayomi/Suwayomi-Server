@@ -292,8 +292,8 @@ public final class ComponentName implements Parcelable, Cloneable, Comparable<Co
         return 0;
     }
     public void writeToParcel(Parcel out, int flags) {
-        out.writeString(mPackage);
-        out.writeString(mClass);
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
     /**
      * Write a ComponentName to a Parcel, handling null pointers.  Must be
@@ -324,8 +324,8 @@ public final class ComponentName implements Parcelable, Cloneable, Comparable<Co
      * @see #writeToParcel(ComponentName, Parcel)
      */
     public static ComponentName readFromParcel(Parcel in) {
-        String pkg = in.readString();
-        return pkg != null ? new ComponentName(pkg, in) : null;
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
     
     public static final Parcelable.Creator<ComponentName> CREATOR
@@ -348,15 +348,11 @@ public final class ComponentName implements Parcelable, Cloneable, Comparable<Co
      * positioned at the location in the buffer where it was written.
      */
     public ComponentName(Parcel in) {
-        mPackage = in.readString();
-        if (mPackage == null) throw new NullPointerException(
-                "package name is null");
-        mClass = in.readString();
-        if (mClass == null) throw new NullPointerException(
-                "class name is null");
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
     private ComponentName(String pkg, Parcel in) {
-        mPackage = pkg;
-        mClass = in.readString();
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
 }

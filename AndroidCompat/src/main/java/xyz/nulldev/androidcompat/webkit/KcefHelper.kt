@@ -20,7 +20,10 @@ private val jsHandler: MutableMap<CefClient, JsHandler> = Collections.synchroniz
 fun CefBrowser.evaluateJavaScript(
     expression: String,
     cb: (String?) -> Unit,
-) = jsHandler[this.client]!!.eval(this, expression, cb)
+) = (
+    jsHandler[this.client]
+        ?: throw IllegalStateException("No JsHandler is registered for this browser's CefClient")
+).eval(this, expression, cb)
 
 fun CefBrowser.dispose() {
     stopLoad()
@@ -77,13 +80,21 @@ class JsHandler : CefMessageRouterHandlerAdapter {
         if (request != null) {
             val invoke =
                 try {
-                    Json.decodeFromString<FunctionCall>(request)
+                    json.decodeFromString<FunctionCall>(request)
                 } catch (e: Exception) {
                     logger.warn(e) { "Invalid request received" }
                     return false
                 }
+            // The JS side reports evaluation failures via QUERY_CANCEL_FN with
+            // an {id, error} payload — the pending callback must be invoked
+            // (with null) in either case or it would leak forever.
             val handler = handler.remove(invoke.id) ?: return false
-            handler(invoke.result)
+            if (invoke.error != null) {
+                logger.debug { "JS eval ${invoke.id} failed: ${invoke.error}" }
+                handler(null)
+            } else {
+                handler(invoke.resultString())
+            }
             callback?.success("")
             return true
         }
@@ -94,8 +105,21 @@ class JsHandler : CefMessageRouterHandlerAdapter {
     @Serializable
     private data class FunctionCall(
         val id: String,
-        val result: String? = null,
-    )
+        // JsonElement: JS results may be numbers/booleans/objects, not only
+        // strings — a strict String field would fail to decode and leak the
+        // pending callback.
+        val result: kotlinx.serialization.json.JsonElement? = null,
+        val error: String? = null,
+    ) {
+        fun resultString(): String? =
+            result?.let {
+                when (it) {
+                    is kotlinx.serialization.json.JsonNull -> null
+                    is kotlinx.serialization.json.JsonPrimitive -> it.content
+                    else -> it.toString()
+                }
+            }
+    }
 
     companion object {
         const val QUERY_FN = "__\$_evalQuery"
@@ -108,11 +132,13 @@ class JsHandler : CefMessageRouterHandlerAdapter {
                 it.isLineBreak()
             }
 
+        private val json = Json { ignoreUnknownKeys = true }
+
         private fun String.asFunctionBody(): String =
             let { expression ->
                 when {
                     expression.containsLineBreak() -> expression
-                    expression.trim().startsWith("return", false) -> expression
+                    expression.trim().startsWith("return", ignoreCase = true) -> expression
                     else -> "return $expression"
                 }
             }

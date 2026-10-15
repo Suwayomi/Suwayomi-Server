@@ -10,6 +10,7 @@ package xyz.nulldev.ts.config
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigException
 import com.typesafe.config.ConfigFactory
+import com.typesafe.config.ConfigValueFactory
 import io.github.config4k.ClassContainer
 import io.github.config4k.TypeReference
 import io.github.config4k.getValue
@@ -43,34 +44,45 @@ class SystemPropertyOverrideDelegate(
         thisRef: R,
         property: KProperty<*>,
     ): T {
-        val config = getConfig()
-
         val systemProperty =
             System.getProperty("$CONFIG_PREFIX.$moduleName.${property.name}")
         if (systemProperty == null) {
-            val configValue: T = config.getValue(thisRef, property)
+            val configValue: T = getConfig().getValue(thisRef, property)
             return configValue
         }
-
-        val systemPropertyConfig =
-            try {
-                ConfigFactory.parseString("internal=$systemProperty")
-            } catch (_: ConfigException) {
-                ConfigFactory.parseMap(mapOf("internal" to systemProperty))
-            }
 
         val genericType = object : TypeReference<T>() {}.genericType()
         val clazz = ClassContainer(T::class, genericType)
         val reader = SelectReader.getReader(clazz)
         val path = property.name
 
-        val result = reader(systemPropertyConfig, "internal")
+        // System properties are interpreted as literal values first: embedding them into a
+        // HOCON document would let `#`, `,` or `${...}` truncate/interpolate the value.
+        // Only when the literal string cannot satisfy the reader (e.g. an Int reader) do we
+        // fall back to HOCON semantics.
+        val literalConfig =
+            ConfigFactory
+                .empty()
+                .withValue("internal", ConfigValueFactory.fromAnyRef(systemProperty))
+        val result =
+            runCatching { reader(literalConfig, "internal") }.getOrElse {
+                val systemPropertyConfig =
+                    try {
+                        ConfigFactory.parseString("internal=$systemProperty")
+                    } catch (_: ConfigException) {
+                        ConfigFactory.parseMap(mapOf("internal" to systemProperty))
+                    }
+                reader(systemPropertyConfig, "internal")
+            }
+
         return try {
             result as T
         } catch (e: Exception) {
-            throw result
-                ?.let { e }
-                ?: ConfigException.BadPath(path, "take a look at your config")
+            throw ConfigException.BadValue(
+                path,
+                "system property '$CONFIG_PREFIX.$moduleName.${property.name}' is not a valid ${T::class.qualifiedName}",
+                e,
+            )
         }
     }
 }

@@ -31,6 +31,10 @@ class ImageMutation {
     fun clearCachedImages(input: ClearCachedImagesInput): ClearCachedImagesPayload {
         val (clientMutationId, downloadedThumbnails, cachedThumbnails, cachedPages) = input
 
+        require(downloadedThumbnails == true || cachedThumbnails == true || cachedPages == true) {
+            "At least one of 'downloadedThumbnails', 'cachedThumbnails' or 'cachedPages' must be true"
+        }
+
         val downloadedThumbnailsResult =
             if (downloadedThumbnails == true) {
                 ImageResponse.clearImages(applicationDirs.thumbnailDownloadsRoot)

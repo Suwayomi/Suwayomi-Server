@@ -38,40 +38,52 @@ object ImageUtil {
         try {
             val bytes = ByteArray(12)
 
-            val length =
-                if (stream.markSupported()) {
-                    stream.mark(bytes.size)
-                    stream.read(bytes, 0, bytes.size).also { stream.reset() }
-                } else {
-                    stream.read(bytes, 0, bytes.size)
-                }
+            if (stream.markSupported()) {
+                stream.mark(bytes.size)
+            }
+            // a single read() is not guaranteed to fill the buffer — loop until it is
+            // full or EOF so magic checks never compare against zero padding
+            var length = 0
+            while (length < bytes.size) {
+                val read = stream.read(bytes, length, bytes.size - length)
+                if (read <= 0) break
+                length += read
+            }
+            if (stream.markSupported()) {
+                stream.reset()
+            }
 
-            if (length == -1) {
+            if (length == 0) {
                 return null
             }
 
-            if (bytes.compareWith(charByteArrayOf(0xFF, 0xD8, 0xFF))) {
+            if (bytes.compareWith(charByteArrayOf(0xFF, 0xD8, 0xFF), length)) {
                 return JPEG
             }
-            if (bytes.compareWith(charByteArrayOf(0x89, 0x50, 0x4E, 0x47))) {
+            if (bytes.compareWith(charByteArrayOf(0x89, 0x50, 0x4E, 0x47), length)) {
                 return PNG
             }
-            if (bytes.compareWith("GIF8".toByteArray())) {
+            if (bytes.compareWith("GIF8".toByteArray(), length)) {
                 return GIF
             }
-            if (bytes.compareWith("RIFF".toByteArray())) {
+            // RIFF is a container format — a bare "RIFF" prefix also matches WAV/AVI
+            // files; the WEBP form-type at bytes 8..11 is required
+            if (length >= 12 &&
+                bytes.compareWith("RIFF".toByteArray(), length) &&
+                bytes.copyOfRange(8, 12).contentEquals("WEBP".toByteArray())
+            ) {
                 return WEBP
             }
-            if (bytes.copyOfRange(4, 12).compareWith("ftypavif".toByteArray())) {
+            if (length >= 12 && bytes.copyOfRange(4, 12).contentEquals("ftypavif".toByteArray())) {
                 return AVIF
             }
-            if (isHEIF(bytes)) {
+            if (length >= 12 && isHEIF(bytes)) {
                 return HEIF
             }
-            if (bytes.compareWith(charByteArrayOf(0xFF, 0x0A))) {
+            if (bytes.compareWith(charByteArrayOf(0xFF, 0x0A), length)) {
                 return JXL
             }
-            if (bytes.compareWith(charByteArrayOf(0x00, 0x00, 0x00, 0x0C, 0x4A, 0x58, 0x4C, 0x20, 0x0D, 0x0A, 0x87, 0x0A))) {
+            if (bytes.compareWith(charByteArrayOf(0x00, 0x00, 0x00, 0x0C, 0x4A, 0x58, 0x4C, 0x20, 0x0D, 0x0A, 0x87, 0x0A), length)) {
                 return JXL
             }
         } catch (_: Exception) {
@@ -147,7 +159,14 @@ object ImageUtil {
         return false
     }
 
-    private fun ByteArray.compareWith(magic: ByteArray): Boolean = magic.indices.none { this[it] != magic[it] }
+    /**
+     * [this] starts with [magic] — but only when at least [availableLength] bytes were
+     * actually read; a short read must not let zero padding satisfy a magic check.
+     */
+    private fun ByteArray.compareWith(
+        magic: ByteArray,
+        availableLength: Int,
+    ): Boolean = availableLength >= magic.size && magic.indices.none { this[it] != magic[it] }
 
     private fun charByteArrayOf(vararg bytes: Int): ByteArray =
         ByteArray(bytes.size).apply {

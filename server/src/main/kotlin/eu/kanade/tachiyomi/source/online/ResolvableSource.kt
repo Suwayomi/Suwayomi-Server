@@ -7,6 +7,9 @@ import eu.kanade.tachiyomi.source.model.SManga
 /**
  * A source that may handle opening an SManga or SChapter for a given URI.
  *
+ * Note: dormant on the server side — Suwayomi-Server does not expose a
+ * URI-resolution feature, so implementations are currently never invoked.
+ *
  * @since extensions-lib 1.5
  */
 interface ResolvableSource : Source {

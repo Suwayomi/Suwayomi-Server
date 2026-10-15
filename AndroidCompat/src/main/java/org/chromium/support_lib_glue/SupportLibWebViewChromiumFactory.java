@@ -4,25 +4,14 @@
 
 package org.chromium.support_lib_glue;
 
-import android.content.Context;
-import android.net.Uri;
-import android.webkit.ValueCallback;
 import android.webkit.WebView;
 
-import androidx.annotation.GuardedBy;
-import androidx.annotation.IntDef;
-import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.support_lib_boundary.WebViewProviderFactoryBoundaryInterface;
 import org.chromium.support_lib_boundary.util.BoundaryInterfaceReflectionUtil;
 
 import java.lang.reflect.InvocationHandler;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 

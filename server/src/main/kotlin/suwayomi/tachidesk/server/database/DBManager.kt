@@ -16,11 +16,16 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.core.DatabaseConfig
 import org.jetbrains.exposed.v1.core.ExperimentalKeywordApi
 import org.jetbrains.exposed.v1.core.Schema
+import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.SchemaUtils
 import org.jetbrains.exposed.v1.jdbc.transactions.TransactionManager
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.DatabaseType
+import suwayomi.tachidesk.manga.model.table.CategoryTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.ServerConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -28,12 +33,21 @@ import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 object DBManager {
-    var db: Database? = null
-        private set
+    /**
+     * The most recently connected [Database] instance. Tracked so a re-setup can unregister
+     * the previous instance's transaction manager even when no transaction is bound to the
+     * calling thread — the hot-swap path (ServerSetup.subscribeTo) runs on a config-flow
+     * thread where `TransactionManager.currentOrNull()` is null. Note this intentionally
+     * replaces the old public `db` field, which had no readers and was never assigned on
+     * the Hikari path due to an early `return` skipping `.also { db = it }`.
+     */
+    @Volatile
+    private var connectedDb: Database? = null
 
     @Volatile
     private var hikariDataSource: HikariDataSource? = null
@@ -77,12 +91,13 @@ object DBManager {
     }
 
     fun setupDatabase(): Database {
-        // Clean up existing connections
-        if (TransactionManager.currentOrNull() != null) {
-            val currentDatabase = TransactionManager.currentOrNull()?.db
-            if (currentDatabase != null) {
-                TransactionManager.closeAndUnregister(currentDatabase)
-            }
+        // Clean up the previously connected instance unconditionally. The old code only
+        // unregistered the database bound to the *current thread's* transaction, which is
+        // always absent on the hot-swap path; closeAndUnregister is thread-agnostic.
+        val oldDb = connectedDb
+        connectedDb = null
+        if (oldDb != null) {
+            TransactionManager.closeAndUnregister(oldDb)
         }
 
         // Close the existing pool if any
@@ -101,11 +116,27 @@ object DBManager {
             }
 
         return if (serverConfig.useHikariConnectionPool.value) {
-            // Create a new HikariCP pool
-            hikariDataSource = createHikariDataSource()
+            try {
+                // Create a new HikariCP pool; the HikariDataSource constructor already
+                // validates the first connection, so a bad config throws here rather
+                // than on the first transaction.
+                hikariDataSource = createHikariDataSource()
 
-            return Database
-                .connect(hikariDataSource!!, databaseConfig = dbConfig)
+                Database
+                    .connect(hikariDataSource!!, databaseConfig = dbConfig)
+            } catch (e: Exception) {
+                // The previous pool was already shut down above; try to leave a working
+                // pool behind so a failed hot-swap does not strand the app with a dead
+                // pool. Best-effort only — the failure still propagates and databaseUp
+                // treats it as fatal.
+                try {
+                    hikariDataSource = createHikariDataSource()
+                } catch (recoveryError: Exception) {
+                    logger.error(recoveryError) { "Failed to recover the HikariCP pool after a connect failure" }
+                    hikariDataSource = null
+                }
+                throw e
+            }
         } else {
             when (serverConfig.databaseType.value) {
                 DatabaseType.POSTGRESQL -> {
@@ -126,7 +157,7 @@ object DBManager {
                     )
                 }
             }
-        }.also { db = it }
+        }.also { connectedDb = it }
     }
 
     fun shutdown() {
@@ -146,6 +177,37 @@ object DBManager {
 
 private val logger = KotlinLogging.logger {}
 
+private val shutdownHookRegistered = AtomicBoolean(false)
+
+/**
+ * Indirection over [shutdownApp] so tests can capture the requested [ExitCode] instead of
+ * the JVM actually exiting.
+ */
+internal var databaseShutdownHandler: (ExitCode) -> Unit = ::shutdownApp
+
+/**
+ * A leftover `is_syncing = true` can only be the residue of a crashed or aborted sync —
+ * a process that just (re)connected to the database has no in-flight sync. Stale flags
+ * make the sync triggers silently skip user edits (version never bumps, so the edit never
+ * enters the sync delta), so all sync tables are reset once here.
+ *
+ * The reset only touches `is_syncing`, a column none of the triggers watch, so versions
+ * and last_modified_at watermarks are left untouched.
+ */
+private fun resetSyncingFlags(db: Database) {
+    transaction(db) {
+        MangaUserTable.update({ MangaUserTable.isSyncing eq true }) {
+            it[MangaUserTable.isSyncing] = false
+        }
+        ChapterUserTable.update({ ChapterUserTable.isSyncing eq true }) {
+            it[ChapterUserTable.isSyncing] = false
+        }
+        CategoryTable.update({ CategoryTable.isSyncing eq true }) {
+            it[CategoryTable.isSyncing] = false
+        }
+    }
+}
+
 fun databaseUp(givenDb: Database? = null) {
     val db =
         givenDb
@@ -153,29 +215,36 @@ fun databaseUp(givenDb: Database? = null) {
                 DBManager.setupDatabase()
             } catch (e: Exception) {
                 logger.error(e) { "Failed to setup Database" }
+                // Symmetric with the migration failure path below: running on without a
+                // database only defers the crash to the first transaction and, on the
+                // hot-swap path, leaves a zombie service behind.
+                databaseShutdownHandler(ExitCode.DbMigrationFailure)
                 return
             }
 
-    logger.info {
-        "Using ${db.vendor} database version ${db.version}"
+    // Add shutdown hook to properly close HikariCP pool. Guarded because databaseUp runs
+    // again on every database-settings hot-swap.
+    if (shutdownHookRegistered.compareAndSet(false, true)) {
+        Runtime.getRuntime().addShutdownHook(
+            Thread {
+                logger.debug { "Shutting down HikariCP connection pool..." }
+                DBManager.shutdown()
+            },
+        )
     }
-
-    // Log pool statistics
-    DBManager.getPoolStats()?.let { stats ->
-        logger.debug { "HikariCP initialized: $stats" }
-    }
-
-    // Add shutdown hook to properly close HikariCP pool
-    Runtime.getRuntime().addShutdownHook(
-        Thread {
-            logger.debug { "Shutting down HikariCP connection pool..." }
-            DBManager.shutdown()
-        },
-    )
 
     try {
+        logger.info {
+            "Using ${db.vendor} database version ${db.version}"
+        }
+
+        // Log pool statistics
+        DBManager.getPoolStats()?.let { stats ->
+            logger.debug { "HikariCP initialized: $stats" }
+        }
+
         if (serverConfig.databaseType.value == DatabaseType.POSTGRESQL) {
-            transaction {
+            transaction(db) {
                 val schema =
                     Schema(
                         serverConfig.databaseSchema.value,
@@ -186,8 +255,10 @@ fun databaseUp(givenDb: Database? = null) {
         }
         val migrations = loadMigrationsFrom("suwayomi.tachidesk.server.database.migration", ServerConfig::class.java)
         runMigrations(migrations)
+
+        resetSyncingFlags(db)
     } catch (e: Exception) {
         logger.error(e) { "Error up-to-database migration" }
-        shutdownApp(ExitCode.DbMigrationFailure)
+        databaseShutdownHandler(ExitCode.DbMigrationFailure)
     }
 }

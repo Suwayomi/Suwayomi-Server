@@ -5,22 +5,22 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ALCurrentUserResult(
-    val data: ALUserViewer,
+    val data: ALUserViewer? = null,
 )
 
 @Serializable
 data class ALUserViewer(
     @SerialName("Viewer")
-    val viewer: ALUserViewerData,
+    val viewer: ALUserViewerData? = null,
 )
 
 @Serializable
 data class ALUserViewerData(
     val id: Int,
-    val mediaListOptions: ALUserListOptions,
+    val mediaListOptions: ALUserListOptions? = null,
 )
 
 @Serializable
 data class ALUserListOptions(
-    val scoreFormat: String,
+    val scoreFormat: String? = null,
 )

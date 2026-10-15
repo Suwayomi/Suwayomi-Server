@@ -9,7 +9,8 @@ User=suwayomi-server
 Group=suwayomi-server
 SyslogIdentifier=suwayomi-server
 
-EnvironmentFile=/etc/suwayomi/server.conf
+# '-' prefix: ignore the file if it does not exist
+EnvironmentFile=-/etc/suwayomi/server.conf
 ExecStart=/usr/bin/suwayomi-server $JAVA_ARGS -Dsuwayomi.tachidesk.config.server.rootDir="${TACHIDESK_ROOT_DIR}"
 Restart=on-failure
 

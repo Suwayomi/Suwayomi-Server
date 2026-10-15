@@ -23,7 +23,7 @@
     <string name="opds_feeds_category_specific_title">Kategoria: %1$s</string>
     <string name="opds_feeds_status_specific_title">Status: %1$s</string>
     <string name="opds_feeds_language_specific_title">Język: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Źródło: %1$s</string>
+
     <string name="opds_error_manga_not_found">Nie znaleziono mangi o identyfikatorze %1$d</string>
     <string name="opds_error_chapter_not_found">Nie znaleziono rozdziału z indeksem %1$d</string>
     <string name="opds_facetgroup_sort_order">Kolejność Sortowania</string>
@@ -42,8 +42,8 @@
     <string name="opds_linktitle_previous_page">Poprzednia Strona</string>
     <string name="opds_chapter_status_read">✅</string>
     <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_details_scanlator">| Przez %1$s</string>
-    <string name="opds_chapter_details_progress">| Postęp: %1$d z %2$d</string>
+    <string name="opds_chapter_details_scanlator"> | Przez %1$s</string>
+    <string name="opds_chapter_details_progress"> | Postęp: %1$d z %2$s</string>
     <string name="manga_status_unknown">Nieznany</string>
     <string name="manga_status_ongoing">W trakcie</string>
     <string name="manga_status_completed">Zakończono</string>

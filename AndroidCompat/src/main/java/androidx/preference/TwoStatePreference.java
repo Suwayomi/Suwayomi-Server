@@ -13,6 +13,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 public class TwoStatePreference extends Preference {
     private CharSequence mSummaryOn;
     private CharSequence mSummaryOff;
+    private boolean mChecked;
+    private boolean mDisableDependentsState;
 
     public TwoStatePreference(Context context) {
         super(context);
@@ -20,10 +22,28 @@ public class TwoStatePreference extends Preference {
     }
 
     @JsonIgnore
-    public boolean isChecked() { throw new RuntimeException("Stub!"); }
+    public boolean isChecked() {
+        android.content.SharedPreferences prefs = getSharedPreferences();
+        if (prefs != null && getKey() != null) {
+            return prefs.getBoolean(getKey(), mChecked);
+        }
+        return mChecked;
+    }
 
     @JsonIgnore
-    public void setChecked(boolean checked) { throw new RuntimeException("Stub!"); }
+    public void setChecked(boolean checked) {
+        if (isChecked() == checked) {
+            return;
+        }
+        if (!callChangeListener(checked)) {
+            return;
+        }
+        mChecked = checked;
+        android.content.SharedPreferences prefs = getSharedPreferences();
+        if (prefs != null && getKey() != null) {
+            prefs.edit().putBoolean(getKey(), checked).apply();
+        }
+    }
 
     @JsonIgnore
     public CharSequence getSummaryOn() {
@@ -52,7 +72,7 @@ public class TwoStatePreference extends Preference {
             return summary;
         }
 
-        final boolean checked = (Boolean) getCurrentValue();
+        final boolean checked = isChecked();
         if (checked && mSummaryOn != null) {
             return mSummaryOn;
         } else if (!checked && mSummaryOff != null) {
@@ -63,10 +83,10 @@ public class TwoStatePreference extends Preference {
     }
 
     @JsonIgnore
-    public boolean getDisableDependentsState() { throw new RuntimeException("Stub!"); }
+    public boolean getDisableDependentsState() { return mDisableDependentsState; }
 
     @JsonIgnore
-    public void setDisableDependentsState(boolean disableDependentsState) { throw new RuntimeException("Stub!"); }
+    public void setDisableDependentsState(boolean disableDependentsState) { mDisableDependentsState = disableDependentsState; }
 
     /** Tachidesk specific API */
     @Override

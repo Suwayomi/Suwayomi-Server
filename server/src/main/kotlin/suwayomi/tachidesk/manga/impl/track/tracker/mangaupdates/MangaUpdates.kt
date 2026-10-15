@@ -1,6 +1,8 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates
 
+import eu.kanade.tachiyomi.network.HttpException
 import io.github.reactivecircus.cache4k.Cache
+import kotlinx.coroutines.ensureActive
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.MUListItem
@@ -9,7 +11,9 @@ import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.copyTo
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.dto.toTrackSearch
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
+import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.hours
 
 class MangaUpdates(
@@ -86,12 +90,15 @@ class MangaUpdates(
     override fun indexToScore(
         userId: Int,
         index: Int,
-    ): Double = if (index == 0) 0.0 else SCORE_LIST[index].toDouble()
+    ): Double =
+        // scoreString is client-controlled: indexOf can return -1 or a stale
+        // index, so an out-of-range lookup must not blow up into a 500.
+        SCORE_LIST.getOrNull(index)?.toDoubleOrNull() ?: 0.0
 
     override fun displayScore(
         userId: Int,
         track: Track,
-    ): String = track.score.toString()
+    ): String = if (track.score == 0.0) "-" else track.score.toString()
 
     override suspend fun update(
         userId: Int,
@@ -120,8 +127,13 @@ class MangaUpdates(
         try {
             val (series, rating) = api(userId).getSeriesListItem(track)
             track.copyFrom(series, rating)
-        } catch (_: Exception) {
-            track.score = 0.0
+        } catch (e: HttpException) {
+            // Only "not on the user's list" (404) warrants creating a remote
+            // entry. Any other failure (5xx, timeouts, parse errors) must abort
+            // the bind — treating it as absent would overwrite the existing
+            // remote list item with defaults.
+            if (e.code != 404) throw e
+            coroutineContext.ensureActive()
             api(userId).addSeriesToList(track, hasReadChapters)
             track
         }
@@ -132,7 +144,7 @@ class MangaUpdates(
     ): List<TrackSearch> =
         api(userId)
             .search(query)
-            .map {
+            .mapNotNull {
                 it.toTrackSearch(id)
             }
 
@@ -140,7 +152,21 @@ class MangaUpdates(
         userId: Int,
         track: Track,
     ): Track {
-        val (series, rating) = api(userId).getSeriesListItem(track)
+        val (series, rating) =
+            try {
+                api(userId).getSeriesListItem(track)
+            } catch (e: HttpException) {
+                if (e.code == 404) {
+                    // The remote list entry is gone (series removed remotely or
+                    // stale remote_id): surface an actionable error instead of
+                    // retrying a request that can never succeed forever.
+                    throw IOException(
+                        "MangaUpdates: remote list entry ${track.remote_id} no longer exists; unbind and re-bind the record",
+                        e,
+                    )
+                }
+                throw e
+            }
         return track.copyFrom(series, rating)
     }
 
@@ -153,15 +179,63 @@ class MangaUpdates(
             score = rating?.rating ?: 0.0
         }
 
+    /**
+     * Note: `Track.login` invokes `loginImpl` directly rather than through the
+     * [Tracker.login] wrapper, so no automatic `logout()` cleanup runs on
+     * failure. This is intentional; `authenticate` throws before any credential
+     * is persisted, so a failed login cannot leave partial state behind.
+     */
     override suspend fun loginImpl(
         userId: Int,
         username: String,
         password: String,
     ) {
-        val authenticated = api(userId).authenticate(username, password) ?: throw Throwable("Unable to login")
-        saveCredentials(userId, authenticated.uid.toString(), authenticated.sessionToken)
+        val authenticated = api(userId).authenticate(username, password)
+        // The session token lives in the track-token slot (it is a session
+        // token, not a password); the uid stays in the username slot.
+        saveCredentials(userId, authenticated.uid.toString(), "")
+        trackPreferences.setTrackToken(userId, this, authenticated.sessionToken)
         interceptor(userId).newAuth(authenticated.sessionToken)
     }
 
-    fun restoreSession(userId: Int): String? = trackPreferences.getTrackPassword(userId, this)?.ifBlank { null }
+    override suspend fun logout(userId: Int) {
+        super.logout(userId)
+        trackPreferences.setTrackToken(userId, this, null)
+        // Drop the in-memory session token and the cached API client carrying
+        // it, so post-logout calls can no longer write with the old Bearer.
+        interceptors.remove(userId)?.newAuth(null)
+        apis.invalidate(userId)
+    }
+
+    override fun isLoggedIn(userId: Int): Boolean =
+        getUsername(userId).isNotEmpty() &&
+            restoreSession(userId) != null &&
+            !getIfAuthExpired(userId)
+
+    /**
+     * Returns the stored session token, migrating pre-token-slot credentials on
+     * first read: older builds stored the session token in the password slot.
+     */
+    fun restoreSession(userId: Int): String? {
+        trackPreferences
+            .getTrackToken(userId, this)
+            ?.ifBlank { null }
+            ?.let { token ->
+                // Self-heal a half-finished migration: the legacy password slot
+                // must not keep carrying the session token.
+                if (!trackPreferences.getTrackPassword(userId, this).isNullOrBlank()) {
+                    saveCredentials(userId, getUsername(userId), "")
+                }
+                return token
+            }
+
+        val legacyToken =
+            trackPreferences
+                .getTrackPassword(userId, this)
+                ?.ifBlank { null }
+                ?: return null
+        trackPreferences.setTrackToken(userId, this, legacyToken)
+        saveCredentials(userId, getUsername(userId), "")
+        return legacyToken
+    }
 }

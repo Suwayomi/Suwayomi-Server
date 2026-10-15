@@ -13,6 +13,20 @@ object SafePath {
     private const val MAX_FILENAME_UTF8_BYTES = 240
 
     /**
+     * Windows reserved device names. A file whose base name (the part before
+     * the first dot) matches one of these — case-insensitively — cannot be
+     * created on Windows (e.g. "con", "con.txt", "COM1").
+     */
+    private val WINDOWS_RESERVED_NAMES: Set<String> =
+        buildSet {
+            addAll(listOf("CON", "PRN", "AUX", "NUL"))
+            for (i in 0..9) {
+                add("COM$i")
+                add("LPT$i")
+            }
+        }
+
+    /**
      * Mutate the given filename to make it valid for a FAT filesystem,
      * replacing any invalid characters with "_". This method doesn't allow hidden files (starting
      * with a dot), but you can manually add it later.
@@ -23,15 +37,39 @@ object SafePath {
             return "(invalid)"
         }
         val sb = StringBuilder(name.length)
-        name.forEach { c ->
-            if (isValidFatFilenameChar(c)) {
-                sb.append(c)
+        // iterate code points so surrogate pairs (e.g. emoji) stay intact while isolated
+        // surrogates get replaced
+        var index = 0
+        while (index < name.length) {
+            val codePoint = name.codePointAt(index)
+            if (isValidFatFilenameCodePoint(codePoint)) {
+                sb.appendCodePoint(codePoint)
             } else {
                 sb.append('_')
             }
+            index += Character.charCount(codePoint)
         }
 
-        return truncateFilename(sb.toString())
+        // truncation can leave a trailing "." or " " behind — both are illegal filename
+        // endings on Windows
+        val truncated = truncateFilename(sb.toString()).trim('.', ' ')
+        if (truncated.isEmpty()) {
+            return "(invalid)"
+        }
+        return disambiguateReservedName(truncated)
+    }
+
+    /**
+     * Prefix Windows reserved names with "_" so the result is creatable on
+     * every supported filesystem.
+     */
+    private fun disambiguateReservedName(filename: String): String {
+        val baseName = filename.substringBefore('.')
+        return if (baseName.uppercase() in WINDOWS_RESERVED_NAMES) {
+            "_$filename"
+        } else {
+            filename
+        }
     }
 
     private fun truncateFilename(filename: String): String {
@@ -66,14 +104,24 @@ object SafePath {
         }
 
     /**
-     * Returns true if the given character is a valid filename character, false otherwise.
+     * Returns true if the given code point is a valid filename character, false otherwise.
      */
-    private fun isValidFatFilenameChar(c: Char): Boolean {
-        if (0x00.toChar() <= c && c <= 0x1f.toChar()) {
+    private fun isValidFatFilenameCodePoint(codePoint: Int): Boolean {
+        if (codePoint in 0x00..0x1f) {
             return false
         }
-        return when (c) {
-            '"', '*', '/', ':', '<', '>', '?', '\\', '|', 0x7f.toChar() -> false
+        // isolated UTF-16 surrogates are not real characters — they would otherwise be
+        // written as invalid UTF-8
+        if (codePoint in 0xD800..0xDFFF) {
+            return false
+        }
+        // line/paragraph separators and bidi control characters (e.g. U+202E RLO) can
+        // visually reverse filenames; isolate formatting (U+2066–U+2069) included
+        if (codePoint in 0x2028..0x202E || codePoint in 0x2066..0x2069) {
+            return false
+        }
+        return when (codePoint) {
+            '"'.code, '*'.code, '/'.code, ':'.code, '<'.code, '>'.code, '?'.code, '\\'.code, '|'.code, 0x7f -> false
             else -> true
         }
     }

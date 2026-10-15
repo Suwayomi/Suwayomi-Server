@@ -76,7 +76,12 @@ import xyz.nulldev.ts.config.setLogLevelFor
 import xyz.nulldev.ts.config.updateFileAppender
 import java.io.File
 import java.net.Authenticator
+import java.net.CookieHandler
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.net.PasswordAuthentication
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermissions
 import java.security.Security
 import java.util.Locale
 import kotlin.random.Random
@@ -85,7 +90,16 @@ private val logger = KotlinLogging.logger {}
 
 class ApplicationDirs(
     val dataRoot: String = ApplicationRootDir,
-    val tempRoot: String = "${System.getProperty("java.io.tmpdir")}/Tachidesk",
+    // per-user temp subdir: two OS users sharing a fixed "Tachidesk" temp dir would
+    // fight over the same files (and the first one could be left with wrong ownership).
+    // The name is predictable on purpose — a stable temp dir lets webUI-serve /
+    // thumbnails / manga-cache be reused across restarts; createTempDirectory would
+    // break that reuse.
+    // Note: this used to be the shared "Tachidesk" dir — the rename leaves that directory
+    // behind unused (safe to delete manually) and the temp caches are rebuilt once.
+    val tempRoot: String =
+        "${System.getProperty("java.io.tmpdir")}/Tachidesk-" +
+            (System.getProperty("user.name") ?: "user").replace(Regex("[^A-Za-z0-9._-]"), "_"),
 ) {
     val extensionsRoot = "$dataRoot/extensions"
     val downloadsRoot
@@ -110,6 +124,12 @@ class ApplicationDirs(
 
 @Suppress("DEPRECATION")
 class LooperThread : Thread() {
+    init {
+        // daemon so a failed/aborted startup never leaves a zombie process behind —
+        // `Looper.loop()` cannot be interrupted and would pin the JVM forever
+        isDaemon = true
+    }
+
     override fun run() {
         logger.info { "Starting Android Main Loop" }
         Looper.prepareMainLooper()
@@ -142,6 +162,19 @@ data class AuthSettings(
 )
 
 val androidCompat by lazy { AndroidCompat() }
+
+/** `File.renameTo` fails silently on some filesystems — log and fall back to Files.move. */
+private fun migrateLegacyDirectory(
+    from: File,
+    to: String,
+) {
+    if (!from.exists()) return
+    if (!from.renameTo(File(to))) {
+        logger.warn { "renameTo failed for ${from.name}, falling back to Files.move" }
+        runCatching { Files.move(from.toPath(), File(to).toPath()) }
+            .onFailure { logger.error(it) { "Failed to migrate legacy directory ${from.absolutePath}" } }
+    }
+}
 
 fun setupLogLevelUpdating(
     configFlow: MutableStateFlow<Boolean>,
@@ -226,9 +259,14 @@ fun applicationSetup() {
 
     logger.debug { "Data Root directory is set to: ${applicationDirs.dataRoot}" }
 
+    // Make sure only one instance of the app is running — BEFORE any side-effecting
+    // startup step (dir migration/mkdirs, Koin, DB migrations), otherwise a second
+    // instance would already have touched the shared data dir by the time it exits
+    handleAppMutex()
+
     // Migrate Directories from old versions
-    File("$ApplicationRootDir/manga-thumbnails").renameTo(applicationDirs.tempThumbnailCacheRoot)
-    File("$ApplicationRootDir/manga-local").renameTo(applicationDirs.localMangaRoot)
+    migrateLegacyDirectory(File("$ApplicationRootDir/manga-thumbnails"), applicationDirs.tempThumbnailCacheRoot)
+    migrateLegacyDirectory(File("$ApplicationRootDir/manga-local"), applicationDirs.localMangaRoot)
     File("$ApplicationRootDir/anime-thumbnails").delete()
 
     // make dirs we need
@@ -279,9 +317,6 @@ fun applicationSetup() {
         )
     }
 
-    // Make sure only one instance of the app is running
-    handleAppMutex()
-
     // Load Android compatibility dependencies
     AndroidCompatInitializer().init()
     // start app
@@ -297,12 +332,30 @@ fun applicationSetup() {
         .onEach { System.setProperty("http.agent", it) }
         .launchIn(GlobalScope)
 
+    // Route java.net.CookieHandler callers (WebView/CEF bridge, java.net URLs opened
+    // by extensions) through the persistent store. This used to be a hidden side
+    // effect of constructing NetworkHelper; installing it here keeps the JVM-global
+    // mutation explicit at startup.
+    CookieHandler.setDefault(
+        CookieManager(Injekt.get<NetworkHelper>().cookieStore, CookiePolicy.ACCEPT_ALL),
+    )
+
     // create or update conf file if doesn't exist
     try {
         val dataConfFile = File("${applicationDirs.dataRoot}/server.conf")
         if (!dataConfFile.exists()) {
             JavalinSetup::class.java.getResourceAsStream("/server-reference.conf").use { input ->
                 dataConfFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            // server.conf can hold credentials; a fresh file must not be world-readable.
+            // The atomic writer in ConfigManager preserves this on later rewrites.
+            runCatching {
+                Files.setPosixFilePermissions(
+                    dataConfFile.toPath(),
+                    PosixFilePermissions.fromString("rw-------"),
+                )
+            }.onFailure {
+                logger.warn(it) { "Could not restrict permissions of ${dataConfFile.name} to the owner" }
             }
         } else {
             // make sure the user config file is up-to-date
@@ -435,9 +488,10 @@ fun applicationSetup() {
             logger.info {
                 "Socks Proxy changed - enabled=$proxyEnabled address=$proxyHost:$proxyPort , username=[REDACTED], password=[REDACTED]"
             }
-            if (proxyEnabled) {
+            val proxyPortNumber = proxyPort.trim().toIntOrNull()
+            if (proxyEnabled && proxyHost.isNotBlank() && proxyPortNumber != null && proxyPortNumber in 1..65535) {
                 System.setProperty("socksProxyHost", proxyHost)
-                System.setProperty("socksProxyPort", proxyPort)
+                System.setProperty("socksProxyPort", proxyPortNumber.toString())
                 System.setProperty("socksProxyVersion", proxyVersion.toString())
 
                 Authenticator.setDefault(
@@ -455,6 +509,9 @@ fun applicationSetup() {
                     },
                 )
             } else {
+                if (proxyEnabled) {
+                    logger.warn { "Ignoring invalid socks proxy settings (host='$proxyHost', port='$proxyPort')" }
+                }
                 System.clearProperty("socksProxyHost")
                 System.clearProperty("socksProxyPort")
                 System.clearProperty("socksProxyVersion")
@@ -469,8 +526,7 @@ fun applicationSetup() {
     Security.addProvider(BouncyCastleProvider())
 
     // start automated global updates
-    val updater = Injekt.get<IUpdater>()
-    (updater as Updater).scheduleUpdateTask()
+    Injekt.get<IUpdater>().scheduleUpdateTask()
 
     // start automated backups
     ProtoBackupExport.scheduleAutomatedBackupTask()
@@ -508,24 +564,43 @@ fun applicationSetup() {
                 transaction {
                     val usernameSetting = settings.authUsername.trim().ifEmpty { "admin" }
 
+                    fun isUsernameTaken(candidate: String) =
+                        UserAccountTable
+                            .select(UserAccountTable.id)
+                            .where {
+                                (UserAccountTable.username.lowerCase() eq candidate.lowercase()) and
+                                    (UserAccountTable.id neq 1)
+                            }.empty()
+                            .not()
+
                     val username =
-                        if (
-                            UserAccountTable
-                                .select(UserAccountTable.id)
-                                .where {
-                                    (UserAccountTable.username.lowerCase() eq usernameSetting.lowercase()) and
-                                        (UserAccountTable.id neq 1)
-                                }.empty()
-                        ) {
+                        if (!isUsernameTaken(usernameSetting)) {
                             usernameSetting
                         } else {
-                            val username = usernameSetting + Random.nextInt(9999)
-                            logger.warn { "Username taken, username now `$username`" }
-                            username
+                            // re-check after each suffix: `name + random` could collide again
+                            var attempts = 0
+                            var candidate: String? = null
+                            do {
+                                val next = usernameSetting + Random.nextInt(9999)
+                                attempts++
+                                if (!isUsernameTaken(next)) {
+                                    candidate = next
+                                }
+                            } while (attempts < 10 && candidate == null)
+                            if (candidate == null) {
+                                // keep the current name rather than writing a colliding one
+                                logger.warn {
+                                    "Username `$usernameSetting` is taken and no free suffix was found " +
+                                        "after $attempts attempts; keeping the existing admin username"
+                                }
+                            } else {
+                                logger.warn { "Username taken, username now `$candidate`" }
+                            }
+                            candidate
                         }
 
                     UserAccountTable.update({ UserAccountTable.id eq 1 }) {
-                        it[UserAccountTable.username] = username
+                        username?.let { name -> it[UserAccountTable.username] = name }
                         it[UserAccountTable.password] =
                             Bcrypt.encryptPassword(
                                 settings.authPassword.trim().ifEmpty { "password" },

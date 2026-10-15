@@ -13,7 +13,10 @@ import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
+import java.nio.file.Files
 import java.util.prefs.Preferences
+
+private val logger = KotlinLogging.logger {}
 
 private fun migratePreferences(
     parent: String?,
@@ -75,7 +78,14 @@ private fun migrateMangaDownloadDir(applicationDirs: ApplicationDirs) {
                 continue
             }
 
-            downloadDir.renameTo(File(newMangaDownloadDir, downloadDir.name))
+            val target = File(newMangaDownloadDir, downloadDir.name)
+            // renameTo silently fails (cross-filesystem, locked target, ...) — fall back
+            // to Files.move so the migration doesn't leave the layout half-migrated
+            if (!downloadDir.renameTo(target)) {
+                logger.warn { "renameTo failed for ${downloadDir.name}, falling back to Files.move" }
+                runCatching { Files.move(downloadDir.toPath(), target.toPath()) }
+                    .onFailure { logger.error(it) { "Failed to migrate download dir ${downloadDir.absolutePath}" } }
+            }
         }
     }
 }
@@ -108,6 +118,9 @@ private fun migrateSharedPrefsToUser1() {
     val trackerPrefs = app.getSharedPreferences("tracker", Context.MODE_PRIVATE)
     migrateBooleanPref(trackerPrefs, "pref_auto_update_manga_sync_key", "pref_auto_update_manga_sync_1", true)
 
+    // These are the historical tracker ids (TrackerManager.MYANIMELIST/ANILIST/KITSU/
+    // SHIKIMORI/BANGUMI/MANGA_UPDATES). When a new tracker is added to TrackerManager
+    // this list must be kept in sync or its legacy prefs won't be migrated.
     for (trackerId in listOf(1, 2, 3, 4, 5, 7)) {
         migrateStringPref(trackerPrefs, "pref_mangasync_username_$trackerId", "pref_mangasync_username_1_$trackerId", "")
         migrateStringPref(trackerPrefs, "pref_mangasync_password_$trackerId", "pref_mangasync_password_1_$trackerId", "")
@@ -241,6 +254,10 @@ suspend fun runMigrations(
 
     dbStartup()
 
+    // Fragile: PRE and POST share a single "version" counter — POST versions are
+    // numbered after PRE ones (startIndex = PRE size). Appending to the PRE list
+    // shifts all POST version numbers, so always append to the END of a list and
+    // never insert/reorder existing entries.
     runMigrations(MigrationType.POST_DB_STARTUP, PRE_DB_STARTUP_MIGRATIONS.size, applicationDirs)
 
     logger.info { "Migrations finished successfully" }

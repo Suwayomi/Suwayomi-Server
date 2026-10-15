@@ -32,16 +32,18 @@ function Remove-Files-Zip($zipfile, $paths)
     $mode   = [IO.Compression.ZipArchiveMode]::Update
     $zip    = New-Object IO.Compression.ZipArchive($stream, $mode)
 
+    # @(...) materializes the match list before deleting; iterating
+    # $zip.Entries while Delete() mutates it would abort after the first match.
     if ($paths.getType().Name -eq "Object[]")
     {
         $paths | ForEach-Object {
             $path = $_
-            ($zip.Entries | Where-Object { $_.FullName -like $path }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+            @($zip.Entries | Where-Object { $_.FullName -like $path }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
         }
     }
     else
     {
-        ($zip.Entries | Where-Object { $_.FullName -like $paths }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+        @($zip.Entries | Where-Object { $_.FullName -like $paths }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
     }
 
 

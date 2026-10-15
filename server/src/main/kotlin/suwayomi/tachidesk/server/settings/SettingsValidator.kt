@@ -9,11 +9,15 @@ object SettingsValidator {
     ): String? {
         val metadata = SettingsRegistry.get(name) ?: return null
 
+        if (value == null) {
+            return "value required"
+        }
+
         val maybeConvertedValue =
-            if (value != null) {
+            try {
                 metadata.typeInfo.convertToInternalType?.invoke(value) ?: value
-            } else {
-                value
+            } catch (e: Exception) {
+                return "cannot convert value (${e.message})"
             }
 
         return metadata.validator?.invoke(maybeConvertedValue)

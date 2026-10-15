@@ -10,14 +10,14 @@ package suwayomi.tachidesk.graphql.directives
 import com.expediagroup.graphql.generator.annotations.GraphQLDirective
 import graphql.introspection.Introspection.DirectiveLocation
 
+// FIELD_DEFINITION only: the wiring is onField(), an OBJECT location would be ignored
 @GraphQLDirective(
     name = "requireAuth",
     description = "Requires user authentication",
     locations = [
         DirectiveLocation.FIELD_DEFINITION,
-        DirectiveLocation.OBJECT,
     ],
 )
-@Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
+@Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class RequireAuth

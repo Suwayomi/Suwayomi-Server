@@ -177,7 +177,9 @@ public abstract class AbstractWindowedCursor extends AbstractCursor {
         if (mWindow == null) {
             mWindow = new CursorWindow(rs);
         } else {
-            mWindow.clear();
+            // Reattach the (possibly re-executed) result set so the window
+            // never serves stale data after a requery.
+            mWindow.setResultSet(rs);
         }
     }
     /** @hide */

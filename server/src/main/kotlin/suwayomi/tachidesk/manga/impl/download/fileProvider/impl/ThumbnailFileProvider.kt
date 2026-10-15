@@ -1,16 +1,21 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.download.fileProvider.DownloadedFilesProvider
 import suwayomi.tachidesk.manga.impl.download.fileProvider.FileDownload0Args
 import suwayomi.tachidesk.manga.impl.download.fileProvider.RetrieveFile0Args
+import suwayomi.tachidesk.manga.impl.download.fileProvider.TMP_FILE_SUFFIX
 import suwayomi.tachidesk.manga.impl.util.getThumbnailDownloadPath
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
+import java.util.concurrent.ConcurrentHashMap
 
 class MissingThumbnailException : Exception("No thumbnail found")
 
@@ -22,7 +27,11 @@ class ThumbnailFileProvider(
     private fun getFilePath(): String? {
         val thumbnailDir = applicationDirs.thumbnailDownloadsRoot
         val fileName = mangaId.toString()
-        return ImageResponse.findFileNameStartingWith(thumbnailDir, fileName)
+        // a leftover ".tmp" file belongs to an interrupted download and doesn't
+        // count as a saved thumbnail
+        return ImageResponse
+            .findFileNameStartingWith(thumbnailDir, fileName)
+            ?.takeUnless { it.endsWith(TMP_FILE_SUFFIX) }
     }
 
     fun getImageImpl(): Pair<InputStream, String> {
@@ -38,21 +47,25 @@ class ThumbnailFileProvider(
 
     override suspend fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
 
-    private suspend fun downloadImpl(): Boolean {
-        val isExistingFile = getFilePath() != null
-        if (isExistingFile) {
-            return true
-        }
+    private suspend fun downloadImpl(): Boolean =
+        // concurrent thumbnail downloads for the same manga share the same
+        // "<mangaId>.tmp" file inside ImageResponse.saveImage; serialize them so
+        // they can't interleave into a corrupt file
+        downloadMutexes.getOrPut(mangaId) { Mutex() }.withLock {
+            val isExistingFile = getFilePath() != null
+            if (isExistingFile) {
+                return@withLock true
+            }
 
-        val (inputStream, mime) = Manga.fetchMangaThumbnail(mangaId)
-        inputStream.use { image ->
-            makeSureDownloadDirExists()
-            val filePath = getThumbnailDownloadPath(mangaId)
-            ImageResponse.saveImage(filePath, image, mime)
-        }
+            val (inputStream, mime) = Manga.fetchMangaThumbnail(mangaId)
+            inputStream.use { image ->
+                makeSureDownloadDirExists()
+                val filePath = getThumbnailDownloadPath(mangaId)
+                ImageResponse.saveImage(filePath, image, mime)
+            }
 
-        return true
-    }
+            return@withLock true
+        }
 
     override fun download(): FileDownload0Args = FileDownload0Args(::downloadImpl)
 
@@ -69,8 +82,13 @@ class ThumbnailFileProvider(
         val downloadDirPath = applicationDirs.thumbnailDownloadsRoot
         val downloadDir = File(downloadDirPath)
 
-        if (!downloadDir.exists()) {
-            downloadDir.mkdir()
+        if (!downloadDir.exists() && !downloadDir.mkdirs() && !downloadDir.exists()) {
+            throw IOException("Could not create thumbnail download directory \"$downloadDirPath\"")
         }
+    }
+
+    companion object {
+        // bounded by the number of manga with thumbnails; entries stay resident
+        private val downloadMutexes = ConcurrentHashMap<Int, Mutex>()
     }
 }

@@ -65,9 +65,12 @@ object BackupCategoryHandler {
         val dbCategoriesByName = dbCategories.associateBy { it.name }
         val dbCategoriesByUid = dbCategories.associateBy { it.uid }
 
+        val defaultCategoryId = Category.getDefaultCategoryId(userId)
+
         var nextOrder = dbCategories.maxOfOrNull { it.order }?.plus(1) ?: 0
 
-        // the wire is 0-based (Mihon/SY convention); store 1-based ranks instead of raw orders
+        // the wire is 0-based (Mihon/SY convention); store 1-based ranks instead of raw
+        // orders — the default category never receives an ordinary rank
         val ranks = IntArray(backupCategories.size)
         backupCategories
             .withIndex()
@@ -79,6 +82,12 @@ object BackupCategoryHandler {
             transaction {
                 backupCategories
                     .mapIndexed { index, backupCategory ->
+                        // the default category is created/managed by the server itself:
+                        // restore points manga at it without ever renaming/reordering it
+                        if (backupCategory.name.equals(Category.DEFAULT_CATEGORY_NAME, true)) {
+                            return@mapIndexed defaultCategoryId
+                        }
+
                         var dbCategory =
                             if (backupCategory.uid != 0L) {
                                 dbCategoriesByUid[backupCategory.uid]
@@ -105,7 +114,8 @@ object BackupCategoryHandler {
                                 if (syncMode == SyncRestoreMode.ADOPT || backupCategory.flags != 0) {
                                     it[flags] = backupCategory.flags
                                 }
-                                it[isSyncing] = true
+                                // only sync restores mark rows as in-flight
+                                it[isSyncing] = syncMode.isSync
                             }
                             return@mapIndexed dbCategory.id
                         }
@@ -127,23 +137,31 @@ object BackupCategoryHandler {
 
         Category.normalizeCategories(userId)
 
-        transaction {
-            CategoryTable.update({ CategoryTable.user eq userId and (CategoryTable.isSyncing eq true) }) {
-                it[isSyncing] = false
+        if (syncMode.isSync) {
+            transaction {
+                CategoryTable.update({ CategoryTable.user eq userId and (CategoryTable.isSyncing eq true) }) {
+                    it[isSyncing] = false
+                }
             }
         }
 
         val metaEntryByCategoryId =
             categoryIds
                 .zip(backupCategories)
-                .associate { (categoryId, backupCategory) ->
-                    categoryId to backupCategory.meta
-                }
+                .mapNotNull { (categoryId, backupCategory) ->
+                    categoryId?.let { it to backupCategory.meta }
+                }.toMap()
 
         modifyCategoriesMetas(userId, metaEntryByCategoryId)
 
-        return backupCategories.withIndex().associate { (index, backupCategory) ->
-            backupCategory.order to categoryIds[index]
+        // map by the backup's declared order (the join key manga.categories carries).
+        // Duplicate orders resolve to the first occurrence's category — stable across
+        // restores rather than silently remapped by map iteration order.
+        val categoryMapping = LinkedHashMap<Int, Int>()
+        backupCategories.forEachIndexed { index, backupCategory ->
+            val categoryId = categoryIds[index] ?: return@forEachIndexed
+            categoryMapping.putIfAbsent(backupCategory.order, categoryId)
         }
+        return categoryMapping
     }
 }

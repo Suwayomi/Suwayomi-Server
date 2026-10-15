@@ -1,3 +1,6 @@
+// The ProductName env var renames the root project (and thereby the built
+// jar/distribution name); used by downstream forks producing differently
+// named artifacts. Defaults to the upstream name.
 rootProject.name = System.getenv("ProductName") ?: "Suwayomi-Server"
 
 include("server")

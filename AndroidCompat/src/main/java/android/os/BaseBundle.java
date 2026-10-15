@@ -19,7 +19,6 @@ import android.annotation.Nullable;
 import android.support.annotation.VisibleForTesting;
 import android.util.ArrayMap;
 import android.util.Log;
-import kotlin.NotImplementedError;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -31,6 +30,14 @@ import java.util.Set;
  */
 public class BaseBundle {
     private static final String TAG = "Bundle";
+    /**
+     * Error message used by every Parcel entry point in the compat bundle
+     * classes. Map-mode Bundle operation (put/get/size/keySet) is fully
+     * supported; Parcel serialization is not (there is no Parcel
+     * implementation in this environment).
+     */
+    static final String PARCEL_NOT_SUPPORTED =
+            "Parcel is not supported in Suwayomi AndroidCompat";
     static final boolean DEBUG = false;
     // Keep in sync with frameworks/native/libs/binder/PersistableBundle.cpp.
     static final int BUNDLE_MAGIC = 0x4C444E42; // 'B' 'N' 'D' 'L'
@@ -106,12 +113,10 @@ public class BaseBundle {
      * @param parcelledData a Parcel containing a Bundle
      */
     BaseBundle(Parcel parcelledData) {
-        throw new NotImplementedError();
-//        readFromParcelInner(parcelledData);
+        throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
     }
     BaseBundle(Parcel parcelledData, int length) {
-        throw new NotImplementedError();
-//        readFromParcelInner(parcelledData, length);
+        throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
     }
     /**
      * Constructs a new, empty Bundle that uses a specific ClassLoader for
@@ -195,8 +200,7 @@ public class BaseBundle {
         synchronized (this) {
             final Parcel source = mParcelledData;
             if (source != null) {
-                throw new NotImplementedError();
-//                initializeFromParcelLocked(source, /*recycleParcel=*/ true);
+                throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
             } else {
                 if (DEBUG) {
                     Log.d(TAG, "unparcel "
@@ -329,8 +333,8 @@ public class BaseBundle {
             // Big kind-of here!
             return false;
         } else if (isParcelled()) {
-            throw new NotImplementedError();
-//            return mParcelledData.compareData(other.mParcelledData) == 0;
+            // Cannot compare parcelled data without a Parcel implementation.
+            throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
         } else {
             return mMap.equals(other.mMap);
         }
@@ -1395,6 +1399,7 @@ public class BaseBundle {
      * @param parcel The parcel to copy this bundle to.
      */
     void writeToParcelInner(Parcel parcel, int flags) {
+        throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
         /*// If the parcel has a read-write helper, we can't just copy the blob, so unparcel it first.
         if (parcel.hasReadWriteHelper()) {
             unparcel();
@@ -1443,6 +1448,7 @@ public class BaseBundle {
     void readFromParcelInner(Parcel parcel) {
         // Keep implementation in sync with readFromParcel() in
         // frameworks/native/libs/binder/PersistableBundle.cpp.
+        throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
 //        int length = parcel.readInt();
 //        readFromParcelInner(parcel, length);
     }

@@ -17,23 +17,15 @@ package com.squareup.duktape;
 
 import android.support.annotation.Keep;
 
-import java.util.regex.Pattern;
-
 // Called from native code.
 @SuppressWarnings("unused")
 // Instruct ProGuard not to strip this type.
 @Keep
 public final class DuktapeException extends RuntimeException {
 
-    /**
-   * Duktape stack trace strings have multiple lines of the format "    at func (file.ext:line)".
-   * "func" is optional, but we'll omit frames without a function, since it means the frame is in
-   * native code.
-   */
-    private static final Pattern STACK_TRACE_PATTERN = null;
-
-    /** Java StackTraceElements require a class name.  We don't have one in JS, so use this. */
-    private static final String STACK_TRACE_CLASS_NAME = "JavaScript";
+    // The native implementation parsed duktape stack traces here with
+    // STACK_TRACE_PATTERN / STACK_TRACE_CLASS_NAME constants; this compat stub
+    // never runs JS, so those fields were dropped.
 
     public DuktapeException(String detailMessage) {
         super(detailMessage);

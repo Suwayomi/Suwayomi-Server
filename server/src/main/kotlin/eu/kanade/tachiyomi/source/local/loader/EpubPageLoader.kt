@@ -14,10 +14,11 @@ class EpubPageLoader(
     override suspend fun getPages(): List<ReaderPage> =
         epub
             .getImagesFromPages()
-            .mapIndexed { i, path ->
-                val streamFn = { epub.getInputStream(epub.getEntry(path)!!) }
+            // pages pointing at entries missing from the archive are skipped
+            .mapNotNull { path -> epub.getEntry(path) }
+            .mapIndexed { i, entry ->
                 ReaderPage(i).apply {
-                    stream = streamFn
+                    stream = { epub.getInputStream(entry) }
                 }
             }
 

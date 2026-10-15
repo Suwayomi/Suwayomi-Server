@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
@@ -15,6 +16,8 @@ import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.requirePermissions
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -59,7 +62,9 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.INSTALL_EXTENSIONS)
                 ctx.future {
                     future {
                         Extension.installExtension(pkgName)
@@ -69,6 +74,7 @@ object ExtensionController {
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
@@ -87,8 +93,13 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val uploadedFile = ctx.uploadedFile("file")!!
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.INSTALL_EXTERNAL_EXTENSIONS)
+                // missing upload part is a client error (400), not a null-deref 404
+                val uploadedFile =
+                    ctx.uploadedFile("file")
+                        ?: throw BadRequestResponse("Missing required file part 'file'")
                 logger.debug { "Uploaded extension file name: " + uploadedFile.filename() }
 
                 ctx.future {
@@ -103,6 +114,7 @@ object ExtensionController {
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
@@ -118,7 +130,9 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.INSTALL_EXTENSIONS)
                 ctx.future {
                     future {
                         Extension.updateExtension(pkgName)
@@ -128,6 +142,7 @@ object ExtensionController {
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.NOT_FOUND)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
@@ -144,13 +159,16 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.UNINSTALL_EXTENSIONS)
                 Extension.uninstallExtension(pkgName)
                 ctx.status(200)
             },
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.NOT_FOUND)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },

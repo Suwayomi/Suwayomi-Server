@@ -61,7 +61,9 @@ private class GraphqlCursorCoercing : Coercing<Cursor, String> {
         return Cursor(input.value!!)
     }
 
-    private fun valueToLiteralImpl(input: Any): StringValue = StringValue.newStringValue(input.toString()).build()
+    // a Cursor input must serialize to its inner value, not "Cursor(value=...)"
+    private fun valueToLiteralImpl(input: Any): StringValue =
+        StringValue.newStringValue((input as? Cursor)?.value ?: input.toString()).build()
 
     @Deprecated("")
     override fun serialize(dataFetcherResult: Any): String =

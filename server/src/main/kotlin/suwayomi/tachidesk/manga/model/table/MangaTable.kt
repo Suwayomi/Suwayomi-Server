@@ -44,6 +44,14 @@ object MangaTable : IntIdTable() {
     val updateStrategy = varchar("update_strategy", 256).default(UpdateStrategy.ALWAYS_UPDATE.name)
 
     val memo = jsonObject("memo")
+
+    init {
+        // Ordinary lookup index for the source-url resolution hot path (created by M0070).
+        // Deliberately NON-unique: duplicate (source, url) rows can exist from historical
+        // data, backup restores and concurrent updates, so a unique constraint would be a
+        // correctness hazard — deduplication remains an application-layer invariant.
+        index("manga_source_url", false, sourceReference, url)
+    }
 }
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
@@ -52,7 +60,9 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         sourceId = mangaEntry[sourceReference].toString(),
         url = mangaEntry[url],
         title = mangaEntry[title],
-        thumbnailUrl = proxyThumbnailUrl(mangaEntry[this.id].value),
+        // same contract as the GraphQL MangaType: only proxy when the DB row actually has
+        // a remote thumbnail — a null thumbnail_url must surface as a null API field
+        thumbnailUrl = mangaEntry[thumbnail_url]?.let { proxyThumbnailUrl(mangaEntry[this.id].value) },
         thumbnailUrlLastFetched = mangaEntry[thumbnailUrlLastFetched],
         initialized = mangaEntry[initialized],
         artist = mangaEntry[artist],
@@ -63,9 +73,17 @@ fun MangaTable.toDataClass(mangaEntry: ResultRow) =
         realUrl = mangaEntry[realUrl],
         lastFetchedAt = mangaEntry[lastFetchedAt],
         chaptersLastFetchedAt = mangaEntry[chaptersLastFetchedAt],
-        updateStrategy = UpdateStrategy.valueOf(mangaEntry[updateStrategy]),
+        updateStrategy = updateStrategyOrDefault(mangaEntry[updateStrategy]),
         memo = mangaEntry[memo],
     )
+
+/**
+ * Reads a persisted `update_strategy` value tolerantly: a malformed/unknown stored string
+ * (hand-edited DB, older schemas, restore artifacts) must not make the whole row
+ * unreadable — it falls back to [UpdateStrategy.ALWAYS_UPDATE], the historical default.
+ */
+fun updateStrategyOrDefault(value: String): UpdateStrategy =
+    UpdateStrategy.entries.find { it.name == value } ?: UpdateStrategy.ALWAYS_UPDATE
 
 enum class MangaStatus(
     val value: Int,
