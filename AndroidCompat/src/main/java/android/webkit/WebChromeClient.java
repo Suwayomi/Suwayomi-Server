@@ -173,7 +173,8 @@ public class WebChromeClient {
 
         @Nullable
         public static Uri[] parseResult(int resultCode, Intent data) {
-            throw new RuntimeException("Stub!");
+            // No file chooser UI exists in this environment.
+            return null;
         }
 
         @Mode

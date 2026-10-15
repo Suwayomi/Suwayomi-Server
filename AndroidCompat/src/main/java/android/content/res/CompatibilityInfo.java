@@ -36,7 +36,7 @@ import android.view.WindowManager.LayoutParams;
 public class CompatibilityInfo implements Parcelable {
 
     /** default compatibility info object for compatible applications */
-    public static final CompatibilityInfo DEFAULT_COMPATIBILITY_INFO = null;
+    public static final CompatibilityInfo DEFAULT_COMPATIBILITY_INFO = new CompatibilityInfo();
 
     /**
      * This is the number of pixels we would like to have along the
@@ -92,34 +92,40 @@ public class CompatibilityInfo implements Parcelable {
     public final float applicationInvertedScale;
 
     public CompatibilityInfo(ApplicationInfo appInfo, int screenLayout, int sw, boolean forceCompat) {
-        throw new RuntimeException("Stub!");
+        throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
     }
 
     private CompatibilityInfo(int compFlags, int dens, float scale, float invertedScale) {
-        throw new RuntimeException("Stub!");
+        mCompatibilityFlags = compFlags;
+        applicationDensity = dens;
+        applicationScale = scale;
+        applicationInvertedScale = invertedScale;
     }
 
     private CompatibilityInfo() {
-        throw new RuntimeException("Stub!");
+        this(NEVER_NEEDS_COMPAT, android.util.DisplayMetrics.DENSITY_DEFAULT, 1.0f, 1.0f);
     }
 
     /**
      * @return true if the scaling is required
      */
     public boolean isScalingRequired() {
-        throw new RuntimeException("Stub!");
+        return (mCompatibilityFlags & SCALING_REQUIRED) != 0;
     }
 
     public boolean supportsScreen() {
-        throw new RuntimeException("Stub!");
+        return (mCompatibilityFlags & NEEDS_SCREEN_COMPAT) == 0;
     }
 
     public boolean neverSupportsScreen() {
-        throw new RuntimeException("Stub!");
+        return (mCompatibilityFlags & (ALWAYS_NEEDS_COMPAT | NEVER_NEEDS_COMPAT))
+                == NEVER_NEEDS_COMPAT;
     }
 
     public boolean alwaysSupportsScreen() {
-        throw new RuntimeException("Stub!");
+        return (mCompatibilityFlags & (ALWAYS_NEEDS_COMPAT | NEVER_NEEDS_COMPAT))
+                == ALWAYS_NEEDS_COMPAT;
     }
 
     /**
@@ -127,7 +133,8 @@ public class CompatibilityInfo implements Parcelable {
      * @param params the window's parameter
      */
     public Translator getTranslator() {
-        throw new RuntimeException("Stub!");
+        return isScalingRequired() ? new Translator(applicationScale, applicationInvertedScale)
+                : null;
     }
 
     /**
@@ -147,39 +154,44 @@ public class CompatibilityInfo implements Parcelable {
         private Region mTouchableAreaBuffer = null;
 
         Translator(float applicationScale, float applicationInvertedScale) {
-            throw new RuntimeException("Stub!");
+            this.applicationScale = applicationScale;
+            this.applicationInvertedScale = applicationInvertedScale;
         }
 
         Translator() {
-            throw new RuntimeException("Stub!");
+            this(1.0f, 1.0f);
         }
 
         /**
          * Translate the screen rect to the application frame.
          */
         public void translateRectInScreenToAppWinFrame(Rect rect) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
          * Translate the region in window to screen. 
          */
         public void translateRegionInWindowToScreen(Region transparentRegion) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
          * Apply translation to the canvas that is necessary to draw the content.
          */
         public void translateCanvas(Canvas canvas) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
          * Translate the motion event captured on screen to the application's window.
          */
         public void translateEventInScreenToAppWindow(MotionEvent event) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
@@ -187,28 +199,32 @@ public class CompatibilityInfo implements Parcelable {
          * Screen's view.
          */
         public void translateWindowLayout(WindowManager.LayoutParams params) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
          * Translate a Rect in application's window to screen.
          */
         public void translateRectInAppWindowToScreen(Rect rect) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
          * Translate a Rect in screen coordinates into the app window's coordinates.
          */
         public void translateRectInScreenToAppWindow(Rect rect) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
          * Translate a Point in screen coordinates into the app window's coordinates.
          */
         public void translatePointInScreenToAppWindow(PointF point) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
@@ -216,7 +232,8 @@ public class CompatibilityInfo implements Parcelable {
          * @param params
          */
         public void translateLayoutParamsInAppWindowToScreen(LayoutParams params) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
@@ -224,7 +241,8 @@ public class CompatibilityInfo implements Parcelable {
          * the internal buffer for content insets to avoid extra object allocation.
          */
         public Rect getTranslatedContentInsets(Rect contentInsets) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
@@ -232,7 +250,8 @@ public class CompatibilityInfo implements Parcelable {
          * the internal buffer for visible insets to avoid extra object allocation.
          */
         public Rect getTranslatedVisibleInsets(Rect visibleInsets) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
 
         /**
@@ -240,16 +259,19 @@ public class CompatibilityInfo implements Parcelable {
          * the internal buffer for touchable area to avoid extra object allocation.
          */
         public Region getTranslatedTouchableArea(Region touchableArea) {
-            throw new RuntimeException("Stub!");
+            throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
         }
     }
 
     public void applyToDisplayMetrics(DisplayMetrics inoutDm) {
-        throw new RuntimeException("Stub!");
+        throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
     }
 
     public void applyToConfiguration(int displayDensity, Configuration inoutConfig) {
-        throw new RuntimeException("Stub!");
+        throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
     }
 
     /**
@@ -260,37 +282,53 @@ public class CompatibilityInfo implements Parcelable {
      * @return Returns the scaling factor for the window.
      */
     public static float computeCompatibleScaling(DisplayMetrics dm, DisplayMetrics outDm) {
-        throw new RuntimeException("Stub!");
+        throw new UnsupportedOperationException(
+                    "Screen-compat coordinate translation is not supported in Suwayomi AndroidCompat");
     }
 
     @Override
     public boolean equals(Object o) {
-        throw new RuntimeException("Stub!");
+        if (!(o instanceof CompatibilityInfo)) {
+            return false;
+        }
+        CompatibilityInfo oc = (CompatibilityInfo) o;
+        return mCompatibilityFlags == oc.mCompatibilityFlags
+                && applicationDensity == oc.applicationDensity
+                && applicationScale == oc.applicationScale
+                && applicationInvertedScale == oc.applicationInvertedScale;
     }
 
     @Override
     public String toString() {
-        throw new RuntimeException("Stub!");
+        return "CompatibilityInfo{flags=" + mCompatibilityFlags
+                + ", density=" + applicationDensity
+                + ", scale=" + applicationScale + "}";
     }
 
     @Override
     public int hashCode() {
-        throw new RuntimeException("Stub!");
+        int result = mCompatibilityFlags;
+        result = 31 * result + applicationDensity;
+        result = 31 * result + Float.floatToIntBits(applicationScale);
+        result = 31 * result + Float.floatToIntBits(applicationInvertedScale);
+        return result;
     }
 
     @Override
     public int describeContents() {
-        throw new RuntimeException("Stub!");
+        return 0;
     }
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        throw new RuntimeException("Stub!");
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
 
     public static final Parcelable.Creator<CompatibilityInfo> CREATOR = null;
 
     private CompatibilityInfo(Parcel source) {
-        throw new RuntimeException("Stub!");
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
 }

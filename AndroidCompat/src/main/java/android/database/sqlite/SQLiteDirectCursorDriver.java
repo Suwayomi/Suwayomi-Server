@@ -19,6 +19,7 @@ package android.database.sqlite;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.os.CancellationSignal;
+import android.os.OperationCanceledException;
 
 /**
  * A cursor driver that uses the given query directly.
@@ -37,10 +38,16 @@ public final class SQLiteDirectCursorDriver implements SQLiteCursorDriver {
         mDatabase = db;
         mEditTable = editTable;
         mSql = sql;
+        // The signal is only consulted before/after query construction; JDBC cannot
+        // interrupt a statement mid-execution from another thread here, so a cancel
+        // during execution still waits for the query to finish.
         mCancellationSignal = cancellationSignal;
     }
 
     public Cursor query(CursorFactory factory, String[] selectionArgs) {
+        if (mCancellationSignal != null && mCancellationSignal.isCanceled()) {
+            throw new OperationCanceledException();
+        }
         final SQLiteQuery query = new SQLiteQuery(mDatabase, mSql, mCancellationSignal);
         final Cursor cursor;
         try {
@@ -57,6 +64,10 @@ public final class SQLiteDirectCursorDriver implements SQLiteCursorDriver {
         }
 
         mQuery = query;
+        if (mCancellationSignal != null && mCancellationSignal.isCanceled()) {
+            cursor.close();
+            throw new OperationCanceledException();
+        }
         return cursor;
     }
 
@@ -65,7 +76,15 @@ public final class SQLiteDirectCursorDriver implements SQLiteCursorDriver {
     }
 
     public void setBindArguments(String[] bindArgs) {
+        if (mQuery == null) {
+            throw new IllegalStateException(
+                    "Cannot set bind arguments before the query has been executed");
+        }
         mQuery.bindAllArgsAsStrings(bindArgs);
+        // Re-execute so subsequent cursor reads reflect the new arguments
+        // (previously the new bindings were silently ignored).
+        mQuery.B_setBindArgs();
+        mQuery.B_execute();
     }
 
     public void cursorDeactivated() {

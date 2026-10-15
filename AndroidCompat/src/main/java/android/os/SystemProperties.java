@@ -15,7 +15,6 @@
  */
 package android.os;
 
-import kotlin.NotImplementedError;
 import xyz.nulldev.androidcompat.config.SystemConfigModule;
 import xyz.nulldev.ts.config.ConfigManager;
 import xyz.nulldev.ts.config.GlobalConfigManager;
@@ -60,7 +59,10 @@ public class SystemProperties {
             return configModule.getBooleanProperty(key);
     }
     private static void native_set(String key, String def) {
-        throw new NotImplementedError("TODO");
+        // The config backing store is read-only; there is no writable system
+        // property store in this environment.
+        throw new UnsupportedOperationException(
+                "System properties are read-only in Suwayomi AndroidCompat");
     }
 
     /**

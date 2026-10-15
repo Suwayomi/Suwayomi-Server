@@ -3,7 +3,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
-import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -12,15 +11,17 @@ import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.minus
+import org.jetbrains.exposed.v1.core.notInList
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
-import suwayomi.tachidesk.global.impl.sync.SyncYomiSyncService
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.queries.filter.prefixLikePattern
 import suwayomi.tachidesk.graphql.types.CategoryMetaType
 import suwayomi.tachidesk.graphql.types.CategoryType
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -98,7 +99,12 @@ class CategoryMutation {
 
                 val category =
                     transaction {
-                        CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq categoryId }.first())
+                        CategoryType(
+                            CategoryTable
+                                .selectAll()
+                                .where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
+                                .firstOrNull() ?: throw IllegalArgumentException("Category not found: $categoryId"),
+                        )
                     }
 
                 if (meta != null) {
@@ -211,18 +217,23 @@ class CategoryMutation {
                     val keyCondition: Op<Boolean>? =
                         item.keys?.takeIf { it.isNotEmpty() }?.let { CategoryMetaTable.key inList it }
 
+                    // empty prefixes can't form a meaningful LIKE pattern, and each prefix is
+                    // escaped so a caller's '%', '_' or '\' can't act as a wildcard
                     val prefixCondition: Op<Boolean>? =
                         item.prefixes
                             ?.filter { it.isNotEmpty() }
-                            ?.map { (CategoryMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.map { (CategoryMetaTable.key like prefixLikePattern(it)) as Op<Boolean> }
                             ?.reduceOrNull { acc, op -> acc or op }
 
                     val metaKeyCondition =
                         if (keyCondition != null && prefixCondition != null) {
                             keyCondition or prefixCondition
                         } else {
-                            keyCondition ?: prefixCondition!!
+                            keyCondition ?: prefixCondition
                         }
+                    requireNotNull(metaKeyCondition) {
+                        "At least one non-empty key or prefix is required for each item"
+                    }
 
                     val condition =
                         (CategoryMetaTable.user eq userId) and (CategoryMetaTable.ref inList item.categoryIds) and metaKeyCondition
@@ -290,6 +301,20 @@ class CategoryMutation {
         transaction {
             // The default category row is protected from rename and landing-flag changes;
             if (patch.name != null) {
+                // same naming rules as createCategory: reserved name rejected,
+                // uniqueness checked inside the transaction that performs the update
+                require(!patch.name.equals(Category.DEFAULT_CATEGORY_NAME, ignoreCase = true)) {
+                    "'name' must not be ${Category.DEFAULT_CATEGORY_NAME}"
+                }
+                require(
+                    CategoryTable
+                        .selectAll()
+                        .where {
+                            CategoryTable.name eq patch.name and
+                                (CategoryTable.user eq userId) and
+                                (CategoryTable.id notInList ids)
+                        }.isEmpty(),
+                ) { "'name' must be unique" }
                 CategoryTable.update({
                     CategoryTable.id inList ids and (CategoryTable.user eq userId) and (CategoryTable.isDefaultCategory eq false)
                 }) { update ->
@@ -340,7 +365,7 @@ class CategoryMutation {
                     CategoryTable
                         .selectAll()
                         .where { CategoryTable.id eq id and (CategoryTable.user eq userId) }
-                        .first(),
+                        .firstOrNull() ?: throw IllegalArgumentException("Category not found: $id"),
                 )
             }
 
@@ -435,11 +460,6 @@ class CategoryMutation {
         input: CreateCategoryInput,
     ): CreateCategoryPayload? {
         val (clientMutationId, name, order, default, includeInUpdate, includeInDownload) = input
-        transaction {
-            require(CategoryTable.selectAll().where { CategoryTable.name eq input.name and (CategoryTable.user eq userId) }.isEmpty()) {
-                "'name' must be unique"
-            }
-        }
         require(!name.equals(Category.DEFAULT_CATEGORY_NAME, ignoreCase = true)) {
             "'name' must not be ${Category.DEFAULT_CATEGORY_NAME}"
         }
@@ -451,6 +471,14 @@ class CategoryMutation {
 
         val category =
             transaction {
+                // the uniqueness check must share the insert's transaction, otherwise a
+                // concurrent create can slip between check and insert (TOCTOU)
+                require(
+                    CategoryTable.selectAll().where { CategoryTable.name eq input.name and (CategoryTable.user eq userId) }.isEmpty(),
+                ) {
+                    "'name' must be unique"
+                }
+
                 if (order != null) {
                     CategoryTable.update({ CategoryTable.order greaterEq order and (CategoryTable.user eq userId) }) {
                         it[CategoryTable.order] = CategoryTable.order + 1
@@ -475,7 +503,12 @@ class CategoryMutation {
 
                 Category.normalizeCategories(userId)
 
-                CategoryType(CategoryTable.selectAll().where { CategoryTable.id eq id and (CategoryTable.user eq userId) }.first())
+                CategoryType(
+                    CategoryTable
+                        .selectAll()
+                        .where { CategoryTable.id eq id and (CategoryTable.user eq userId) }
+                        .firstOrNull() ?: throw IllegalArgumentException("Category not found: $id"),
+                )
             }
 
         return CreateCategoryPayload(clientMutationId, category)
@@ -509,9 +542,11 @@ class CategoryMutation {
             )
         }
 
-        val (category, mangas) =
+        // the rows must be read before the delete detaches them; the delete itself reuses
+        // Category.removeCategory (user-scoped delete + normalize + sync tombstone)
+        val (categoryRow, mangas) =
             transaction {
-                val category =
+                val categoryRow =
                     CategoryTable
                         .selectAll()
                         .where { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
@@ -531,19 +566,14 @@ class CategoryMutation {
                             .map { MangaType(it) }
                     }
 
-                CategoryTable.deleteWhere { CategoryTable.id eq categoryId and (CategoryTable.user eq userId) }
-
-                Category.normalizeCategories(userId)
-                category?.let { SyncYomiSyncService.rememberDeletedCategory(userId, it[CategoryTable.uid]) }
-
-                if (category != null) {
-                    CategoryType(category)
-                } else {
-                    null
-                } to mangas
+                categoryRow to mangas
             }
 
-        return DeleteCategoryPayload(clientMutationId, category, mangas)
+        if (categoryRow != null) {
+            Category.removeCategory(userId, categoryId)
+        }
+
+        return DeleteCategoryPayload(clientMutationId, categoryRow?.let { CategoryType(it) }, mangas)
     }
 
     data class UpdateMangaCategoriesPatch(
@@ -592,6 +622,15 @@ class CategoryMutation {
                 }
             }
             if (addToCategoryIds.isNotEmpty()) {
+                // only existing categories owned by this user may be added to
+                val validCategoryIds =
+                    CategoryTable
+                        .select(CategoryTable.id)
+                        .where { CategoryTable.id inList addToCategoryIds and (CategoryTable.user eq userId) }
+                        .mapTo(HashSet()) { it[CategoryTable.id].value }
+                require(addToCategoryIds.all { it in validCategoryIds }) {
+                    "'addToCategories' contains categories that do not exist: ${addToCategoryIds - validCategoryIds}"
+                }
                 CategoryManga.addMangasToCategories(userId, ids, addToCategoryIds)
             }
         }
@@ -614,7 +653,7 @@ class CategoryMutation {
                         .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id eq id }
-                        .first(),
+                        .firstOrNull() ?: throw IllegalArgumentException("Manga not found: $id"),
                 )
             }
 

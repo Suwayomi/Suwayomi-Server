@@ -1,6 +1,5 @@
 package android.os;
 
-import kotlin.NotImplementedError;
 
 /**
  * Power manager compat class
@@ -29,6 +28,11 @@ public final class PowerManager {
         return new WakeLock();
     }
 
+    /**
+     * This compatibility environment reports every wake lock level as
+     * supported: wake locks are in-memory bookkeeping only, there is no
+     * power HAL behind them.
+     */
     public boolean isWakeLockLevelSupported(int level) {
         return true;
     }
@@ -39,12 +43,16 @@ public final class PowerManager {
         return true;
     }
 
+    /**
+     * The compatibility environment models a device whose screen is always on.
+     */
     public boolean isInteractive() {
         return true;
     }
 
     public void reboot(String reason) {
-        throw new NotImplementedError("This device cannot be rebooted!");
+        throw new UnsupportedOperationException(
+                "Reboot is not supported in Suwayomi AndroidCompat");
     }
 
     public boolean isPowerSaveMode() {
@@ -64,15 +72,20 @@ public final class PowerManager {
     }
 
     public final class WakeLock {
-        int count = 0;
+        private int count = 0;
+        private boolean refCounted = true;
+        private boolean held = false;
 
         public void setReferenceCounted(boolean value) {
-            count = -1;
+            refCounted = value;
         }
 
         public void acquire() {
-            if(count != -1 && count != -2)
+            if (refCounted) {
                 count++;
+            } else {
+                held = true;
+            }
         }
 
         public void acquire(long timeout) {
@@ -80,8 +93,13 @@ public final class PowerManager {
         }
 
         public void release() {
-            if(count > 0 || count == -1)
-                count--;
+            if (refCounted) {
+                if (count > 0) {
+                    count--;
+                }
+            } else {
+                held = false;
+            }
         }
 
         public void release(int flags) {
@@ -89,7 +107,7 @@ public final class PowerManager {
         }
 
         public boolean isHeld() {
-            return count > 0 || count == -1;
+            return refCounted ? count > 0 : held;
         }
 
         public void setWorkSource(WorkSource ws) {

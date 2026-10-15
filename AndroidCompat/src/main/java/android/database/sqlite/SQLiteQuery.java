@@ -59,7 +59,15 @@ public final class SQLiteQuery extends SQLiteProgram {
         try {
             window.acquireReference();
             try {
-                throw new SQLiteException("Not implemented!");
+                if (mCancellationSignal != null && mCancellationSignal.isCanceled()) {
+                    throw new OperationCanceledException();
+                }
+                // The ScrollableResultSet materializes the whole result set, so
+                // the window always covers every row starting at position 0.
+                xyz.nulldev.androidcompat.db.ScrollableResultSet resultSet = getResultSet();
+                window.setResultSet(resultSet);
+                window.setStartPosition(0);
+                return resultSet.getResultSetLength();
             } catch (SQLiteException ex) {
                 Log.e(TAG, "exception: " + ex.getMessage() + "; query: " + getSql());
                 throw ex;

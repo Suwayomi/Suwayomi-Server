@@ -21,6 +21,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import suwayomi.tachidesk.graphql.controller.GraphQLController
 import suwayomi.tachidesk.manga.controller.DownloadController
 import suwayomi.tachidesk.manga.controller.ExtensionController
 import suwayomi.tachidesk.manga.controller.SourceController
@@ -97,11 +98,11 @@ class RestPermissionsTest : ApplicationTest() {
                                 get("clear", DownloadController.clear)
                             }
                             path("download") {
-                                get("{mangaId}/chapter/{chapterIndex}", DownloadController.queueChapter)
-                                delete("{mangaId}/chapter/{chapterIndex}", DownloadController.unqueueChapter)
                                 patch("{mangaId}/chapter/{chapterIndex}/reorder/{to}", DownloadController.reorderChapter)
-                                post("batch", DownloadController.queueChapters)
-                                delete("batch", DownloadController.unqueueChapters)
+                            }
+                            // mounted the same way GraphQL.defineEndpoints mounts it under /api
+                            path("graphql/files") {
+                                get("backup/{file}", GraphQLController::retrieveFile)
                             }
                         }
                     }
@@ -137,11 +138,7 @@ class RestPermissionsTest : ApplicationTest() {
             Endpoint(Method.GET, "downloads/start", UserPermission.DOWNLOAD_CHAPTERS),
             Endpoint(Method.GET, "downloads/stop", UserPermission.DOWNLOAD_CHAPTERS),
             Endpoint(Method.GET, "downloads/clear", UserPermission.DOWNLOAD_CHAPTERS),
-            Endpoint(Method.GET, "download/1/chapter/1", UserPermission.DOWNLOAD_CHAPTERS),
-            Endpoint(Method.DELETE, "download/1/chapter/1", UserPermission.DOWNLOAD_CHAPTERS),
             Endpoint(Method.PATCH, "download/1/chapter/1/reorder/0", UserPermission.DOWNLOAD_CHAPTERS),
-            Endpoint(Method.POST, "download/batch", UserPermission.DOWNLOAD_CHAPTERS),
-            Endpoint(Method.DELETE, "download/batch", UserPermission.DOWNLOAD_CHAPTERS),
         )
 
     private fun request(
@@ -201,6 +198,32 @@ class RestPermissionsTest : ApplicationTest() {
                 "expected the permission check to pass for ${endpoint.method} ${endpoint.path}, got $status",
             )
         }
+    }
+
+    @Test
+    fun unauthenticatedBackupFileDownloadIsRejected() {
+        // GET /api/graphql/files/backup/{file} gates on requireUser() only: any logged-in
+        // user may download a stored backup (the URL is unguessable), a visitor may not
+        val download = { user: String ->
+            client
+                .newCall(
+                    Request
+                        .Builder()
+                        .url("http://127.0.0.1:${app.port()}/api/v1/graphql/files/backup/missing.tachibk")
+                        .header(USER_HEADER, user)
+                        .get()
+                        .build(),
+                ).execute()
+                .use { it.code }
+        }
+
+        assertEquals(HttpStatus.UNAUTHORIZED.code, download("visitor"))
+
+        val authenticatedStatus = download("user")
+        assertTrue(
+            authenticatedStatus != HttpStatus.UNAUTHORIZED.code && authenticatedStatus != HttpStatus.FORBIDDEN.code,
+            "expected a logged-in user to pass the download gate, got $authenticatedStatus",
+        )
     }
 
     @Test

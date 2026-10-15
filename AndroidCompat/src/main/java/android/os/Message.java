@@ -588,43 +588,12 @@ public final class Message implements Parcelable {
     }
 
     public void writeToParcel(Parcel dest, int flags) {
-        if (callback != null) {
-            throw new RuntimeException(
-                "Can't marshal callbacks across processes.");
-        }
-        dest.writeInt(what);
-        dest.writeInt(arg1);
-        dest.writeInt(arg2);
-        if (obj != null) {
-            try {
-                Parcelable p = (Parcelable)obj;
-                dest.writeInt(1);
-                dest.writeParcelable(p, flags);
-            } catch (ClassCastException e) {
-                throw new RuntimeException(
-                    "Can't marshal non-Parcelable objects across processes.");
-            }
-        } else {
-            dest.writeInt(0);
-        }
-        dest.writeLong(when);
-        dest.writeBundle(data);
-        Messenger.writeMessengerOrNullToParcel(replyTo, dest);
-        dest.writeInt(sendingUid);
-        dest.writeInt(workSourceUid);
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
 
     private void readFromParcel(Parcel source) {
-        what = source.readInt();
-        arg1 = source.readInt();
-        arg2 = source.readInt();
-        if (source.readInt() != 0) {
-            obj = source.readParcelable(getClass().getClassLoader());
-        }
-        when = source.readLong();
-        data = source.readBundle();
-        replyTo = Messenger.readMessengerOrNullFromParcel(source);
-        sendingUid = source.readInt();
-        workSourceUid = source.readInt();
+        throw new UnsupportedOperationException(
+                "Parcel is not supported in Suwayomi AndroidCompat");
     }
 }

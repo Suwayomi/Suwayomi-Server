@@ -621,11 +621,22 @@ object Chapter {
         val change: ChapterChange?,
     )
 
+    private const val MAX_CHAPTER_BATCH_SIZE = 1000
+
     suspend fun modifyChapters(
         userId: Int,
         input: MangaChapterBatchEditInput,
         mangaId: Int? = null,
     ) {
+        // unbounded id lists explode the generated `IN (...)` clause and the transaction
+        // runtime; reject oversized batches as client errors (400)
+        require((input.chapterIds?.size ?: 0) <= MAX_CHAPTER_BATCH_SIZE) {
+            "'chapterIds' supports at most $MAX_CHAPTER_BATCH_SIZE entries"
+        }
+        require((input.chapterIndexes?.size ?: 0) <= MAX_CHAPTER_BATCH_SIZE) {
+            "'chapterIndexes' supports at most $MAX_CHAPTER_BATCH_SIZE entries"
+        }
+
         // Make sure change is defined
         if (input.change == null) return
         val (isRead, isBookmarked, lastPageRead, delete) = input.change

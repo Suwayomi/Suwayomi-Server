@@ -4,8 +4,18 @@ import org.graalvm.polyglot.*;
 
 import java.io.Closeable;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
+/**
+ * JavaScript engine backed by the GraalVM polyglot implementation.
+ *
+ * <p>Threading: the Graal {@link Context} is entered once at construction and
+ * stays pinned to the creating thread for the lifetime of the engine. All use
+ * of an instance must therefore happen on the thread that created it (which is
+ * how {@code JavaScriptEngine} drives it); {@link #close()} leaves and closes
+ * the context and must likewise be called from that thread.
+ */
 public final class QuickJs implements Closeable {
     private Context context;
 
@@ -36,6 +46,13 @@ public final class QuickJs implements Closeable {
         }
     }
 
+    /**
+     * Best-effort mapping of a polyglot {@link Value} to Java types.
+     *
+     * <p>Types with no Java equivalent (functions, promises, nested arrays of
+     * mixed element type, plain JS objects) fall through and leak the raw
+     * {@link Value} to the caller; touching it off the owning thread fails.
+     */
     private Object translateType(Value obj) {
         if (obj.isBoolean()) {
             return obj.asBoolean();
@@ -76,12 +93,17 @@ public final class QuickJs implements Closeable {
         return obj;
     }
 
+    /**
+     * Fake-compile for API compatibility: there is no bytecode format, the
+     * "compiled" bytes are simply the UTF-8 source. {@link #execute(byte[])}
+     * evaluates them again.
+     */
     public byte[] compile(String sourceCode, String ignoredFileName) {
-        return sourceCode.getBytes();
+        return sourceCode.getBytes(StandardCharsets.UTF_8);
     }
 
     public Object execute(byte[] bytecode) {
-        return this.evaluate(new String(bytecode));
+        return this.evaluate(new String(bytecode, StandardCharsets.UTF_8));
     }
 
     public <T> void set(String name, Class<T> ignoredType, T object) {

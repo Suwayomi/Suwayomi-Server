@@ -19,12 +19,29 @@ package xyz.nulldev.androidcompat.util
 import android.net.Uri
 import java.io.File
 import java.net.URI
+import java.net.URISyntaxException
 
 /**
  * Utilites to convert between Java and Android Uris.
  */
-fun Uri.java() = URI(this.toString())
+fun Uri.java(): URI =
+    try {
+        URI(this.toString())
+    } catch (e: URISyntaxException) {
+        throw IllegalArgumentException("Android Uri is not a valid java.net.URI: '$this'", e)
+    }
 
-fun Uri.file() = File(this.path)
+fun Uri.file(): File {
+    val scheme = this.scheme
+    require(scheme == null || scheme == "file") {
+        "Cannot convert non-file Uri to a File: '$this' (scheme: $scheme)"
+    }
+    return File(
+        this.path
+            ?: throw IllegalArgumentException("Uri has no path: '$this'"),
+    )
+}
 
-fun URI.android() = Uri.parse(this.toString())!!
+fun URI.android(): Uri =
+    Uri.parse(this.toString())
+        ?: throw IllegalArgumentException("URI could not be parsed as an Android Uri: '$this'")

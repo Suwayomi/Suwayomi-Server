@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
@@ -95,7 +96,10 @@ object ExtensionController {
                 val user = ctx.getAttribute(Attribute.TachideskUser)
                 user.requireUser()
                 user.requirePermissions(UserPermission.INSTALL_EXTERNAL_EXTENSIONS)
-                val uploadedFile = ctx.uploadedFile("file")!!
+                // missing upload part is a client error (400), not a null-deref 404
+                val uploadedFile =
+                    ctx.uploadedFile("file")
+                        ?: throw BadRequestResponse("Missing required file part 'file'")
                 logger.debug { "Uploaded extension file name: " + uploadedFile.filename() }
 
                 ctx.future {

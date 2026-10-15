@@ -35,6 +35,21 @@ import java.util.concurrent.CompletableFuture
 import suwayomi.tachidesk.graphql.types.UserType as GqlUserType
 
 class UserMutation {
+    companion object {
+        const val MIN_PASSWORD_LENGTH = 8
+
+        // used to spend a bcrypt round when the login username does not exist, so the
+        // response time does not reveal whether the account exists
+        private val dummyPasswordHash: String by lazy { Bcrypt.encryptPassword("suwayomi-dummy-password") }
+
+        fun requireValidPassword(password: String) {
+            require(password.isNotBlank()) { "Password must not be blank" }
+            require(password.length >= MIN_PASSWORD_LENGTH) {
+                "Password must be at least $MIN_PASSWORD_LENGTH characters long"
+            }
+        }
+    }
+
     data class LoginInput(
         val clientMutationId: String? = null,
         val username: String,
@@ -62,7 +77,12 @@ class UserMutation {
                     .where { UserAccountTable.username.lowerCase() eq input.username.lowercase() }
                     .firstOrNull()
             }
-        if (user != null && Bcrypt.verify(user[UserAccountTable.password], input.password)) {
+        if (user == null) {
+            // dummy verify to align the timing with the existing-user/wrong-password path
+            Bcrypt.verify(dummyPasswordHash, input.password)
+            throw Exception("Incorrect username or password.")
+        }
+        if (Bcrypt.verify(user[UserAccountTable.password], input.password)) {
             return future {
                 val jwt = Jwt.generateJwt(user[UserAccountTable.id].value)
                 LoginPayload(
@@ -119,6 +139,7 @@ class UserMutation {
         // the caller may only hand out permissions they hold themselves; a null set is
         // intentionally exempt — createUser grants the defaultPermissions baseline for it
         assertPermissionsAssignable(userId, userPermissions ?: emptyList())
+        requireValidPassword(password)
 
         val userExists =
             transaction {
@@ -229,6 +250,7 @@ class UserMutation {
 
     @GraphQLDescription("Redeems a recovery code with a self-chosen new password.")
     fun redeemRecoveryCode(input: RedeemRecoveryCodeInput): CompletableFuture<RedeemRecoveryCodePayload> {
+        requireValidPassword(input.newPassword)
         val redeemedUserId = UserCodeService.redeemRecoveryCode(input.code, input.newPassword)
 
         return future {
@@ -267,6 +289,7 @@ class UserMutation {
 
     @GraphQLDescription("Redeems a registration code with a username and a self-chosen password.")
     fun redeemRegistrationCode(input: RedeemRegistrationCodeInput): CompletableFuture<RedeemRegistrationCodePayload> {
+        requireValidPassword(input.password)
         val redeemedUserId =
             UserCodeService.redeemRegistrationCode(input.code, input.username, input.password)
 
@@ -396,6 +419,7 @@ class UserMutation {
         }
 
         val (clientMutationId, newPassword, oldPassword) = input
+        requireValidPassword(newPassword)
         transaction {
             val currentPassword =
                 UserAccountTable

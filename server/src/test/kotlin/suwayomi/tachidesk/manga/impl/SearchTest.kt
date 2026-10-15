@@ -50,6 +50,7 @@ class SearchTest : ApplicationTest() {
 
     private val sourceId = 1L
     private val source = FakeSearchableSource(sourceId)
+    private val userId = 1
     private val mangasCount = 10
 
     @BeforeAll
@@ -63,7 +64,7 @@ class SearchTest : ApplicationTest() {
     fun searchWorks() {
         val searchResults =
             runBlocking {
-                sourceSearch(sourceId, "all the mangas", 1)
+                sourceSearch(userId, sourceId, "all the mangas", 1)
             }
 
         assertEquals(mangasCount, searchResults.mangaList.size, "should return all the mangas")
@@ -77,6 +78,8 @@ class SearchTest : ApplicationTest() {
 
 @Suppress("UNCHECKED_CAST")
 class FilterListTest : ApplicationTest() {
+    private val userId = 1
+
     open class EmptyFilterListSource(
         id: Long,
     ) : StubSource(id) {
@@ -91,7 +94,7 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(EmptyFilterListSource::class)
             source.mFilterList = FilterList()
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 0,
@@ -159,7 +162,7 @@ class FilterListTest : ApplicationTest() {
     fun convertsEveryTypeCorrectly() =
         runTest {
             val source = registerSource(FilterListSource::class)
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 FilterObject("Header", source.mFilterList[0]),
@@ -212,7 +215,7 @@ class FilterListTest : ApplicationTest() {
         sourceId: Long,
         filterChange: FilterChange,
     ) {
-        setFilter(sourceId, listOf(filterChange))
+        setFilter(userId, sourceId, listOf(filterChange))
     }
 
     @Test
@@ -221,16 +224,18 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(0, "change!")),
             )
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(1, "change!")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[0].filter.state,
@@ -249,11 +254,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(2, "1")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[2].filter.state,
@@ -267,11 +273,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(3, "I'm a changed man!")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[3].filter.state,
@@ -285,11 +292,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(4, "true")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[4].filter.state,
@@ -303,11 +311,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(5, "1")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[5].filter.state,
@@ -321,11 +330,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(6, """{"position":0,"state":"true"}""")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 (filterList[6].filter.state as List<FilterObject>)[0].filter.state,
@@ -339,11 +349,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(7, """{"index":1,"ascending":"true"}""")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[7].filter.state,

@@ -219,7 +219,13 @@ public final class SystemClock {
      * @return elapsed milliseconds in the thread
      */
     public static long currentThreadTimeMillis() {
-        // Return JVM uptime instead, we have no means of getting this info
+        // Use the JVM thread CPU time, which is the closest equivalent of the
+        // Android semantics (wall time running in this thread).
+        java.lang.management.ThreadMXBean bean =
+                java.lang.management.ManagementFactory.getThreadMXBean();
+        if (bean.isCurrentThreadCpuTimeSupported()) {
+            return bean.getCurrentThreadCpuTime() / 1_000_000L;
+        }
         return uptimeMillis();
     }
 

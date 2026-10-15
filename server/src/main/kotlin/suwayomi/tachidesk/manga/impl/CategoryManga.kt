@@ -7,6 +7,7 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.javalin.http.NotFoundResponse
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.alias
@@ -76,6 +77,19 @@ object CategoryManga {
             }
 
         dbTransaction {
+            // every requested category must exist and belong to this user; without this a
+            // request could create mappings pointing at another user's (or a non-existent)
+            // category, producing dirty cross-user rows / FK failures
+            val ownedCategoryIds =
+                CategoryTable
+                    .select(CategoryTable.id)
+                    .where { (CategoryTable.id inList filteredCategoryIds) and (CategoryTable.user eq userId) }
+                    .mapTo(HashSet()) { it[CategoryTable.id].value }
+            val unknownCategoryIds = filteredCategoryIds.toSet() - ownedCategoryIds
+            if (unknownCategoryIds.isNotEmpty()) {
+                throw NotFoundResponse("Unknown category id(s): ${unknownCategoryIds.joinToString(", ")}")
+            }
+
             CategoryMangaTable.batchUpsert(
                 newMangaCategoryMappings,
                 CategoryMangaTable.user,

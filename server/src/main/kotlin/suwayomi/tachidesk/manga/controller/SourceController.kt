@@ -7,8 +7,12 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import suwayomi.tachidesk.manga.impl.MangaList
 import suwayomi.tachidesk.manga.impl.Search
 import suwayomi.tachidesk.manga.impl.Search.FilterChange
@@ -163,7 +167,12 @@ object SourceController {
                 user.requireUser()
                 user.requirePermissions(UserPermission.MANAGE_SOURCE_PREFERENCES)
                 val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
-                ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
+                ctx.future {
+                    future {
+                        Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value)
+                        ctx.status(HttpStatus.OK)
+                    }
+                }
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -185,8 +194,8 @@ object SourceController {
             behaviorOf = { ctx, sourceId, reset ->
                 ctx.future {
                     future {
-                        ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                        ctx.json(Search.getFilterList(sourceId, reset))
+                        val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                        ctx.json(Search.getFilterList(userId, sourceId, reset))
                     }
                 }
             },
@@ -213,18 +222,23 @@ object SourceController {
                 ctx.future {
                     future {
                         val user = ctx.getAttribute(Attribute.TachideskUser)
-                        user.requireUser()
+                        val userId = user.requireUser()
                         // filters mutate shared source state; GraphQL gates the equivalent
                         // write path (updateSourcePreference) on MANAGE_SOURCE_PREFERENCES
                         user.requirePermissions(UserPermission.MANAGE_SOURCE_PREFERENCES)
+                        // decode the envelope once and dispatch on JSON shape; the previous
+                        // "try list, on ANY exception retry as object" pattern also swallowed
+                        // business errors from the first decode attempt's downstream logic
+                        val body = json.parseToJsonElement(ctx.body())
                         val filterChange =
-                            try {
-                                json.decodeFromString<List<FilterChange>>(ctx.body())
-                            } catch (e: Exception) {
-                                listOf(json.decodeFromString<FilterChange>(ctx.body()))
+                            when (body) {
+                                is JsonArray -> json.decodeFromJsonElement<List<FilterChange>>(body)
+                                is JsonObject -> listOf(json.decodeFromJsonElement<FilterChange>(body))
+                                else -> throw BadRequestResponse("Body must be a filter object or array")
                             }
 
-                        ctx.json(Search.setFilter(sourceId, filterChange))
+                        Search.setFilter(userId, sourceId, filterChange)
+                        ctx.status(HttpStatus.OK)
                     }
                 }
             },
@@ -247,9 +261,9 @@ object SourceController {
                 }
             },
             behaviorOf = { ctx, sourceId, searchTerm, pageNum ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Search.sourceSearch(sourceId, searchTerm, pageNum) }
+                    future { Search.sourceSearch(userId, sourceId, searchTerm, pageNum) }
                         .thenApply { ctx.json(it) }
                 }
             },

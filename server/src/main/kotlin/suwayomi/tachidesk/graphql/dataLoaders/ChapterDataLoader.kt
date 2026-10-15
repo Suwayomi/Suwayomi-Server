@@ -10,11 +10,9 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
-import org.dataloader.DataLoaderFactory
 import org.jetbrains.exposed.v1.core.Case
 import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.Op
-import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
@@ -27,7 +25,6 @@ import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.core.sum
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.firstRowPerPartition
 import suwayomi.tachidesk.graphql.server.primitives.inIds
@@ -46,11 +43,10 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "ChapterDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chapters =
                         ChapterTable
                             .getWithUserData(userId)
@@ -58,7 +54,7 @@ class ChapterDataLoader : KotlinDataLoader<Int, ChapterType> {
                             .where { ChapterTable.id inIds ids }
                             .map { ChapterType(it) }
                             .associateBy { it.id }
-                    ids.map { chapters[it] }
+                    ids.map { chapters[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -68,11 +64,10 @@ class ChaptersForMangaDataLoader : KotlinDataLoader<Int, ChapterNodeList> {
     override val dataLoaderName = "ChaptersForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterNodeList> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chaptersByMangaId =
                         ChapterTable
                             .getWithUserData(userId)
@@ -90,10 +85,9 @@ class ChapterCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "ChapterCountForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val count = ChapterTable.id.count()
                     val countByMangaId =
                         ChapterTable
@@ -117,12 +111,10 @@ class ChapterFlagCountForMangaDataLoader : KotlinDataLoader<Int, MangaChapterSta
     override val dataLoaderName = "ChapterFlagCountForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, MangaChapterStats> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
-
+                loggedTransaction {
                     val unreadCount =
                         Case()
                             .When(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()), intLiteral(1))
@@ -179,10 +171,9 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
     override val dataLoaderName = "HasDuplicateChaptersForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Boolean> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val duplicatedChapterCountByMangaId =
                         ChapterTable
                             .select(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
@@ -203,11 +194,10 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LastReadChapterForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
@@ -218,7 +208,7 @@ class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
                                     ChapterTable.sourceOrder to SortOrder.DESC,
                                 ),
                         )
-                    ids.map { chaptersByMangaId[it] }
+                    ids.map { chaptersByMangaId[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -228,11 +218,10 @@ class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
     override val dataLoaderName = "LatestReadChapterForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
@@ -240,7 +229,7 @@ class LatestReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
                             filter = ChapterUserTable.isRead eq true,
                             orderBy = listOf(ChapterTable.sourceOrder to SortOrder.DESC),
                         )
-                    ids.map { chaptersByMangaId[it] }
+                    ids.map { chaptersByMangaId[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -250,11 +239,10 @@ class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType
     override val dataLoaderName = "LatestFetchedChapterForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
@@ -262,7 +250,7 @@ class LatestFetchedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType
                             orderBy = listOf(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
                             rankOnUserData = false,
                         )
-                    ids.map { chaptersByMangaId[it] }
+                    ids.map { chaptersByMangaId[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -272,11 +260,10 @@ class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTyp
     override val dataLoaderName = "LatestUploadedChapterForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
@@ -284,7 +271,7 @@ class LatestUploadedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTyp
                             orderBy = listOf(ChapterTable.date_upload to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC),
                             rankOnUserData = false,
                         )
-                    ids.map { chaptersByMangaId[it] }
+                    ids.map { chaptersByMangaId[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -294,11 +281,10 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> 
     override val dataLoaderName = "FirstUnreadChapterForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
@@ -306,7 +292,7 @@ class FirstUnreadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> 
                             filter = ChapterUserTable.isRead eq false or ChapterUserTable.isRead.isNull(),
                             orderBy = listOf(ChapterTable.sourceOrder to SortOrder.ASC),
                         )
-                    ids.map { chaptersByMangaId[it] }
+                    ids.map { chaptersByMangaId[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -316,11 +302,10 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
     override val dataLoaderName = "HighestNumberedChapterForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, ChapterType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val chaptersByMangaId =
                         firstChapterPerManga(
                             mangaIds = ids,
@@ -333,7 +318,7 @@ class HighestNumberedChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterTy
                                 ),
                             rankOnUserData = false,
                         )
-                    ids.map { chaptersByMangaId[it] }
+                    ids.map { chaptersByMangaId[it] }.asDataLoaderResults()
                 }
             }
         }

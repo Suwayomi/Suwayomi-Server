@@ -16,80 +16,68 @@
 
 package com.squareup.duktape;
 
-import kotlin.NotImplementedError;
-
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
 import java.io.Closeable;
 
-/* Note (March 2021):
- * The old implementation for duktape-android used the nashorn engine which is deprecated.
- * This new implementation uses Mozilla's Rhino: https://github.com/mozilla/rhino
+/* Note:
+ * The old implementation for duktape-android used the Nashorn engine which is deprecated,
+ * and a later revision looked up Mozilla Rhino via JSR-223. Neither engine is on the
+ * Suwayomi AndroidCompat classpath, so that lookup always returned null and every call
+ * ended in a NullPointerException or NotImplementedError.
+ *
+ * Callers that need a JavaScript engine should use {@link app.cash.quickjs.QuickJs},
+ * which is backed by the GraalVM polyglot implementation that ships with this module.
  */
 
 /**
  * A simple EMCAScript (Javascript) interpreter.
+ *
+ * <p><b>Unsupported:</b> this class is only kept for binary/source compatibility with
+ * extensions compiled against duktape-android. Every entry point throws
+ * {@link UnsupportedOperationException}; use {@code app.cash.quickjs.QuickJs} instead.
  */
 public final class Duktape implements Closeable, AutoCloseable {
 
-    private ScriptEngineManager factory = new ScriptEngineManager();
-    private ScriptEngine engine = factory.getEngineByName("rhino");
+    private static final String NOT_SUPPORTED =
+            "Duktape is not supported in Suwayomi AndroidCompat, use app.cash.quickjs.QuickJs";
 
     /**
-   * Create a new interpreter instance. Calls to this method <strong>must</strong> matched with
-   * calls to {@link #close()} on the returned instance to avoid leaking native memory.
-   */
+     * Create a new interpreter instance.
+     *
+     * @throws UnsupportedOperationException always; use {@code app.cash.quickjs.QuickJs}.
+     */
     public static Duktape create() {
-        return new Duktape();
+        throw new UnsupportedOperationException(NOT_SUPPORTED);
     }
 
     private Duktape() {}
 
     /**
-   * Evaluate {@code script} and return a result. Note that the result must be one of the
-   * supported Java types or the call will return null.
-   *
-   * @throws DuktapeException if there is an error evaluating the script.
-   */
+     * Evaluate {@code script} and return a result.
+     *
+     * @throws UnsupportedOperationException always; use {@code app.cash.quickjs.QuickJs}.
+     */
     public synchronized Object evaluate(String script) {
-        try {
-            return engine.eval(script);
-        } catch (ScriptException e) {
-            throw new DuktapeException(e.getMessage());
-        }
+        throw new UnsupportedOperationException(NOT_SUPPORTED);
     }
 
     /**
-   * Provides {@code object} to JavaScript as a global object called {@code name}. {@code type}
-   * defines the interface implemented by {@code object} that will be accessible to JavaScript.
-   * {@code type} must be an interface that does not extend any other interfaces, and cannot define
-   * any overloaded methods.
-   * <p>Methods of the interface may return {@code void} or any of the following supported argument
-   * types: {@code boolean}, {@link Boolean}, {@code int}, {@link Integer}, {@code double},
-   * {@link Double}, {@link String}.
-   */
+     * Provides {@code object} to JavaScript as a global object called {@code name}.
+     *
+     * @throws UnsupportedOperationException always; use {@code app.cash.quickjs.QuickJs}.
+     */
     public synchronized <T> void set(String name, Class<T> type, T object) {
-        throw new NotImplementedError("Not implemented!");
+        throw new UnsupportedOperationException(NOT_SUPPORTED);
     }
 
     /**
-   * Attaches to a global JavaScript object called {@code name} that implements {@code type}.
-   * {@code type} defines the interface implemented in JavaScript that will be accessible to Java.
-   * {@code type} must be an interface that does not extend any other interfaces, and cannot define
-   * any overloaded methods.
-   * <p>Methods of the interface may return {@code void} or any of the following supported argument
-   * types: {@code boolean}, {@link Boolean}, {@code int}, {@link Integer}, {@code double},
-   * {@link Double}, {@link String}.
-   */
+     * Attaches to a global JavaScript object called {@code name} that implements {@code type}.
+     *
+     * @throws UnsupportedOperationException always; use {@code app.cash.quickjs.QuickJs}.
+     */
     public synchronized <T> T get(final String name, final Class<T> type) {
-        throw new NotImplementedError("Not implemented!");
+        throw new UnsupportedOperationException(NOT_SUPPORTED);
     }
 
-    /**
-   * Release the native resources associated with this object. You <strong>must</strong> call this
-   * method for each instance to avoid leaking native memory.
-   */
     @Override
     public synchronized void close() {}
 }

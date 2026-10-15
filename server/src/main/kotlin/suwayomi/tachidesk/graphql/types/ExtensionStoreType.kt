@@ -20,6 +20,8 @@ import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import java.util.concurrent.CompletableFuture
 
 class ExtensionStoreType(
+    /** Row id; used as the tie-break part of the composite `id-value` pagination cursor. */
+    val id: Int,
     val name: String,
     val badgeLabel: String,
     val signingKey: String,
@@ -30,6 +32,7 @@ class ExtensionStoreType(
     val extensionListUrl: String?,
 ) : Node {
     constructor(row: ResultRow) : this(
+        id = row[ExtensionStoreTable.id].value,
         name = row[ExtensionStoreTable.name],
         badgeLabel = row[ExtensionStoreTable.badgeLabel],
         signingKey = row[ExtensionStoreTable.signingKey],

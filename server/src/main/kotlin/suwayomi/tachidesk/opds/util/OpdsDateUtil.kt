@@ -35,4 +35,11 @@ object OpdsDateUtil {
      * @return String with the formatted date
      */
     fun formatEpochMillisForOpds(epochMillis: Long): String = opdsDateFormatter.format(Instant.ofEpochMilli(epochMillis))
+
+    /**
+     * Like [formatEpochMillisForOpds], but treats non-positive values (unset
+     * `date_upload`/`last_fetched_at`) as "now" instead of emitting the 1970 epoch.
+     */
+    fun formatEpochMillisForOpdsOrNow(epochMillis: Long): String =
+        opdsDateFormatter.format(if (epochMillis > 0) Instant.ofEpochMilli(epochMillis) else Instant.now())
 }
