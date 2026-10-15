@@ -2,18 +2,25 @@ package suwayomi.tachidesk.server.user
 
 import io.javalin.http.Context
 import io.javalin.http.Header
+import io.javalin.security.BasicAuthCredentials
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import suwayomi.tachidesk.global.impl.util.Jwt
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.server.JavalinSetup
+import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.test.GraphQLTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 /**
  * Tests the HTTP-level authentication seam: [getUserFromContext] parsing the bearer token (or
@@ -30,17 +37,23 @@ class UserContextTest : GraphQLTest() {
     // constructor runs before @BeforeAll has set up the app, so serverConfig is not yet
     // available at construction time.
     private lateinit var originalAuthMode: AuthMode
+    private lateinit var originalAuthUsername: String
+    private lateinit var originalAuthPassword: String
 
     @BeforeEach
     fun setUp() {
         ctx = mockk<Context>(relaxed = true)
         originalAuthMode = serverConfig.authMode.value
+        originalAuthUsername = serverConfig.authUsername.value
+        originalAuthPassword = serverConfig.authPassword.value
         serverConfig.authMode.value = AuthMode.UI_LOGIN
     }
 
     @AfterEach
     fun tearDown() {
         serverConfig.authMode.value = originalAuthMode
+        serverConfig.authUsername.value = originalAuthUsername
+        serverConfig.authPassword.value = originalAuthPassword
     }
 
     private fun bearer(
@@ -152,5 +165,99 @@ class UserContextTest : GraphQLTest() {
 
             assertIs<UserType.Admin>(user)
             assertEquals(1, user.id)
+        }
+
+    private fun basicAuthFlag(
+        ctx: Context,
+        valid: Boolean,
+    ) {
+        every { ctx.attribute<Any>(Attribute.TachideskBasic.name) } returns valid
+    }
+
+    @Test
+    fun visitorWithValidBasicFlagFallsBackToAdminInBasicAuthMode() =
+        runTest {
+            serverConfig.authMode.value = AuthMode.BASIC_AUTH
+            basicAuthFlag(ctx, true)
+
+            // in BASIC_AUTH mode a request can only reach this point with credentials that
+            // already passed JavalinSetup's check, so the admin fallback is allowed
+            assertEquals(1, UserType.Visitor.requireUserWithBasicFallback(ctx))
+        }
+
+    @Test
+    fun visitorWithBasicFlagIsRejectedInUiLoginMode() =
+        runTest {
+            serverConfig.authMode.value = AuthMode.UI_LOGIN
+            basicAuthFlag(ctx, true)
+
+            assertFailsWith<UnauthorizedException> {
+                UserType.Visitor.requireUserWithBasicFallback(ctx)
+            }
+            verify { ctx.header("WWW-Authenticate", "Basic") }
+        }
+
+    @Test
+    fun visitorWithBasicFlagIsRejectedInSimpleLoginMode() =
+        runTest {
+            serverConfig.authMode.value = AuthMode.SIMPLE_LOGIN
+            basicAuthFlag(ctx, true)
+
+            assertFailsWith<UnauthorizedException> {
+                UserType.Visitor.requireUserWithBasicFallback(ctx)
+            }
+        }
+
+    @Test
+    fun visitorWithoutBasicFlagIsRejectedInBasicAuthMode() =
+        runTest {
+            serverConfig.authMode.value = AuthMode.BASIC_AUTH
+            basicAuthFlag(ctx, false)
+
+            assertFailsWith<UnauthorizedException> {
+                UserType.Visitor.requireUserWithBasicFallback(ctx)
+            }
+        }
+
+    @Test
+    fun basicCredentialsAreRejectedWhenConfiguredCredentialsAreBlank() {
+        // the default configuration has blank auth credentials; the empty Basic credential
+        // `:` must never compare equal to them
+        serverConfig.authUsername.value = ""
+        serverConfig.authPassword.value = ""
+        every { ctx.basicAuthCredentials() } returns BasicAuthCredentials("", "")
+
+        assertFalse(JavalinSetup.credentialsValid(ctx))
+    }
+
+    @Test
+    fun basicCredentialsValidateAgainstConfiguredCredentials() {
+        serverConfig.authUsername.value = "basicuser"
+        serverConfig.authPassword.value = "basicpass"
+        every { ctx.basicAuthCredentials() } returns BasicAuthCredentials("basicuser", "basicpass")
+
+        assertTrue(JavalinSetup.credentialsValid(ctx))
+
+        every { ctx.basicAuthCredentials() } returns BasicAuthCredentials("basicuser", "wrong")
+        assertFalse(JavalinSetup.credentialsValid(ctx))
+
+        every { ctx.basicAuthCredentials() } returns null
+        assertFalse(JavalinSetup.credentialsValid(ctx))
+    }
+
+    @Test
+    fun simpleLoginCookieIsRejectedWhenConfiguredUsernameIsBlank() =
+        runTest {
+            serverConfig.authMode.value = AuthMode.SIMPLE_LOGIN
+            // a stale/empty session attribute must not match a blank configured username
+            serverConfig.authUsername.value = ""
+            every { ctx.sessionAttribute<String>("logged-in") } returns ""
+
+            assertIs<UserType.Visitor>(getUserFromContext(ctx))
+
+            serverConfig.authUsername.value = "loginuser"
+            every { ctx.sessionAttribute<String>("logged-in") } returns "loginuser"
+
+            assertIs<UserType.Admin>(getUserFromContext(ctx))
         }
 }

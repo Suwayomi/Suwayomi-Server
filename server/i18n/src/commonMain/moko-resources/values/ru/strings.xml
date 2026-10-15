@@ -9,7 +9,7 @@
     <string name="opds_feeds_genres_title">Жанры</string>
     <string name="opds_feeds_categories_title">Категории</string>
     <string name="opds_feeds_language_specific_title">Язык: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Источник: %1$s</string>
+
     <string name="opds_feeds_library_source_specific_title">Библиотека - Источник: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">Источник: %1$s - Популярное</string>
     <string name="opds_feeds_source_specific_latest_title">Источник: %1$s - Последнее</string>
@@ -83,8 +83,8 @@
     <string name="opds_linktitle_stream_pages_start">Читать</string>
     <string name="opds_linktitle_stream_pages_continue">Продолжить чтение</string>
     <string name="opds_linktitle_view_chapter_details">Получить информацию о главе и получить страницы</string>
-    <string name="opds_chapter_details_scanlator">| %1$s</string>
-    <string name="opds_chapter_details_progress">| Прогресс: %1$d из %2$d</string>
+    <string name="opds_chapter_details_scanlator"> | От %1$s</string>
+    <string name="opds_chapter_details_progress"> | Прогресс: %1$d из %2$s</string>
     <string name="webview_label_disconnected">Отключено, пожалуйста обновите</string>
     <string name="webview_label_loading">Загрузка страницы...</string>
     <string name="webview_label_getstarted">Введите URL, чтобы начать</string>

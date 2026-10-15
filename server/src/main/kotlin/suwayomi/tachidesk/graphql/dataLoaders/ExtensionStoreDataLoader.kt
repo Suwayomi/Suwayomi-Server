@@ -3,13 +3,10 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
-import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList.Companion.toNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionStoreType
@@ -22,17 +19,16 @@ class ExtensionStoreDataLoader : KotlinDataLoader<String, ExtensionStoreType> {
     override val dataLoaderName = "ExtensionStoreDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionStoreType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val extensionStoreByIndexUrl =
                         ExtensionStoreTable
                             .selectAll()
                             .where { ExtensionStoreTable.indexUrl inList ids }
                             .map { ExtensionStoreType(it) }
                             .associateBy { it.indexUrl }
-                    ids.map { extensionStoreByIndexUrl[it] }
+                    ids.map { extensionStoreByIndexUrl[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -42,10 +38,9 @@ class ExtensionsForExtensionStore : KotlinDataLoader<String, ExtensionNodeList> 
     override val dataLoaderName = "ExtensionsForExtensionStore"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionNodeList> =
-        DataLoaderFactory.newDataLoader<String, ExtensionNodeList> { ids ->
+        newBatchedDataLoader<String, ExtensionNodeList> { ids ->
             future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val extensionByIndexUrl =
                         ExtensionTable
                             .selectAll()
@@ -62,10 +57,9 @@ class ExtensionCountForExtensionStore : KotlinDataLoader<String, Int> {
     override val dataLoaderName = "ExtensionCountForExtensionStore"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, Int> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val count = ExtensionTable.id.count()
                     val countByIndexUrl =
                         ExtensionTable

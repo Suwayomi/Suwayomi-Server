@@ -4,9 +4,10 @@ package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.jetbrains.exposed.v1.core.LikePattern
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -20,6 +21,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.queries.filter.prefixLikePattern
 import suwayomi.tachidesk.graphql.types.ChapterMetaType
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MetaInput
@@ -28,6 +30,7 @@ import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReadyById
 import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
+import suwayomi.tachidesk.manga.impl.track.Track
 import suwayomi.tachidesk.manga.model.table.ChapterMetaTable
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
@@ -36,12 +39,10 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import java.net.URLEncoder
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
+import kotlin.time.Duration.Companion.seconds
 
-/**
- * TODO Mutations
- * - Download
- * - Delete download
- */
+private val logger = KotlinLogging.logger {}
+
 class ChapterMutation {
     data class UpdateChapterPatch(
         val isBookmarked: Boolean? = null,
@@ -80,9 +81,11 @@ class ChapterMutation {
             return
         }
 
-        transaction {
-            val chapterIdToPageCount =
-                if (patch.lastPageRead != null) {
+        // REST parity: only chapters that actually exist get user rows — the request's
+        // ids are filtered through the table first
+        val existingChapterIds =
+            transaction {
+                val chapterIdToPageCount =
                     ChapterTable
                         .select(ChapterTable.id, ChapterTable.pageCount)
                         .where { ChapterTable.id inList ids }
@@ -90,35 +93,54 @@ class ChapterMutation {
                             { it[ChapterTable.id].value },
                             { it[ChapterTable.pageCount] },
                         )
-                } else {
-                    emptyMap()
-                }
-            if (patch.isRead != null || patch.isBookmarked != null || patch.lastPageRead != null) {
-                val now = Instant.now().epochSecond
 
-                ChapterUserTable.batchUpsert(ids, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
-                    this[ChapterUserTable.user] = userId
-                    this[ChapterUserTable.chapter] = chapterId
+                if (patch.isRead != null || patch.isBookmarked != null || patch.lastPageRead != null) {
+                    val now = Instant.now().epochSecond
 
-                    patch.isRead?.also {
-                        this[ChapterUserTable.isRead] = it
-                    }
-                    patch.isBookmarked?.also {
-                        this[ChapterUserTable.isBookmarked] = it
-                    }
-                    patch.lastPageRead?.also {
-                        this[ChapterUserTable.lastPageRead] =
-                            it.coerceAtMost(chapterIdToPageCount[chapterId] ?: 0).coerceAtLeast(0)
-                        this[ChapterUserTable.lastReadAt] = now
+                    ChapterUserTable.batchUpsert(
+                        chapterIdToPageCount.keys.toList(),
+                        ChapterUserTable.chapter,
+                        ChapterUserTable.user,
+                    ) { chapterId ->
+                        this[ChapterUserTable.user] = userId
+                        this[ChapterUserTable.chapter] = chapterId
+
+                        patch.isRead?.also {
+                            this[ChapterUserTable.isRead] = it
+                        }
+                        patch.isBookmarked?.also {
+                            this[ChapterUserTable.isBookmarked] = it
+                        }
+                        patch.lastPageRead?.also {
+                            this[ChapterUserTable.lastPageRead] =
+                                // every upserted id was just selected, so a missing page count is a
+                                // data bug — fail instead of silently clamping the progress to 0
+                                it.coerceAtMost(chapterIdToPageCount.getValue(chapterId)).coerceAtLeast(0)
+                            this[ChapterUserTable.lastReadAt] = now
+                        }
                     }
                 }
+
+                chapterIdToPageCount.keys
             }
+
+        if (patch.isRead == true && existingChapterIds.isNotEmpty()) {
+            // REST parity: marking chapters read also pushes progress to logged-in trackers
+            val mangaIds =
+                transaction {
+                    ChapterTable
+                        .select(ChapterTable.manga)
+                        .where { ChapterTable.id inList existingChapterIds.toList() }
+                        .map { it[ChapterTable.manga].value }
+                        .toSet()
+                }
+            Track.asyncTrackChapter(userId, mangaIds)
         }
 
         // Sync with KoreaderSync when progress is updated
         if (patch.lastPageRead != null || patch.isRead == true) {
             GlobalScope.launch {
-                ids.forEach { chapterId ->
+                existingChapterIds.forEach { chapterId ->
                     KoreaderSyncService.pushProgress(userId, chapterId)
                 }
             }
@@ -142,7 +164,7 @@ class ChapterMutation {
                         .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.id eq id }
-                        .first(),
+                        .firstOrNull() ?: throw IllegalArgumentException("Chapter not found: $id"),
                 )
             }
 
@@ -283,7 +305,7 @@ class ChapterMutation {
                                 .getWithUserData(userId)
                                 .selectAll()
                                 .where { ChapterTable.id eq chapterId }
-                                .first(),
+                                .firstOrNull() ?: throw IllegalArgumentException("Chapter not found: $chapterId"),
                         )
                     }
 
@@ -398,18 +420,23 @@ class ChapterMutation {
                     val keyCondition: Op<Boolean>? =
                         item.keys?.takeIf { it.isNotEmpty() }?.let { ChapterMetaTable.key inList it }
 
+                    // empty prefixes can't form a meaningful LIKE pattern, and each prefix is
+                    // escaped so a caller's '%', '_' or '\' can't act as a wildcard
                     val prefixCondition: Op<Boolean>? =
                         item.prefixes
                             ?.filter { it.isNotEmpty() }
-                            ?.map { (ChapterMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.map { (ChapterMetaTable.key like prefixLikePattern(it)) as Op<Boolean> }
                             ?.reduceOrNull { acc, op -> acc or op }
 
                     val metaKeyCondition =
                         if (keyCondition != null && prefixCondition != null) {
                             keyCondition or prefixCondition
                         } else {
-                            keyCondition ?: prefixCondition!!
+                            keyCondition ?: prefixCondition
                         }
+                    requireNotNull(metaKeyCondition) {
+                        "At least one non-empty key or prefix is required for each item"
+                    }
 
                     val condition = (ChapterMetaTable.user eq userId) and (ChapterMetaTable.ref inList item.chapterIds) and metaKeyCondition
 
@@ -469,8 +496,17 @@ class ChapterMutation {
         val paramsMap = input.toParams()
 
         return future {
-            var chapter = getChapterDownloadReadyById(userId, chapterId)
-            val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+            val chapter = getChapterDownloadReadyById(userId, chapterId)
+            // a hung or failing sync server must not stall page loading:
+            // time-box the progress pull and degrade to "no sync" on failure (REST parity)
+            val syncResult =
+                runCatching {
+                    withTimeoutOrNull(10.seconds) {
+                        KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                    }
+                }.onFailure {
+                    logger.warn(it) { "KoreaderSync progress check failed for chapter ${chapter.id}, continuing without it" }
+                }.getOrNull()
             var syncConflictInfo: SyncConflictInfoType? = null
 
             if (syncResult != null) {
@@ -493,12 +529,9 @@ class ChapterMutation {
                         }
                     }
                 }
-                // For PROMPT, SILENT, and RECEIVE, return the remote progress
-                chapter =
-                    chapter.copy(
-                        lastPageRead = if (syncResult.shouldUpdate) syncResult.pageRead else chapter.lastPageRead,
-                        lastReadAt = if (syncResult.shouldUpdate) syncResult.timestamp else chapter.lastReadAt,
-                    )
+                // For PROMPT, SILENT, and RECEIVE, return the remote progress — applied to
+                // the payload chapter below so a PROMPT client can show the remote position
+                // without it being committed to the DB
             }
 
             val params =
@@ -516,6 +549,15 @@ class ChapterMutation {
                     }
                 }
 
+            val chapterRow =
+                transaction {
+                    ChapterTable
+                        .getWithUserData(userId)
+                        .selectAll()
+                        .where { ChapterTable.id eq chapter.id }
+                        .firstOrNull() ?: throw IllegalArgumentException("Chapter not found: ${chapter.id}")
+                }
+
             FetchChapterPagesPayload(
                 clientMutationId = clientMutationId,
                 pages =
@@ -524,13 +566,24 @@ class ChapterMutation {
                     },
                 chapter =
                     ChapterType(
-                        transaction {
-                            ChapterTable
-                                .getWithUserData(userId)
-                                .selectAll()
-                                .where { ChapterTable.id eq chapter.id }
-                                .first()
-                        },
+                        id = chapterRow[ChapterTable.id].value,
+                        url = chapterRow[ChapterTable.url],
+                        name = chapterRow[ChapterTable.name],
+                        uploadDate = chapterRow[ChapterTable.date_upload],
+                        chapterNumber = chapterRow[ChapterTable.chapter_number],
+                        scanlator = chapterRow[ChapterTable.scanlator],
+                        mangaId = chapterRow[ChapterTable.manga].value,
+                        sourceOrder = chapterRow[ChapterTable.sourceOrder],
+                        realUrl = chapterRow[ChapterTable.realUrl],
+                        fetchedAt = chapterRow[ChapterTable.fetchedAt],
+                        pageCount = chapterRow[ChapterTable.pageCount],
+                        isRead = chapterRow.getOrNull(ChapterUserTable.isRead) ?: false,
+                        isBookmarked = chapterRow.getOrNull(ChapterUserTable.isBookmarked) ?: false,
+                        // every non-null syncResult surfaces the remote progress (REST parity);
+                        // for shouldUpdate it is also what the row already carries
+                        lastPageRead = syncResult?.pageRead ?: (chapterRow.getOrNull(ChapterUserTable.lastPageRead) ?: 0),
+                        lastReadAt = syncResult?.timestamp ?: (chapterRow.getOrNull(ChapterUserTable.lastReadAt) ?: 0),
+                        isDownloaded = chapterRow.getOrNull(ChapterUserTable.isDownloaded) ?: false,
                     ),
                 syncConflict = syncConflictInfo,
             )

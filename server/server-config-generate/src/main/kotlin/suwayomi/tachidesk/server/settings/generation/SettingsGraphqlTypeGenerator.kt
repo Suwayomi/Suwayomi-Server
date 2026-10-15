@@ -139,8 +139,10 @@ object SettingsGraphqlTypeGenerator {
         val gqlType = getGraphQLType(setting, false)
         if (setting.typeInfo.convertToGqlType != null) {
             appendLine(
-                ("SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.convertToGqlType!!(" +
-                    "defaultValueOf<Any>(\"${setting.name}\")) as $gqlType,").addIndentation(indentation),
+                (
+                    "SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.convertToGqlType!!(" +
+                        "defaultValueOf<Any>(\"${setting.name}\")) as $gqlType,"
+                ).addIndentation(indentation),
             )
         } else {
             appendLine(
@@ -159,8 +161,10 @@ object SettingsGraphqlTypeGenerator {
             val gqlType = getGraphQLType(setting, false)
             if (userSetting.typeInfo?.convertToGqlType != null) {
                 appendLine(
-                    ("UserSettingsRegistry.get(\"${setting.name}\")!!.typeInfo!!.convertToGqlType!!(" +
-                        "userConfig.${setting.name}.value(userId)) as $gqlType,").addIndentation(indentation),
+                    (
+                        "UserSettingsRegistry.get(\"${setting.name}\")!!.typeInfo!!.convertToGqlType!!(" +
+                            "userConfig.${setting.name}.value(userId)) as $gqlType,"
+                    ).addIndentation(indentation),
                 )
             } else {
                 appendLine(
@@ -174,8 +178,10 @@ object SettingsGraphqlTypeGenerator {
         val gqlType = getGraphQLType(setting, false)
         if (setting.typeInfo.convertToGqlType != null) {
             appendLine(
-                ("SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.convertToGqlType!!(" +
-                    "defaultValueOf<Any>(\"${setting.name}\")) as $gqlType,").addIndentation(indentation),
+                (
+                    "SettingsRegistry.get(\"${setting.name}\")!!.typeInfo.convertToGqlType!!(" +
+                        "defaultValueOf<Any>(\"${setting.name}\")) as $gqlType,"
+                ).addIndentation(indentation),
             )
         } else {
             appendLine(
@@ -215,8 +221,10 @@ object SettingsGraphqlTypeGenerator {
                     val gqlType = getGraphQLType(setting, false)
                     if (userSetting.typeInfo?.convertToGqlType != null) {
                         appendLine(
-                            ("UserSettingsRegistry.get(\"${setting.name}\")!!.typeInfo!!.convertToGqlType!!(" +
-                                "userConfig.${setting.name}.value(userId)) as $gqlType,").addIndentation(indentation),
+                            (
+                                "UserSettingsRegistry.get(\"${setting.name}\")!!.typeInfo!!.convertToGqlType!!(" +
+                                    "userConfig.${setting.name}.value(userId)) as $gqlType,"
+                            ).addIndentation(indentation),
                         )
                     } else {
                         appendLine(
@@ -235,11 +243,12 @@ object SettingsGraphqlTypeGenerator {
         }
 
         if (deprecated != null) {
-            val replaceWithSuffix = if (deprecated is SettingsRegistry.SettingDeprecated.Migrate) {
-                deprecated.replaceWith.let { ", ReplaceWith(\"$it\")" }
-            } else {
-                ""
-            }
+            val replaceWithSuffix =
+                if (deprecated is SettingsRegistry.SettingDeprecated.Migrate) {
+                    deprecated.replaceWith.let { ", ReplaceWith(\"$it\")" }
+                } else {
+                    ""
+                }
 
             appendLine(
                 "@GraphQLDeprecated(\"${deprecated.message}\"$replaceWithSuffix)".addIndentation(

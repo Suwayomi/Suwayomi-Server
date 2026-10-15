@@ -4,8 +4,10 @@ import com.typesafe.config.ConfigFactory
 import io.github.config4k.ClassContainer
 import io.github.config4k.readers.SelectReader
 import io.github.config4k.toConfig
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -22,50 +24,85 @@ import java.util.concurrent.ConcurrentHashMap
  * otherwise the default value).
  */
 object UserSettings {
+    private val logger = KotlinLogging.logger { }
+
     private class Entry<T : Any> {
         lateinit var flow: MutableStateFlow<T>
     }
 
     private val cache = ConcurrentHashMap<String, Entry<*>>()
 
+    /**
+     * One monitor per (userId, key) so that the "write row -> update cached flow" pairs of [set]/[reset]
+     * stay atomic against each other without serializing unrelated settings.
+     */
+    private val entryLocks = ConcurrentHashMap<String, Any>()
+
     private fun cacheKey(
         userId: Int,
         key: String,
     ) = "$userId:$key"
 
+    private fun lockFor(cacheKey: String): Any = entryLocks.computeIfAbsent(cacheKey) { Any() }
+
     @Suppress("UNCHECKED_CAST")
     private fun <T : Any> entry(
         userId: Int,
         setting: UserSetting<T>,
-    ): Entry<T> =
-        cache.getOrPut(cacheKey(userId, setting.key)) {
-            val e = Entry<T>()
-            val stored = readStored(userId, setting.key)
-            val default = setting.defaultValue
-            val value =
-                if (stored != null) {
-                    val decoded = decode(stored, setting)
-                    if (setting.validator?.invoke(decoded) == null) {
-                        decoded
-                    } else {
-                        default
-                    }
+    ): Entry<T> {
+        val key = cacheKey(userId, setting.key)
+        cache[key]?.let { return it as Entry<T> }
+
+        // Cold path: the initial DB read must share the per-(user,key) monitor with
+        // set()/reset() - a reset() deleting the row between an unlocked read and the cache
+        // insert would re-cache a stale pre-delete value. Only the small map insertion holds
+        // the CHM bin lock, not the transaction.
+        return synchronized(lockFor(key)) {
+            (cache[key] as? Entry<T>) ?: createEntry(userId, setting).let { created ->
+                (cache.putIfAbsent(key, created) as? Entry<T>) ?: created
+            }
+        }
+    }
+
+    private fun <T : Any> createEntry(
+        userId: Int,
+        setting: UserSetting<T>,
+    ): Entry<T> {
+        val e = Entry<T>()
+        val stored = readStored(userId, setting.key)
+        val default = setting.defaultValue
+        val value =
+            if (stored != null) {
+                // a single corrupt row (renamed enum constant, hand-edited table, stale backup
+                // restore) must not take down every settings query on the eager constructors
+                val decoded =
+                    runCatching { decode(stored, setting) }
+                        .onFailure {
+                            logger.warn(it) {
+                                "Bad stored value for ${setting.key} (user $userId), falling back to default"
+                            }
+                        }.getOrNull()
+                if (decoded != null && setting.validator?.invoke(decoded) == null) {
+                    decoded
                 } else {
                     default
                 }
-            e.flow = MutableStateFlow(value)
-            e
-        } as Entry<T>
+            } else {
+                default
+            }
+        e.flow = MutableStateFlow(value)
+        return e
+    }
 
     fun <T : Any> flow(
         userId: Int,
         setting: UserSetting<T>,
-    ): MutableStateFlow<T> = entry(userId, setting).flow
+    ): StateFlow<T> = entry(userId, setting).flow
 
     fun <T : Any> value(
         userId: Int,
         setting: UserSetting<T>,
-    ): T = flow(userId, setting).value
+    ): T = entry(userId, setting).flow.value
 
     /**
      * Set a value for a star-projected [UserSetting]. The value must already be converted to the internal type.
@@ -89,29 +126,33 @@ object UserSettings {
         }
 
         val encoded = encode(value)
-        transaction {
-            UserSettingsTable.upsert(UserSettingsTable.user, UserSettingsTable.key) {
-                it[UserSettingsTable.user] = userId
-                it[UserSettingsTable.key] = setting.key
-                it[UserSettingsTable.value] = encoded
+        val key = cacheKey(userId, setting.key)
+        synchronized(lockFor(key)) {
+            transaction {
+                UserSettingsTable.upsert(UserSettingsTable.user, UserSettingsTable.key) {
+                    it[UserSettingsTable.user] = userId
+                    it[UserSettingsTable.key] = setting.key
+                    it[UserSettingsTable.value] = encoded
+                }
             }
-        }
 
-        val e = entry(userId, setting)
-        e.flow.value = value
+            entry(userId, setting).flow.value = value
+        }
     }
 
     fun reset(
         userId: Int,
         setting: UserSetting<*>,
     ) {
-        transaction {
-            UserSettingsTable.deleteWhere {
-                (UserSettingsTable.user eq userId) and (UserSettingsTable.key eq setting.key)
+        synchronized(lockFor(cacheKey(userId, setting.key))) {
+            transaction {
+                UserSettingsTable.deleteWhere {
+                    (UserSettingsTable.user eq userId) and (UserSettingsTable.key eq setting.key)
+                }
             }
-        }
 
-        syncCacheToDefault(userId, setting)
+            syncCacheToDefault(userId, setting)
+        }
     }
 
     /**
@@ -132,17 +173,34 @@ object UserSettings {
     }
 
     fun resetAll(userId: Int) {
-        transaction {
-            UserSettingsTable.deleteWhere { UserSettingsTable.user eq userId }
-        }
+        // collect both stored keys and cached keys, then delete+resync each under its own lock so a
+        // concurrent set() on the same key cannot leave DB and cache disagreeing
+        val storedKeys =
+            transaction {
+                UserSettingsTable
+                    .select(UserSettingsTable.key)
+                    .where { UserSettingsTable.user eq userId }
+                    .map { it[UserSettingsTable.key] }
+            }
+        val cachedKeys =
+            cache
+                .keys
+                .filter { it.startsWith("$userId:") }
+                .map { it.substringAfter(":") }
 
-        cache
-            .keys
-            .filter { it.startsWith("$userId:") }
-            .forEach { key ->
-                val settingKey = key.substringAfter(":")
-                val setting = UserSettingsRegistry.get(settingKey) ?: return@forEach
-                syncCacheToDefault(userId, setting)
+        (storedKeys + cachedKeys)
+            .distinct()
+            .forEach { settingKey ->
+                synchronized(lockFor(cacheKey(userId, settingKey))) {
+                    // the row is deleted even when the key is no longer registered (stale key
+                    // from an older version) - only the cache resync needs the descriptor
+                    transaction {
+                        UserSettingsTable.deleteWhere {
+                            (UserSettingsTable.user eq userId) and (UserSettingsTable.key eq settingKey)
+                        }
+                    }
+                    UserSettingsRegistry.get(settingKey)?.let { syncCacheToDefault(userId, it) }
+                }
             }
     }
 
@@ -180,7 +238,9 @@ object UserSettings {
     ): T =
         when (val t = setting.type) {
             Boolean::class -> {
-                raw.toBoolean() as T
+                // strict: a stored "yes"/"garbage" must hit the corrupt-row path (warn +
+                // default) instead of silently decoding to false
+                raw.toBooleanStrict() as T
             }
 
             Int::class -> {

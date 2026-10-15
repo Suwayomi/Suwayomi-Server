@@ -34,10 +34,6 @@ import java.util.Map;
  */
 public class SQLiteCursor extends AbstractWindowedCursor {
     static final String TAG = "SQLiteCursor";
-    static final int NO_COUNT = -1;
-
-    /** The name of the table to edit */
-    private final String mEditTable;
 
     /** The names of the columns in the rows */
     private final String[] mColumns;
@@ -48,17 +44,8 @@ public class SQLiteCursor extends AbstractWindowedCursor {
     /** The compiled query this cursor came from */
     private final SQLiteCursorDriver mDriver;
 
-    /** The number of rows in the cursor */
-    private int mCount = NO_COUNT;
-
-    /** The number of rows that can fit in the cursor window, 0 if unknown */
-    private int mCursorWindowCapacity;
-
     /** A mapping of column names to column indices, to speed up lookups */
     private Map<String, Integer> mColumnNameMap;
-
-    /** Used to find out where a cursor was allocated in case it never got released. */
-    private final Throwable mStackTrace;
 
     /**
      * Execute a query and provide access to its result set through a Cursor
@@ -94,15 +81,15 @@ public class SQLiteCursor extends AbstractWindowedCursor {
         if (query == null) {
             throw new IllegalArgumentException("query object cannot be null");
         }
-        mStackTrace = null;
+        // note: editTable is accepted for API compatibility but intentionally not
+        // stored — nothing in this implementation consumes it
         mDriver = driver;
-        mEditTable = editTable;
         mColumnNameMap = null;
         mQuery = query;
 
         try {
             query.B_setBindArgs();
-            query.getPreparedStatement().execute();
+            query.B_execute();
 
             ResultSetMetaData metaData = query.getResultSet().getMetaData();
             mColumns = new String[metaData.getColumnCount()];
@@ -139,9 +126,8 @@ public class SQLiteCursor extends AbstractWindowedCursor {
     }
 
     private void fillWindow(int requiredPos) {
-        clearOrCreateWindow(mQuery.getResultSet());
-
         try {
+            clearOrCreateWindow(mQuery.getResultSet());
         } catch (RuntimeException ex) {
             // Close the cursor window if the query failed and therefore will
             // not produce any results.  This helps to avoid accidentally leaking
@@ -216,7 +202,11 @@ public class SQLiteCursor extends AbstractWindowedCursor {
                 mWindow.clear();
             }
             mPos = -1;
-            mCount = NO_COUNT;
+
+            // Re-execute the query so that changed selection arguments take
+            // effect and a fresh result set is materialized.
+            mQuery.B_setBindArgs();
+            mQuery.B_execute();
 
             mDriver.cursorRequeried(this);
         }
@@ -233,7 +223,6 @@ public class SQLiteCursor extends AbstractWindowedCursor {
     @Override
     public void setWindow(CursorWindow window) {
         super.setWindow(window);
-        mCount = NO_COUNT;
     }
 
     /**
@@ -251,17 +240,6 @@ public class SQLiteCursor extends AbstractWindowedCursor {
         try {
             // if the cursor hasn't been closed yet, close it first
             if (mWindow != null) {
-                //TODO Finish
-//                if (mStackTrace != null) {
-//                    String sql = mQuery.getSql();
-//                    int len = sql.length();
-//                    StrictMode.onSqliteObjectLeaked(
-//                        "Finalizing a Cursor that has not been deactivated or closed. " +
-//                        "database = " + mQuery.getDatabase().getLabel() +
-//                        ", table = " + mEditTable +
-//                        ", query = " + sql.substring(0, (len > 1000) ? 1000 : len),
-//                        mStackTrace);
-//                }
                 close();
             }
         } finally {

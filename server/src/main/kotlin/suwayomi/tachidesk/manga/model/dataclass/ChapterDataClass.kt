@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
-import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 
 /*
@@ -77,7 +76,16 @@ data class ChapterDataClass(
             )
     }
 
+    /**
+     * Excluded from serialization with `@JsonIgnore` on the getter: the lazy query used to
+     * run `SELECT COUNT(*) FROM CHAPTER` once per serialized chapter (an N+1 that made
+     * chapter lists issue hundreds of count queries). The count is a manga-level stat, not
+     * chapter data — API consumers should use `MangaDataClass.chapterCount`/GraphQL's
+     * `Manga.chapterCount` (DataLoader-batched) instead. The deprecated Kotlin property
+     * itself stays for source compatibility.
+     */
     @Deprecated("Remove with V1 Api")
+    @get:JsonIgnore
     val chapterCount: Int by lazy {
         transaction {
             ChapterTable

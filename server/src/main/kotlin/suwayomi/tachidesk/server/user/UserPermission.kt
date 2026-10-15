@@ -45,6 +45,28 @@ fun UserType.hasPermission(permission: UserPermission): Boolean =
     }
 
 /**
+ * Throws [ForbiddenException] when [requested] contains any permission that the issuer
+ * ([issuerId]) does not currently hold, i.e. requires `requested ⊆ issuer's effective
+ * permissions` (the ADMIN role holds every permission, so it always passes; an empty
+ * [requested] always passes).
+ *
+ * Used whenever a user's permissions are delegated (registering a user, issuing a
+ * registration code, editing another user's permissions) so a privileged-but-not-admin
+ * user such as a MANAGE_USERS holder cannot mint permissions beyond their own.
+ */
+fun assertPermissionsAssignable(
+    issuerId: Int,
+    requested: Collection<UserPermission>,
+) {
+    val overGrant = requested.filterNot { hasPermission(issuerId, it) }
+    if (overGrant.isNotEmpty()) {
+        throw ForbiddenException(
+            "Forbidden: cannot delegate permissions the issuer does not hold: $overGrant",
+        )
+    }
+}
+
+/**
  * Returns true if the database user [userId] has [permission] (the ADMIN role bypasses).
  * Used by paths that run without a [UserType] in context.
  */

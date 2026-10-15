@@ -382,7 +382,12 @@ public final class Looper {
             return false;
         }
 
-        String name = /* Process.myProcessName() */ "Stub!";
+        String name;
+        try {
+            name = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
+        } catch (RuntimeException e) {
+            name = "unknown";
+        }
         String threadGroup = threadGroupToString(getThreadGroup());
         boolean isMain = myLooper() == getMainLooper();
 
@@ -452,6 +457,29 @@ public final class Looper {
     }
 
     /**
+     * Returns a {@link Handler} bound to this looper.
+     *
+     * <p>Defensive compatibility shim: the stock kotlinx-coroutines-android
+     * {@code AndroidDispatcherFactory} (if it ever ends up on the classpath)
+     * reflectively calls a {@code Looper.asHandler(boolean)} method that exists
+     * on real Android but not in this compatibility module. Providing it here
+     * avoids a {@link NoSuchMethodError} in that scenario. The {@code async}
+     * flag is ignored; this module's message queue has no async-barrier support.
+     *
+     * @hide
+     */
+    @NonNull
+    public static Handler asHandler(Looper looper, boolean async) {
+        return new Handler(looper);
+    }
+
+    /** {@hide} */
+    @NonNull
+    public Handler asHandler(boolean async) {
+        return new Handler(this);
+    }
+
+    /**
      * Quits the looper.
      * <p>
      * Causes the {@link #loop} method to terminate without processing any
@@ -512,7 +540,8 @@ public final class Looper {
      * @param prefix A prefix to prepend to each line which is printed.
      */
     public void dump(@NonNull Printer pw, @NonNull String prefix) {
-        throw new RuntimeException("Stub!");
+        pw.println(prefix + toString());
+        mQueue.dump(pw, prefix + "  ", null);
     }
 
     /**
@@ -524,12 +553,14 @@ public final class Looper {
      * @hide
      */
     public void dump(@NonNull Printer pw, @NonNull String prefix, Handler handler) {
-        throw new RuntimeException("Stub!");
+        pw.println(prefix + toString());
+        mQueue.dump(pw, prefix + "  ", handler);
     }
 
     /** @hide */
     public void dumpDebug(ProtoOutputStream proto, long fieldId) {
-        throw new RuntimeException("Stub!");
+        // Proto dumping is not supported; no-op rather than crash callers
+        // that dump state for logging.
     }
 
     @Override

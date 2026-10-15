@@ -14,13 +14,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import okio.buffer
-import okio.gzip
-import okio.source
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -43,9 +41,9 @@ import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.hasPermission
 import java.io.InputStream
 import java.util.Date
-import java.util.Timer
-import java.util.TimerTask
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.cancellation.CancellationException
 
 object ProtoBackupImport : ProtoBackupBase() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -58,6 +56,17 @@ object ProtoBackupImport : ProtoBackupBase() {
         data object Idle : BackupRestoreState()
 
         data object Success : BackupRestoreState()
+
+        /**
+         * The restore finished but at least one manga could not be fully restored (the
+         * failures are listed in [errors]). Only emitted for file restores: SyncManager's
+         * terminal-state check predates this state and treats every non-Success terminal
+         * as a failure, so sync-driven restores keep reporting plain [Success] — their
+         * per-manga errors are already logged and returned in the ValidationResult.
+         */
+        data class SuccessWithErrors(
+            val errors: List<String>,
+        ) : BackupRestoreState()
 
         data object Failure : BackupRestoreState()
 
@@ -88,17 +97,28 @@ object ProtoBackupImport : ProtoBackupBase() {
         ) : BackupRestoreState()
     }
 
-    private val backupRestoreIdToState = ConcurrentHashMap<String, BackupRestoreState>()
+    // restoreId -> owning userId + state; a restore status is only visible to its owner
+    private val backupRestoreIdToState = ConcurrentHashMap<String, Pair<Int, BackupRestoreState>>()
 
     val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
 
-    fun getRestoreState(id: String): BackupRestoreState? = backupRestoreIdToState[id]
+    internal fun getRestoreState(id: String): BackupRestoreState? = backupRestoreIdToState[id]?.second
+
+    /**
+     * Returns the state only when [userId] owns the restore identified by [id], so one
+     * user cannot observe another user's restore.
+     */
+    fun getRestoreState(
+        userId: Int,
+        id: String,
+    ): BackupRestoreState? = backupRestoreIdToState[id]?.takeIf { it.first == userId }?.second
 
     private fun updateRestoreState(
+        userId: Int,
         id: String,
         state: BackupRestoreState,
     ) {
-        backupRestoreIdToState[id] = state
+        backupRestoreIdToState[id] = userId to state
 
         scope.launch {
             notifyFlow.emit(Unit)
@@ -106,18 +126,13 @@ object ProtoBackupImport : ProtoBackupBase() {
     }
 
     private fun cleanupRestoreState(id: String) {
-        val timer = Timer()
-        val delay = 1000L * 60 // 60 seconds
-
-        timer.schedule(
-            object : TimerTask() {
-                override fun run() {
-                    logger.debug { "cleanupRestoreState: $id (${getRestoreState(id)?.toStatus()?.state})" }
-                    backupRestoreIdToState.remove(id)
-                }
-            },
-            delay,
-        )
+        // defer the eviction to the existing scope instead of a bare Timer(): Timer spawns
+        // a non-daemon thread that is never cancelled, so every restore used to leak one
+        scope.launch {
+            delay(60_000)
+            logger.debug { "cleanupRestoreState: $id (${getRestoreState(id)?.toStatus()?.state})" }
+            backupRestoreIdToState.remove(id)
+        }
     }
 
     fun restore(
@@ -125,7 +140,13 @@ object ProtoBackupImport : ProtoBackupBase() {
         sourceStream: InputStream,
         flags: BackupFlags,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
-    ): String = queueRestore(userId, flags, syncMode) { decode(sourceStream, syncMode) }
+    ): String {
+        // materialize on the caller thread: for REST/GraphQL uploads the stream belongs to
+        // the request lifecycle (e.g. a Javalin UploadedFile part) and is invalidated once
+        // the request returns, before the queued coroutine would get to read it
+        val backupBytes = readBackupBytes(sourceStream, gzipped = !syncMode.isSync)
+        return queueRestore(userId, flags, syncMode) { decode(backupBytes) }
+    }
 
     fun restore(
         userId: Int,
@@ -141,11 +162,12 @@ object ProtoBackupImport : ProtoBackupBase() {
         syncMode: SyncRestoreMode,
         load: () -> Backup,
     ): String {
-        val restoreId = System.currentTimeMillis().toString()
+        // a UUID instead of a timestamp: not enumerable and unique even for queued restores
+        val restoreId = UUID.randomUUID().toString()
 
         logger.info { "restore($restoreId): queued" }
 
-        updateRestoreState(restoreId, BackupRestoreState.Idle)
+        updateRestoreState(userId, restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
             runRestore(userId, restoreId, flags, syncMode, load)
@@ -157,7 +179,7 @@ object ProtoBackupImport : ProtoBackupBase() {
     suspend fun restoreLegacy(
         userId: Int,
         sourceStream: InputStream,
-        restoreId: String = "legacy",
+        restoreId: String = UUID.randomUUID().toString(),
         flags: BackupFlags = BackupFlags.DEFAULT,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
     ): ValidationResult = runRestore(userId, restoreId, flags, syncMode) { decode(sourceStream, syncMode) }
@@ -173,20 +195,16 @@ object ProtoBackupImport : ProtoBackupBase() {
             try {
                 logger.info { "restore($restoreId): restoring..." }
                 performRestore(userId, restoreId, load(), flags, syncMode)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // a cancelled restore propagates; the caller's scope owns the cancellation
+                if (e is CancellationException) {
+                    throw e
+                }
+                // any Throwable (including Errors like OutOfMemoryError) must still settle
+                // the state map, otherwise waiters would observe a non-terminal state forever
                 logger.error(e) { "restore($restoreId): failed due to" }
 
-                updateRestoreState(restoreId, BackupRestoreState.Failure)
-                ValidationResult(
-                    emptyList(),
-                    emptyList(),
-                    emptyList(),
-                    emptyList(),
-                )
-            } catch (e: OutOfMemoryError) {
-                logger.error { "restore($restoreId): out of memory" }
-
-                updateRestoreState(restoreId, BackupRestoreState.Failure)
+                updateRestoreState(userId, restoreId, BackupRestoreState.Failure)
                 ValidationResult(
                     emptyList(),
                     emptyList(),
@@ -231,16 +249,9 @@ object ProtoBackupImport : ProtoBackupBase() {
     private fun decode(
         sourceStream: InputStream,
         syncMode: SyncRestoreMode,
-    ): Backup {
-        val bytes =
-            sourceStream
-                .source()
-                .run {
-                    if (!syncMode.isSync) gzip() else this
-                }.buffer()
-                .use { it.readByteArray() }
-        return parser.decodeFromByteArray(Backup.serializer(), bytes)
-    }
+    ): Backup = decode(readBackupBytes(sourceStream, gzipped = !syncMode.isSync))
+
+    private fun decode(bytes: ByteArray): Backup = parser.decodeFromByteArray(Backup.serializer(), bytes)
 
     private fun performRestore(
         userId: Int,
@@ -263,6 +274,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         if (flags.includeServerSettings && canManageSettings) {
             updateRestoreState(
+                userId,
                 id,
                 BackupRestoreState.RestoringSettings(restoreSettings, restoreAmount),
             )
@@ -272,8 +284,9 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         if (flags.includeUserSettings) {
             updateRestoreState(
+                userId,
                 id,
-                BackupRestoreState.RestoringUserSettings(restoreSettings, restoreAmount),
+                BackupRestoreState.RestoringUserSettings(restoreSettings + restoreUserSettings, restoreAmount),
             )
 
             BackupUserSettingsHandler.restore(
@@ -285,14 +298,28 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         val categoryMapping =
             if (flags.includeCategories) {
-                updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
+                updateRestoreState(
+                    userId,
+                    id,
+                    BackupRestoreState.RestoringCategories(
+                        restoreSettings + restoreUserSettings + restoreCategories,
+                        restoreAmount,
+                    ),
+                )
                 BackupCategoryHandler.restore(userId, backup.backupCategories, syncMode)
             } else {
                 emptyMap()
             }
 
         if (flags.includeClientData) {
-            updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreSettings + restoreCategories + restoreMeta, restoreAmount))
+            updateRestoreState(
+                userId,
+                id,
+                BackupRestoreState.RestoringMeta(
+                    restoreSettings + restoreUserSettings + restoreCategories + restoreMeta,
+                    restoreAmount,
+                ),
+            )
 
             BackupGlobalMetaHandler.restore(userId, backup.meta)
 
@@ -308,6 +335,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         if (flags.includeManga) {
             backup.backupManga.forEachIndexed { index, manga ->
                 updateRestoreState(
+                    userId,
                     id,
                     BackupRestoreState.RestoringManga(
                         current = getRestoreAmount(index + 1),
@@ -328,7 +356,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             }
         }
 
-        logger.info {
+        logger.warn {
             """
             Restore Errors:
             ${errors.joinToString("\n") { "${it.first} - ${it.second}" }}
@@ -342,8 +370,19 @@ object ProtoBackupImport : ProtoBackupBase() {
             """.trimIndent()
         }
 
-        updateRestoreState(id, BackupRestoreState.Success)
+        // a restore that finished but with per-manga failures stays a successful restore —
+        // its errors are made visible instead of failing the whole operation. Sync restores
+        // keep the plain Success terminal state (see SuccessWithErrors).
+        updateRestoreState(
+            userId,
+            id,
+            if (!syncMode.isSync && errors.isNotEmpty()) {
+                BackupRestoreState.SuccessWithErrors(errors.map { it.second })
+            } else {
+                BackupRestoreState.Success
+            },
+        )
 
-        return validationResult
+        return validationResult.copy(errors = errors.map { "${it.first} - ${it.second}" })
     }
 }

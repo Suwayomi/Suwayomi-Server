@@ -18,7 +18,6 @@ import android.content.ContentResolver;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
-import kotlin.NotImplementedError;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -117,17 +116,26 @@ public abstract class AbstractCursor implements CrossProcessCursor {
     }
     /** @hide */
     protected void onDeactivateOrClose() {
-        if (mSelfObserver != null) {
-            mContentResolver.unregisterContentObserver(mSelfObserver);
+        if (mSelfObserver != null && mContentResolver != null) {
+            try {
+                mContentResolver.unregisterContentObserver(mSelfObserver);
+            } catch (RuntimeException ignored) {
+                // The compat ContentResolver is a stub; ignore failures.
+            }
             mSelfObserverRegistered = false;
         }
         mDataSetObservable.notifyInvalidated();
     }
     @Override
     public boolean requery() {
-        if (mSelfObserver != null && mSelfObserverRegistered == false) {
-            mContentResolver.registerContentObserver(mNotifyUri, true, mSelfObserver);
-            mSelfObserverRegistered = true;
+        if (mSelfObserver != null && mSelfObserverRegistered == false
+                && mContentResolver != null) {
+            try {
+                mContentResolver.registerContentObserver(mNotifyUri, true, mSelfObserver);
+                mSelfObserverRegistered = true;
+            } catch (RuntimeException ignored) {
+                // The compat ContentResolver is a stub; ignore failures.
+            }
         }
         mDataSetObservable.notifyChanged();
         return true;
@@ -330,7 +338,28 @@ public abstract class AbstractCursor implements CrossProcessCursor {
      */
     @Override
     public void setNotificationUri(ContentResolver cr, Uri notifyUri) {
-        throw new NotImplementedError("Not implemented!");
+        synchronized (mSelfObserverLock) {
+            mNotifyUri = notifyUri;
+            mContentResolver = cr;
+            if (mSelfObserver != null && mContentResolver != null) {
+                try {
+                    mContentResolver.unregisterContentObserver(mSelfObserver);
+                } catch (RuntimeException ignored) {
+                    // The compat ContentResolver is a stub; ignore failures.
+                }
+            }
+            mSelfObserver = new SelfContentObserver(this);
+            if (mContentResolver != null) {
+                try {
+                    mContentResolver.registerContentObserver(mNotifyUri, true, mSelfObserver);
+                    mSelfObserverRegistered = true;
+                } catch (RuntimeException ignored) {
+                    // The compat ContentResolver is a stub; keep the URI stored
+                    // so getNotificationUri() still works.
+                    mSelfObserverRegistered = false;
+                }
+            }
+        }
     }
     @Override
     public Uri getNotificationUri() {
@@ -383,8 +412,12 @@ public abstract class AbstractCursor implements CrossProcessCursor {
     }
     @Override
     protected void finalize() {
-        if (mSelfObserver != null && mSelfObserverRegistered == true) {
-            mContentResolver.unregisterContentObserver(mSelfObserver);
+        if (mSelfObserver != null && mSelfObserverRegistered == true
+                && mContentResolver != null) {
+            try {
+                mContentResolver.unregisterContentObserver(mSelfObserver);
+            } catch (RuntimeException ignored) {
+            }
         }
         try {
             if (!mClosed) close();

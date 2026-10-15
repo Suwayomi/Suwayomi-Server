@@ -23,10 +23,9 @@ import okhttp3.Cache
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
-import java.net.CookieHandler
-import java.net.CookieManager
-import java.net.CookiePolicy
-import java.nio.file.Files
+import suwayomi.tachidesk.server.serverConfig
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 class NetworkHelper(
@@ -34,19 +33,32 @@ class NetworkHelper(
 ) {
     //    private val preferences: PreferencesHelper by injectLazy()
 
-//    private val cacheDir = File(context.cacheDir, "network_cache")
-
 //    private val cacheSize = 5L * 1024 * 1024 // 5 MiB
 
     // Tachidesk -->
     val cookieStore = PersistentCookieStore(context)
 
+    // NOTE: the JVM-global CookieHandler is wired to [cookieStore] explicitly in
+    // ServerSetup — mutating JVM-global state must not be a hidden side effect
+    // of constructing this helper.
+
+    /**
+     * OkHttp disk cache at a fixed location under the app cache root. The
+     * previous per-builder `createTempDirectory` leaked one directory per
+     * evaluation into /tmp (and left authenticated response bodies there);
+     * a stable directory is reused across runs and bounded by OkHttp's maxSize.
+     */
+    private val networkCacheDir: File =
+        context.cacheDir?.let { File(it, "network_cache") }
+            ?: File(System.getProperty("java.io.tmpdir"), "tachidesk-network-cache")
+
     init {
-        CookieHandler.setDefault(
-            CookieManager(cookieStore, CookiePolicy.ACCEPT_ALL),
+        // The response cache can contain pages fetched with session credentials;
+        // wipe it on shutdown rather than letting it linger on disk.
+        Runtime.getRuntime().addShutdownHook(
+            Thread { networkCacheDir.deleteRecursively() },
         )
     }
-    // Tachidesk <--
 
     private val userAgent =
         MutableStateFlow(
@@ -55,7 +67,26 @@ class NetworkHelper(
         )
     val userAgentFlow = userAgent.asStateFlow()
 
+    /**
+     * Per-host User-Agent overrides learned from Cloudflare bypasses:
+     * `cf_clearance` is bound to the exact UA that solved the challenge, so
+     * requests to that host must keep sending it. Keeping it per host avoids
+     * the old behavior where one host's bypass rewrote the global UA — which
+     * also triggered [GetSource.unregisterAllSources], evicting every source.
+     */
+    private val userAgentsByHost = ConcurrentHashMap<String, String>()
+
     fun defaultUserAgentProvider(): String = userAgent.value
+
+    /** UA for a request host: the host-specific bypass UA if present, else the global default. */
+    fun userAgentForHost(host: String): String = userAgentsByHost[host] ?: userAgent.value
+
+    fun setUserAgentForHost(
+        host: String,
+        userAgent: String,
+    ) {
+        userAgentsByHost[host] = userAgent
+    }
 
     init {
         @OptIn(DelicateCoroutinesApi::class)
@@ -74,33 +105,38 @@ class NetworkHelper(
                     .cookieJar(PersistentCookieJar(cookieStore))
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
+                    // Whole-call cap for regular API calls; download paths derive
+                    // a client with a relaxed callTimeout and rely on readTimeout
+                    // instead (see newCachelessCallWithProgress).
                     .callTimeout(2, TimeUnit.MINUTES)
                     .cache(
                         Cache(
-                            directory = Files.createTempDirectory("tachidesk_network_cache").toFile(),
+                            directory = networkCacheDir,
                             maxSize = 5L * 1024 * 1024, // 5 MiB
                         ),
                     ).addInterceptor(UncaughtExceptionInterceptor())
-                    .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
+                    .addInterceptor(UserAgentInterceptor { host -> userAgentForHost(host) })
 
-            // if (preferences.verboseLogging().get()) {
-            val httpLoggingInterceptor =
-                HttpLoggingInterceptor(
-                    object : HttpLoggingInterceptor.Logger {
-                        val logger = KotlinLogging.logger { }
+            // BASIC logs include request URLs — query tokens in them land in
+            // the debug log, so the interceptor is only attached under debugLogsEnabled.
+            if (serverConfig.debugLogsEnabled.value) {
+                val httpLoggingInterceptor =
+                    HttpLoggingInterceptor(
+                        object : HttpLoggingInterceptor.Logger {
+                            val logger = KotlinLogging.logger { }
 
-                        override fun log(message: String) {
-                            logger.debug { message }
-                        }
-                    },
-                ).apply {
-                    level = HttpLoggingInterceptor.Level.BASIC
-                }
-            builder.addNetworkInterceptor(httpLoggingInterceptor)
-            // }
+                            override fun log(message: String) {
+                                logger.debug { message }
+                            }
+                        },
+                    ).apply {
+                        level = HttpLoggingInterceptor.Level.BASIC
+                    }
+                builder.addNetworkInterceptor(httpLoggingInterceptor)
+            }
 
             builder.addInterceptor(
-                CloudflareInterceptor(setUserAgent = { userAgent.value = it }),
+                CloudflareInterceptor(setUserAgentForHost = ::setUserAgentForHost),
             )
 
             // when (preferences.dohProvider().get()) {

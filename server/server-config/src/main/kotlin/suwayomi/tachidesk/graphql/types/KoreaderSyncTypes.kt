@@ -13,10 +13,13 @@ enum class KoreaderSyncChecksumMethod {
 enum class KoreaderSyncConflictStrategy {
     /** Ask the client application to prompt the user for a decision. */
     PROMPT,
+
     /** Always keep the local progress, ignoring the remote version. */
     KEEP_LOCAL,
+
     /** Always overwrite local progress with the remote version. */
     KEEP_REMOTE,
+
     /** Do not perform any sync action for this scenario. */
     DISABLED,
 }

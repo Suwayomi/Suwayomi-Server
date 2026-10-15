@@ -70,8 +70,8 @@ open class StubSource(
     override fun toString(): String = name
 
     private fun getSourceNotInstalledException(): SourceNotInstalledException = SourceNotInstalledException(id)
-
-    inner class SourceNotInstalledException(
-        val id: Long,
-    ) : Exception("Source not installed: $id")
 }
+
+class SourceNotInstalledException(
+    val id: Long,
+) : Exception("Source not installed: $id")

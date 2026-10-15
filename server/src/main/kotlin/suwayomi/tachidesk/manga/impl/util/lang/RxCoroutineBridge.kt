@@ -13,8 +13,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import rx.Observable
 import rx.Subscriber
 import rx.Subscription
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 // source: https://github.com/jobobby04/TachiyomiSY/blob/9320221a4e8b118ef68deb60d8c4c32bcbb9e06f/app/src/main/java/eu/kanade/tachiyomi/util/lang/RxCoroutineBridge.kt
 // Util functions for bridging RxJava and coroutines. Taken from TachiyomiEH/SY.
@@ -32,16 +30,26 @@ private suspend fun <T> Observable<T>.awaitOne(): T =
                     }
 
                     override fun onNext(t: T) {
-                        cont.resume(t)
+                        /*
+                         * A concurrent cancellation can resume the continuation first;
+                         * resume() would then throw. tryResume only resumes when the
+                         * continuation is still cancellable.
+                         */
+                        val token = cont.tryResume(t)
+                        if (token != null) {
+                            cont.completeResume(token)
+                        }
                     }
 
                     override fun onCompleted() {
-                        if (cont.isActive) {
-                            cont.resumeWithException(
+                        val token =
+                            cont.tryResumeWithException(
                                 IllegalStateException(
                                     "Should have invoked onNext",
                                 ),
                             )
+                        if (token != null) {
+                            cont.completeResume(token)
                         }
                     }
 

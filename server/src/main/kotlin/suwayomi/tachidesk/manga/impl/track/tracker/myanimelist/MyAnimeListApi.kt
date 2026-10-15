@@ -28,8 +28,12 @@ import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALSearchResu
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALUser
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALUserSearchResult
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 class MyAnimeListApi(
     private val client: OkHttpClient,
@@ -39,14 +43,40 @@ class MyAnimeListApi(
 
     private val authClient = client.newBuilder().addInterceptor(interceptor).build()
 
-    suspend fun getAccessToken(authCode: String): MALOAuth =
+    /** A stored PKCE verifier plus when it was issued, for TTL/eviction. */
+    internal data class PendingVerifier(
+        val verifier: String,
+        val createdAt: Long = System.currentTimeMillis(),
+    )
+
+    suspend fun getAccessToken(
+        authCode: String,
+        state: String?,
+    ): MALOAuth =
         withIOContext {
+            // The PKCE verifier is bound to the `state` issued by authUrl()
+            // and consumed exactly once. A null state means the pasted value
+            // never went through our auth URL; an unknown one means the login
+            // flow (or the server) was restarted — fail loudly instead of
+            // exchanging the code with a stale/foreign verifier.
+            if (state == null) {
+                throw IOException(
+                    "MyAnimeList: the callback carries no state parameter; " +
+                        "fetch a fresh auth URL and submit the full redirect URL",
+                )
+            }
+            val verifier =
+                codeVerifiers.remove(state)?.verifier
+                    ?: throw IOException(
+                        "MyAnimeList: this login session is unknown or already used; " +
+                            "fetch a fresh auth URL and redo the login",
+                    )
             val formBody: RequestBody =
                 FormBody
                     .Builder()
                     .add("client_id", CLIENT_ID)
                     .add("code", authCode)
-                    .add("code_verifier", codeVerifier)
+                    .add("code_verifier", verifier)
                     .add("grant_type", "authorization_code")
                     .build()
             with(json) {
@@ -271,16 +301,53 @@ class MyAnimeListApi(
 
         private const val LIST_PAGINATION_AMOUNT = 250
 
-        private var codeVerifier: String = ""
+        /**
+         * PKCE verifiers keyed by the `state` sent with the auth URL. A single
+         * process-wide `codeVerifier` var meant every `authUrl()` call —
+         * including unrelated users and mere tracker-list redraws — overwrote
+         * the verifier an in-flight callback still needed, so the code
+         * exchange always failed with invalid_grant.
+         *
+         * Entries are single-use ([getAccessToken] consumes them by removal),
+         * but the map still has to be bounded: every tracker-list render of a
+         * logged-out user calls [authUrl], and abandoned logins never consume
+         * their entry. [pruneCodeVerifiers] drops entries older than
+         * [CODE_VERIFIER_TTL_MILLIS] and evicts the oldest once the map exceeds
+         * [CODE_VERIFIER_MAX_ENTRIES]. Internal for tests.
+         */
+        internal val codeVerifiers = ConcurrentHashMap<String, PendingVerifier>()
 
-        fun authUrl(): Uri =
-            "$BASE_OAUTH_URL/authorize"
+        internal const val CODE_VERIFIER_MAX_ENTRIES = 128
+        internal val CODE_VERIFIER_TTL_MILLIS = TimeUnit.HOURS.toMillis(1)
+
+        /**
+         * Removes expired verifier entries, then evicts oldest-first until the
+         * map fits the cap. Called after inserting a fresh entry, which always
+         * has the newest timestamp and therefore never evicts itself.
+         */
+        private fun pruneCodeVerifiers() {
+            val cutoff = System.currentTimeMillis() - CODE_VERIFIER_TTL_MILLIS
+            codeVerifiers.entries.removeIf { it.value.createdAt < cutoff }
+            while (codeVerifiers.size > CODE_VERIFIER_MAX_ENTRIES) {
+                val oldest = codeVerifiers.entries.minByOrNull { it.value.createdAt } ?: return
+                if (!codeVerifiers.remove(oldest.key, oldest.value)) return
+            }
+        }
+
+        fun authUrl(): Uri {
+            val state = UUID.randomUUID().toString()
+            val verifier = PkceUtil.generateCodeVerifier()
+            codeVerifiers[state] = PendingVerifier(verifier)
+            pruneCodeVerifiers()
+            return "$BASE_OAUTH_URL/authorize"
                 .toUri()
                 .buildUpon()
                 .appendQueryParameter("client_id", CLIENT_ID)
-                .appendQueryParameter("code_challenge", getPkceChallengeCode())
+                .appendQueryParameter("code_challenge", verifier)
                 .appendQueryParameter("response_type", "code")
+                .appendQueryParameter("state", state)
                 .build()
+        }
 
         fun mangaUrl(id: Long): Uri =
             "$BASE_API_URL/manga"
@@ -309,11 +376,6 @@ class MyAnimeListApi(
                     .build()
 
             return POST("$BASE_OAUTH_URL/token", body = formBody, headers = headers)
-        }
-
-        private fun getPkceChallengeCode(): String {
-            codeVerifier = PkceUtil.generateCodeVerifier()
-            return codeVerifier
         }
     }
 }

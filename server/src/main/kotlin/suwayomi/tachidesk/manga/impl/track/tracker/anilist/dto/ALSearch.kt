@@ -5,7 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ALSearchResult(
-    val data: ALSearchPage,
+    // absent when AniList answers with an `errors`-only payload
+    val data: ALSearchPage? = null,
 )
 
 @Serializable

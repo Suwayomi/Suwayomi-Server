@@ -5,6 +5,7 @@ import eu.kanade.tachiyomi.source.local.metadata.ComicInfo
 import eu.kanade.tachiyomi.source.local.metadata.ComicInfoPublishingStatus
 import nl.adaptivity.xmlutil.serialization.XML
 import org.jetbrains.exposed.v1.core.ResultRow
+import suwayomi.tachidesk.manga.impl.download.fileProvider.moveFileReplacing
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import uy.kohesive.injekt.Injekt
@@ -52,9 +53,9 @@ fun getComicInfo(
         letterer = null,
         coverArtist = null,
         tags = null,
-        day = localDate?.dayOfMonth?.let { ComicInfo.Day(it) },
-        month = localDate?.monthValue?.let { ComicInfo.Month(it) },
-        year = localDate?.year?.let { ComicInfo.Year(it) },
+        day = ComicInfo.Day(localDate.dayOfMonth),
+        month = ComicInfo.Month(localDate.monthValue),
+        year = ComicInfo.Year(localDate.year),
     )
 }
 
@@ -68,10 +69,19 @@ fun createComicInfoFile(
 ) {
     val chapterUrl = chapter[ChapterTable.realUrl].orEmpty()
     val comicInfo = getComicInfo(manga, chapter, chapterUrl)
-    // Remove the old file
-    (dir / COMIC_INFO_FILE).deleteIfExists()
-    (dir / COMIC_INFO_FILE).outputStream().use {
-        val comicInfoString = Injekt.get<XML>().encodeToString(ComicInfo.serializer(), comicInfo)
-        it.write(comicInfoString.toByteArray())
+    val comicInfoFile = dir / COMIC_INFO_FILE
+
+    // write to a temp file and move it into place atomically so a crash mid-write
+    // cannot leave a truncated ComicInfo.xml behind
+    val tmpFile = dir.resolveSibling("$COMIC_INFO_FILE.tmp")
+    try {
+        tmpFile.outputStream().use {
+            val comicInfoString = Injekt.get<XML>().encodeToString(ComicInfo.serializer(), comicInfo)
+            it.write(comicInfoString.toByteArray())
+        }
+        moveFileReplacing(tmpFile.toFile(), comicInfoFile.toFile())
+    } catch (e: Exception) {
+        tmpFile.deleteIfExists()
+        throw e
     }
 }

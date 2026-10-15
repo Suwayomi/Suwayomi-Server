@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
 - (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
+- (**Database**) Add indexes on the manga `(source, url)` and chapter `(manga, url)` columns for faster lookups
+- (**Settings/API**) Add setting `extensionStoresAllowPrivateHosts` to opt into extension store URLs pointing at private/loopback hosts (rejected by default)
+- (**Settings/API**) Add settings `javaScriptEngineStatementLimit` and `javaScriptEngineTimeout` bounding how much work a script may do and how long it may run
+- (**WebView/API**) Emit an `error` event on the WebView websocket when a URL is refused or a page fails to load
+- (**Settings**) The `language` setting now also accepts Arabic (`ar`) and Catalan (`ca`)
 
 ### Changed
 - (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection
@@ -18,6 +23,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
+- (**GraphQL**) `StringFilter`: `includes*`/`startsWith*`/`endsWith*` (and their `not*`/`*Insensitive` variants) now match literally — `%`, `_` and `\` in the value are escaped instead of acting as LIKE wildcards; the `like*` fields still take raw LIKE patterns (with `\` as the escape char), and an explicitly empty `in`/`inInsensitive` list now matches nothing instead of being silently ignored
+- (**Tracker**) `login`/`loginOAuth` run through a shared token-cleanup wrapper and `logout` now really deletes `track_token`; stored `"null"`/blank tokens are cleaned up once
+- (**Tracker**) Re-binding an already-tracked entry moves the existing track record instead of leaving a duplicate row for the same remote id
+- (**Tracker**) Invalid `scoreString`/`status` input is skipped with a warning instead of being pushed to the remote tracker
+- (**Backup**) `syncYomiApiKey`, `syncYomiHost` and `downloadConversions` are no longer written into backups and are skipped on restore — they carry per-installation credentials and must be reconfigured after a restore
+- (**Backup/API**) A backup export only embeds `serverSettings` when the requesting user holds `MANAGE_SETTINGS` (REST and GraphQL)
+- (**Backup**) Automated backup file names include the user id (`auto.<userId>.<username>_…​.tachibk`) so backups of users sharing a username can be told apart
+- (**Backup**) Exporting a backup compresses into gzip on the fly instead of keeping an extra uncompressed copy resident (lower peak memory on large libraries)
+- (**Network**) `HttpException` now extends `IOException` instead of `IllegalStateException`, so `catch(IOException)` call sites also cover HTTP errors
+- (**Manga/API**) `thumbnailUrl` is `null` when a manga has no stored thumbnail — REST no longer returns a thumbnail-proxy URL that only ever answers 404 (aligned with the GraphQL contract)
+- (**Settings**) `webUISubpath` no longer accepts `.`/`..` path segments; `hikariMaxPoolSize` is capped at 200; `jwtTokenExpiry`/`jwtRefreshExpiry` must be at least 1s; `socksProxyPort`, `databaseSchema` and `extensionStores` entries are format-validated
+- (**Settings**) `databaseSchema` must now be a valid unquoted SQL identifier and is fail-fast: an invalid value aborts startup with an error instead of silently resetting to `suwayomi` — the silent reset pointed the server at an empty schema, making existing data look lost. If startup reports your schema as invalid, rename it in the database first (e.g. `ALTER SCHEMA "my-schema" RENAME TO my_schema`) and update `server.databaseSchema`, or remove the entry to use the default
+- (**Settings**) `kcefEnabled` is only honored on Linux and Windows; on other platforms it reports off instead of breaking server startup
+- (**Settings**) Changing a `requiresRestart` setting through the API is skipped with a warning instead of silently not taking effect
+- (**Source/API**) Filter updates are validated and applied per user — invalid positions/values answer 400 and one user's pending filter changes no longer leak into another user's searches
+- (**Chapter**) `recentChapters` paginates in SQL instead of materializing the whole chapter list in memory, and `chapterCount` is no longer serialized (it ran one `COUNT(*)` per row)
+- (**Chapter**) A source answering with zero chapters reports 404 instead of 500, and an empty chapter list no longer triggers a network re-fetch on every read
+- (**GraphQL**) Subscriptions must send `connection_init` before starting operations and are closed with the graphql-ws codes 4401/4408/4429/4400; operations are isolated per websocket session
+- (**GraphQL**) Queries are bounded: depth ≤ 15, complexity ≤ 500, at most 20 operations per batch; oversized data-loader batches are split transparently
+- (**Auth**) Login hardening (POST rate limiting, post-login session rotation, CSRF token) was evaluated and intentionally rejected: Suwayomi targets self-hosted trusted networks and the session is a same-site JSESSIONID cookie, so the change is out of scope for this maintenance pass
+- (**WebView**) Restricting `loadUrl` to public hosts was evaluated and intentionally rejected: the remote-controlled WebView is a trusted operator tool (e.g. Cloudflare bypass); the enforced boundary is the http/https scheme allowlist
+- (**Extension**) Extension store URL validation resolves DNS at check time while the request resolves again at connect time — DNS-rebinding bypass remains a documented structural limitation
+- (**Database**) Aligning the JDBC-backed `SQLiteDatabase` with AOSP's per-thread transaction/session model was evaluated and intentionally rejected — the shared-connection semantics are documented and locked in by tests; `enableWriteAheadLogging` likewise stays flag-only (documented divergence)
+- (**Downloads**) Chapter/manga directory names keep their lossy mapping (`a:b`/`a?b` → `a_b`, 240-byte truncation, case folding) — collisions were evaluated and deliberately accepted for compatibility with existing download directories
+- (**Build**) Switching modules to `java-library` API confinement and replacing the pinned winget publish action with a hand-rolled `gh api` submission were evaluated and intentionally rejected (documented in `build.gradle.kts`/`winget.yml`)
+- (**Server**) The temp root is now per OS user (`<tmpdir>/Tachidesk-<user>` instead of the shared `<tmpdir>/Tachidesk`), so installs run by different OS users no longer share temp files — the old shared directory is left behind unused (safe to delete) and the warm webUI/thumbnail/manga caches are rebuilt once
 
 ### Fixed
 - (**Tracker**) Fix the possibility of attempting to insert multiple track searches
@@ -26,6 +57,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Answer 424 instead of 500 when a source fails
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+- (**Tracker**) Fix track search results being cached globally instead of per user — one user's private track fields (`status`/`score`/`private`/`lastChapterRead`) could leak into or be overwritten by another user's searches; existing shared cache rows are discarded by a migration
+- (**SyncYomi**) Fix a failed or rejected sync upload still advancing the watermark, and serialization failures overwriting the remote with empty data
+- (**Restore**) Fix a plain (non-sync) backup restore leaving the sticky `is_syncing` flag set on restored rows
+- (**Updater**) Fix a failed update check cancelling the pending update jobs of unrelated sources, and cancelled update cycles leaving permanent PENDING queue entries with `isRunning` stuck true
+- (**Library**) Fix `addMangaToLibrary` skipping the default categories when another user had already categorized the same manga
+- (**Local Source**) Fix deadlocks and corrupt pages when reading RAR archives (single-stream unpacking with a serialized page loader)
+- (**Downloads**) Fix archive handling leaking file descriptors, silently truncating oversized entries and accepting zip-slip paths; fix the thumbnail/image cache accepting path-traversing file names and racing concurrent writes of the same file
+- (**KOReader**) Restore the real `partialMD5` document matching semantics (`-1..10` progress range) so progress sync resolves the right document again
+- (**GraphQL**) Fix LEFT JOIN nullable sort columns dropping rows, `last`/`before` reverse pagination and `after`+`before` windows across the paginated list queries
+- (**Settings**) Fix a single corrupt stored setting row breaking the whole `settings`/`userSettings` query — it now falls back to the default with a warning
+- (**Settings**) Fix `server.conf` writes being non-atomic (a crash could truncate the file) and minimum-only value corrections (`min` without `max`) never being applied or persisted
+- (**Settings**) Fix an unreadable `server.conf` value (e.g. a malformed duration such as `javaScriptEngineTimeout = "abc"`) crashing startup — the setting now falls back to its default once, with a warning, and the correction is persisted
+- (**Settings**) Fix `kcefEnabled=false` being rejected as platform-unsupported on every start on non-Linux/Windows systems, repeating the warning and rewriting `server.conf` without converging
+- (**Settings**) Fix atomic `server.conf` writes resetting tightened file permissions (e.g. `chmod 600`) to umask defaults — existing permissions are now preserved
+- (**Settings**) Fix a per-user setting's first read racing a `reset` and re-caching a stale value, and fix stored booleans other than `true`/`false` silently decoding as `false` instead of falling back to the default
+- (**Extension**) Fix unchecked manifest values: out-of-range `contentWarning` ints are clamped instead of silently degrading to SAFE, and oversized `versionName`s are truncated to the column width
+- (**i18n**) Fix malformed `Accept-Language` headers and `%2$d`-style format strings in language packs causing errors
+- (**Manga**) Fix a manga without chapters hitting the network on every chapter-list read — an empty list is only re-fetched when the manga was never fetched (explicit refreshes still work)
+
+### Security
+- (**API**) REST write endpoints now enforce the same per-permission checks as GraphQL (`INSTALL_EXTENSIONS`, `INSTALL_EXTERNAL_EXTENSIONS`, `UNINSTALL_EXTENSIONS`, `DOWNLOAD_CHAPTERS`, source preferences/filters, …) — previously any authenticated low-privilege user could invoke them
+- (**Auth**) Fix empty credentials authenticating while `authUsername`/`authPassword` are blank (the default): an empty Basic header or login form no longer passes, and the Basic fallback no longer upgrades a visitor under `UI_LOGIN`/`SIMPLE_LOGIN`
+- (**Auth**) Registration codes and `updateUser` can no longer grant permissions the issuer does not hold; redeeming a code re-validates the issuer's current permissions, and changing a user's permissions or role invalidates their existing JWTs
+- (**Auth**) Fix the login `redirect` parameter accepting protocol-relative (`//`), backslash and NUL/control-character targets — the redirect target is now whitelist-validated
+- (**WebView**) `loadUrl` only accepts `http`/`https` URLs and non-http(s) navigation inside CEF is cancelled at the resource layer — rendered frames can no longer expose `file:` URLs or browser internals
+- (**Extension**) Extension APKs must carry a cryptographically valid signature that keeps matching the original signer; unsigned packages are refused, and zip-slip entries plus path-traversing `packageName`s are rejected before files are written
+- (**Extension**) Extension store URLs — and every URL a store feeds back (`index_v2`, extension list, icon/apk) — are validated against an egress policy: http(s) only, no loopback/private/link-local/multicast/CGNAT/ULA hosts by default (`extensionStoresAllowPrivateHosts` opts in)
+- (**Network**) Fix the persistent cookie store matching cookie domains by suffix without a dot boundary — `notexample.com` could steal `example.com` cookies (including `cf_clearance`)
+- (**API**) Backup file downloads and temporary-file retrieval now require authentication, are scoped to the owning user and verify the stored path stays inside the temp directory
+- (**GraphQL**) Schema introspection requires an authenticated user under `UI_LOGIN`, and execution errors no longer echo stack traces
+- (**GraphQL**) Subscription websocket sessions are isolated per session and re-evaluation of the auth token is limited to `UI_LOGIN`, closing a visitor→admin upgrade path
+- (**JS**) Extension JavaScript runs without host class lookup/polyglot access and under a statement limit plus watchdog timeout — scripts can no longer hang the server or escape the engine
+- (**Database**) H2 migration tool jars are verified against pinned SHA-256 digests in addition to size/zip checks, so a poisoned download or cache entry cannot enter the classpath
+- (**CI**) Fix the winget publish workflow interpolating release tag names into a privileged `run:` block; third-party actions are pinned by SHA
 
 ### Deprecated
 - (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
@@ -35,7 +100,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 #### Bug Squashing and Optimizations!
 This release focuses on fixing many bugs and optimizing startup time! 
 
-#### [Syncyomi]([SyncYomi](https://github.com/syncyomi/syncyomi)) v2 Support!
+#### [SyncYomi](https://github.com/syncyomi/syncyomi) v2 Support!
 Syncyomi has released its next version of syncing your library, optimizing the sync and squashing many bugs! 
 
 ### Added
@@ -448,7 +513,7 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 - added support for a equivalent page to Tachiyomi's Updates tab
 - fix launchers not working on macOS M1/arm64
 
-## [v0.5.2] + [WebUI: r807] - 20209-19
+## [v0.5.2] + [WebUI: r807] - 2021-09-19
 
 - Fixed Local source not working on Windows
 - Fixed Chapter names being shown incorrectly
@@ -549,12 +614,8 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 [WebUI: v20260929.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026092901-r3518---2026-09-29
 [WebUI: v20260509.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026050901-r3147---2026-05-09
 [WebUI: v20260508.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2026050801-r3136---2026-05-08
-[WebUI: v20251230.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025123001-r2937---2025-12-30
-[WebUI: v20250801.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025080101-r2717---2025-08-01
-[WebUI: v20250731.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025073101-r2715---2025-07-31
 [WebUI: v20250703.01]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#2025070301-r2643---2025-07-03
 [WebUI: v1.5.1]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#151-r2467---2025-04-07
-[WebUI: v1.5.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#150-r2461---2025-04-05
 [WebUI: v1.1.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#110-r1689---2024-06-14
 [WebUI: v1.0.0]: https://github.com/Suwayomi/Suwayomi-WebUI/blob/master/CHANGELOG.md#100-r1411---2024-02-23
 [WebUI: r983]: https://github.com/Suwayomi/Suwayomi-WebUI/compare/7312e92d07215c6a184577dd2779dcb7d887f889...ad9a12b2ec76fba0658d45d2d6c280caeaf046f7
@@ -595,7 +656,6 @@ Huge thanks to @martinek who pulled the most of the weight this release!
 [v0.6.2]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.1...v0.6.2
 [v0.6.1]: https://github.com/suwayomi/suwayomi-server/compare/v0.6.0...v0.6.1
 [v0.6.0]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.4...v0.6.0
-[v0.5.4]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.4...v0.5.4
 [v0.5.4]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.3...v0.5.4
 [v0.5.3]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.2...v0.5.3
 [v0.5.2]: https://github.com/suwayomi/suwayomi-server/compare/v0.5.1...v0.5.2

@@ -75,7 +75,12 @@ object UserSettingsGraphqlTypeGenerator {
         // Write secondary constructor
         val indentation = 4
         appendLine("@Suppress(\"UNCHECKED_CAST\")".addIndentation(indentation))
-        appendLine("constructor(userId: Int, userSettings: suwayomi.tachidesk.server.settings.UserSettings = globalUserSettings) : this(".addIndentation(indentation))
+        appendLine(
+            "constructor(userId: Int, userSettings: suwayomi.tachidesk.server.settings.UserSettings = globalUserSettings) : this("
+                .addIndentation(
+                    indentation,
+                ),
+        )
 
         writeSettings(
             groupedSettings,

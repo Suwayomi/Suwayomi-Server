@@ -13,6 +13,7 @@ import org.jetbrains.exposed.v1.core.Expression
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.QueryBuilder
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.or
 
 // Writes the ids into the SQL: H2 checks every row against each bound parameter, but against a literal list as a set.
 // Safe since the ids are numbers
@@ -31,10 +32,22 @@ private class InIdsOp(
     }
 }
 
+// a single literal IN list cannot grow unbounded; larger id sets are chunked and OR-ed
+private const val IN_IDS_CHUNK_SIZE = 1000
+
 private fun inIds(
     column: Expression<*>,
     ids: Collection<Number>,
-): Op<Boolean> = if (ids.isEmpty()) Op.FALSE else InIdsOp(column, ids.distinct())
+): Op<Boolean> {
+    val distinctIds = ids.distinct()
+    if (distinctIds.isEmpty()) {
+        return Op.FALSE
+    }
+    return distinctIds
+        .chunked(IN_IDS_CHUNK_SIZE)
+        .map { InIdsOp(column, it) as Op<Boolean> }
+        .reduce { acc, op -> acc or op }
+}
 
 @JvmName("inIntEntityIds")
 infix fun Column<EntityID<Int>>.inIds(ids: Collection<Int>): Op<Boolean> = inIds(this, ids)

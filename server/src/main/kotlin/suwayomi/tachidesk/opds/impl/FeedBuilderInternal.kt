@@ -7,6 +7,7 @@ import suwayomi.tachidesk.opds.model.OpdsEntryXml
 import suwayomi.tachidesk.opds.model.OpdsFeedXml
 import suwayomi.tachidesk.opds.model.OpdsLinkXml
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
 import java.util.Locale
@@ -34,13 +35,15 @@ class FeedBuilderInternal(
     val entries = mutableListOf<OpdsEntryXml>()
 
     private fun buildUrlWithParams(page: Int? = pageNum): String {
+        // `explicitQueryParams` arrives pre-encoded (see OpdsMangaFilter); every other
+        // value is a raw client/locale string and must be query-encoded here.
         val queryParams =
             listOfNotNull(
                 explicitQueryParams?.takeIf(String::isNotBlank),
                 page?.let { "pageNumber=$it" },
-                currentSort?.let { "sort=$it" },
-                currentFilter?.let { "filter=$it" },
-                "lang=${locale.toLanguageTag()}",
+                currentSort?.let { "sort=${it.encodeForOpdsURL()}" },
+                currentFilter?.let { "filter=${it.encodeForOpdsURL()}" },
+                "lang=${locale.toLanguageTag().encodeForOpdsURL()}",
             ).joinToString("&")
 
         return "$baseUrl/$idPath" + if (queryParams.isNotEmpty()) "?$queryParams" else ""
@@ -142,7 +145,13 @@ class FeedBuilderInternal(
             entries = entries,
             totalResults = totalResults.takeIf { showOpenSearch },
             itemsPerPage = itemsPerPage.takeIf { showOpenSearch },
-            startIndex = if (showOpenSearch && pageNum != null) ((pageNum - 1) * itemsPerPage) + 1 else null,
+            startIndex =
+                if (showOpenSearch && pageNum != null) {
+                    // Long math so `pageNum` near Int.MAX_VALUE can't wrap negative
+                    ((pageNum - 1).toLong() * itemsPerPage + 1).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                } else {
+                    null
+                },
         )
     }
 }

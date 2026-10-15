@@ -7,18 +7,17 @@ import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.toGraphQLError
 import graphql.execution.DataFetcherResult
 import io.github.oshai.kotlinlogging.KotlinLogging
-import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.core.or
-import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.queries.filter.prefixLikePattern
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.MangaMetaType
 import suwayomi.tachidesk.graphql.types.MangaType
@@ -29,19 +28,12 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
-import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
 import uy.kohesive.injekt.injectLazy
-import java.time.Instant
 import java.util.concurrent.CompletableFuture
 
-/**
- * TODO Mutations
- * - Download x(all = -1) chapters
- * - Delete read/all downloaded chapters
- */
 class MangaMutation {
     private val updater: IUpdater by injectLazy()
 
@@ -77,37 +69,24 @@ class MangaMutation {
         ids: List<Int>,
         patch: UpdateMangaPatch,
     ) {
-        transaction {
-            if (patch.inLibrary != null) {
-                val now = Instant.now().epochSecond
-                MangaUserTable.batchUpsert(ids, MangaUserTable.user, MangaUserTable.manga) { mangaId ->
-                    this[MangaUserTable.manga] = mangaId
-                    this[MangaUserTable.user] = userId
-                    patch.inLibrary.also {
-                        this[MangaUserTable.inLibrary] = it
-                        if (it) this[MangaUserTable.inLibraryAt] = now
-                    }
-                }
-            }
-        }.apply {
-            if (patch.inLibrary != null) {
+        if (patch.inLibrary == true) {
+            // REST parity: default-category assignment, the already-in-library guard and
+            // thumbnail handling all live in Library.addMangaToLibrary
+            ids.forEach { Library.addMangaToLibrary(userId, it) }
+
+            // try to initialize uninitialized in-library manga so that the expected data
+            // is available (chapter list, metadata, ...)
+            val mangas =
                 transaction {
-                    // try to initialize uninitialized in library manga to ensure that the expected data is available (chapter list, metadata, ...)
-                    val mangas =
-                        transaction {
-                            MangaTable
-                                .selectAll()
-                                .where { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
-                                .map { MangaTable.toDataClass(it) }
-                        }
-
-                    updater.addMangasToQueue(mangas, userId)
+                    MangaTable
+                        .selectAll()
+                        .where { (MangaTable.id inList ids) and (MangaTable.initialized eq false) }
+                        .map { MangaTable.toDataClass(it) }
                 }
 
-                ids.forEach {
-                    Library.handleMangaThumbnail(it)
-                }
-            }
+            updater.addMangasToQueue(mangas, userId)
+        } else if (patch.inLibrary == false) {
+            ids.forEach { Library.removeMangaFromLibrary(userId, it) }
         }
     }
 
@@ -129,7 +108,7 @@ class MangaMutation {
                             .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id eq id }
-                            .first(),
+                            .firstOrNull() ?: throw IllegalArgumentException("Manga not found: $id"),
                     )
                 }
 
@@ -195,7 +174,7 @@ class MangaMutation {
                         .getWithUserData(userId)
                         .selectAll()
                         .where { MangaTable.id eq id }
-                        .first()
+                        .firstOrNull() ?: throw IllegalArgumentException("Manga not found: $id")
                 }
             FetchMangaPayload(
                 clientMutationId = clientMutationId,
@@ -246,7 +225,7 @@ class MangaMutation {
                             .getWithUserData(userId)
                             .selectAll()
                             .where { MangaTable.id eq id }
-                            .first(),
+                            .firstOrNull() ?: throw IllegalArgumentException("Manga not found: $id"),
                         ChapterTable
                             .getWithUserData(userId)
                             .selectAll()
@@ -339,7 +318,7 @@ class MangaMutation {
                                 .getWithUserData(userId)
                                 .selectAll()
                                 .where { MangaTable.id eq mangaId }
-                                .first(),
+                                .firstOrNull() ?: throw IllegalArgumentException("Manga not found: $mangaId"),
                         )
                     }
 
@@ -454,18 +433,23 @@ class MangaMutation {
                     val keyCondition: Op<Boolean>? =
                         item.keys?.takeIf { it.isNotEmpty() }?.let { MangaMetaTable.key inList it }
 
+                    // empty prefixes can't form a meaningful LIKE pattern, and each prefix is
+                    // escaped so a caller's '%', '_' or '\' can't act as a wildcard
                     val prefixCondition: Op<Boolean>? =
                         item.prefixes
                             ?.filter { it.isNotEmpty() }
-                            ?.map { (MangaMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                            ?.map { (MangaMetaTable.key like prefixLikePattern(it)) as Op<Boolean> }
                             ?.reduceOrNull { acc, op -> acc or op }
 
                     val metaKeyCondition =
                         if (keyCondition != null && prefixCondition != null) {
                             keyCondition or prefixCondition
                         } else {
-                            keyCondition ?: prefixCondition!!
+                            keyCondition ?: prefixCondition
                         }
+                    requireNotNull(metaKeyCondition) {
+                        "At least one non-empty key or prefix is required for each item"
+                    }
 
                     val condition = (MangaMetaTable.user eq userId) and (MangaMetaTable.ref inList item.mangaIds) and metaKeyCondition
 

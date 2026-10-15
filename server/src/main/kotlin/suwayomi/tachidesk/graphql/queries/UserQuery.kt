@@ -48,6 +48,7 @@ import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.validatePagination
 import suwayomi.tachidesk.graphql.types.UserCodeType
 import suwayomi.tachidesk.graphql.types.UserNodeList
 import suwayomi.tachidesk.graphql.types.UserType
@@ -56,6 +57,9 @@ import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
 
 class UserQuery {
+    // @RequireAuth only gates authentication; row visibility is enforced inside
+    // UserDataLoader (own id, or any id with MANAGE_USERS) — the annotation/loader
+    // split is intentional so a batched lookup fails only the offending keys
     @RequireAuth
     fun user(
         @GraphQLIgnore
@@ -211,6 +215,8 @@ class UserQuery {
         last: Int? = null,
         offset: Int? = null,
     ): UserNodeList {
+        validatePagination(first, last, offset)
+
         val queryResults =
             transaction {
                 val res = UserAccountTable.selectAll()
@@ -223,7 +229,6 @@ class UserQuery {
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
                         actualSort,
-                        before,
                         last,
                         UserAccountTable.id,
                         PaginationNeeds.of(dataFetchingEnvironment),
@@ -242,7 +247,9 @@ class UserQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                // `last` fetches the tail in reversed order; flip it back to forward order
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
         val getAsCursor: (UserType) -> Cursor = (order?.firstOrNull()?.by ?: UserOrderBy.ID)::asCursor

@@ -29,6 +29,8 @@ Solutions:
 - If you downgraded, upgrade to preview again.
 - Otherwise, you will need to reset and restore from a backup. See [General Troubleshooting](#general-troubleshooting) below.
 
+Before wiping anything, check the automatic database backups Suwayomi keeps next to `database.mv.db` in the data directory: `database.mv.db.200.backup` and `database.mv.db.200.backup.1` (the `200` infix is the pre-migration H2 version's last segment). These are two rolling generations taken before migrations/startup checks — `backup.1` is the *older* generation and is never overwritten once it exists, so when the current `database.mv.db` is the corrupted one, `backup` may contain a copy of that same corrupted state made during the last startup attempt while `backup.1` still holds the last known-good copy. **Prefer restoring from `database.mv.db.200.backup.1` first** (stop Suwayomi, copy it over `database.mv.db`), and only fall back to `backup` if `.backup.1` does not exist or also fails to open.
+
 
 ## `HTTP error 429`
 

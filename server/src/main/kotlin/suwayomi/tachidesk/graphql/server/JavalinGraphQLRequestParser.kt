@@ -16,29 +16,35 @@ import io.javalin.http.Context
 import io.javalin.http.UploadedFile
 import io.javalin.json.fromJsonStream
 import io.javalin.json.fromJsonString
-import java.io.IOException
 
 class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
     private val logger = KotlinLogging.logger {}
 
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     override suspend fun parseRequest(context: Context): GraphQLServerRequest? {
+        // client mistakes (missing 'operations' form field, malformed map json, oversized
+        // batches, ...) are 400s, not server faults: returning null makes the controller
+        // answer 400, so every decode/validation failure lands here
         return try {
             val jsonMapper = context.jsonMapper()
             val contentType = context.contentType()
-            val formParam =
-                if (
-                    contentType?.contains("application/x-www-form-urlencoded", true) == true ||
+            val isFormContentType =
+                contentType?.contains("application/x-www-form-urlencoded", true) == true ||
                     contentType?.contains("multipart/form-data", true) == true
-                ) {
-                    context.formParam("operations")
-                        ?: throw IllegalArgumentException("Cannot find 'operations' body")
-                } else {
-                    return context.bodyInputStream().use { jsonMapper.fromJsonStream<GraphQLServerRequest>(it) }
-                }
+
+            if (!isFormContentType) {
+                return context
+                    .bodyInputStream()
+                    .use { jsonMapper.fromJsonStream<GraphQLServerRequest>(it) }
+                    .also { it.requireMaxBatchSize() }
+            }
 
             val request =
-                jsonMapper.fromJsonString<GraphQLServerRequest>(formParam)
+                jsonMapper.fromJsonString<GraphQLServerRequest>(
+                    context.formParam("operations")
+                        ?: throw IllegalArgumentException("Cannot find 'operations' body"),
+                )
+            request.requireMaxBatchSize()
 
             val map =
                 context
@@ -51,6 +57,9 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                 map
                     .flatMap { (key, variables) ->
                         val file = context.uploadedFile(key)
+                        if (file == null) {
+                            logger.warn { "Upload map references missing file part '$key'" }
+                        }
                         variables.map { fullVariable ->
                             val variable = fullVariable.removePrefix("variables.").substringBefore('.')
                             val listIndex = fullVariable.substringAfterLast('.').toIntOrNull()
@@ -78,9 +87,17 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                     )
                 }
             }
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             logger.error(e) { "Error when parsing request" }
             null
+        }
+    }
+
+    private fun GraphQLServerRequest.requireMaxBatchSize() {
+        if (this is GraphQLBatchRequest) {
+            require(requests.size <= MAX_BATCH_SIZE) {
+                "Batch request size ${requests.size} exceeds the limit of $MAX_BATCH_SIZE"
+            }
         }
     }
 
@@ -96,8 +113,12 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
      * Example map "{ "0": ["variables.file"] }"
      * TODO nested objects
      */
-    private fun Map<String, Any?>.modifyFiles(map: Map<String, List<MapItem>>): Map<String, Any?> =
-        mapValues { (name, value) ->
+    private fun Map<String, Any?>.modifyFiles(map: Map<String, List<MapItem>>): Map<String, Any?> {
+        val unmatched = map.keys - keys
+        if (unmatched.isNotEmpty()) {
+            logger.warn { "Upload map references variables not present in 'operations': $unmatched" }
+        }
+        return mapValues { (name, value) ->
             if (map.containsKey(name)) {
                 val items = map[name].orEmpty()
                 if (items.size > 1) {
@@ -115,4 +136,9 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                 value
             }
         }
+    }
+
+    companion object {
+        private const val MAX_BATCH_SIZE = 20
+    }
 }

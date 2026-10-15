@@ -10,11 +10,8 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
-import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
@@ -25,17 +22,16 @@ class ExtensionDataLoader : KotlinDataLoader<String, ExtensionType> {
     override val dataLoaderName = "ExtensionDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<String, ExtensionType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val extensions =
                         ExtensionTable
                             .selectAll()
                             .where { ExtensionTable.pkgName inList ids }
                             .map { ExtensionType(it) }
                             .associateBy { it.pkgName }
-                    ids.map { extensions[it] }
+                    ids.map { extensions[it] }.asDataLoaderResults()
                 }
             }
         }
@@ -45,10 +41,9 @@ class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType> {
     override val dataLoaderName = "ExtensionForSourceDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Long, ExtensionType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val extensions =
                         ExtensionTable
                             .innerJoin(SourceTable)
@@ -69,7 +64,7 @@ class ExtensionForSourceDataLoader : KotlinDataLoader<Long, ExtensionType> {
                                     it.first to sources[it.second]
                                 }
                             }
-                    ids.map { extensions[it] }
+                    ids.map { extensions[it] }.asDataLoaderResults()
                 }
             }
         }

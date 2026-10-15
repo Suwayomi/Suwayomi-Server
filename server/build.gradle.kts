@@ -30,6 +30,7 @@ plugins {
             .get()
             .pluginId,
     )
+    alias(libs.plugins.download)
 }
 
 dependencies {
@@ -62,11 +63,9 @@ dependencies {
     // tray icon
     implementation(libs.bundles.systemtray)
 
-    // dependencies of Mihon (Tachiyomi) extensions, some are duplicate, keeping it here for reference
+    // dependencies of Mihon (Tachiyomi) extensions
+    // (okhttp-core/rxjava/jsoup are already in bundles.shared/bundles.okhttp)
     implementation(libs.injekt)
-    implementation(libs.okhttp.core)
-    implementation(libs.rxjava)
-    implementation(libs.jsoup)
 
     // ComicInfo
     implementation(libs.serialization.xml.core)
@@ -87,6 +86,9 @@ dependencies {
     // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
     implementation(libs.bouncycastle)
 
+    // APK signature scheme verification for extension installs
+    implementation(libs.apksig)
+
     // AndroidCompat
     implementation(projects.androidCompat)
     implementation(projects.androidCompat.config)
@@ -97,8 +99,6 @@ dependencies {
     // Settings module
     implementation(projects.server.serverConfig)
 
-    // uncomment to test extensions directly
-//    implementation(fileTree("lib/"))
     implementation(kotlin("script-runtime"))
 
     testImplementation(libs.mockk)
@@ -128,7 +128,6 @@ application {
 sourceSets {
     main {
         resources {
-            srcDir("src/main/resources")
             srcDir("build/generated/src/main/resources")
         }
         kotlin {
@@ -183,7 +182,12 @@ tasks {
         archiveClassifier.set("")
         destinationDirectory.set(File("$rootDir/server/build"))
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
-        mergeServiceFiles("META-INF/services")
+        mergeServiceFiles()
+        // The merged jar cannot be re-signed, so signature files from signed
+        // dependencies (e.g. bcprov) would be invalid anyway; drop them.
+        exclude("META-INF/*.SF")
+        exclude("META-INF/*.RSA")
+        exclude("META-INF/*.DSA")
         dependencies {
             // The deprecated GraalVM js-community POM chain declares `<type>pom</type>`
             // dependencies, which puts literal .pom artifacts on the resolved classpath.
@@ -235,48 +239,68 @@ tasks {
         }
     }
 
+    val downloadWebUI =
+        register<Download>("downloadWebUI") {
+            val webUiZip =
+                layout.buildDirectory
+                    .file("webui/WebUI.zip")
+                    .get()
+                    .asFile
+            src(
+                "https://github.com/Suwayomi/Suwayomi-WebUI-preview/releases/download/" +
+                    "$webUIRevisionTag/Suwayomi-WebUI-$webUIRevisionTag.zip",
+            )
+            dest(webUiZip)
+
+            // WebUI is bundled for stable builds only (see 7d2f542f): preview
+            // and dev builds must not carry it, so skip the download entirely
+            // unless ProductBuildType=Stable (same predicate as BUILD_TYPE).
+            // The revision check below is evaluated at execution time so
+            // nothing is read during configuration (keeps the configuration
+            // cache clean).
+            onlyIf {
+                if (System.getenv("ProductBuildType") != "Stable") {
+                    return@onlyIf false
+                }
+                val zipFile = net.lingala.zip4j.ZipFile(webUiZip)
+                if (!zipFile.isValidZipFile) {
+                    return@onlyIf true
+                }
+                val zipRevision =
+                    runCatching {
+                        zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
+                            it.readText().trim()
+                        }
+                    }.getOrNull()
+
+                zipRevision != webUIRevisionTag
+            }
+        }
+
     named<Copy>("processResources") {
         duplicatesStrategy = DuplicatesStrategy.INCLUDE
-        mustRunAfter("downloadWebUI")
-    }
-
-    register<Download>("downloadWebUI") {
-        src("https://github.com/Suwayomi/Suwayomi-WebUI-preview/releases/download/$webUIRevisionTag/Suwayomi-WebUI-$webUIRevisionTag.zip")
-        dest("src/main/resources/WebUI.zip")
-
-        fun shouldOverwrite(): Boolean {
-            val zipPath = project.projectDir.absolutePath + "/src/main/resources/WebUI.zip"
-            val zipFile = net.lingala.zip4j.ZipFile(zipPath)
-
-            var shouldOverwrite = true
-            if (zipFile.isValidZipFile) {
-                val zipRevision =
-                    zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
-                        it.readText().trim()
-                    }
-
-                if (zipRevision == webUIRevisionTag) {
-                    shouldOverwrite = false
-                }
-            }
-
-            return shouldOverwrite
+        // wires the download output into resources and adds the task dependency
+        from(downloadWebUI)
+        // The task above is gated on ProductBuildType=Stable; also exclude the
+        // zip itself so a stale build/webui/WebUI.zip left by an earlier stable
+        // build cannot leak into preview/dev jars.
+        if (System.getenv("ProductBuildType") != "Stable") {
+            exclude("WebUI.zip")
         }
-
-        overwrite(shouldOverwrite())
     }
 
-    register("runElectron") {
+    register<JavaExec>("runElectron") {
         group = "application"
-        finalizedBy(run)
-        doFirst {
-            application.applicationDefaultJvmArgs =
-                listOf(
-                    "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
-                    // Change this to the installed electron application
-                    "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
-                )
-        }
+        description = "Runs the server with the electron webUI interface"
+        classpath = sourceSets["main"].runtimeClasspath
+        mainClass.set(MainClass)
+        jvmArgs =
+            application.applicationDefaultJvmArgs +
+            listOf(
+                "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
+                // Change this to the installed electron application
+                "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
+            )
     }
 
     runKtlintCheckOverMainSourceSet {

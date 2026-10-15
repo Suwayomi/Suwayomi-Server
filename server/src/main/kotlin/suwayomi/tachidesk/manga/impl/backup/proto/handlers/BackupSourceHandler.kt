@@ -7,8 +7,8 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
+import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.Source.modifySourceMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
@@ -30,7 +30,9 @@ object BackupSourceHandler {
                     .map { it.source }
                     .distinct()
                     .toList()
-            val sources = SourceTable.selectAll().where { SourceTable.id inList inLibraryMangaSourceIds }
+            // literal, chunked IN list: bound parameters hit the driver's variable
+            // limit on large libraries
+            val sources = SourceTable.selectAll().where { SourceTable.id inIds inLibraryMangaSourceIds }
             val sourceToMeta =
                 if (flags.includeClientData) {
                     Source.getSourcesMetaMaps(userId, sources.map { it[SourceTable.id].value })
@@ -56,6 +58,23 @@ object BackupSourceHandler {
         userId: Int,
         backupSources: List<BackupSource>,
     ) {
-        modifySourceMetas(userId, backupSources.associateBy { it.sourceId }.mapValues { it.value.meta })
+        dbTransaction {
+            // meta rows reference a source that must exist locally — writing metas for
+            // absent sources would leave orphaned rows the source can never read
+            val existingSourceIds =
+                SourceTable
+                    .selectAll()
+                    .where { SourceTable.id inIds backupSources.map { it.sourceId } }
+                    .map { it[SourceTable.id].value }
+                    .toSet()
+
+            modifySourceMetas(
+                userId,
+                backupSources
+                    .filter { it.sourceId in existingSourceIds }
+                    .associateBy { it.sourceId }
+                    .mapValues { it.value.meta },
+            )
+        }
     }
 }

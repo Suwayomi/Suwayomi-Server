@@ -44,6 +44,10 @@ class BackupMutation {
         val (clientMutationId, backup, flags) = input
 
         return future {
+            require(backup.size() <= Backup.MAX_UPLOAD_SIZE) {
+                "Backup file exceeds the maximum size of ${Backup.MAX_UPLOAD_SIZE} bytes"
+            }
+
             val restoreId =
                 ProtoBackupImport.restore(
                     userId,
@@ -53,11 +57,11 @@ class BackupMutation {
 
             withTimeout(10.seconds) {
                 ProtoBackupImport.notifyFlow.first {
-                    ProtoBackupImport.getRestoreState(restoreId) != null
+                    ProtoBackupImport.getRestoreState(userId, restoreId) != null
                 }
             }
 
-            RestoreBackupPayload(clientMutationId, restoreId, ProtoBackupImport.getRestoreState(restoreId)?.toStatus())
+            RestoreBackupPayload(clientMutationId, restoreId, ProtoBackupImport.getRestoreState(userId, restoreId)?.toStatus())
         }
     }
 

@@ -9,8 +9,10 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import libcore.net.MimeUtils
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -20,6 +22,7 @@ import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.DownloadConversion
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
@@ -34,6 +37,7 @@ import suwayomi.tachidesk.util.ConversionUtil
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import javax.imageio.IIOImage
 import javax.imageio.ImageIO
@@ -109,15 +113,50 @@ object Page {
 
         // we treat Local source differently
         if (mangaEntry[MangaTable.sourceReference] == LocalSource.ID) {
-            // is of archive format
-            if (LocalSource.pageCache.containsKey(chapterEntry[ChapterTable.url])) {
-                val pageStream = LocalSource.pageCache[chapterEntry[ChapterTable.url]]!![index]
-                return pageStream() to (ImageUtil.findImageType { pageStream() }?.mime ?: "image/jpeg")
+            val chapterUrl = chapterEntry[ChapterTable.url]
+            val imageUrl = tachiyomiPage.imageUrl
+
+            if (imageUrl != null) {
+                // is of directory format: imageUrl resolves inside the local manga root
+                // (relative path; legacy entries may hold an absolute path)
+                val imageFile = LocalSource.resolvePageFile(imageUrl)
+                // sniff and serve on the same stream: the buffered stream supports
+                // mark/reset, so findImageType leaves it positioned at byte 0
+                val stream = imageFile.inputStream().buffered()
+                return stream to (ImageUtil.findImageType(stream)?.mime ?: "image/jpeg")
             }
 
-            // is of directory format
-            val imageFile = File(tachiyomiPage.imageUrl!!)
-            return imageFile.inputStream() to (ImageUtil.findImageType { imageFile.inputStream() }?.mime ?: "image/jpeg")
+            // is of archive format: page streams live in a bounded cache; rebuild the page
+            // list once on a miss (entry evicted, or never populated e.g. after a restart)
+            val pageStream =
+                LocalSource.getCachedPageStream(chapterUrl, index)
+                    ?: run {
+                        (getSourceOrNull(LocalSource.ID) as? LocalSource)
+                            ?.getPageList(SChapter.create().apply { url = chapterUrl })
+                        LocalSource.getCachedPageStream(chapterUrl, index)
+                    }
+            if (pageStream != null) {
+                // one extraction per request: invoking the provider twice would run two
+                // concurrent junrar extractor tasks on the same archive (which is not
+                // thread-safe) and corrupt the page; the buffered stream is sniffed via
+                // mark/reset instead, then handed to the caller at position 0
+                val stream =
+                    try {
+                        pageStream().buffered()
+                    } catch (e: IOException) {
+                        // the cache entry was evicted between the lookup above and the
+                        // stream opening; rebuild the page list once and retry
+                        (getSourceOrNull(LocalSource.ID) as? LocalSource)
+                            ?.getPageList(SChapter.create().apply { url = chapterUrl })
+                        LocalSource
+                            .getCachedPageStream(chapterUrl, index)
+                            ?.invoke()
+                            ?.buffered()
+                            ?: throw NoSuchElementException("Page $index of chapter $chapterUrl not found")
+                    }
+                return stream to (ImageUtil.findImageType(stream)?.mime ?: "image/jpeg")
+            }
+            throw NoSuchElementException("Page $index of chapter $chapterUrl not found")
         }
 
         val source = getSourceOrNull(mangaEntry[MangaTable.sourceReference])!!
@@ -138,7 +177,16 @@ object Page {
 
         // Note: don't care about invalidating cache because OS cache is not permanent
         return getImageResponse(cacheSaveDir, fileName) {
-            source.getImage(tachiyomiPage)
+            try {
+                source.getImage(tachiyomiPage)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                // HttpException/host-unreachable already map to source-failure statuses
+                throw e
+            } catch (e: Exception) {
+                throw SourceException(e.message, e)
+            }
         }
     }
 
@@ -173,8 +221,9 @@ object Page {
                 )
             } catch (e: Exception) {
                 logger.error(e) { "Error while post-processing image" }
-                // re-open cached image in case of an error, since conversion likely (partially) consumed the input stream
-                // so it's likely not possible to serve it
+                // the conversion likely (partially) consumed the input stream so it
+                // cannot be served — close it and re-open the cached image instead
+                inputStream.close()
                 getPageImage(mangaId = mangaId, chapterIndex = chapterIndex, index = index)
             }
         return converted?.also { inputStream.close() } ?: (inputStream to mime)
@@ -340,8 +389,12 @@ object Page {
 
         val writerParams = writer.defaultWriteParam
         compressionLevel?.let {
-            writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
-            writerParams.compressionQuality = it.toFloat()
+            // not every writer supports compression (e.g. BMP); configuring the mode
+            // unconditionally throws UnsupportedOperationException
+            if (writerParams.canWriteCompressed()) {
+                writerParams.compressionMode = ImageWriteParam.MODE_EXPLICIT
+                writerParams.compressionQuality = it.toFloat()
+            }
         }
 
         return writer to writerParams

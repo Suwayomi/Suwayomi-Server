@@ -19,7 +19,9 @@ package com.android.internal.util;
 public final class GrowingArrayUtils {
 
     public static <T> T[] append(T[] array, int currentSize, T element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 > array.length) {
             @SuppressWarnings("unchecked")
@@ -33,7 +35,9 @@ public final class GrowingArrayUtils {
     }
 
     public static int[] append(int[] array, int currentSize, int element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 > array.length) {
             int[] newArray = ArrayUtils.newUnpaddedIntArray(growSize(currentSize));
@@ -45,7 +49,9 @@ public final class GrowingArrayUtils {
     }
 
     public static long[] append(long[] array, int currentSize, long element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 > array.length) {
             long[] newArray = ArrayUtils.newUnpaddedLongArray(growSize(currentSize));
@@ -57,7 +63,9 @@ public final class GrowingArrayUtils {
     }
 
     public static boolean[] append(boolean[] array, int currentSize, boolean element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 > array.length) {
             boolean[] newArray = ArrayUtils.newUnpaddedBooleanArray(growSize(currentSize));
@@ -69,7 +77,9 @@ public final class GrowingArrayUtils {
     }
 
     public static float[] append(float[] array, int currentSize, float element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 > array.length) {
             float[] newArray = ArrayUtils.newUnpaddedFloatArray(growSize(currentSize));
@@ -81,7 +91,9 @@ public final class GrowingArrayUtils {
     }
 
     public static <T> T[] insert(T[] array, int currentSize, int index, T element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 <= array.length) {
             System.arraycopy(array, index, array, index + 1, currentSize - index);
@@ -99,7 +111,9 @@ public final class GrowingArrayUtils {
     }
 
     public static int[] insert(int[] array, int currentSize, int index, int element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 <= array.length) {
             System.arraycopy(array, index, array, index + 1, currentSize - index);
@@ -115,7 +129,9 @@ public final class GrowingArrayUtils {
     }
 
     public static long[] insert(long[] array, int currentSize, int index, long element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 <= array.length) {
             System.arraycopy(array, index, array, index + 1, currentSize - index);
@@ -131,7 +147,9 @@ public final class GrowingArrayUtils {
     }
 
     public static boolean[] insert(boolean[] array, int currentSize, int index, boolean element) {
-        assert currentSize <= array.length;
+        // Java asserts are disabled in production; keep this invariant live.
+        Preconditions.checkArgument(currentSize <= array.length,
+                "currentSize exceeds array length");
 
         if (currentSize + 1 <= array.length) {
             System.arraycopy(array, index, array, index + 1, currentSize - index);

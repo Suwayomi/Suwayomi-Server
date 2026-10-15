@@ -13,7 +13,7 @@ fun Element.selectText(
 fun Element.selectInt(
     css: String,
     defaultValue: Int = 0,
-): Int = select(css).first()?.text()?.toInt() ?: defaultValue
+): Int = select(css).first()?.text()?.toIntOrNull() ?: defaultValue
 
 fun Element.attrOrText(css: String): String = if (css != "text") attr(css) else text()
 

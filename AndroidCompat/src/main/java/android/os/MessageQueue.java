@@ -110,6 +110,25 @@ public final class MessageQueue {
     }
 
     /**
+     * Dumps the pending message queue for debugging, optionally filtered to a
+     * single {@link Handler}. Called from {@link Looper#dump}.
+     */
+    void dump(android.util.Printer pw, String prefix, Handler h) {
+        synchronized (this) {
+            final long now = SystemClock.uptimeMillis();
+            int n = 0;
+            for (Message msg = mMessages; msg != null; msg = msg.next) {
+                if (h == null || h == msg.target) {
+                    pw.println(prefix + "Message " + n + ": " + msg.toString(now));
+                }
+                n++;
+            }
+            pw.println(prefix + "(Total messages: " + n + ", polling=" + mBlocked
+                    + ", quitting=" + mQuitting + ")");
+        }
+    }
+
+    /**
      * Add a new {@link IdleHandler} to this message queue.  This may be
      * removed automatically for you by returning false from
      * {@link IdleHandler#queueIdle IdleHandler.queueIdle()} when it is
@@ -228,7 +247,9 @@ public final class MessageQueue {
 
     private void updateOnFileDescriptorEventListenerLocked(FileDescriptor fd, int events,
             OnFileDescriptorEventListener listener) {
-        throw new RuntimeException("Stub!");
+        // File-descriptor polling is not supported on the JVM message queue.
+        throw new UnsupportedOperationException(
+                "File descriptor event listeners are not supported in Suwayomi AndroidCompat");
 //        final int fdNum = fd.getInt$();
 //
 //        int index = -1;

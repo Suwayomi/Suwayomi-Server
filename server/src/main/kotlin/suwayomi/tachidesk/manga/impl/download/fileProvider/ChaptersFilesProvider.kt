@@ -29,6 +29,43 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import java.io.File
 import java.io.InputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.StandardCopyOption
+import kotlin.io.path.moveTo
+
+/** Suffix of not-yet-finished download files; such files never count as downloaded pages. */
+const val TMP_FILE_SUFFIX = ".tmp"
+
+/**
+ * Finds a downloaded page file ([fileName] + ".*") inside [directoryPath].
+ * Unlike [ImageResponse.findFileNameStartingWith] this never returns a leftover
+ * `.tmp` file from an interrupted download as an existing page.
+ */
+internal fun findDownloadedPageFile(
+    directoryPath: String,
+    fileName: String,
+): File? {
+    val target = "$fileName."
+    return File(directoryPath)
+        .listFiles()
+        .orEmpty()
+        .firstOrNull { it.isFile && it.name.startsWith(target) && !it.name.endsWith(TMP_FILE_SUFFIX) }
+}
+
+/**
+ * Moves [source] over [target], atomically when the file system supports it (the
+ * tmp file always sits next to the target, so atomic moves work in practice).
+ */
+internal fun moveFileReplacing(
+    source: File,
+    target: File,
+) {
+    try {
+        source.toPath().moveTo(target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+    } catch (e: AtomicMoveNotSupportedException) {
+        source.toPath().moveTo(target.toPath(), StandardCopyOption.REPLACE_EXISTING)
+    }
+}
 
 sealed class FileType {
     data class RegularFile(
@@ -82,10 +119,15 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             throw NoSuchElementException("no downloaded images found")
         }
 
-        val image = images[index]
+        val image =
+            images.getOrNull(index)
+                ?: throw NoSuchElementException("image index $index out of bounds (${images.size} downloaded images)")
         val imageFileType = image.getExtension()
 
-        return Pair(getImageInputStream(image).buffered(), MimeUtils.guessMimeTypeFromExtension(imageFileType) ?: "image/$imageFileType")
+        return Pair(
+            getImageInputStream(image).buffered(),
+            MimeUtils.guessMimeTypeFromExtension(imageFileType) ?: "application/octet-stream",
+        )
     }
 
     suspend fun getImageCount(): Int = getImageFiles().filter { it.getName() != COMIC_INFO_FILE }.size
@@ -134,12 +176,20 @@ abstract class ChaptersFilesProvider<Type : FileType>(
         val downloadCacheFolder = File(cacheChapterDir)
         downloadCacheFolder.mkdirs()
 
+        // drop leftovers of previously interrupted page downloads so they neither
+        // count as downloaded pages nor get packed into the chapter archive
+        downloadCacheFolder
+            .listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.name.endsWith(TMP_FILE_SUFFIX) }
+            .forEach { it.delete() }
+
         for (pageNum in 0 until pageCount) {
             var pageProgressJob: Job? = null
             val fileName = Page.getPageName(pageNum, pageCount) // might have to change this to index stored in database
 
-            val pageExistsInFinalDownloadFolder = ImageResponse.findFileNameStartingWith(finalDownloadFolder, fileName) != null
-            val pageExistsInCacheDownloadFolder = ImageResponse.findFileNameStartingWith(cacheChapterDir, fileName) != null
+            val pageExistsInFinalDownloadFolder = findDownloadedPageFile(finalDownloadFolder, fileName) != null
+            val pageExistsInCacheDownloadFolder = findDownloadedPageFile(cacheChapterDir, fileName) != null
 
             val doesPageAlreadyExist = pageExistsInFinalDownloadFolder || pageExistsInCacheDownloadFolder
             if (doesPageAlreadyExist) {

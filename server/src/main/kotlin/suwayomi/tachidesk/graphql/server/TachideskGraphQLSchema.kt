@@ -19,6 +19,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import suwayomi.tachidesk.graphql.directives.RequireAuthDirectiveWiring
 import suwayomi.tachidesk.graphql.directives.RequirePermissionsDirectiveWiring
 import suwayomi.tachidesk.graphql.mutations.BackupMutation
@@ -98,7 +99,7 @@ class CustomSchemaGeneratorHooks : FlowSubscriptionSchemaGeneratorHooks() {
 
 object GraphQLSchemaProvider {
     @OptIn(DelicateCoroutinesApi::class)
-    var schemaFuture =
+    internal val schemaFuture =
         GlobalScope.async {
             toSchema(
                 config =
@@ -161,9 +162,26 @@ object GraphQLSchemaProvider {
 
     suspend fun getSchema(): GraphQLSchema = schemaFuture.await()
 
+    /**
+     * Kicks off asynchronous schema generation. Must not block or await here:
+     * generation touches table objects (e.g. `MangaTable`) that read `serverConfig`,
+     * which is only registered inside `applicationSetup()` — awaiting before that
+     * point deadlocks/fails startup.
+     */
     fun init() {
         @OptIn(DelicateCoroutinesApi::class)
         GlobalScope.launch {
+            getSchema()
+        }
+    }
+
+    /**
+     * Fail fast at startup when schema generation itself throws, instead of leaving a
+     * half-initialized server whose first GraphQL request would surface the failure.
+     * Must be called only after `applicationSetup()` has registered `ServerConfig`.
+     */
+    fun awaitInit() {
+        runBlocking {
             getSchema()
         }
     }

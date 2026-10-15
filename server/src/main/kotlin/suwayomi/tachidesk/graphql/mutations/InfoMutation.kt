@@ -5,12 +5,14 @@ package suwayomi.tachidesk.graphql.mutations
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.directives.RequirePermissions
 import suwayomi.tachidesk.graphql.types.UpdateState.DOWNLOADING
 import suwayomi.tachidesk.graphql.types.UpdateState.ERROR
 import suwayomi.tachidesk.graphql.types.UpdateState.IDLE
 import suwayomi.tachidesk.graphql.types.WebUIFlavor
 import suwayomi.tachidesk.graphql.types.WebUIUpdateStatus
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.util.WebInterfaceManager
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.seconds
@@ -26,6 +28,7 @@ class InfoMutation {
     )
 
     @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_SETTINGS)
     fun updateWebUI(input: WebUIUpdateInput): CompletableFuture<WebUIUpdatePayload?> {
         return future {
             withTimeout(30.seconds) {
@@ -53,13 +56,16 @@ class InfoMutation {
 
                 WebUIUpdatePayload(
                     input.clientMutationId,
-                    updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING },
+                    // a failed download lands in ERROR — a terminal state that must also
+                    // satisfy the wait or this hangs until the 30s timeout
+                    updateStatus = WebInterfaceManager.status.first { it.state == DOWNLOADING || it.state == ERROR },
                 )
             }
         }
     }
 
     @RequireAuth
+    @RequirePermissions(UserPermission.MANAGE_SETTINGS)
     fun resetWebUIUpdateStatus(): CompletableFuture<WebUIUpdateStatus?> =
         future {
             withTimeout(30.seconds) {

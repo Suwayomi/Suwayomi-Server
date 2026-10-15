@@ -10,12 +10,24 @@ object FileDeletionHelper {
         file: File,
         rootPath: String,
     ) {
-        val folder = file.parentFile
+        // compare canonical paths: a trailing "/", ".." segments or case differences in
+        // rootPath used to defeat the raw absolutePath equality check and let the
+        // cleanup climb out of — or even delete — the downloads root
+        cleanupParentFoldersFor(file, File(rootPath).canonicalFile)
+    }
+
+    private fun cleanupParentFoldersFor(
+        file: File,
+        root: File,
+    ) {
+        val folder = file.parentFile?.canonicalFile ?: return
         if (!folder.isDirectory) {
             return
         }
 
-        if (folder.absolutePath == rootPath) {
+        val folderPath = folder.toPath()
+        val rootPathNio = root.toPath()
+        if (folderPath == rootPathNio || !folderPath.startsWith(rootPathNio)) {
             return
         }
 
@@ -24,6 +36,6 @@ object FileDeletionHelper {
         }
 
         folder.delete()
-        cleanupParentFoldersFor(folder, rootPath)
+        cleanupParentFoldersFor(folder, root)
     }
 }

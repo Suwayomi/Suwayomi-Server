@@ -50,7 +50,8 @@ public class Environment {
     }
 
     public static File getExternalStoragePublicDirectory(String type) {
-        return androidFiles.getExternalStorageDir();
+        // Return a per-type subdirectory, matching the Android layout.
+        return new File(androidFiles.getExternalStorageDir(), type == null ? "" : type);
     }
 
     public static File getDownloadCacheDirectory() {

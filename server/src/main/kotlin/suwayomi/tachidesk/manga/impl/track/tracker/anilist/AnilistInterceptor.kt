@@ -6,7 +6,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.TokenExpired
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.ALOAuth
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.dto.isExpired
 import suwayomi.tachidesk.server.generated.BuildConfig
-import java.io.IOException
 
 class AnilistInterceptor(
     val userId: Int,
@@ -15,12 +14,15 @@ class AnilistInterceptor(
     /**
      * OAuth object used for authenticated requests.
      *
-     * Anilist returns the date without milliseconds. We fix that and make the token expire 1 minute
-     * before its original expiration date.
+     * [ALOAuth.expires] is an epoch timestamp in **milliseconds** (it is
+     * `System.currentTimeMillis()` based, see `AnilistApi.createOAuth`). We
+     * only subtract a one-minute safety margin; multiplying by 1000 here would
+     * push the expiry ~55 millennia out and permanently disable `isExpired`.
      */
+    @Volatile
     private var oauth: ALOAuth? = null
         set(value) {
-            field = value?.copy(expires = value.expires * 1000 - 60 * 1000)
+            field = value?.copy(expires = value.expires - 60 * 1000)
         }
 
     init {
@@ -33,26 +35,35 @@ class AnilistInterceptor(
         }
         val originalRequest = chain.request()
 
-        // Refresh access token if null or expired.
+        // AniList implicit-grant tokens cannot be refreshed; once expired the
+        // user has to log in again — flag it so the UI can prompt a re-login.
         if (oauth?.isExpired() == true) {
             anilist.setAuthExpired(userId)
             throw TokenExpired()
         }
 
-        // Throw on null auth.
-        if (oauth == null) {
-            throw IOException("Anilist: User is not authenticated")
-        }
+        // Snapshot: a concurrent setAuth(null) must not slip an NPE between
+        // the null check and the header read.
+        val currentAuth = oauth ?: throw TokenExpired()
 
         // Add the authorization header to the original request.
         val authRequest =
             originalRequest
                 .newBuilder()
-                .addHeader("Authorization", "Bearer ${oauth!!.accessToken}")
+                .addHeader("Authorization", "Bearer ${currentAuth.accessToken}")
                 .header("User-Agent", "Suwayomi ${BuildConfig.VERSION} (${BuildConfig.REVISION})")
                 .build()
 
-        return chain.proceed(authRequest)
+        val response = chain.proceed(authRequest)
+        if (response.code == 429) {
+            // AniList rate-limits at ~85 req/min and answers 429 + Retry-After;
+            // honour the header and retry the request exactly once.
+            val retryAfterSeconds = response.header("Retry-After")?.toLongOrNull()?.coerceIn(0, 60) ?: 1
+            response.close()
+            Thread.sleep(retryAfterSeconds * 1000)
+            return chain.proceed(authRequest)
+        }
+        return response
     }
 
     /**

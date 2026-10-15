@@ -186,8 +186,13 @@ class FrameworkSQLiteDatabase implements SupportSQLiteDatabase {
         String query = "DELETE FROM " + table
                 + (isEmpty(whereClause) ? "" : " WHERE " + whereClause);
         SupportSQLiteStatement statement = compileStatement(query);
-        SimpleSQLiteQuery.bind(statement, whereArgs);
-        return statement.executeUpdateDelete();
+        try {
+            SimpleSQLiteQuery.bind(statement, whereArgs);
+            return statement.executeUpdateDelete();
+        } finally {
+            // Never leak the compiled statement.
+            closeQuietly(statement);
+        }
     }
 
     @Override
@@ -223,8 +228,25 @@ class FrameworkSQLiteDatabase implements SupportSQLiteDatabase {
             sql.append(whereClause);
         }
         SupportSQLiteStatement stmt = compileStatement(sql.toString());
-        SimpleSQLiteQuery.bind(stmt, bindArgs);
-        return stmt.executeUpdateDelete();
+        try {
+            SimpleSQLiteQuery.bind(stmt, bindArgs);
+            return stmt.executeUpdateDelete();
+        } finally {
+            // Never leak the compiled statement.
+            closeQuietly(stmt);
+        }
+    }
+
+    /**
+     * Closes a compiled statement, ignoring the {@link java.io.IOException}
+     * that {@link java.io.Closeable#close()} nominally permits (a JDBC-backed
+     * statement never throws it, and a close failure must not mask the result).
+     */
+    private static void closeQuietly(SupportSQLiteStatement statement) {
+        try {
+            statement.close();
+        } catch (java.io.IOException ignored) {
+        }
     }
 
     @Override

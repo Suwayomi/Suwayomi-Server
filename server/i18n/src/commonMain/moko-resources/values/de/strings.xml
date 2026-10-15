@@ -4,7 +4,7 @@
     <string name="opds_feeds_categories_title">Kategorien</string>
     <string name="opds_facet_filter_read_only">Gelesen</string>
     <string name="opds_feeds_genre_specific_title">Genre: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Quelle: %1$s</string>
+
     <string name="opds_feeds_root">Suwayomi OPDS Katalog</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Details</string>
     <string name="opds_feeds_sources_title">Alle Quellen</string>
@@ -35,7 +35,7 @@
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_in_progress">⌛</string>
     <string name="opds_chapter_status_unread">⭕</string>
-    <string name="opds_chapter_details_scanlator">| Von %1$s</string>
+    <string name="opds_chapter_details_scanlator"> | Von %1$s</string>
     <string name="manga_status_unknown">Unbekannt</string>
     <string name="manga_status_ongoing">Laufend</string>
     <string name="manga_status_completed">Abgeschlossen</string>
@@ -47,7 +47,7 @@
     <string name="opds_search_shortname">Suwayomi OPDS Suche</string>
     <string name="opds_search_description">Nach Serien im Katalog suchen.</string>
     <string name="opds_feeds_manga_chapters">%1$s Kapitel</string>
-    <string name="opds_chapter_details_progress">| Fortschritt: %1$d von %2$d</string>
+    <string name="opds_chapter_details_progress"> | Fortschritt: %1$d von %2$s</string>
     <string name="opds_feeds_categories_entry_content">Durchsuche Serien nach Kategorien organisiert</string>
     <string name="opds_chapter_details_base">Serie: %1$s | %2$s</string>
     <string name="opds_linktitle_chapter_cover">Kapitel Cover</string>

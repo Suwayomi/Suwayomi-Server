@@ -32,10 +32,14 @@ object SessionVersion {
     suspend fun current(userId: Int): Int =
         cache.get(userId) {
             transaction {
+                // a deleted user has no row: report -1, which never matches a JWT's
+                // token_version, so their tokens are treated as revoked
                 UserAccountTable
                     .selectAll()
                     .where { UserAccountTable.id eq userId }
-                    .first()[UserAccountTable.sessionVersion]
+                    .firstOrNull()
+                    ?.get(UserAccountTable.sessionVersion)
+                    ?: -1
             }
         }
 

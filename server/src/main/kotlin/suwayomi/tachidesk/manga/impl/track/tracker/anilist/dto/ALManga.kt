@@ -42,9 +42,10 @@ data class ALManga(
                     }
             }
             staff.edges.forEach {
+                val role = it.role ?: return@forEach
                 val name = it.node.name() ?: return@forEach
-                if ("Story" in it.role) authors += name
-                if ("Art" in it.role) artists += name
+                if ("Story" in role) authors += name
+                if ("Art" in role) artists += name
             }
         }
 }
@@ -76,11 +77,19 @@ data class ALUserManga(
     private fun toTrackStatus() =
         when (listStatus) {
             "CURRENT" -> Anilist.READING
+
             "COMPLETED" -> Anilist.COMPLETED
+
             "PAUSED" -> Anilist.ON_HOLD
+
             "DROPPED" -> Anilist.DROPPED
+
             "PLANNING" -> Anilist.PLAN_TO_READ
+
             "REPEATING" -> Anilist.REREADING
-            else -> throw NotImplementedError("Unknown status: $listStatus")
+
+            // NotImplementedError is an Error, not an Exception — it escaped
+            // the per-record catch in Track.trackChapter and aborted the batch
+            else -> throw IllegalArgumentException("Unknown status: $listStatus")
         }
 }

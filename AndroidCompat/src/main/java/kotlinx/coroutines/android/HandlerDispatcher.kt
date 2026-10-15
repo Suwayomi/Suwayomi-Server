@@ -64,8 +64,15 @@ internal class AndroidDispatcherFactory : MainDispatcherFactory {
 
     override fun hintOnError(): String = "For tests Dispatchers.setMain from kotlinx-coroutines-test module can be used"
 
+    /**
+     * Strictly higher than the official kotlinx-coroutines-android factory
+     * (`Int.MAX_VALUE / 2`). That artifact is not on this module's classpath,
+     * but if it ever is, `MainDispatcherLoader` resolves equal priorities by
+     * `ServiceLoader` enumeration order — an explicit edge makes this module's
+     * dispatcher win deterministically.
+     */
     override val loadPriority: Int
-        get() = Int.MAX_VALUE / 2
+        get() = Int.MAX_VALUE / 2 + 1
 }
 
 /**
@@ -87,6 +94,16 @@ public fun Handler.asCoroutineDispatcher(name: String? = null): HandlerDispatche
 private const val MAX_DELAY = Long.MAX_VALUE / 2 // cannot delay for too long on Android
 
 internal fun Looper.asHandler(): Handler = Handler(this)
+
+/**
+ * Two-argument overload matching the bytecode signature emitted by the official
+ * kotlinx-coroutines-android artifact for its own `Looper.asHandler(boolean)` helper.
+ * If that artifact ever ends up on the classpath next to this module, its
+ * [AndroidDispatcherFactory] would link against this file facade class and fail with
+ * [NoSuchMethodError] without this overload. The `async` flag is ignored; this
+ * module's [android.os.MessageQueue] has no async-barrier support.
+ */
+internal fun Looper.asHandler(async: Boolean): Handler = Handler(this)
 
 @JvmField
 @Deprecated("Use Dispatchers.Main instead", level = DeprecationLevel.HIDDEN)

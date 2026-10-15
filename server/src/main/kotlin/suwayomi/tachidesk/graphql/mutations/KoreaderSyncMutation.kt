@@ -80,7 +80,7 @@ class KoreaderSyncMutation {
         input: PushKoSyncProgressInput,
     ): CompletableFuture<PushKoSyncProgressPayload?> =
         future {
-            KoreaderSyncService.pushProgress(userId, input.chapterId)
+            val pushed = KoreaderSyncService.pushProgress(userId, input.chapterId)
 
             val chapter =
                 transaction {
@@ -94,7 +94,7 @@ class KoreaderSyncMutation {
 
             PushKoSyncProgressPayload(
                 clientMutationId = input.clientMutationId,
-                success = true,
+                success = pushed,
                 chapter = chapter,
             )
         }

@@ -37,7 +37,14 @@ fun UserType.requireUserWithBasicFallback(ctx: Context): Int =
             id
         }
 
-        UserType.Visitor if ctx.getAttribute(Attribute.TachideskBasic) -> {
+        // Basic credentials only ever resolve to the built-in admin, so the fallback is only
+        // allowed in BASIC_AUTH mode where a valid credential was already enforced by
+        // JavalinSetup.beforeMatched. In UI_LOGIN/SIMPLE_LOGIN a Basic header no longer
+        // upgrades a Visitor to admin.
+        UserType.Visitor if
+        ctx.getAttribute(Attribute.TachideskBasic) &&
+            serverConfig.authMode.value == AuthMode.BASIC_AUTH
+        -> {
             1
         }
 
@@ -83,7 +90,8 @@ fun UserType.requirePermissions(vararg permissions: UserPermission) {
 suspend fun getUserFromContext(ctx: Context): UserType {
     fun cookieValid(): Boolean {
         val username = ctx.sessionAttribute<String>("logged-in") ?: return false
-        return username == serverConfig.authUsername.value
+        return serverConfig.authUsername.value.isNotBlank() &&
+            username == serverConfig.authUsername.value
     }
 
     return when (serverConfig.authMode.value) {
@@ -108,7 +116,8 @@ suspend fun getUserFromContext(ctx: Context): UserType {
 suspend fun getUserFromWsContext(ctx: WsConnectContext): UserType {
     fun cookieValid(): Boolean {
         val username = ctx.sessionAttribute<String>("logged-in") ?: return false
-        return username == serverConfig.authUsername.value
+        return serverConfig.authUsername.value.isNotBlank() &&
+            username == serverConfig.authUsername.value
     }
 
     return when (serverConfig.authMode.value) {
@@ -133,4 +142,6 @@ suspend fun getUserFromWsContext(ctx: WsConnectContext): UserType {
 
 class UnauthorizedException : IllegalStateException("Unauthorized")
 
-class ForbiddenException : IllegalStateException("Forbidden")
+class ForbiddenException(
+    message: String = "Forbidden",
+) : IllegalStateException(message)

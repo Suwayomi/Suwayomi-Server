@@ -49,6 +49,12 @@
      * The ?standalone flag bundles the module along with all of its `dependencies`, excluding `peerDependencies`, into a single JavaScript file.
      * `@emotion/is-prop-valid` is a shim to remove the console error ` module "@emotion /is-prop-valid" not found`. Upstream issue: https://github.com/motiondivision/motion/issues/3126
     -->
+    <!--
+     * Integrity caveat: the "integrity" map below only pins the exact module URLs
+     * listed. The "/" suffix prefix mappings (e.g. "react/") rewrite to arbitrary
+     * subpath URLs on esm.sh which cannot be integrity-pinned via importmap —
+     * a compromised CDN response on such a subpath would not be detected.
+    -->
     <script type="importmap">
         {
           "imports": {
@@ -76,7 +82,8 @@
           }
         }
     </script>
-    <script type="module">
+    <script type="module"
+            onerror="document.querySelector('#graphiql .loading').textContent = 'Failed to load GraphiQL modules from esm.sh — check that the CDN is reachable.'">
         import React from 'react';
         import ReactDOM from 'react-dom/client';
         import {GraphiQL, HISTORY_PLUGIN} from 'graphiql';

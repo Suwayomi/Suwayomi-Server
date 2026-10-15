@@ -81,6 +81,17 @@ public class SimpleDateFormat extends java.text.DateFormat {
         delegate.setNumberFormat(newNumberFormat);
     }
 
+    @Override
+    public void setNumberFormat(java.text.NumberFormat newNumberFormat) {
+        if (newNumberFormat instanceof NumberFormat) {
+            // Unwrap the replacement type so the state lands on the delegate.
+            delegate.setNumberFormat(((NumberFormat) newNumberFormat).getDelegate());
+        } else {
+            throw new IllegalArgumentException(
+                    "Only replacement NumberFormat instances are supported: " + newNumberFormat);
+        }
+    }
+
     public void parse(String text, com.ibm.icu.util.Calendar cal, ParsePosition parsePos) {
         delegate.parse(text, cal, parsePos);
     }
@@ -119,7 +130,7 @@ public class SimpleDateFormat extends java.text.DateFormat {
 
     @Override
     public Object clone() {
-        return delegate.clone();
+        return new SimpleDateFormat((com.ibm.icu.text.SimpleDateFormat) delegate.clone());
     }
 
     @Override
@@ -129,6 +140,12 @@ public class SimpleDateFormat extends java.text.DateFormat {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof SimpleDateFormat) {
+            return delegate.equals(((SimpleDateFormat) obj).delegate);
+        }
         return delegate.equals(obj);
     }
 
@@ -192,8 +209,22 @@ public class SimpleDateFormat extends java.text.DateFormat {
 
     @Override
     public void setCalendar(java.util.Calendar newCalendar) {
-        com.ibm.icu.util.Calendar cal = com.ibm.icu.util.Calendar.getInstance(com.ibm.icu.util.TimeZone.getTimeZone(newCalendar.getTimeZone().getID()));
-        cal.setTimeInMillis(newCalendar.getTimeInMillis());
+        com.ibm.icu.util.Calendar cal;
+        if (newCalendar instanceof Calendar) {
+            // Reuse the wrapped ICU calendar directly so no state is lost.
+            cal = (com.ibm.icu.util.Calendar) ((Calendar) newCalendar).getDelegate().clone();
+        } else {
+            java.util.TimeZone zone = newCalendar.getTimeZone();
+            cal = com.ibm.icu.util.Calendar.getInstance(
+                    zone instanceof TimeZone
+                            ? ((TimeZone) zone).getDelegate()
+                            : com.ibm.icu.util.TimeZone.getTimeZone(zone.getID()));
+            cal.setTimeInMillis(newCalendar.getTimeInMillis());
+        }
+        // Carry over calendar configuration beyond millis+zone.
+        cal.setLenient(newCalendar.isLenient());
+        cal.setFirstDayOfWeek(newCalendar.getFirstDayOfWeek());
+        cal.setMinimalDaysInFirstWeek(newCalendar.getMinimalDaysInFirstWeek());
         delegate.setCalendar(cal);
     }
 
@@ -209,7 +240,10 @@ public class SimpleDateFormat extends java.text.DateFormat {
 
     @Override
     public void setTimeZone(java.util.TimeZone zone) {
-        delegate.setTimeZone(com.ibm.icu.util.TimeZone.getTimeZone(zone.getID()));
+        delegate.setTimeZone(
+                zone instanceof TimeZone
+                        ? ((TimeZone) zone).getDelegate()
+                        : com.ibm.icu.util.TimeZone.getTimeZone(zone.getID()));
     }
 
     @Override

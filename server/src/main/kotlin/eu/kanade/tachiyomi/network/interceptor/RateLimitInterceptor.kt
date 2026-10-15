@@ -8,6 +8,7 @@ import java.io.IOException
 import java.util.ArrayDeque
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toDuration
@@ -62,7 +63,25 @@ internal class RateLimitInterceptor(
     private val permits: Int,
     period: Duration,
 ) : Interceptor {
-    private val requestQueue = ArrayDeque<Long>(permits)
+    init {
+        // permits <= 0 made every request crash on requestQueue.first inside the
+        // wait loop; a non-positive period silently disabled limiting.
+        require(permits > 0) { "permits must be positive, got $permits" }
+        require(period.isPositive()) { "period must be positive, got $period" }
+    }
+
+    /**
+     * Identity token for a queued request. Two requests can land on the same
+     * [timestamp] millisecond — value-keyed removal would then evict the wrong
+     * slot, so removal matches the entry object itself.
+     */
+    private class QueueEntry(
+        val timestamp: Long,
+        val sequence: Long,
+    )
+
+    private val requestQueue = ArrayDeque<QueueEntry>(permits)
+    private val sequenceGenerator = AtomicLong()
     private val rateLimitMillis = period.inWholeMilliseconds
     private val fairLock = Semaphore(1, true)
 
@@ -83,18 +102,19 @@ internal class RateLimitInterceptor(
         try {
             fairLock.acquire()
         } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
             throw IOException(e)
         }
 
         val requestQueue = this.requestQueue
-        val timestamp: Long
+        val entry: QueueEntry
 
         try {
             synchronized(requestQueue) {
                 while (requestQueue.size >= permits) { // queue is full, remove expired entries
                     val periodStart = SystemClock.elapsedRealtime() - rateLimitMillis
                     var hasRemovedExpired = false
-                    while (requestQueue.isEmpty().not() && requestQueue.first <= periodStart) {
+                    while (requestQueue.isEmpty().not() && requestQueue.first.timestamp <= periodStart) {
                         requestQueue.removeFirst()
                         hasRemovedExpired = true
                     }
@@ -105,16 +125,20 @@ internal class RateLimitInterceptor(
                     } else {
                         try {
                             // wait for the first entry to expire, or notified by cached response
-                            (requestQueue as Object).wait(requestQueue.first - periodStart)
+                            (requestQueue as Object).wait(requestQueue.first.timestamp - periodStart)
                         } catch (_: InterruptedException) {
-                            continue
+                            // restore the interrupt flag and bail out — spinning on
+                            // wait() with a set interrupt flag would busy-loop
+                            Thread.currentThread().interrupt()
+                            if (call.isCanceled()) throw IOException("Canceled")
+                            break
                         }
                     }
                 }
 
                 // add request to queue
-                timestamp = SystemClock.elapsedRealtime()
-                requestQueue.addLast(timestamp)
+                entry = QueueEntry(SystemClock.elapsedRealtime(), sequenceGenerator.incrementAndGet())
+                requestQueue.addLast(entry)
             }
         } finally {
             fairLock.release()
@@ -123,8 +147,8 @@ internal class RateLimitInterceptor(
         val response = chain.proceed(request)
         if (response.networkResponse == null) { // response is cached, remove it from queue
             synchronized(requestQueue) {
-                if (requestQueue.isEmpty() || timestamp < requestQueue.first()) return@synchronized
-                requestQueue.removeFirstOccurrence(timestamp)
+                if (requestQueue.isEmpty() || entry.timestamp < requestQueue.first.timestamp) return@synchronized
+                requestQueue.remove(entry)
                 (requestQueue as Object).notifyAll()
             }
         }

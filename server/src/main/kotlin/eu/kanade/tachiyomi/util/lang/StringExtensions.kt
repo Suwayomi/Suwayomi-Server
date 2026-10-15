@@ -12,6 +12,9 @@ fun String.chop(
     replacement: String = "…",
 ): String =
     if (length > count) {
+        require(count >= replacement.length) {
+            "Replacement length (${replacement.length}) exceeds count ($count)"
+        }
         take(count - replacement.length) + replacement
     } else {
         this
@@ -56,6 +59,9 @@ fun String.takeBytes(n: Int): String {
     return if (bytes.size <= n) {
         this
     } else {
-        bytes.decodeToString(endIndex = n).replace("\uFFFD", "")
+        // Cutting a valid UTF-8 sequence mid-codepoint only produces replacement
+        // characters at the truncated tail; keep any U+FFFD that was part of the
+        // original string.
+        bytes.decodeToString(endIndex = n).trimEnd('\uFFFD')
     }
 }

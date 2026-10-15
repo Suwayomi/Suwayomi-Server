@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 package org.chromium.support_lib_boundary.util;
 
-import android.os.Build;
-
 import androidx.annotation.Nullable;
 
 import java.lang.reflect.InvocationHandler;
@@ -192,14 +190,6 @@ public class BoundaryInterfaceReflectionUtil {
             // Identity is based on the delegate object.
             return mDelegate.hashCode();
         }
-    }
-
-    /**
-     * Check if this is a debuggable build of Android. Note: we copy ApkInfo's method because we
-     * cannot depend on the base-layer here (this folder is mirrored into Android).
-     */
-    private static boolean isDebuggable() {
-        return "eng".equals(Build.TYPE) || "userdebug".equals(Build.TYPE);
     }
 
     /**

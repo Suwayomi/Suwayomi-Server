@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SManga
+import io.javalin.http.BadRequestResponse
 import io.javalin.json.JavalinJackson
 import io.javalin.json.toJsonString
 import kotlinx.coroutines.runBlocking
@@ -33,6 +34,7 @@ import suwayomi.tachidesk.test.createSMangas
 import kotlin.reflect.KClass
 import kotlin.reflect.full.primaryConstructor
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SearchTest : ApplicationTest() {
@@ -48,9 +50,13 @@ class SearchTest : ApplicationTest() {
         ): MangasPage = MangasPage(mangas, false)
     }
 
-    private val sourceId = 1L
+    // high, unique id: FilterListTest registers stub sources at ids 0..N and the
+    // (userId, sourceId) filter-change cache is a shared singleton — a collision
+    // would replay another test's changes onto this 0-filter source
+    private val sourceId = 777_001L
     private val source = FakeSearchableSource(sourceId)
     private val mangasCount = 10
+    private val userId = 1
 
     @BeforeAll
     fun setup() {
@@ -63,7 +69,7 @@ class SearchTest : ApplicationTest() {
     fun searchWorks() {
         val searchResults =
             runBlocking {
-                sourceSearch(sourceId, "all the mangas", 1)
+                sourceSearch(userId, sourceId, "all the mangas", 1)
             }
 
         assertEquals(mangasCount, searchResults.mangaList.size, "should return all the mangas")
@@ -77,6 +83,8 @@ class SearchTest : ApplicationTest() {
 
 @Suppress("UNCHECKED_CAST")
 class FilterListTest : ApplicationTest() {
+    private val userId = 1
+
     open class EmptyFilterListSource(
         id: Long,
     ) : StubSource(id) {
@@ -91,7 +99,7 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(EmptyFilterListSource::class)
             source.mFilterList = FilterList()
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 0,
@@ -159,7 +167,7 @@ class FilterListTest : ApplicationTest() {
     fun convertsEveryTypeCorrectly() =
         runTest {
             val source = registerSource(FilterListSource::class)
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 FilterObject("Header", source.mFilterList[0]),
@@ -212,7 +220,7 @@ class FilterListTest : ApplicationTest() {
         sourceId: Long,
         filterChange: FilterChange,
     ) {
-        setFilter(sourceId, listOf(filterChange))
+        setFilter(userId, sourceId, listOf(filterChange))
     }
 
     @Test
@@ -221,16 +229,18 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(0, "change!")),
             )
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(1, "change!")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[0].filter.state,
@@ -249,11 +259,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(2, "1")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[2].filter.state,
@@ -267,11 +278,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(3, "I'm a changed man!")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[3].filter.state,
@@ -285,11 +297,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(4, "true")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[4].filter.state,
@@ -303,11 +316,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(5, "1")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[5].filter.state,
@@ -321,11 +335,12 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(6, """{"position":0,"state":"true"}""")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 (filterList[6].filter.state as List<FilterObject>)[0].filter.state,
@@ -339,16 +354,155 @@ class FilterListTest : ApplicationTest() {
             val source = registerSource(FilterListSource::class)
 
             setFilter(
+                userId,
                 source.id,
                 listOf(FilterChange(7, """{"index":1,"ascending":"true"}""")),
             )
 
-            val filterList = getFilterList(source.id, false)
+            val filterList = getFilterList(userId, source.id, false)
 
             assertEquals(
                 filterList[7].filter.state,
                 Filter.Sort.Selection(1, true),
             )
+        }
+
+    /** Builds a fresh [FilterList] per call like a real source — never shares the instance. */
+    class FreshFilterListSource(
+        id: Long,
+    ) : EmptyFilterListSource(id) {
+        override fun getFilterList(): FilterList =
+            FilterList(
+                FilterListSource.TextFilter("text filter"),
+                FilterListSource.TestCheckBox("check filter"),
+            )
+    }
+
+    @Test
+    fun `filter changes do not leak between users`() =
+        runTest {
+            val source = registerSource(FreshFilterListSource::class)
+            val otherUserId = userId + 1_000
+
+            setFilter(
+                userId,
+                source.id,
+                listOf(FilterChange(0, "user1's filter"), FilterChange(1, "true")),
+            )
+
+            // the other user must see the pristine defaults, not user1's state
+            val otherFilterList = getFilterList(otherUserId, source.id, false)
+            assertEquals("", otherFilterList[0].filter.state)
+            assertEquals(false, otherFilterList[1].filter.state)
+
+            // and user1's stored changes still apply for user1
+            val userFilterList = getFilterList(userId, source.id, false)
+            assertEquals("user1's filter", userFilterList[0].filter.state)
+            assertEquals(true, userFilterList[1].filter.state)
+        }
+
+    @Test
+    fun `setFilter validates position and value`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
+
+            // out-of-range position
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(99, "x")))
+            }
+            // non-numeric Select value
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(2, "not-a-number")))
+            }
+            // out-of-range Select index
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(2, "99")))
+            }
+            // non-boolean CheckBox value
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(4, "notabool")))
+            }
+            // non-integer TriState value
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(5, "x")))
+            }
+            // malformed Group payload
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(6, "not json")))
+            }
+            // out-of-range Group inner position
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(6, """{"position":99,"state":"true"}""")))
+            }
+            // malformed Sort payload
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(7, "not json")))
+            }
+
+            // rejected changes must not corrupt the stored baseline — a valid change made
+            // afterwards applies on top of nothing
+            setFilter(userId, source.id, listOf(FilterChange(3, "clean")))
+            val filterList = getFilterList(userId, source.id, false)
+            assertEquals("clean", filterList[3].filter.state)
+            assertEquals(0, filterList[2].filter.state)
+        }
+
+    @Test
+    fun `setFilter drops stored changes that no longer apply`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
+
+            // stored while the source still offered a Sort filter at position 7
+            setFilter(
+                userId,
+                source.id,
+                listOf(FilterChange(7, """{"index":1,"ascending":true}""")),
+            )
+
+            // extension "upgrade": the filter list shrank, so the stored change at
+            // position 7 is stale. Without auto-recovery strict validation would
+            // reject every future write for this (user, source) until a manual reset.
+            source.mFilterList =
+                FilterList(
+                    FilterListSource.TextFilter("text filter"),
+                    FilterListSource.TestCheckBox("check filter"),
+                )
+
+            setFilter(
+                userId,
+                source.id,
+                listOf(FilterChange(0, "recovered")),
+            )
+
+            val filterList = getFilterList(userId, source.id, false)
+            assertEquals("recovered", filterList[0].filter.state)
+            assertEquals(false, filterList[1].filter.state)
+
+            // the stale change was purged, not just skipped — restoring the original
+            // layout must not resurrect the old Sort selection
+            source.mFilterList = FilterListSource(-1L).mFilterList
+            val restoredList = getFilterList(userId, source.id, false)
+            assertEquals(Filter.Sort.Selection(2, false), restoredList[7].filter.state)
+        }
+
+    @Test
+    fun `setFilter still rejects an invalid change after dropping stale ones`() =
+        runTest {
+            val source = registerSource(FilterListSource::class)
+
+            setFilter(
+                userId,
+                source.id,
+                listOf(FilterChange(7, """{"index":1,"ascending":true}""")),
+            )
+
+            source.mFilterList = FilterList(FilterListSource.TextFilter("text filter"))
+
+            // the stale position-7 change is recoverable, but a bad new change must
+            // still fail strict validation with 400 semantics
+            assertFailsWith<BadRequestResponse> {
+                setFilter(userId, source.id, listOf(FilterChange(5, "x")))
+            }
         }
 
     companion object {

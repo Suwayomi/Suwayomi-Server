@@ -6,6 +6,8 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import suwayomi.tachidesk.graphql.queries.TrackQuery
+import suwayomi.tachidesk.graphql.types.TrackerType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -16,6 +18,7 @@ import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TrackQueryTest : GraphQLTest() {
@@ -49,6 +52,84 @@ class TrackQueryTest : GraphQLTest() {
                         .value
                 }
         }
+
+    private fun trackerType(
+        id: Int,
+        name: String,
+    ) = TrackerType(
+        id = id,
+        name = name,
+        icon = "",
+        isLoggedIn = false,
+        authUrl = null,
+        supportsTrackDeletion = false,
+        supportsReadingDates = false,
+        supportsPrivateTracking = false,
+    )
+
+    @Test
+    fun `tracker NAME cursor carries the id as tie-break`() {
+        // trackers with identical names must both stay reachable: the cursor
+        // (id-name) disambiguates rows that compare equal on the sort key
+        val first = trackerType(1, "Same Name")
+        val second = trackerType(2, "Same Name")
+        val later = trackerType(3, "ZZZ")
+
+        val cursor = TrackQuery.TrackerOrderBy.NAME.asCursor(first)
+        assertEquals("1-Same Name", cursor.value)
+
+        assertTrue(
+            TrackQuery.TrackerOrderBy.NAME.greater(second, cursor),
+            "same name with a higher id must sort after the cursor row",
+        )
+        assertFalse(
+            TrackQuery.TrackerOrderBy.NAME.greater(first, cursor),
+            "the cursor row itself must be excluded",
+        )
+        assertTrue(TrackQuery.TrackerOrderBy.NAME.greater(later, cursor))
+
+        val secondCursor = TrackQuery.TrackerOrderBy.NAME.asCursor(second)
+        assertTrue(TrackQuery.TrackerOrderBy.NAME.less(first, secondCursor))
+        assertFalse(TrackQuery.TrackerOrderBy.NAME.less(second, secondCursor))
+    }
+
+    @Test
+    fun `tracker NAME pagination does not repeat or skip entries`() {
+        val seen = mutableListOf<Pair<String, Int>>()
+        var after: String? = null
+        var hasNextPage = false
+        do {
+            val response =
+                graphql(
+                    """
+                    query(${'$'}after: Cursor) {
+                        trackers(order: [{ by: NAME }], first: 2, after: ${'$'}after) {
+                            nodes {
+                                id
+                                name
+                            }
+                            pageInfo {
+                                endCursor
+                                hasNextPage
+                            }
+                        }
+                    }
+                    """.trimIndent(),
+                    mapOf("after" to after),
+                )
+            response.assertNoErrors()
+            @Suppress("UNCHECKED_CAST")
+            val nodes = response.dataPath("trackers", "nodes") as List<Map<String, Any>>
+            seen += nodes.map { it["name"] as String to (it["id"] as Number).toInt() }
+            after = response.dataPath("trackers", "pageInfo", "endCursor") as? String
+            hasNextPage = response.dataPath("trackers", "pageInfo", "hasNextPage") as Boolean
+        } while (hasNextPage)
+
+        assertTrue(seen.size > 1, "expected multiple trackers")
+        assertEquals(seen.size, seen.map { it.second }.distinct().size, "no tracker may appear twice across pages")
+        // sorted by (name, id): equal names must still make progress via the id tie-break
+        assertEquals(seen.sortedWith(compareBy({ it.first }, { it.second })), seen, "pages must come back in name order")
+    }
 
     @Test
     fun trackersReturnsTrackerList() {

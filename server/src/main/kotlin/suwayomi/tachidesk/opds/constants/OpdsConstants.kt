@@ -15,7 +15,6 @@ object OpdsConstants {
     const val NS_THREAD = "http://purl.org/syndication/thread/1.0"
 
     // Link Relations
-    const val LINK_REL_ACQUISITION = "http://opds-spec.org/acquisition"
     const val LINK_REL_ACQUISITION_OPEN_ACCESS = "http://opds-spec.org/acquisition/open-access"
     const val LINK_REL_IMAGE = "http://opds-spec.org/image"
     const val LINK_REL_IMAGE_THUMBNAIL = "http://opds-spec.org/image/thumbnail"
@@ -30,11 +29,9 @@ object OpdsConstants {
     const val LINK_REL_FIRST = "first"
     const val LINK_REL_LAST = "last"
     const val LINK_REL_PSE_STREAM = "http://vaemendis.net/opds-pse/stream"
-    const val LINK_REL_CRAWLABLE = "http://opds-spec.org/crawlable"
-    const val LINK_REL_SORT_NEW = "http://opds-spec.org/sort/new"
-    const val LINK_REL_SORT_POPULAR = "http://opds-spec.org/sort/popular"
 
     // Media Types
+    const val TYPE_ATOM_XML_FEED = "application/atom+xml;profile=opds-catalog"
     const val TYPE_ATOM_XML_FEED_NAVIGATION = "application/atom+xml;profile=opds-catalog;kind=navigation"
     const val TYPE_ATOM_XML_FEED_ACQUISITION = "application/atom+xml;profile=opds-catalog;kind=acquisition"
     const val TYPE_ATOM_XML_ENTRY_PROFILE_OPDS = "application/atom+xml;type=entry;profile=opds-catalog"

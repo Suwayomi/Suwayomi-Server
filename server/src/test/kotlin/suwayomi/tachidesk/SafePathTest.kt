@@ -1,8 +1,10 @@
 package suwayomi.tachidesk
 
+import suwayomi.tachidesk.manga.impl.extension.requireSafePathComponent
 import xyz.nulldev.androidcompat.util.SafePath
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class SafePathTest {
@@ -46,5 +48,61 @@ class SafePathTest {
         assertEquals(mixed256.take(120), result)
         assertEquals(240, result.toByteArray(Charsets.UTF_8).size)
         assertTrue(result.toByteArray(Charsets.UTF_8).size == 240)
+    }
+
+    // The extension install/update/uninstall paths resolve pkgName/versionName/apkName into
+    // filesystem components via requireSafePathComponent — the regression net for zip-slip
+    // and traversal payloads coming from a malicious manifest or store index
+    @Test
+    fun requireSafePathComponentAcceptsPlainNames() {
+        listOf(
+            "eu.kanade.tachiyomi.extension",
+            "extension.apk",
+            "1.4.2",
+            "name_with_underscores-1",
+        ).forEach { requireSafePathComponent(it) }
+    }
+
+    @Test
+    fun requireSafePathComponentRejectsTraversalAndSeparators() {
+        listOf(
+            "..",
+            "../escape.apk",
+            "a/../b.apk",
+            "a/b.apk",
+            "a\\b.apk",
+            "/absolute.apk",
+            "\\absolute.apk",
+        ).forEach {
+            assertFailsWith<IllegalArgumentException>("expected rejection of \"$it\"") {
+                requireSafePathComponent(it)
+            }
+        }
+    }
+
+    @Test
+    fun requireSafePathComponentRejectsNamesThatWouldBeRewritten() {
+        // anything the sanitizer would change must be rejected outright (the file would not
+        // land where the caller intended): edge dots/spaces, control chars, empty names
+        listOf(
+            "",
+            " ",
+            ".",
+            " .apk",
+            ".hidden.apk",
+            "trailing.apk ",
+            "trailing.apk.",
+            "a:b.apk",
+            "a?b.apk",
+            "a*b.apk",
+            "a|b.apk",
+            "a<b.apk",
+            "a>b.apk",
+            "a\"b.apk",
+        ).forEach {
+            assertFailsWith<IllegalArgumentException>("expected rejection of \"$it\"") {
+                requireSafePathComponent(it)
+            }
+        }
     }
 }

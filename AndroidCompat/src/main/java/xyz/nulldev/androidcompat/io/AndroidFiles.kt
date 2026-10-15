@@ -34,6 +34,10 @@ class AndroidFiles(
 
     fun registerFile(file: String): File =
         File(file).apply {
-            mkdirs()
+            // mkdirs() returns false both on failure AND when the directory
+            // already exists; verify the result is actually a directory.
+            if (!isDirectory && !mkdirs() && !isDirectory) {
+                throw java.io.IOException("Cannot create directory: $absolutePath")
+            }
         }
 }

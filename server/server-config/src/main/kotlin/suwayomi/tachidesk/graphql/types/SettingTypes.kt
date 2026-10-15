@@ -28,7 +28,7 @@ class SettingsDownloadConversionType(
     override val compressionLevel: Double?,
     override val callTimeout: Duration?,
     override val connectTimeout: Duration?,
-    override val headers: List<SettingsDownloadConversionHeaderType>?
+    override val headers: List<SettingsDownloadConversionHeaderType>?,
 ) : SettingsDownloadConversion
 
 interface SettingsDownloadConversionHeader {

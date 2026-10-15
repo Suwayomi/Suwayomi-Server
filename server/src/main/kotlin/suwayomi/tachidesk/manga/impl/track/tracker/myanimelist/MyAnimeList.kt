@@ -1,8 +1,7 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.myanimelist
 
-import android.annotation.StringRes
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.github.reactivecircus.cache4k.Cache
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
@@ -13,7 +12,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.dto.MALOAuth
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.hours
 
 class MyAnimeList(
     id: Int,
@@ -33,20 +31,19 @@ class MyAnimeList(
 
     private val json: Json by injectLazy()
 
+    // ConcurrentHashMap.computeIfAbsent guarantees a single instance per user —
+    // getOrPut/cache loaders can construct duplicates under concurrent first
+    // access.
     private val interceptors = ConcurrentHashMap<Int, MyAnimeListInterceptor>()
-    private val apis =
-        Cache
-            .Builder<Int, MyAnimeListApi>()
-            .expireAfterAccess(1.hours)
-            .build()
+    private val apis = ConcurrentHashMap<Int, MyAnimeListApi>()
 
     fun interceptor(userId: Int): MyAnimeListInterceptor =
-        interceptors.getOrPut(userId) {
+        interceptors.computeIfAbsent(userId) {
             MyAnimeListInterceptor(userId, this)
         }
 
     suspend fun api(userId: Int): MyAnimeListApi =
-        apis.get(userId) {
+        apis.computeIfAbsent(userId) {
             MyAnimeListApi(client, interceptor(userId))
         }
 
@@ -58,7 +55,6 @@ class MyAnimeList(
 
     override fun getStatusList(): List<Int> = listOf(READING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_READ, REREADING)
 
-    @StringRes
     override fun getStatus(status: Int): String? =
         when (status) {
             READING -> "Reading"
@@ -173,24 +169,45 @@ class MyAnimeList(
         userId: Int,
         url: String,
     ) {
-        val code = url.extractToken("code") ?: throw IOException("cannot find token")
-        login(userId, code)
+        val code = url.extractToken("code") ?: throw IOException("cannot find code in the callback url")
+        val state = url.extractToken("state")
+        loginWithCode(userId, code, state)
     }
 
+    /**
+     * Credential login is intentionally unsupported: the MAL token exchange
+     * requires the PKCE verifier bound to the `state` issued by
+     * [MyAnimeListApi.authUrl], so a bare auth code pasted here carries no
+     * usable session and could never complete the exchange. Clients must log
+     * in via [authUrl] + [authCallback] (i.e. `loginOAuth` with the full
+     * redirect URL). Fails fast rather than dying inside the token call.
+     */
     override suspend fun loginImpl(
         userId: Int,
         username: String,
         password: String,
-    ) = login(userId, password)
+    ) = throw IOException(
+        "MyAnimeList requires the OAuth login flow: fetch the tracker auth URL, " +
+            "complete the login and submit the full callback URL",
+    )
 
-    suspend fun login(
+    suspend fun loginWithCode(
         userId: Int,
         authCode: String,
+        state: String?,
     ) {
-        val oauth = api(userId).getAccessToken(authCode)
-        interceptor(userId).setAuth(oauth)
-        val username = api(userId).getCurrentUser()
-        saveCredentials(userId, username, oauth.accessToken)
+        try {
+            val oauth = api(userId).getAccessToken(authCode, state)
+            interceptor(userId).setAuth(oauth)
+            val username = api(userId).getCurrentUser()
+            saveCredentials(userId, username, oauth.accessToken)
+        } catch (e: Throwable) {
+            // setAuth persisted the token before getCurrentUser could fail —
+            // never leave a working interceptor behind while not logged in
+            interceptor(userId).setAuth(null)
+            logout(userId)
+            throw e
+        }
     }
 
     override suspend fun logout(userId: Int) {
@@ -203,14 +220,18 @@ class MyAnimeList(
         userId: Int,
         oAuth: MALOAuth?,
     ) {
-        trackPreferences.setTrackToken(userId, this, json.encodeToString(oAuth))
+        // encoding a null oauth produced the literal string "null", which was
+        // then handed to the decoder — persist real nulls instead
+        trackPreferences.setTrackToken(userId, this, oAuth?.let { json.encodeToString(it) })
     }
 
     fun loadOAuth(userId: Int): MALOAuth? =
         try {
-            json.decodeFromString<MALOAuth>(trackPreferences.getTrackToken(userId, this)!!)
-        } catch (e: Exception) {
-            logger.error(e) { "loadOAuth err" }
+            trackPreferences
+                .getTrackToken(userId, this)
+                ?.let { json.decodeFromString<MALOAuth>(it) }
+        } catch (e: SerializationException) {
+            logger.warn(e) { "loadOAuth: dropping undecodable persisted token" }
             null
         }
 }

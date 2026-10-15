@@ -6,10 +6,6 @@ import suwayomi.tachidesk.graphql.types.CbzMediaType
 import suwayomi.tachidesk.graphql.types.DownloadConversion
 import suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod
 import suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy
-import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionHeaderType
-import suwayomi.tachidesk.graphql.types.SettingsDownloadConversionType
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionHeaderType
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSettingsDownloadConversionType
 import suwayomi.tachidesk.server.util.downloadConversionTypeInfo
 import kotlin.reflect.KClass
 import kotlin.reflect.typeOf
@@ -26,6 +22,9 @@ import kotlin.time.Duration.Companion.seconds
  * @param defaultValue the default value
  * @param validator optional value validator
  * @param typeInfo optional GQL/backup type conversion info (needed for non-primitive types)
+ * @param excludeFromBackup when true the setting is written as null into backups and never
+ * restored (mirrors [SettingsRegistry.SettingMetadata.excludeFromBackup] for global settings);
+ * use for credentials or instance-local values that must not travel between servers
  */
 class UserSetting<T : Any>(
     val key: String,
@@ -37,6 +36,7 @@ class UserSetting<T : Any>(
     val typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     val internalType: String? = null,
     val typeArguments: Map<String, ClassContainer> = emptyMap(),
+    val excludeFromBackup: Boolean = false,
 )
 
 /**
@@ -46,6 +46,9 @@ object UserSettingsRegistry {
     private val settings = mutableMapOf<String, UserSetting<*>>()
 
     fun register(setting: UserSetting<*>) {
+        if (settings.containsKey(setting.key)) {
+            throw IllegalStateException("User setting ${setting.key} is already registered")
+        }
         settings.values.find { it.protoNumber == setting.protoNumber }?.let {
             throw IllegalStateException("User setting ${setting.key} uses protoNumber ${it.protoNumber} already used by ${it.key}")
         }
@@ -69,273 +72,316 @@ private inline fun <reified T : Any> userSetting(
     noinline validator: ((T) -> String?)? = null,
     typeInfo: SettingsRegistry.PartialTypeInfo? = null,
     internalType: String? = null,
+    excludeFromBackup: Boolean = false,
 ): UserSetting<T> {
     val kType = typeOf<T>()
-    val setting = UserSetting(
-        key = key,
-        protoNumber = protoNumber,
-        group = group,
-        defaultValue = defaultValue,
-        type = T::class,
-        validator =
-            validator?.let { validate ->
-                { value ->
-                    @Suppress("UNCHECKED_CAST")
-                    validate(value as T)
-                }
-            },
-        typeInfo = typeInfo,
-        internalType = internalType,
-        typeArguments = T::class.typeParameters.mapIndexed { index, parameter ->
-            parameter.name to ClassContainer(kType.arguments[index].type?.classifier as KClass<*>)
-        }.toMap()
-    )
+    val setting =
+        UserSetting(
+            key = key,
+            protoNumber = protoNumber,
+            group = group,
+            defaultValue = defaultValue,
+            type = T::class,
+            validator =
+                validator?.let { validate ->
+                    { value ->
+                        @Suppress("UNCHECKED_CAST")
+                        validate(value as T)
+                    }
+                },
+            typeInfo = typeInfo,
+            internalType = internalType,
+            typeArguments =
+                T::class
+                    .typeParameters
+                    .mapIndexed { index, parameter ->
+                        parameter.name to ClassContainer(kType.arguments[index].type?.classifier as KClass<*>)
+                    }.toMap(),
+            excludeFromBackup = excludeFromBackup,
+        )
     UserSettingsRegistry.register(setting)
     return setting
 }
 
 class UserConfig {
-    val excludeUnreadChapters: UserSetting<Boolean> = userSetting(
-        key = "excludeUnreadChapters",
-        protoNumber = 1,
-        group = SettingGroup.LIBRARY_UPDATES,
-        defaultValue = true,
-    )
+    val excludeUnreadChapters: UserSetting<Boolean> =
+        userSetting(
+            key = "excludeUnreadChapters",
+            protoNumber = 1,
+            group = SettingGroup.LIBRARY_UPDATES,
+            defaultValue = true,
+        )
 
-    val excludeNotStarted: UserSetting<Boolean> = userSetting(
-        key = "excludeNotStarted",
-        protoNumber = 2,
-        group = SettingGroup.LIBRARY_UPDATES,
-        defaultValue = true,
-    )
+    val excludeNotStarted: UserSetting<Boolean> =
+        userSetting(
+            key = "excludeNotStarted",
+            protoNumber = 2,
+            group = SettingGroup.LIBRARY_UPDATES,
+            defaultValue = true,
+        )
 
-    val excludeCompleted: UserSetting<Boolean> = userSetting(
-        key = "excludeCompleted",
-        protoNumber = 3,
-        group = SettingGroup.LIBRARY_UPDATES,
-        defaultValue = true,
-    )
+    val excludeCompleted: UserSetting<Boolean> =
+        userSetting(
+            key = "excludeCompleted",
+            protoNumber = 3,
+            group = SettingGroup.LIBRARY_UPDATES,
+            defaultValue = true,
+        )
 
-    val updateMangas: UserSetting<Boolean> = userSetting(
-        key = "updateMangas",
-        protoNumber = 4,
-        group = SettingGroup.LIBRARY_UPDATES,
-        defaultValue = false,
-    )
+    val updateMangas: UserSetting<Boolean> =
+        userSetting(
+            key = "updateMangas",
+            protoNumber = 4,
+            group = SettingGroup.LIBRARY_UPDATES,
+            defaultValue = false,
+        )
 
-    val autoDownloadNewChapters: UserSetting<Boolean> = userSetting(
-        key = "autoDownloadNewChapters",
-        protoNumber = 5,
-        group = SettingGroup.DOWNLOADER,
-        defaultValue = false,
-    )
+    val autoDownloadNewChapters: UserSetting<Boolean> =
+        userSetting(
+            key = "autoDownloadNewChapters",
+            protoNumber = 5,
+            group = SettingGroup.DOWNLOADER,
+            defaultValue = false,
+        )
 
-    val excludeEntryWithUnreadChapters: UserSetting<Boolean> = userSetting(
-        key = "excludeEntryWithUnreadChapters",
-        protoNumber = 6,
-        group = SettingGroup.DOWNLOADER,
-        defaultValue = true,
-    )
+    val excludeEntryWithUnreadChapters: UserSetting<Boolean> =
+        userSetting(
+            key = "excludeEntryWithUnreadChapters",
+            protoNumber = 6,
+            group = SettingGroup.DOWNLOADER,
+            defaultValue = true,
+        )
 
-    val autoDownloadNewChaptersLimit: UserSetting<Int> = userSetting(
-        key = "autoDownloadNewChaptersLimit",
-        protoNumber = 7,
-        group = SettingGroup.DOWNLOADER,
-        defaultValue = 0,
-        validator = { value ->
-            if (value < 0) "Value must be at least 0" else null
-        },
-    )
+    val autoDownloadNewChaptersLimit: UserSetting<Int> =
+        userSetting(
+            key = "autoDownloadNewChaptersLimit",
+            protoNumber = 7,
+            group = SettingGroup.DOWNLOADER,
+            defaultValue = 0,
+            validator = { value ->
+                if (value < 0) "Value must be at least 0" else null
+            },
+        )
 
-    val autoDownloadIgnoreReUploads: UserSetting<Boolean> = userSetting(
-        key = "autoDownloadIgnoreReUploads",
-        protoNumber = 8,
-        group = SettingGroup.DOWNLOADER,
-        defaultValue = false,
-    )
+    val autoDownloadIgnoreReUploads: UserSetting<Boolean> =
+        userSetting(
+            key = "autoDownloadIgnoreReUploads",
+            protoNumber = 8,
+            group = SettingGroup.DOWNLOADER,
+            defaultValue = false,
+        )
 
-    val opdsItemsPerPage: UserSetting<Int> = userSetting(
-        key = "opdsItemsPerPage",
-        protoNumber = 9,
-        group = SettingGroup.OPDS,
-        defaultValue = 100,
-        validator = { value ->
-            when {
-                value < 10 -> "Value must be at least 10"
-                value > 5000 -> "Value must not exceed 5000"
-                else -> null
-            }
-        },
-    )
+    val opdsItemsPerPage: UserSetting<Int> =
+        userSetting(
+            key = "opdsItemsPerPage",
+            protoNumber = 9,
+            group = SettingGroup.OPDS,
+            defaultValue = 100,
+            validator = { value ->
+                when {
+                    value < 10 -> "Value must be at least 10"
+                    value > 5000 -> "Value must not exceed 5000"
+                    else -> null
+                }
+            },
+        )
 
-    val opdsShowOnlyUnreadChapters: UserSetting<Boolean> = userSetting(
-        key = "opdsShowOnlyUnreadChapters",
-        protoNumber = 10,
-        group = SettingGroup.OPDS,
-        defaultValue = false,
-    )
+    val opdsShowOnlyUnreadChapters: UserSetting<Boolean> =
+        userSetting(
+            key = "opdsShowOnlyUnreadChapters",
+            protoNumber = 10,
+            group = SettingGroup.OPDS,
+            defaultValue = false,
+        )
 
-    val opdsShowOnlyDownloadedChapters: UserSetting<Boolean> = userSetting(
-        key = "opdsShowOnlyDownloadedChapters",
-        protoNumber = 11,
-        group = SettingGroup.OPDS,
-        defaultValue = false,
-    )
+    val opdsShowOnlyDownloadedChapters: UserSetting<Boolean> =
+        userSetting(
+            key = "opdsShowOnlyDownloadedChapters",
+            protoNumber = 11,
+            group = SettingGroup.OPDS,
+            defaultValue = false,
+        )
 
-    val opdsChapterSortOrder: UserSetting<SortOrder> = userSetting(
-        key = "opdsChapterSortOrder",
-        protoNumber = 12,
-        group = SettingGroup.OPDS,
-        defaultValue = SortOrder.DESC,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.v1.core.SortOrder")),
-    )
+    val opdsChapterSortOrder: UserSetting<SortOrder> =
+        userSetting(
+            key = "opdsChapterSortOrder",
+            protoNumber = 12,
+            group = SettingGroup.OPDS,
+            defaultValue = SortOrder.DESC,
+            typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("org.jetbrains.exposed.v1.core.SortOrder")),
+        )
 
-    val opdsMarkAsReadOnDownload: UserSetting<Boolean> = userSetting(
-        key = "opdsMarkAsReadOnDownload",
-        protoNumber = 13,
-        group = SettingGroup.OPDS,
-        defaultValue = false,
-    )
+    val opdsMarkAsReadOnDownload: UserSetting<Boolean> =
+        userSetting(
+            key = "opdsMarkAsReadOnDownload",
+            protoNumber = 13,
+            group = SettingGroup.OPDS,
+            defaultValue = false,
+        )
 
-    val opdsEnablePageReadProgress: UserSetting<Boolean> = userSetting(
-        key = "opdsEnablePageReadProgress",
-        protoNumber = 14,
-        group = SettingGroup.OPDS,
-        defaultValue = true,
-    )
+    val opdsEnablePageReadProgress: UserSetting<Boolean> =
+        userSetting(
+            key = "opdsEnablePageReadProgress",
+            protoNumber = 14,
+            group = SettingGroup.OPDS,
+            defaultValue = true,
+        )
 
-    val opdsUseBinaryFileSizes: UserSetting<Boolean> = userSetting(
-        key = "opdsUseBinaryFileSizes",
-        protoNumber = 15,
-        group = SettingGroup.OPDS,
-        defaultValue = false,
-    )
+    val opdsUseBinaryFileSizes: UserSetting<Boolean> =
+        userSetting(
+            key = "opdsUseBinaryFileSizes",
+            protoNumber = 15,
+            group = SettingGroup.OPDS,
+            defaultValue = false,
+        )
 
-    val opdsCbzMimetype: UserSetting<CbzMediaType> = userSetting(
-        key = "opdsCbzMimetype",
-        protoNumber = 16,
-        group = SettingGroup.OPDS,
-        defaultValue = CbzMediaType.MODERN,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
-    )
+    val opdsCbzMimetype: UserSetting<CbzMediaType> =
+        userSetting(
+            key = "opdsCbzMimetype",
+            protoNumber = 16,
+            group = SettingGroup.OPDS,
+            defaultValue = CbzMediaType.MODERN,
+            typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.CbzMediaType")),
+        )
 
-    val opdsSkipChapterMetadataFeed: UserSetting<Boolean> = userSetting(
-        key = "opdsSkipChapterMetadataFeed",
-        protoNumber = 17,
-        group = SettingGroup.OPDS,
-        defaultValue = false,
-    )
+    val opdsSkipChapterMetadataFeed: UserSetting<Boolean> =
+        userSetting(
+            key = "opdsSkipChapterMetadataFeed",
+            protoNumber = 17,
+            group = SettingGroup.OPDS,
+            defaultValue = false,
+        )
 
-    val koreaderSyncChecksumMethod: UserSetting<KoreaderSyncChecksumMethod> = userSetting(
-        key = "koreaderSyncChecksumMethod",
-        protoNumber = 18,
-        group = SettingGroup.KOREADER_SYNC,
-        defaultValue = KoreaderSyncChecksumMethod.BINARY,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
-    )
+    val koreaderSyncChecksumMethod: UserSetting<KoreaderSyncChecksumMethod> =
+        userSetting(
+            key = "koreaderSyncChecksumMethod",
+            protoNumber = 18,
+            group = SettingGroup.KOREADER_SYNC,
+            defaultValue = KoreaderSyncChecksumMethod.BINARY,
+            typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncChecksumMethod")),
+        )
 
-    val koreaderSyncStrategyForward: UserSetting<KoreaderSyncConflictStrategy> = userSetting(
-        key = "koreaderSyncStrategyForward",
-        protoNumber = 19,
-        group = SettingGroup.KOREADER_SYNC,
-        defaultValue = KoreaderSyncConflictStrategy.PROMPT,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
-    )
+    val koreaderSyncStrategyForward: UserSetting<KoreaderSyncConflictStrategy> =
+        userSetting(
+            key = "koreaderSyncStrategyForward",
+            protoNumber = 19,
+            group = SettingGroup.KOREADER_SYNC,
+            defaultValue = KoreaderSyncConflictStrategy.PROMPT,
+            typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
+        )
 
-    val koreaderSyncStrategyBackward: UserSetting<KoreaderSyncConflictStrategy> = userSetting(
-        key = "koreaderSyncStrategyBackward",
-        protoNumber = 20,
-        group = SettingGroup.KOREADER_SYNC,
-        defaultValue = KoreaderSyncConflictStrategy.DISABLED,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
-    )
+    val koreaderSyncStrategyBackward: UserSetting<KoreaderSyncConflictStrategy> =
+        userSetting(
+            key = "koreaderSyncStrategyBackward",
+            protoNumber = 20,
+            group = SettingGroup.KOREADER_SYNC,
+            defaultValue = KoreaderSyncConflictStrategy.DISABLED,
+            typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("suwayomi.tachidesk.graphql.types.KoreaderSyncConflictStrategy")),
+        )
 
-    val koreaderSyncPercentageTolerance: UserSetting<Double> = userSetting(
-        key = "koreaderSyncPercentageTolerance",
-        protoNumber = 21,
-        group = SettingGroup.KOREADER_SYNC,
-        defaultValue = 0.000000000000001,
-        validator = { value ->
-            when {
-                value < 0.000000000000001 -> "Value must be at least 0.000000000000001"
-                value > 1.0 -> "Value must not exceed 1.0"
-                else -> null
-            }
-        },
-    )
+    val koreaderSyncPercentageTolerance: UserSetting<Double> =
+        userSetting(
+            key = "koreaderSyncPercentageTolerance",
+            protoNumber = 21,
+            group = SettingGroup.KOREADER_SYNC,
+            defaultValue = 0.000000000000001,
+            validator = { value ->
+                when {
+                    value < 0.000000000000001 -> "Value must be at least 0.000000000000001"
+                    value > 1.0 -> "Value must not exceed 1.0"
+                    else -> null
+                }
+            },
+        )
 
-    val serveConversions: UserSetting<Map<String, DownloadConversion>> = userSetting(
-        key = "serveConversions",
-        protoNumber = 22,
-        group = SettingGroup.DOWNLOADER,
-        defaultValue = emptyMap(),
-        typeInfo = downloadConversionTypeInfo(includeRestoreLegacy = true),
-        internalType = "Map<String, DownloadConversion>",
-    )
+    val serveConversions: UserSetting<Map<String, DownloadConversion>> =
+        userSetting(
+            key = "serveConversions",
+            protoNumber = 22,
+            group = SettingGroup.DOWNLOADER,
+            defaultValue = emptyMap(),
+            typeInfo = downloadConversionTypeInfo(includeRestoreLegacy = true),
+            internalType = "Map<String, DownloadConversion>",
+        )
 
-    val syncYomiEnabled: UserSetting<Boolean> = userSetting(
-        key = "syncYomiEnabled",
-        protoNumber = 23,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = false,
-    )
+    val syncYomiEnabled: UserSetting<Boolean> =
+        userSetting(
+            key = "syncYomiEnabled",
+            protoNumber = 23,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = false,
+        )
 
-    val syncInterval: UserSetting<Duration> = userSetting(
-        key = "syncInterval",
-        protoNumber = 24,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = 0.seconds,
-        typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("kotlin.time.Duration")),
-    )
+    val syncInterval: UserSetting<Duration> =
+        userSetting(
+            key = "syncInterval",
+            protoNumber = 24,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = 0.seconds,
+            typeInfo = SettingsRegistry.PartialTypeInfo(imports = listOf("kotlin.time.Duration")),
+        )
 
-    val syncYomiHost: UserSetting<String> = userSetting(
-        key = "syncYomiHost",
-        protoNumber = 25,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = "",
-    )
+    // instance-local connection details: excluded from backups so an exported file cannot
+    // leak the sync server URL into shared/torrented backups and restoring a foreign backup
+    // cannot redirect sync to a hostile host (reconfigure after a restore instead)
+    val syncYomiHost: UserSetting<String> =
+        userSetting(
+            key = "syncYomiHost",
+            protoNumber = 25,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = "",
+            excludeFromBackup = true,
+        )
 
-    val syncYomiApiKey: UserSetting<String> = userSetting(
-        key = "syncYomiApiKey",
-        protoNumber = 26,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = "",
-    )
+    // a bearer credential: must never leave this instance via an exported backup file
+    val syncYomiApiKey: UserSetting<String> =
+        userSetting(
+            key = "syncYomiApiKey",
+            protoNumber = 26,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = "",
+            excludeFromBackup = true,
+        )
 
-    val syncDataManga: UserSetting<Boolean> = userSetting(
-        key = "syncDataManga",
-        protoNumber = 27,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = true,
-    )
+    val syncDataManga: UserSetting<Boolean> =
+        userSetting(
+            key = "syncDataManga",
+            protoNumber = 27,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = true,
+        )
 
-    val syncDataChapters: UserSetting<Boolean> = userSetting(
-        key = "syncDataChapters",
-        protoNumber = 28,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = true,
-    )
+    val syncDataChapters: UserSetting<Boolean> =
+        userSetting(
+            key = "syncDataChapters",
+            protoNumber = 28,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = true,
+        )
 
-    val syncDataTracking: UserSetting<Boolean> = userSetting(
-        key = "syncDataTracking",
-        protoNumber = 29,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = true,
-    )
+    val syncDataTracking: UserSetting<Boolean> =
+        userSetting(
+            key = "syncDataTracking",
+            protoNumber = 29,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = true,
+        )
 
-    val syncDataHistory: UserSetting<Boolean> = userSetting(
-        key = "syncDataHistory",
-        protoNumber = 30,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = true,
-    )
+    val syncDataHistory: UserSetting<Boolean> =
+        userSetting(
+            key = "syncDataHistory",
+            protoNumber = 30,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = true,
+        )
 
-    val syncDataCategories: UserSetting<Boolean> = userSetting(
-        key = "syncDataCategories",
-        protoNumber = 31,
-        group = SettingGroup.SYNCYOMI,
-        defaultValue = true,
-    )
+    val syncDataCategories: UserSetting<Boolean> =
+        userSetting(
+            key = "syncDataCategories",
+            protoNumber = 31,
+            group = SettingGroup.SYNCYOMI,
+            defaultValue = true,
+        )
 }
 
 val userConfig: UserConfig by lazy { UserConfig() }

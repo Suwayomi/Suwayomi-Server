@@ -28,7 +28,11 @@ class WebviewMutation {
     @RequireAuth
     @RequirePermissions(UserPermission.MANAGE_CACHE)
     fun clearCookiesAndCache(input: ClearCookiesAndCacheInput? = null): ClearCookiesAndCachePayload {
-        val cookieHandler = CookieHandler.getDefault() as java.net.CookieManager
+        // the default handler isn't guaranteed to be a CookieManager — a bare `as` cast
+        // would throw an opaque ClassCastException
+        val cookieHandler =
+            CookieHandler.getDefault() as? java.net.CookieManager
+                ?: throw IllegalStateException("No CookieManager is installed as the default CookieHandler")
         cookieHandler.cookieStore.removeAll()
         Path(applicationDirs.cacheDir).deleteRecursively()
 

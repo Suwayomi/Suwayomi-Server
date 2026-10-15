@@ -27,7 +27,6 @@
     <string name="opds_feeds_genre_specific_title">Genre : %1$s</string>
     <string name="opds_feeds_status_specific_title">Statut : %1$s</string>
     <string name="opds_feeds_language_specific_title">Langue : %1$s</string>
-    <string name="opds_feeds_source_specific_title">Source : %1$s</string>
     <string name="opds_feeds_library_source_specific_title">Bibliothèque – Source : %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">Source : %1$s - Populaire</string>
     <string name="opds_feeds_source_specific_latest_title">Source : %1$s - Récent</string>
@@ -90,8 +89,8 @@
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">Série : %1$s | %2$s</string>
-    <string name="opds_chapter_details_scanlator">| Par %1$s</string>
-    <string name="opds_chapter_details_progress">| Progression : %1$d sur %2$d</string>
+    <string name="opds_chapter_details_scanlator"> | Par %1$s</string>
+    <string name="opds_chapter_details_progress"> | Progression : %1$d sur %2$s</string>
     <string name="opds_manga_summary_status">Statut : %1$s</string>
     <string name="opds_manga_summary_source">Source : %1$s</string>
     <string name="opds_manga_summary_language">Langue : %1$s</string>
