@@ -54,10 +54,10 @@ object TrackController {
                 body<Track.LoginInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.LoginInput>(ctx.body())
-                logger.debug { "tracker login $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.LoginInput>(ctx.body())
+                // never log the input: it carries the tracker credentials in plaintext
+                logger.debug { "tracker login trackerId=${input.trackerId}" }
                 ctx.future {
                     future { Track.login(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }
@@ -79,10 +79,9 @@ object TrackController {
                 body<Track.LogoutInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
-                logger.debug { "tracker logout $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
+                logger.debug { "tracker logout trackerId=${input.trackerId}" }
                 ctx.future {
                     future { Track.logout(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }
@@ -104,10 +103,9 @@ object TrackController {
                 body<Track.SearchInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.SearchInput>(ctx.body())
-                logger.debug { "tracker search $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.SearchInput>(ctx.body())
+                logger.debug { "tracker search trackerId=${input.trackerId} title=${input.title}" }
                 ctx.future {
                     future { Track.search(userId, input) }
                         .thenApply { ctx.json(it) }
@@ -153,10 +151,9 @@ object TrackController {
                 body<Track.UpdateInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
-                logger.debug { "tracker update $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
+                logger.debug { "tracker update recordId=${input.recordId}" }
                 ctx.future {
                     future { Track.update(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }

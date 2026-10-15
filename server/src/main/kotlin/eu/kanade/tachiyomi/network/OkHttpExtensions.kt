@@ -15,12 +15,23 @@ import rx.Observable
 import rx.Producer
 import rx.Subscription
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.coroutines.resumeWithException
 
 val jsonMime = "application/json; charset=utf-8".toMediaType()
 
+/**
+ * Exposes this call as a cold [Observable]: each subscriber triggers one
+ * `execute()` on the caller's thread once it requests demand (first `request(n>0)`).
+ * The emitted [Response] is the raw network response — unsuccessful statuses are
+ * still delivered via `onNext` (see [asObservableSuccess] for the checked variant),
+ * and the caller owns closing the body. Unsubscription cancels the call.
+ *
+ * Retained only for source-level RxJava interop; new code should use the suspend
+ * [await]/[awaitSuccess] variants.
+ */
 @OptIn(ExperimentalAtomicApi::class)
 @Deprecated("Use suspend APIs instead")
 fun Call.asObservable(): Observable<Response> {
@@ -133,6 +144,10 @@ fun OkHttpClient.newCachelessCallWithProgress(
     val progressClient =
         newBuilder()
             .cache(null)
+            // Downloads run through this call path: the base client's 2-minute
+            // callTimeout would abort large chapter downloads, so the whole-call
+            // cap is lifted here — stall protection still applies via readTimeout.
+            .callTimeout(0, TimeUnit.MINUTES)
             .addNetworkInterceptor { chain ->
                 val originalResponse = chain.proceed(chain.request())
                 originalResponse

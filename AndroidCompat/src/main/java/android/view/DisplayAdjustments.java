@@ -18,50 +18,62 @@ package android.view;
 import android.content.res.CompatibilityInfo;
 import android.content.res.Configuration;
 
-/** @hide */
+/**
+ * Compile-only UI stub surface: this environment never executes UI/display
+ * code paths, so adjustments are no-ops and {@link #DEFAULT_DISPLAY_ADJUSTMENTS}
+ * is a plain default instance.
+ * @hide
+ */
 public class DisplayAdjustments {
 
-    public static final DisplayAdjustments DEFAULT_DISPLAY_ADJUSTMENTS = null;
+    public static final DisplayAdjustments DEFAULT_DISPLAY_ADJUSTMENTS = new DisplayAdjustments();
 
     private volatile CompatibilityInfo mCompatInfo = null;
 
     private Configuration mConfiguration = null;
 
     public DisplayAdjustments() {
-        throw new RuntimeException("Stub!");
     }
 
     public DisplayAdjustments(Configuration configuration) {
-        throw new RuntimeException("Stub!");
+        mConfiguration = configuration;
     }
 
     public DisplayAdjustments(DisplayAdjustments daj) {
-        throw new RuntimeException("Stub!");
+        if (daj != null) {
+            mCompatInfo = daj.mCompatInfo;
+            mConfiguration = daj.mConfiguration;
+        }
     }
 
     public void setCompatibilityInfo(CompatibilityInfo compatInfo) {
-        throw new RuntimeException("Stub!");
+        mCompatInfo = compatInfo;
     }
 
     public CompatibilityInfo getCompatibilityInfo() {
-        throw new RuntimeException("Stub!");
+        return mCompatInfo;
     }
 
     public void setConfiguration(Configuration configuration) {
-        throw new RuntimeException("Stub!");
+        mConfiguration = configuration;
     }
 
     public Configuration getConfiguration() {
-        throw new RuntimeException("Stub!");
+        return mConfiguration;
     }
 
     @Override
     public int hashCode() {
-        throw new RuntimeException("Stub!");
+        return java.util.Objects.hash(mCompatInfo, mConfiguration);
     }
 
     @Override
     public boolean equals(Object o) {
-        throw new RuntimeException("Stub!");
+        if (!(o instanceof DisplayAdjustments)) {
+            return false;
+        }
+        DisplayAdjustments other = (DisplayAdjustments) o;
+        return java.util.Objects.equals(mCompatInfo, other.mCompatInfo)
+                && java.util.Objects.equals(mConfiguration, other.mConfiguration);
     }
 }

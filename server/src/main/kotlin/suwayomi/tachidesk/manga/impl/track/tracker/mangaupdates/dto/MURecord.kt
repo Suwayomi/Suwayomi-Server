@@ -15,23 +15,23 @@ data class MURecord(
     val image: MUImage? = null,
     val type: String? = null,
     val year: String? = null,
-    @SerialName("bayesian_rating")
-    val bayesianRating: Double? = null,
-    @SerialName("rating_votes")
-    val ratingVotes: Int? = null,
     @SerialName("latest_chapter")
     val latestChapter: Int? = null,
 )
 
-fun MURecord.toTrackSearch(id: Int): TrackSearch =
-    TrackSearch.create(id).apply {
-        remote_id = this@toTrackSearch.seriesId ?: 0L
+fun MURecord.toTrackSearch(id: Int): TrackSearch? {
+    // A record without a series id can never be bound; drop it instead of
+    // binding to the sentinel remote_id=0.
+    val seriesId = seriesId ?: return null
+    return TrackSearch.create(id).apply {
+        remote_id = seriesId
         title = this@toTrackSearch.title?.htmlDecode() ?: ""
-        total_chapters = 0
+        total_chapters = this@toTrackSearch.latestChapter ?: 0
         cover_url = this@toTrackSearch.image?.url?.original ?: ""
         summary = this@toTrackSearch.description?.htmlDecode() ?: ""
         tracking_url = this@toTrackSearch.url ?: ""
         publishing_status = ""
-        publishing_type = this@toTrackSearch.type.toString()
-        start_date = this@toTrackSearch.year.toString()
+        publishing_type = this@toTrackSearch.type ?: ""
+        start_date = this@toTrackSearch.year ?: ""
     }
+}

@@ -111,7 +111,9 @@ object Category {
         from: Int,
         to: Int,
     ) {
-        if (from == 0 || to == 0) return
+        // positions are 1-based; `0` is the reserved Default category — non-positive
+        // positions are rejected by the controller (400); keep a defensive check here too
+        require(from > 0 && to > 0) { "'from' and 'to' must be > 0" }
         transaction {
             val categories =
                 CategoryTable
@@ -120,7 +122,9 @@ object Category {
                         CategoryTable.isDefaultCategory eq false and (CategoryTable.user eq userId)
                     }.orderBy(CategoryTable.order to SortOrder.ASC)
                     .toMutableList()
-            categories.add(to - 1, categories.removeAt(from - 1))
+            // `from` must point at an existing entry; clamp an over-long `to` to the end
+            require(from <= categories.size) { "'from' must be <= ${categories.size}" }
+            categories.add((to - 1).coerceAtMost(categories.size), categories.removeAt(from - 1))
             categories.forEachIndexed { index, cat ->
                 CategoryTable.update({ CategoryTable.id eq cat[CategoryTable.id].value and (CategoryTable.user eq userId) }) {
                     it[CategoryTable.order] = index + 1

@@ -131,7 +131,7 @@ object Source {
 
     private val jsonMapper: JsonMapper by injectLazy()
 
-    fun setSourcePreference(
+    suspend fun setSourcePreference(
         sourceId: Long,
         position: Int,
         value: String,
@@ -144,7 +144,19 @@ object Source {
             }
         },
     ) {
-        val screen = preferenceScreenMap[sourceId]!!
+        // the screen might not be cached yet (e.g. preferences were never fetched since boot);
+        // build it on demand instead of crashing on a `!!` lookup
+        val screen =
+            preferenceScreenMap[sourceId]
+                ?: run {
+                    getSourcePreferencesRaw(sourceId)
+                    preferenceScreenMap[sourceId]
+                }
+        requireNotNull(screen) { "source $sourceId does not provide preferences" }
+        // an out-of-range position must not index into the list (IndexOutOfBoundsException → 500)
+        require(position in screen.preferences.indices) {
+            "invalid preference position $position for source $sourceId"
+        }
         val pref = screen.preferences[position]
 
         if (!pref.isEnabled) {

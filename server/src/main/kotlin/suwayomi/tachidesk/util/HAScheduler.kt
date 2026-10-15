@@ -11,10 +11,10 @@ import it.sauronsoftware.cron4j.Task
 import it.sauronsoftware.cron4j.TaskExecutionContext
 import java.time.ZonedDateTime
 import java.util.Date
-import java.util.PriorityQueue
 import java.util.Timer
 import java.util.TimerTask
 import java.util.UUID
+import java.util.concurrent.PriorityBlockingQueue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -83,6 +83,11 @@ class HATask(
     ) {
     private val firstExecutionTime = System.currentTimeMillis() + initialDelay
 
+    init {
+        // interval <= 0 would crash `mod(interval)` and is meaningless for a repeating task
+        require(interval > 0) { "interval must be > 0" }
+    }
+
     private fun getElapsedTimeOfCurrentInterval(): Long {
         val timeSinceFirstExecution = System.currentTimeMillis() - firstExecutionTime
         return timeSinceFirstExecution.mod(interval)
@@ -100,7 +105,7 @@ class HATask(
 
     override fun getNextExecutionTime(): Long = System.currentTimeMillis() + getTimeToNextExecution()
 
-    override fun getTimeToNextExecution(): Long = interval - getElapsedTimeOfCurrentInterval()
+    override fun getTimeToNextExecution(): Long = (interval - getElapsedTimeOfCurrentInterval()).coerceAtLeast(0)
 
     override fun toString(): String = "${super.toString()} interval= $interval, initialDelay= $initialDelay"
 }
@@ -112,10 +117,13 @@ class HATask(
 object HAScheduler {
     private val logger = KotlinLogging.logger { }
 
-    private val scheduledTasks = PriorityQueue<BaseHATask>()
+    // PriorityBlockingQueue: tasks are added/removed/iterated by the cron4j scheduler
+    // thread, the hibernation-checker timer thread and config subscription threads
+    private val scheduledTasks = PriorityBlockingQueue<BaseHATask>()
     private val scheduler = Scheduler()
 
-    private val timer = Timer()
+    // daemon: a failed/aborted startup must not be kept alive by the checker timer
+    private val timer = Timer(true)
 
     private val HIBERNATION_THRESHOLD = 10.seconds.inWholeMilliseconds
     private const val TASK_THRESHOLD = 0.1
@@ -130,33 +138,49 @@ object HAScheduler {
                 var lastExecutionTime = System.currentTimeMillis()
 
                 override fun run() {
+                    // a throwing run() permanently cancels a TimerTask — the hibernation
+                    // checker would silently die, so never let an exception escape
+                    try {
+                        checkForHibernation()
+                    } catch (e: Throwable) {
+                        logger.error(e) { "Hibernation check failed" }
+                    }
+                }
+
+                private fun checkForHibernation() {
                     val currentTime = System.currentTimeMillis()
                     val elapsedTime = currentTime - lastExecutionTime
                     lastExecutionTime = currentTime
 
                     val systemWasInHibernation = elapsedTime > interval.inWholeMilliseconds + HIBERNATION_THRESHOLD
-                    if (systemWasInHibernation) {
-                        logger.debug {
-                            "System hibernation detected, task was delayed by " +
-                                "${elapsedTime - interval.inWholeMilliseconds}ms"
+                    if (!systemWasInHibernation) return
+
+                    logger.debug {
+                        "System hibernation detected, task was delayed by " +
+                            "${elapsedTime - interval.inWholeMilliseconds}ms"
+                    }
+                    // PriorityBlockingQueue.toList() yields heap order, NOT sorted order.
+                    // Missed tasks are the ones with the LARGEST time-to-next-execution
+                    // (their cycle boundary fell inside the hibernation window, i.e.
+                    // elapsedInCycle < elapsed), so iterate in descending order and stop at
+                    // the first task that did not miss a run.
+                    for (task in scheduledTasks.sortedByDescending { it.getTimeToNextExecution() }) {
+                        val wasLastExecutionMissed = currentTime - task.getLastExecutionTime() - elapsedTime < 0
+                        if (!wasLastExecutionMissed) {
+                            break
                         }
-                        scheduledTasks.toList().forEach {
-                            val wasLastExecutionMissed = currentTime - it.getLastExecutionTime() - elapsedTime < 0
-                            if (wasLastExecutionMissed) {
-                                logger.debug { "$it missed its execution, executing now..." }
 
-                                when (it) {
-                                    is HATask -> reschedule(it.id, it.interval)
-                                    is HACronTask -> rescheduleCron(it.id, it.cronExpr)
-                                }
+                        logger.debug { "$task missed its execution, executing now..." }
 
-                                it.execute()
-                            }
+                        when (task) {
+                            is HATask -> reschedule(task.id, task.interval)
+                            is HACronTask -> rescheduleCron(task.id, task.cronExpr)
+                        }
 
-                            // queue is ordered by next execution time, thus, loop can be exited early
-                            if (!wasLastExecutionMissed) {
-                                return@forEach
-                            }
+                        try {
+                            task.execute()
+                        } catch (e: Throwable) {
+                            logger.error(e) { "Missed-execution run of $task failed" }
                         }
                     }
                 }
@@ -182,13 +206,22 @@ object HAScheduler {
                 //
                 // The missed execution gets triggered by "HAScheduler::scheduleHibernateCheckerTask" and thus, we
                 // debounce this behaviour of "Timer::scheduleAtFixedRate".
-                val isCatchUpExecution = System.currentTimeMillis() - lastExecutionTime < interval - HIBERNATION_THRESHOLD
+                // For intervals smaller than the hibernation threshold the window clamps to
+                // 0 so executions are never skipped outright.
+                val isCatchUpExecution =
+                    System.currentTimeMillis() - lastExecutionTime <
+                        (interval - HIBERNATION_THRESHOLD).coerceAtLeast(0)
                 if (isCatchUpExecution) {
                     return
                 }
 
                 lastExecutionTime = System.currentTimeMillis()
-                execute()
+                // a throwing task would permanently cancel this TimerTask; log instead
+                try {
+                    execute()
+                } catch (e: Throwable) {
+                    logger.error(e) { "Scheduled task threw an exception" }
+                }
             }
         }
     }
@@ -199,6 +232,7 @@ object HAScheduler {
         delay: Long,
         name: String?,
     ): String {
+        require(interval > 0) { "interval must be > 0" }
         val taskId = UUID.randomUUID().toString()
         val timerTask = createTimerTask(interval, execute)
 
@@ -212,13 +246,32 @@ object HAScheduler {
     }
 
     fun deschedule(taskId: String): HATask? {
-        val task = (scheduledTasks.find { it.id == taskId } ?: return null) as HATask
-        task.timerTask.cancel()
-        scheduledTasks.remove(task)
+        // the previous unchecked `as HATask` cast crashed with ClassCastException when the
+        // id belonged to a cron task — dispatch on the actual task type instead
+        return when (val task = scheduledTasks.find { it.id == taskId }) {
+            null -> {
+                null
+            }
 
-        logger.debug { "deschedule: $task" }
+            is HACronTask -> {
+                descheduleCron(taskId)
+                null
+            }
 
-        return task
+            is HATask -> {
+                task.timerTask.cancel()
+                scheduledTasks.remove(task)
+
+                logger.debug { "deschedule: $task" }
+
+                task
+            }
+
+            else -> {
+                logger.warn { "deschedule: unknown task type for id=$taskId" }
+                null
+            }
+        }
     }
 
     fun reschedule(

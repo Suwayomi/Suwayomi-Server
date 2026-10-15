@@ -10,6 +10,7 @@ package androidx.preference;
 import android.content.Context;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.util.HashSet;
 import java.util.Set;
 
 public class MultiSelectListPreference extends DialogPreference {
@@ -18,6 +19,7 @@ public class MultiSelectListPreference extends DialogPreference {
 
     private CharSequence[] entries;
     private CharSequence[] entryValues;
+    private Set<String> mValues = new HashSet<>();
 
     public MultiSelectListPreference(Context context) {
         super(context);
@@ -41,16 +43,30 @@ public class MultiSelectListPreference extends DialogPreference {
 
     @JsonIgnore
     public void setValues(Set<String> values) {
-        throw new RuntimeException("Stub!");
+        if (values == null) {
+            values = new HashSet<>();
+        }
+        if (!callChangeListener(values)) {
+            return;
+        }
+        mValues = new HashSet<>(values);
+        saveNewValue(mValues);
     }
 
     @JsonIgnore
     public Set<String> getValues() {
-        throw new RuntimeException("Stub!");
+        return mValues;
     }
 
     public int findIndexOfValue(String value) {
-        throw new RuntimeException("Stub!");
+        if (value != null && entryValues != null) {
+            for (int i = entryValues.length - 1; i >= 0; i--) {
+                if (entryValues[i].toString().equals(value)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
 
     /** Tachidesk specific API */

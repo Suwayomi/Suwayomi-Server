@@ -947,7 +947,9 @@ public class Handler {
     }
 
     final IMessenger getIMessenger() {
-        throw new RuntimeException("Stub!");
+        // Messenger/Binder IPC is not supported in this environment.
+        throw new UnsupportedOperationException(
+                "Messenger IPC is not supported in Suwayomi AndroidCompat");
         // synchronized (mQueue) {
         //     if (mMessenger != null) {
         //         return mMessenger;

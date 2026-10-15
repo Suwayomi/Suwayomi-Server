@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.opds.repository
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.reactivecircus.cache4k.Cache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -23,7 +24,6 @@ import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
-import suwayomi.tachidesk.graphql.types.ChapterUserType
 import suwayomi.tachidesk.manga.impl.ChapterDownloadHelper
 import suwayomi.tachidesk.manga.impl.chapter.getChapterDownloadReady
 import suwayomi.tachidesk.manga.impl.chapter.refreshChapterPageList
@@ -36,15 +36,41 @@ import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.opds.dto.OpdsChapterListAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsChapterMetadataAcqEntry
+import suwayomi.tachidesk.opds.dto.OpdsChapterUserData
 import suwayomi.tachidesk.opds.dto.OpdsHistoryAcqEntry
 import suwayomi.tachidesk.opds.dto.OpdsLibraryUpdateAcqEntry
+import suwayomi.tachidesk.opds.util.OpdsPaging
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
+import kotlin.time.Duration.Companion.minutes
 
 object ChapterRepository {
     private fun opdsItemsPerPage(userId: Int): Int = userConfig.opdsItemsPerPage.value(userId)
 
     private val logger = KotlinLogging.logger {}
+
+    /**
+     * Chapters whose page list was fetched from the (remote) source recently.
+     * `getChaptersForManga` enriches `skipMetadata` feeds by probing chapters with an
+     * unknown page count; without this short-lived negative/positive memo, every feed
+     * request would issue one remote `getPageList` call per such chapter (N+1).
+     */
+    private val pageListRefreshAttempts: Cache<Int, Long> =
+        Cache
+            .Builder<Int, Long>()
+            .expireAfterWrite(10.minutes)
+            .build()
+
+    /**
+     * Short-lived memo for the chapter-metadata feed: [getChapterDownloadReady] performs
+     * a remote page-list refresh (plus DB writes) for chapters without a local download,
+     * so repeated GETs of the same metadata feed would otherwise re-fetch every time.
+     */
+    private val chapterMetadataCache: Cache<String, OpdsChapterMetadataAcqEntry> =
+        Cache
+            .Builder<String, OpdsChapterMetadataAcqEntry>()
+            .expireAfterWrite(1.minutes)
+            .build()
 
     private fun ResultRow.toOpdsChapterListAcqEntry(): OpdsChapterListAcqEntry =
         OpdsChapterListAcqEntry(
@@ -54,13 +80,148 @@ object ChapterRepository {
             uploadDate = this[ChapterTable.date_upload],
             chapterNumber = this[ChapterTable.chapter_number],
             scanlator = this[ChapterTable.scanlator],
-            read = this[ChapterUserTable.isRead],
-            lastPageRead = this[ChapterUserTable.lastPageRead],
-            lastReadAt = this[ChapterUserTable.lastReadAt],
+            // LEFT JOIN user row: absent for chapters the user never interacted with
+            read = this.getOrNull(ChapterUserTable.isRead) ?: false,
+            lastPageRead = this.getOrNull(ChapterUserTable.lastPageRead) ?: 0,
+            lastReadAt = this.getOrNull(ChapterUserTable.lastReadAt) ?: 0L,
             sourceOrder = this[ChapterTable.sourceOrder],
             pageCount = this[ChapterTable.pageCount],
-            downloaded = this[ChapterUserTable.isDownloaded],
+            downloaded = this.getOrNull(ChapterUserTable.isDownloaded) ?: false,
         )
+
+    /**
+     * Fetches one raw DB page of chapters for [mangaId], without reachability enrichment.
+     */
+    private fun fetchRawChaptersPage(
+        userId: Int,
+        mangaId: Int,
+        sortColumn: Column<*>,
+        sortOrder: SortOrder,
+        filter: String,
+        dbPageNum: Int,
+        perPage: Int,
+    ): Pair<List<OpdsChapterListAcqEntry>, Long> =
+        transaction {
+            val conditions = mutableListOf<Op<Boolean>>()
+            conditions.add(ChapterTable.manga eq mangaId)
+
+            when (filter.lowercase()) {
+                "unread" -> conditions.add(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()))
+                "read" -> conditions.add(ChapterUserTable.isRead eq true)
+            }
+            if (userConfig.opdsShowOnlyDownloadedChapters.value(userId)) {
+                conditions.add(ChapterUserTable.isDownloaded eq true)
+            }
+
+            val finalCondition = conditions.reduceOrNull { acc, op -> acc and op } ?: Op.TRUE
+
+            val baseQuery =
+                ChapterTable
+                    .getWithUserData(userId)
+                    .select(ChapterTable.columns + ChapterUserTable.columns)
+                    .where(finalCondition)
+
+            val totalCount = baseQuery.count()
+
+            val chapters =
+                baseQuery
+                    .orderBy(sortColumn to sortOrder, ChapterTable.id to sortOrder)
+                    .limit(perPage)
+                    .offset(OpdsPaging.offsetFor(dbPageNum, perPage))
+                    .map { it.toOpdsChapterListAcqEntry() }
+
+            Pair(chapters, totalCount)
+        }
+
+    /**
+     * Enriches raw chapter entries with page count/download state for `skipMetadata`
+     * feeds (file-system probe, remote page-list fetch, CBZ size) and drops chapters that
+     * are unreachable — neither downloaded nor with a known page count.
+     */
+    private suspend fun enrichChapterEntries(rawChapters: List<OpdsChapterListAcqEntry>): List<OpdsChapterListAcqEntry> =
+        coroutineScope {
+            rawChapters.map { entry ->
+                async(Dispatchers.IO) {
+                    var pageCount = entry.pageCount
+                    var isDownloaded = entry.downloaded
+
+                    // Verify physical files if page count is unknown or the DB marks it as downloaded
+                    if (pageCount <= 0 || isDownloaded) {
+                        val physicalPageCount =
+                            runCatching {
+                                ChapterDownloadHelper.getImageCount(entry.mangaId, entry.id)
+                            }.getOrDefault(0)
+
+                        if (physicalPageCount > 0) {
+                            // Files exist! Sync DB if needed
+                            if (runCatching {
+                                    updateChapterPersistence(
+                                        chapterId = entry.id,
+                                        isMarkedAsDownloaded = isDownloaded,
+                                        dbPageCount = pageCount,
+                                        downloadPageCount = physicalPageCount,
+                                        logger = logger,
+                                    )
+                                }.onFailure {
+                                    logger.warn(it) { "Failed to persist download state for chapter ${entry.id}" }
+                                }.getOrDefault(false)
+                            ) {
+                                pageCount = physicalPageCount
+                                isDownloaded = true
+                            }
+                        } else {
+                            if (isDownloaded) {
+                                // Fix DB state if marked as downloaded but physical files are missing
+                                runCatching {
+                                    transaction {
+                                        ChapterTable.update({ ChapterTable.id eq entry.id }) {
+                                            it[ChapterTable.isDownloaded] = false
+                                        }
+                                        ChapterUserTable.update({ ChapterUserTable.chapter eq entry.id }) {
+                                            it[ChapterUserTable.isDownloaded] = false
+                                            it[isDownloadRequested] = false
+                                        }
+                                    }
+                                }.onFailure {
+                                    logger.warn(it) { "Failed to reset download state for chapter ${entry.id}" }
+                                }
+                                isDownloaded = false
+                            }
+
+                            if (pageCount <= 0 && pageListRefreshAttempts.get(entry.id) == null) {
+                                // No files, and DB has no page count. Fetch from network
+                                // (memoized — a source outage must not be retried per request).
+                                pageListRefreshAttempts.put(entry.id, System.currentTimeMillis())
+                                pageCount =
+                                    runCatching {
+                                        refreshChapterPageList(entry.mangaId, entry.id)
+                                    }.onFailure {
+                                        logger.warn(it) { "Failed to fetch page count for chapter ${entry.id}" }
+                                    }.getOrDefault(0)
+                            }
+                        }
+                    }
+
+                    // Calculate CBZ size if downloaded
+                    val cbzFileSize =
+                        if (isDownloaded) {
+                            runCatching {
+                                ChapterDownloadHelper.getChapterArchiveSize(entry.mangaId, entry.id)
+                            }.getOrNull()
+                        } else {
+                            null
+                        }
+
+                    entry.copy(
+                        pageCount = pageCount,
+                        downloaded = isDownloaded,
+                        cbzFileSize = cbzFileSize,
+                    )
+                }
+            }
+        }.awaitAll()
+            // Exclude unreachable chapters that are not downloaded and have no page count
+            .filter { it.downloaded || it.pageCount > 0 }
 
     suspend fun getChaptersForManga(
         userId: Int,
@@ -71,121 +232,37 @@ object ChapterRepository {
         pageNum: Int,
         skipMetadata: Boolean,
     ): Pair<List<OpdsChapterListAcqEntry>, Long> {
-        val (rawChapters, totalCount) =
-            transaction {
-                val conditions = mutableListOf<Op<Boolean>>()
-                conditions.add(ChapterTable.manga eq mangaId)
+        val perPage = opdsItemsPerPage(userId)
+        val safePageNum = OpdsPaging.sanitizePageNum(pageNum)
 
-                when (filter) {
-                    "unread" -> conditions.add(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()))
-                    "read" -> conditions.add(ChapterUserTable.isRead eq true)
-                }
-                if (userConfig.opdsShowOnlyDownloadedChapters.value(userId)) {
-                    conditions.add(ChapterUserTable.isDownloaded eq true)
-                }
-
-                val finalCondition = conditions.reduceOrNull { acc, op -> acc and op } ?: Op.TRUE
-
-                val baseQuery =
-                    ChapterTable
-                        .getWithUserData(userId)
-                        .select(ChapterTable.columns + ChapterUserTable.columns)
-                        .where(finalCondition)
-
-                val totalCount = baseQuery.count()
-
-                val chapters =
-                    baseQuery
-                        .orderBy(sortColumn to sortOrder)
-                        .limit(opdsItemsPerPage(userId))
-                        .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
-                        .map { it.toOpdsChapterListAcqEntry() }
-
-                Pair(chapters, totalCount)
-            }
-
-        // If not skipping metadata, return basic DTOs
+        // If not skipping metadata, a single paged query is enough.
         if (!skipMetadata) {
-            return Pair(rawChapters, totalCount)
+            return fetchRawChaptersPage(userId, mangaId, sortColumn, sortOrder, filter, safePageNum, perPage)
         }
 
-        // If skipping metadata, enrich DTOs with page count and file size
-        val enrichedChapters =
-            coroutineScope {
-                rawChapters.map { entry ->
-                    async(Dispatchers.IO) {
-                        var pageCount = entry.pageCount
-                        var isDownloaded = entry.downloaded
+        // With skipMetadata, enrichment filters out unreachable chapters *after* the raw
+        // page was taken from the DB — which used to leave pages short (or empty) while
+        // `totalResults` still counted every row. Instead, scan raw DB pages forward
+        // until the requested page is filled or the chapter table is exhausted.
+        val neededForPage = safePageNum.toLong() * perPage
+        val reachable = mutableListOf<OpdsChapterListAcqEntry>()
+        var rawTotalCount = 0L
+        var lastRawPageSize = 0
+        var dbPageNum = 0
+        do {
+            dbPageNum++
+            val (rawChapters, count) = fetchRawChaptersPage(userId, mangaId, sortColumn, sortOrder, filter, dbPageNum, perPage)
+            rawTotalCount = count
+            lastRawPageSize = rawChapters.size
+            reachable += enrichChapterEntries(rawChapters)
+        } while (reachable.size.toLong() < neededForPage && lastRawPageSize == perPage)
 
-                        // Verify physical files if page count is unknown or the DB marks it as downloaded
-                        if (pageCount <= 0 || isDownloaded) {
-                            val physicalPageCount =
-                                runCatching {
-                                    ChapterDownloadHelper.getImageCount(entry.mangaId, entry.id)
-                                }.getOrDefault(0)
-
-                            if (physicalPageCount > 0) {
-                                // Files exist! Sync DB if needed
-                                if (updateChapterPersistence(
-                                        chapterId = entry.id,
-                                        isMarkedAsDownloaded = isDownloaded,
-                                        dbPageCount = pageCount,
-                                        downloadPageCount = physicalPageCount,
-                                        logger = logger,
-                                    )
-                                ) {
-                                    pageCount = physicalPageCount
-                                    isDownloaded = true
-                                }
-                            } else {
-                                if (isDownloaded) {
-                                    // Fix DB state if marked as downloaded but physical files are missing
-                                    transaction {
-                                        ChapterTable.update({ ChapterTable.id eq entry.id }) {
-                                            it[ChapterTable.isDownloaded] = false
-                                        }
-                                        ChapterUserTable.update({ ChapterUserTable.chapter eq entry.id }) {
-                                            it[ChapterUserTable.isDownloaded] = false
-                                            it[isDownloadRequested] = false
-                                        }
-                                    }
-                                    isDownloaded = false
-                                }
-
-                                if (pageCount <= 0) {
-                                    // No files, and DB has no page count. Fetch from network
-                                    pageCount =
-                                        runCatching {
-                                            refreshChapterPageList(entry.mangaId, entry.id)
-                                        }.onFailure {
-                                            logger.warn(it) { "Failed to fetch page count for chapter ${entry.id}" }
-                                        }.getOrDefault(0)
-                                }
-                            }
-                        }
-
-                        // Calculate CBZ size if downloaded
-                        val cbzFileSize =
-                            if (isDownloaded) {
-                                runCatching {
-                                    ChapterDownloadHelper.getChapterArchiveSize(entry.mangaId, entry.id)
-                                }.getOrNull()
-                            } else {
-                                null
-                            }
-
-                        entry.copy(
-                            pageCount = pageCount,
-                            downloaded = isDownloaded,
-                            cbzFileSize = cbzFileSize,
-                        )
-                    }
-                }
-            }.awaitAll()
-                // Exclude unreachable chapters that are not downloaded and have no page count
-                .filter { it.downloaded || it.pageCount > 0 }
-
-        return Pair(enrichedChapters, totalCount)
+        val tableExhausted = lastRawPageSize < perPage
+        val pageEntries = OpdsPaging.pageSlice(reachable, safePageNum, perPage)
+        // Exact reachable count only once the scan covered the whole table; until then
+        // report the raw count as an upper bound so clients keep paging forward.
+        val total = if (tableExhausted) reachable.size.toLong() else rawTotalCount
+        return Pair(pageEntries, total)
     }
 
     suspend fun getChapterDetailsForMetadataFeed(
@@ -193,10 +270,20 @@ object ChapterRepository {
         mangaId: Int,
         chapterSourceOrder: Int,
     ): OpdsChapterMetadataAcqEntry? {
+        val cacheKey = "$userId:$mangaId:$chapterSourceOrder"
+        chapterMetadataCache.get(cacheKey)?.let { return it }
+
         val chapterDataClass =
             try {
                 getChapterDownloadReady(userId = userId, chapterIndex = chapterSourceOrder, mangaId = mangaId)
+            } catch (e: NoSuchElementException) {
+                // chapter row simply does not exist for this index/manga
+                logger.debug { "No chapter $chapterSourceOrder for manga $mangaId: ${e.message}" }
+                return null
             } catch (e: Exception) {
+                // source failures, page-list fetch errors etc. — the feed is absent, but
+                // the failure is real and worth logging
+                logger.warn(e) { "Failed to prepare chapter $chapterSourceOrder of manga $mangaId for the metadata feed" }
                 return null
             }
 
@@ -207,32 +294,35 @@ object ChapterRepository {
                     .where { ChapterUserTable.user eq userId and (ChapterUserTable.chapter eq chapterDataClass.id) }
                     .firstOrNull()
                     ?.let {
-                        ChapterUserType(it)
+                        OpdsChapterUserData(it)
                     }
             }
-        return OpdsChapterMetadataAcqEntry(
-            id = chapterDataClass.id,
-            mangaId = chapterDataClass.mangaId,
-            name = chapterDataClass.name,
-            uploadDate = chapterDataClass.uploadDate,
-            chapterNumber = chapterDataClass.chapterNumber,
-            scanlator = chapterDataClass.scanlator,
-            read = chapterUser?.isRead ?: false,
-            lastPageRead = chapterUser?.lastPageRead ?: 0,
-            lastReadAt = chapterUser?.lastReadAt ?: 0,
-            sourceOrder = chapterDataClass.index,
-            downloaded = chapterUser?.isDownloaded ?: false,
-            pageCount = chapterDataClass.pageCount,
-            url = chapterDataClass.realUrl,
-            cbzFileSize =
-                if (chapterUser?.isDownloaded == true) {
-                    withContext(Dispatchers.IO) {
-                        runCatching { ChapterDownloadHelper.getChapterArchiveSize(mangaId, chapterDataClass.id) }.getOrNull()
-                    }
-                } else {
-                    null
-                },
-        )
+        val entry =
+            OpdsChapterMetadataAcqEntry(
+                id = chapterDataClass.id,
+                mangaId = chapterDataClass.mangaId,
+                name = chapterDataClass.name,
+                uploadDate = chapterDataClass.uploadDate,
+                chapterNumber = chapterDataClass.chapterNumber,
+                scanlator = chapterDataClass.scanlator,
+                read = chapterUser?.isRead ?: false,
+                lastPageRead = chapterUser?.lastPageRead ?: 0,
+                lastReadAt = chapterUser?.lastReadAt ?: 0,
+                sourceOrder = chapterDataClass.index,
+                downloaded = chapterUser?.isDownloaded ?: false,
+                pageCount = chapterDataClass.pageCount,
+                url = chapterDataClass.realUrl,
+                cbzFileSize =
+                    if (chapterUser?.isDownloaded == true) {
+                        withContext(Dispatchers.IO) {
+                            runCatching { ChapterDownloadHelper.getChapterArchiveSize(mangaId, chapterDataClass.id) }.getOrNull()
+                        }
+                    } else {
+                        null
+                    },
+            )
+        chapterMetadataCache.put(cacheKey, entry)
+        return entry
     }
 
     fun getLibraryUpdates(
@@ -258,11 +348,15 @@ object ChapterRepository {
 
             val totalCount = query.count()
 
+            val perPage = opdsItemsPerPage(userId)
             val rawItems =
                 query
-                    .orderBy(ChapterTable.fetchedAt to SortOrder.DESC, ChapterTable.sourceOrder to SortOrder.DESC)
-                    .limit(opdsItemsPerPage(userId))
-                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
+                    .orderBy(
+                        ChapterTable.fetchedAt to SortOrder.DESC,
+                        ChapterTable.sourceOrder to SortOrder.DESC,
+                        ChapterTable.id to SortOrder.DESC,
+                    ).limit(perPage)
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
                     .toList()
 
             val mangaIds = rawItems.map { it[MangaTable.id].value }.distinct()
@@ -312,15 +406,19 @@ object ChapterRepository {
                     ).select(
                         ChapterTable.columns + MangaTable.title + MangaTable.author + MangaTable.thumbnail_url + MangaTable.id +
                             SourceTable.lang,
-                    ).where { ChapterUserTable.lastReadAt greater 0L }
+                    ).where {
+                        // like the other library feeds, only manga still in the library
+                        (ChapterUserTable.lastReadAt greater 0L) and (MangaUserTable.inLibrary eq true)
+                    }
 
             val totalCount = query.count()
 
+            val perPage = opdsItemsPerPage(userId)
             val rawItems =
                 query
-                    .orderBy(ChapterUserTable.lastReadAt to SortOrder.DESC)
-                    .limit(opdsItemsPerPage(userId))
-                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
+                    .orderBy(ChapterUserTable.lastReadAt to SortOrder.DESC, ChapterTable.id to SortOrder.DESC)
+                    .limit(perPage)
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
                     .toList()
 
             val mangaIds = rawItems.map { it[MangaTable.id].value }.distinct()

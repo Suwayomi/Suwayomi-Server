@@ -166,5 +166,9 @@ public final class SQLiteDebug {
                 verbose = true;
             }
         }
+        // The compatibility layer does not track per-connection pager stats;
+        // report what we can.
+        printer.println("SQLiteDebug: " + (verbose ? "verbose" : "summary")
+                + " dump is not supported by the Suwayomi compatibility layer");
     }
 }

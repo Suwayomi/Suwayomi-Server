@@ -3,36 +3,44 @@ package suwayomi.tachidesk.opds.util
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
 import java.net.URLEncoder
-import java.text.Normalizer
 
 /**
  * Utilities for string handling in the OPDS context.
  */
 object OpdsStringUtil {
-    private val DIACRITICS_REGEX = "\\p{InCombiningDiacriticalMarks}+".toRegex()
-
     /**
-     * Encodes a string to be used in OPDS URLs.
+     * Encodes a string for use as an OPDS URL *query parameter value* (form semantics:
+     * `+` for spaces is legal inside a query string and decoded back by the server).
      * @return The URL-encoded string
      */
     fun String.encodeForOpdsURL(): String = URLEncoder.encode(this, Charsets.UTF_8)
 
     /**
-     * Converts a string into a URL-friendly slug.
-     * e.g., "Virtual Reality" -> "virtual-reality"
-     * @return The slugified string
+     * Encodes a string for use as an OPDS URL *path segment*. Unlike [encodeForOpdsURL],
+     * spaces become `%20`: inside a path a `+` is a literal plus, not a space (RFC 3986),
+     * which would otherwise break e.g. `genre/{name}` links for multi-word genres.
+     * @return The path-segment-encoded string
      */
-    fun String.slugify(): String {
-        val normalized = Normalizer.normalize(this, Normalizer.Form.NFD)
-        val slug =
-            DIACRITICS_REGEX
-                .replace(normalized, "")
-                .lowercase()
-                .replace(Regex("[^a-z0-9]+"), "-") // Replace non-alphanumeric with hyphens
-                .replace(Regex("-+"), "-") // Replace multiple hyphens with single
-                .trim('-')
-        return slug
-    }
+    fun String.encodePathSegment(): String = encodeForOpdsURL().replace("+", "%20")
+
+    /**
+     * Escapes the five predefined XML entities so a string can be interpolated into XML
+     * markup (e.g. the hand-written OpenSearch description template).
+     * @return The XML-escaped string
+     */
+    fun String.escapeXml(): String =
+        buildString(length) {
+            for (char in this@escapeXml) {
+                when (char) {
+                    '<' -> append("&lt;")
+                    '>' -> append("&gt;")
+                    '&' -> append("&amp;")
+                    '"' -> append("&quot;")
+                    '\'' -> append("&apos;")
+                    else -> append(char)
+                }
+            }
+        }
 
     /**
      * Formats the source name appending the language code if applicable.

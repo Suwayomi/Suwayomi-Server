@@ -70,7 +70,9 @@ class EpubFile(
      * Returns the package document where all the files are listed.
      */
     fun getPackageDocument(ref: String): Document {
-        val entry = zip.getEntry(ref)
+        val entry =
+            zip.getEntry(ref)
+                ?: throw NoSuchElementException("Package document '$ref' not found in epub")
         return zip.getInputStream(entry).use { Jsoup.parse(it, null, "") }
     }
 
@@ -99,7 +101,9 @@ class EpubFile(
         val basePath = getParentDirectory(packageHref)
         pages.forEach { page ->
             val entryPath = resolveZipPath(basePath, page)
-            val entry = zip.getEntry(entryPath)
+            // A page listed in the spine may be missing from the archive; skip it instead of
+            // failing the whole epub on a null entry.
+            val entry = zip.getEntry(entryPath) ?: return@forEach
             val document = zip.getInputStream(entry).use { Jsoup.parse(it, null, "") }
             val imageBasePath = getParentDirectory(entryPath)
 

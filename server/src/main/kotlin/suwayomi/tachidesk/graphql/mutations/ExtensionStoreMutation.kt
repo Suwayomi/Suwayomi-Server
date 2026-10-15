@@ -45,7 +45,7 @@ class ExtensionStoreMutation {
                     ExtensionStoreTable
                         .selectAll()
                         .where { ExtensionStoreTable.indexUrl eq store.indexUrl }
-                        .first()
+                        .firstOrNull() ?: throw IllegalStateException("Extension store not found after upsert: ${store.indexUrl}")
                 }
 
             AddExtensionStorePayload(
@@ -89,19 +89,7 @@ class ExtensionStoreMutation {
 
             RemoveExtensionStorePayload(
                 clientMutationId = clientMutationId,
-                extensionStore =
-                    store?.let {
-                        ExtensionStoreType(
-                            name = it.name,
-                            badgeLabel = it.badgeLabel,
-                            signingKey = it.signingKey,
-                            contactWebsite = it.contactWebsite,
-                            contactDiscord = it.contactDiscord,
-                            indexUrl = it.indexUrl,
-                            isLegacy = it.isLegacy,
-                            extensionListUrl = it.extensionListUrl,
-                        )
-                    },
+                extensionStore = store,
             )
         }
     }

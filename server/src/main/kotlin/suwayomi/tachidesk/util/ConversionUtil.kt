@@ -2,7 +2,7 @@ package suwayomi.tachidesk.util
 
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.POST
-import eu.kanade.tachiyomi.network.await
+import eu.kanade.tachiyomi.network.awaitSuccess
 import io.github.oshai.kotlinlogging.KotlinLogging
 import libcore.net.MimeUtils
 import okhttp3.Headers
@@ -25,16 +25,19 @@ object ConversionUtil {
         mimeType: String,
     ): BufferedImage? {
         val readers = ImageIO.getImageReadersByMIMEType(mimeType)
-        ImageIO.createImageInputStream(image).use { inputStream ->
-            for (reader in readers) {
-                try {
+        // buffer the image once: a reader that fails may leave the stream partially
+        // consumed, so each attempt needs a fresh ImageInputStream over the same bytes
+        val imageBytes = image.readBytes()
+        for (reader in readers) {
+            try {
+                ImageIO.createImageInputStream(imageBytes.inputStream()).use { inputStream ->
                     reader.setInput(inputStream)
                     return reader.read(0)
-                } catch (e: Throwable) {
-                    logger.debug(e) { "Reader ${reader.javaClass.name} not suitable" }
-                } finally {
-                    reader.dispose()
                 }
+            } catch (e: Throwable) {
+                logger.debug(e) { "Reader ${reader.javaClass.name} not suitable" }
+            } finally {
+                reader.dispose()
             }
         }
         logger.info { "No suitable image converter found for $mimeType" }
@@ -77,6 +80,8 @@ object ConversionUtil {
                         }
                     }.build()
 
+            // awaitSuccess: without it a 4xx/5xx body would be treated as the converted
+            // image and silently stored as a download/chapter page
             val response =
                 client
                     .newCall(
@@ -92,7 +97,7 @@ object ConversionUtil {
                                         }
                                     }.build(),
                         ),
-                    ).await()
+                    ).awaitSuccess()
             logger.debug { "HTTP conversion successful for ${imageFile.name}" }
             response.body.byteStream()
         } catch (e: Exception) {
@@ -115,17 +120,19 @@ object ConversionUtil {
                     ?: mimeType.substringAfter('/')
 
             val tempFile = Files.createTempFile("conversion", ".$extension").toFile()
-            tempFile.outputStream().use { output ->
-                inputStream.copyTo(output)
+            try {
+                tempFile.outputStream().use { output ->
+                    inputStream.copyTo(output)
+                }
+
+                // Convert using file method
+                return imageHttpPostProcess(tempFile, conversion, mimeType)
+            } finally {
+                // don't leak the temp file if copying or the conversion threw
+                if (!tempFile.delete() && tempFile.exists()) {
+                    logger.warn { "Failed to delete temp conversion file ${tempFile.absolutePath}" }
+                }
             }
-
-            // Convert using file method
-            val result = imageHttpPostProcess(tempFile, conversion, mimeType)
-
-            // Clean up temp file
-            tempFile.delete()
-
-            result
         } catch (e: Exception) {
             logger.warn(e) { "Failed to create temp file for HTTP converter" }
             null
@@ -135,5 +142,5 @@ object ConversionUtil {
      * Check if a DownloadConversion target is an HTTP URL
      */
     fun isHttpPostProcess(conversion: DownloadConversion): Boolean =
-        conversion.target.startsWith("http://") || conversion.target.startsWith("https://")
+        conversion.target.lowercase().let { it.startsWith("http://") || it.startsWith("https://") }
 }

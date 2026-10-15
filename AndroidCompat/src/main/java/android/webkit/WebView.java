@@ -286,7 +286,7 @@ public class WebView extends AbsoluteLayout
     }
 
     public static void freeMemoryForTests() {
-        throw new RuntimeException("Stub!");
+        // Test hook: nothing to free on the JVM heap beyond normal GC.
     }
 
     public void setNetworkAvailable(boolean networkUp) {
@@ -581,23 +581,31 @@ public class WebView extends AbsoluteLayout
     }
 
     public static void clearClientCertPreferences(@Nullable Runnable onCleared) {
-        throw new RuntimeException("Stub!");
+        // No client certificate store: just run the completion callback.
+        if (onCleared != null) {
+            onCleared.run();
+        }
     }
 
     @Deprecated
     public static void startSafeBrowsing(@NonNull Context context,
             @Nullable ValueCallback<Boolean> callback) {
-        throw new RuntimeException("Stub!");
+        // Safe browsing is unavailable; report failure through the callback.
+        if (callback != null) {
+            callback.onReceiveValue(false);
+        }
     }
 
     public static void setSafeBrowsingWhitelist(@NonNull List<String> hosts,
             @Nullable ValueCallback<Boolean> callback) {
-        throw new RuntimeException("Stub!");
+        if (callback != null) {
+            callback.onReceiveValue(false);
+        }
     }
 
     @NonNull
     public static Uri getSafeBrowsingPrivacyPolicyUrl() {
-        throw new RuntimeException("Stub!");
+        return Uri.EMPTY;
     }
 
     @NonNull
@@ -639,11 +647,12 @@ public class WebView extends AbsoluteLayout
     @Nullable
     @Deprecated
     public static String findAddress(String addr) {
-        throw new RuntimeException("Stub!");
+        // No address detection service: no match.
+        return null;
     }
 
     public static void enableSlowWholeDocumentDraw() {
-        throw new RuntimeException("Stub!");
+        // No-op: whole-document drawing is not performed in this environment.
     }
 
     public void clearMatches() {
@@ -743,12 +752,14 @@ public class WebView extends AbsoluteLayout
         return mProvider.getSettings();
     }
 
+    private static volatile boolean sWebContentsDebuggingEnabled = false;
+
     public static void setWebContentsDebuggingEnabled(boolean enabled) {
-        throw new RuntimeException("Stub!");
+        sWebContentsDebuggingEnabled = enabled;
     }
 
     public static void setDataDirectorySuffix(@NonNull String suffix) {
-        throw new RuntimeException("Stub!");
+        // Single data directory in this environment: ignore the suffix.
     }
 
     public static void disableWebView() {
@@ -1334,7 +1345,8 @@ public class WebView extends AbsoluteLayout
 
     @Nullable
     public static PackageInfo getCurrentWebViewPackage() {
-        throw new RuntimeException("Stub!");
+        // No separate WebView provider package.
+        return null;
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {

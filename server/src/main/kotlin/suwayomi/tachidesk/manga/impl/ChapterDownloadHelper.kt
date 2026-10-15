@@ -119,6 +119,14 @@ object ChapterDownloadHelper {
             Pair(chapter, safeFileName)
         }
 
+    /**
+     * Returns the file name (including the `.cbz` extension) under which a chapter
+     * archive is served to clients. This is also the input of the KOReader FILENAME
+     * document checksum (`md5(file_name)`), which must match the file name the
+     * downloading client actually sees.
+     */
+    fun getChapterArchiveFileName(chapterId: Int): String = getChapterWithCbzFileName(chapterId).second
+
     suspend fun getCbzForDownload(
         userId: Int,
         chapterId: Int,

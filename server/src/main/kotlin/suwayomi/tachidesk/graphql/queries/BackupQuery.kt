@@ -7,6 +7,9 @@ import suwayomi.tachidesk.graphql.types.BackupRestoreStatus
 import suwayomi.tachidesk.graphql.types.toStatus
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupImport
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.server.JavalinSetup.future
+import java.util.concurrent.CompletableFuture
 
 class BackupQuery {
     data class ValidateBackupInput(
@@ -32,14 +35,22 @@ class BackupQuery {
         @GraphQLIgnore
         userId: Int,
         input: ValidateBackupInput,
-    ): ValidateBackupResult {
-        val result = ProtoBackupValidator.validate(userId, input.backup.content())
-        return ValidateBackupResult(
-            result.missingSourceIds.map { ValidateBackupSource(it.first, it.second) },
-            result.missingTrackers.map { ValidateBackupTracker(it) },
-        )
-    }
+    ): CompletableFuture<ValidateBackupResult> =
+        future {
+            require(input.backup.size() <= Backup.MAX_UPLOAD_SIZE) {
+                "Backup file exceeds the maximum size of ${Backup.MAX_UPLOAD_SIZE} bytes"
+            }
+            val result = ProtoBackupValidator.validate(userId, input.backup.content())
+            ValidateBackupResult(
+                result.missingSourceIds.map { ValidateBackupSource(it.first, it.second) },
+                result.missingTrackers.map { ValidateBackupTracker(it) },
+            )
+        }
 
     @RequireAuth
-    fun restoreStatus(id: String): BackupRestoreStatus? = ProtoBackupImport.getRestoreState(id)?.toStatus()
+    fun restoreStatus(
+        @GraphQLIgnore
+        userId: Int,
+        id: String,
+    ): BackupRestoreStatus? = ProtoBackupImport.getRestoreState(userId, id)?.toStatus()
 }

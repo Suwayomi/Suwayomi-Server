@@ -17,7 +17,6 @@ package android.os;
 import android.annotation.Nullable;
 import android.util.ArrayMap;
 import com.android.internal.util.XmlUtils;
-import kotlin.NotImplementedError;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlSerializer;
@@ -242,7 +241,7 @@ public final class PersistableBundle extends BaseBundle implements Cloneable, Pa
      */
     @Override
     public void writeToParcel(Parcel parcel, int flags) {
-        throw new NotImplementedError();
+        throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
 //        final boolean oldAllowFds = parcel.pushAllowFds(false);
 //        try {
 //            writeToParcelInner(parcel, flags);

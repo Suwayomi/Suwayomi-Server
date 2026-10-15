@@ -11,10 +11,25 @@ import dorkbox.desktop.Desktop
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.graphql.types.WebUIInterface
 import suwayomi.tachidesk.server.serverConfig
+import kotlin.concurrent.thread
 
 object Browser {
     private val logger = KotlinLogging.logger { }
-    private val electronInstances = mutableListOf<Any>()
+
+    // launched electron processes — destroyed with the JVM so the browser window does
+    // not outlive the server it points at
+    private val electronInstances = mutableListOf<Process>()
+
+    init {
+        Runtime.getRuntime().addShutdownHook(
+            thread(start = false) {
+                electronInstances.forEach { process ->
+                    runCatching { process.destroy() }
+                        .onFailure { logger.warn(it) { "Failed to destroy an electron process" } }
+                }
+            },
+        )
+    }
 
     private fun getAppBaseUrl(): String {
         val appIP = if (serverConfig.ip.value == "0.0.0.0") "127.0.0.1" else serverConfig.ip.value

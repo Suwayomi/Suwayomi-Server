@@ -11,21 +11,30 @@ import graphql.GraphQLContext
 import io.javalin.websocket.WsContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.onCompletion
 import org.eclipse.jetty.websocket.core.CloseStatus
+import suwayomi.tachidesk.graphql.server.subscriptions.SubscriptionOperationMessage.CommonMessages.GQL_COMPLETE
 import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 
 internal class ApolloSubscriptionSessionState {
-    // Operations are saved by web socket session id, then operation id
-    internal val activeOperations = ConcurrentHashMap<String, Job>()
+    // Operations are saved by web socket session id, then operation id.
+    // The operation id is client-chosen (most graphql-ws clients count "1", "2", ...),
+    // so it must only ever be unique per session, never globally.
+    private val activeOperations = ConcurrentHashMap<String, ConcurrentHashMap<String, Job>>()
 
     // The graphQL context is saved by web socket session id
     private val cachedGraphQLContext = ConcurrentHashMap<String, GraphQLContext>()
 
-    private val sessionToOperationId = ConcurrentHashMap<String, CopyOnWriteArrayList<String>>()
+    // Sessions that have completed `connection_init` (graphql-transport-ws requires it before `subscribe`)
+    private val initializedSessions = ConcurrentHashMap.newKeySet<String>()
+
+    // Guards the "is initialized" check plus context write against
+    // terminateSession's teardown: a 4408 watchdog or disconnect landing between
+    // the two would otherwise leave an orphaned context entry for a dead session
+    // (termination already ran, so nothing would ever remove it).
+    private val stateLock = Any()
 
     /**
      * Save the context created from the factory and possibly updated in the onConnect hook.
@@ -36,7 +45,9 @@ internal class ApolloSubscriptionSessionState {
         context: WsContext,
         graphQLContext: GraphQLContext,
     ) {
-        cachedGraphQLContext[context.sessionId()] = graphQLContext
+        synchronized(stateLock) {
+            cachedGraphQLContext[context.sessionId()] = graphQLContext
+        }
     }
 
     /**
@@ -46,19 +57,37 @@ internal class ApolloSubscriptionSessionState {
         cachedGraphQLContext[context.sessionId()] ?: emptyMap<Any, Any>().toGraphQLContext()
 
     /**
+     * Mark the session as having received `connection_init`.
+     *
+     * @return false when init was already received before (a protocol violation,
+     * close code 4429)
+     */
+    fun markInitialized(sessionId: String): Boolean =
+        synchronized(stateLock) {
+            initializedSessions.add(sessionId)
+        }
+
+    /**
+     * Whether this session completed `connection_init` and may send `subscribe` messages.
+     */
+    fun isInitialized(sessionId: String): Boolean = initializedSessions.contains(sessionId)
+
+    /**
      * Save the operation that is sending data to the client.
-     * This will override values without cancelling the subscription so it is the responsibility of the consumer to cancel.
-     * These messages will be stopped on [stopOperation].
+     * If a subscription with the same id already exists for this session (a duplicate `subscribe`
+     * racing past [doesOperationExist]), the already running operation wins and the latecomer
+     * job is cancelled so it cannot run unowned.
+     * These messages will be stopped on [completeOperation].
      */
     fun saveOperation(
-        context: WsContext,
+        sessionId: String,
         operationMessage: SubscriptionOperationMessage,
         subscription: Job,
     ) {
-        val id = operationMessage.id
-        if (id != null) {
-            activeOperations[id] = subscription
-            sessionToOperationId.getOrPut(context.sessionId()) { CopyOnWriteArrayList() } += id
+        val id = operationMessage.id ?: return
+        val sessionOperations = activeOperations.getOrPut(sessionId) { ConcurrentHashMap() }
+        if (sessionOperations.putIfAbsent(id, subscription) != null) {
+            subscription.cancel()
         }
     }
 
@@ -66,18 +95,28 @@ internal class ApolloSubscriptionSessionState {
      * Send the [GQL_COMPLETE] message.
      * This can happen when the publisher finishes or if the client manually sends the stop message.
      */
-    fun completeOperation(operationMessage: SubscriptionOperationMessage): Flow<SubscriptionOperationMessage> {
-        return getCompleteMessage()
-            .onCompletion { removeActiveOperation(operationMessage.id ?: return@onCompletion) }
-    }
+    fun completeOperation(
+        sessionId: String,
+        operationMessage: SubscriptionOperationMessage,
+    ): Flow<SubscriptionOperationMessage> =
+        getCompleteMessage(operationMessage.id)
+            .onCompletion { removeActiveOperation(sessionId, operationMessage.id ?: return@onCompletion) }
 
-    private fun getCompleteMessage(): Flow<SubscriptionOperationMessage> = emptyFlow()
+    private fun getCompleteMessage(id: String?): Flow<SubscriptionOperationMessage> =
+        flowOf(SubscriptionOperationMessage(GQL_COMPLETE.type, id))
 
     /**
      * Remove active running subscription from the cache and cancel if needed
      */
-    private fun removeActiveOperation(id: String) {
-        activeOperations.remove(id)?.cancel()
+    private fun removeActiveOperation(
+        sessionId: String,
+        id: String,
+    ) {
+        val sessionOperations = activeOperations[sessionId] ?: return
+        sessionOperations.remove(id)?.cancel()
+        if (sessionOperations.isEmpty()) {
+            activeOperations.remove(sessionId, sessionOperations)
+        }
     }
 
     /**
@@ -87,15 +126,32 @@ internal class ApolloSubscriptionSessionState {
         context: WsContext,
         code: CloseStatus,
     ) {
-        sessionToOperationId.remove(context.sessionId())?.forEach {
-            removeActiveOperation(it)
-        }
-        cachedGraphQLContext.remove(context.sessionId())
+        terminateSession(context.sessionId())
         context.closeSession(code)
+    }
+
+    /**
+     * Remove all state held for the session and cancel its operations.
+     */
+    fun terminateSession(sessionId: String) {
+        // The removals run under stateLock so saveContext's check-and-put is
+        // serialized with them; job cancellation runs outside — Job.cancel can
+        // invoke completion handlers synchronously and must not do so while
+        // this lock is held.
+        val operations =
+            synchronized(stateLock) {
+                initializedSessions.remove(sessionId)
+                cachedGraphQLContext.remove(sessionId)
+                activeOperations.remove(sessionId)
+            }
+        operations?.values?.forEach { it.cancel() }
     }
 
     /**
      * Looks up the operation for the client, to check if it already exists
      */
-    fun doesOperationExist(operationMessage: SubscriptionOperationMessage): Boolean = activeOperations.containsKey(operationMessage.id)
+    fun doesOperationExist(
+        sessionId: String,
+        operationMessage: SubscriptionOperationMessage,
+    ): Boolean = activeOperations[sessionId]?.containsKey(operationMessage.id) == true
 }

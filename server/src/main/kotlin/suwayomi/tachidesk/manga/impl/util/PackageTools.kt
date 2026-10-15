@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl.util
 import android.content.pm.PackageInfo
 import android.content.pm.Signature
 import android.os.Bundle
+import com.android.apksig.ApkVerifier
 import com.googlecode.d2j.dex.Dex2jar
 import com.googlecode.d2j.reader.MultiDexFileReader
 import com.googlecode.dex2jar.tools.BaksmaliBaseDexExceptionHandler
@@ -143,6 +144,12 @@ object PackageTools {
             }
         }
 
+    /**
+     * SHA-256 fingerprint of the first v1 (JAR) signer certificate found in [pkgInfo].
+     *
+     * Note: this only reads the certificate metadata and does not verify that the APK is
+     * actually signed. Use [getSignatureHash] with the APK file for security decisions.
+     */
     fun getSignatureHash(pkgInfo: PackageInfo): String? {
         val signatures = pkgInfo.signatures
         return if (signatures != null && signatures.isNotEmpty()) {
@@ -151,6 +158,39 @@ object PackageTools {
             null
         }
     }
+
+    /**
+     * Cryptographically verifies the APK signature schemes (v1-v4) of [apkFile] and returns the
+     * SHA-256 fingerprint of the verified signer certificate, or `null` when the APK is unsigned
+     * or verification fails for any other reason (fail-closed).
+     *
+     * v1 signers are preferred so the result matches [getSignatureHash] for [PackageInfo].
+     */
+    fun getSignatureHash(apkFile: Path): String? =
+        try {
+            val result =
+                ApkVerifier
+                    .Builder(apkFile.toFile())
+                    .build()
+                    .verify()
+            if (!result.isVerified) {
+                null
+            } else {
+                buildList {
+                    result.v1SchemeSigners.forEach { add(it.certificate) }
+                    result.v2SchemeSigners.forEach { add(it.certificate) }
+                    result.v3SchemeSigners.forEach { add(it.certificate) }
+                    result.v31SchemeSigners.forEach { add(it.certificate) }
+                    result.v4SchemeSigners.forEach { add(it.certificate) }
+                }.distinct()
+                    .firstOrNull()
+                    ?.encoded
+                    ?.let(Hash::sha256)
+            }
+        } catch (e: Exception) {
+            logger.warn(e) { "Failed to verify the signature of APK $apkFile" }
+            null
+        }
 
     private val lockByJar: Cache<String, Mutex> =
         Cache

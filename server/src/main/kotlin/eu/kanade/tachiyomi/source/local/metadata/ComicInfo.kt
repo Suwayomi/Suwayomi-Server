@@ -9,9 +9,19 @@ import nl.adaptivity.xmlutil.serialization.XmlValue
 const val COMIC_INFO_FILE = "ComicInfo.xml"
 
 fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
-    comicInfo.series?.let { title = it.value }
-    comicInfo.writer?.let { author = it.value }
-    comicInfo.summary?.let { description = it.value }
+    // Empty elements like `<Series></Series>` must not wipe out existing metadata
+    comicInfo.series
+        ?.value
+        ?.takeIf { it.isNotBlank() }
+        ?.let { title = it }
+    comicInfo.writer
+        ?.value
+        ?.takeIf { it.isNotBlank() }
+        ?.let { author = it }
+    comicInfo.summary
+        ?.value
+        ?.takeIf { it.isNotBlank() }
+        ?.let { description = it }
 
     listOfNotNull(
         comicInfo.genre?.value,
@@ -28,13 +38,13 @@ fun SManga.copyFromComicInfo(comicInfo: ComicInfo) {
         comicInfo.colorist?.value,
         comicInfo.letterer?.value,
         comicInfo.coverArtist?.value,
-    ).flatMap { it.split(", ") }
+    ).flatMap { it.split(',', '、') }
         .distinct()
         .joinToString(", ") { it.trim() }
         .takeIf { it.isNotEmpty() }
         ?.let { artist = it }
 
-    status = ComicInfoPublishingStatus.toSMangaValue(comicInfo.publishingStatus?.value)
+    comicInfo.publishingStatus?.value?.let { status = ComicInfoPublishingStatus.toSMangaValue(it) }
 }
 
 @Serializable

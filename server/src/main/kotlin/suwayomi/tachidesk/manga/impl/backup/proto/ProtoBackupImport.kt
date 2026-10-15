@@ -45,6 +45,7 @@ import java.io.InputStream
 import java.util.Date
 import java.util.Timer
 import java.util.TimerTask
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object ProtoBackupImport : ProtoBackupBase() {
@@ -88,17 +89,24 @@ object ProtoBackupImport : ProtoBackupBase() {
         ) : BackupRestoreState()
     }
 
-    private val backupRestoreIdToState = ConcurrentHashMap<String, BackupRestoreState>()
+    // restoreId -> owning userId + state; a restore status is only visible to its owner
+    private val backupRestoreIdToState = ConcurrentHashMap<String, Pair<Int, BackupRestoreState>>()
 
     val notifyFlow = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = DROP_OLDEST)
 
-    fun getRestoreState(id: String): BackupRestoreState? = backupRestoreIdToState[id]
+    fun getRestoreState(id: String): BackupRestoreState? = backupRestoreIdToState[id]?.second
+
+    fun getRestoreState(
+        userId: Int,
+        id: String,
+    ): BackupRestoreState? = backupRestoreIdToState[id]?.takeIf { it.first == userId }?.second
 
     private fun updateRestoreState(
+        userId: Int,
         id: String,
         state: BackupRestoreState,
     ) {
-        backupRestoreIdToState[id] = state
+        backupRestoreIdToState[id] = userId to state
 
         scope.launch {
             notifyFlow.emit(Unit)
@@ -141,11 +149,11 @@ object ProtoBackupImport : ProtoBackupBase() {
         syncMode: SyncRestoreMode,
         load: () -> Backup,
     ): String {
-        val restoreId = System.currentTimeMillis().toString()
+        val restoreId = UUID.randomUUID().toString()
 
         logger.info { "restore($restoreId): queued" }
 
-        updateRestoreState(restoreId, BackupRestoreState.Idle)
+        updateRestoreState(userId, restoreId, BackupRestoreState.Idle)
 
         GlobalScope.launch {
             runRestore(userId, restoreId, flags, syncMode, load)
@@ -176,7 +184,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             } catch (e: Exception) {
                 logger.error(e) { "restore($restoreId): failed due to" }
 
-                updateRestoreState(restoreId, BackupRestoreState.Failure)
+                updateRestoreState(userId, restoreId, BackupRestoreState.Failure)
                 ValidationResult(
                     emptyList(),
                     emptyList(),
@@ -186,7 +194,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             } catch (e: OutOfMemoryError) {
                 logger.error { "restore($restoreId): out of memory" }
 
-                updateRestoreState(restoreId, BackupRestoreState.Failure)
+                updateRestoreState(userId, restoreId, BackupRestoreState.Failure)
                 ValidationResult(
                     emptyList(),
                     emptyList(),
@@ -263,6 +271,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         if (flags.includeServerSettings && canManageSettings) {
             updateRestoreState(
+                userId,
                 id,
                 BackupRestoreState.RestoringSettings(restoreSettings, restoreAmount),
             )
@@ -272,6 +281,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         if (flags.includeUserSettings) {
             updateRestoreState(
+                userId,
                 id,
                 BackupRestoreState.RestoringUserSettings(restoreSettings, restoreAmount),
             )
@@ -285,14 +295,18 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         val categoryMapping =
             if (flags.includeCategories) {
-                updateRestoreState(id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
+                updateRestoreState(userId, id, BackupRestoreState.RestoringCategories(restoreSettings + restoreCategories, restoreAmount))
                 BackupCategoryHandler.restore(userId, backup.backupCategories, syncMode)
             } else {
                 emptyMap()
             }
 
         if (flags.includeClientData) {
-            updateRestoreState(id, BackupRestoreState.RestoringMeta(restoreSettings + restoreCategories + restoreMeta, restoreAmount))
+            updateRestoreState(
+                userId,
+                id,
+                BackupRestoreState.RestoringMeta(restoreSettings + restoreCategories + restoreMeta, restoreAmount),
+            )
 
             BackupGlobalMetaHandler.restore(userId, backup.meta)
 
@@ -308,6 +322,7 @@ object ProtoBackupImport : ProtoBackupBase() {
         if (flags.includeManga) {
             backup.backupManga.forEachIndexed { index, manga ->
                 updateRestoreState(
+                    userId,
                     id,
                     BackupRestoreState.RestoringManga(
                         current = getRestoreAmount(index + 1),
@@ -342,7 +357,7 @@ object ProtoBackupImport : ProtoBackupBase() {
             """.trimIndent()
         }
 
-        updateRestoreState(id, BackupRestoreState.Success)
+        updateRestoreState(userId, id, BackupRestoreState.Success)
 
         return validationResult
     }

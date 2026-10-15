@@ -6,6 +6,14 @@ import java.sql.ResultSet
 import kotlin.random.Random
 import kotlin.time.Clock
 
+/*
+ * These triggers suppress version bumps and last_modified_at stamps while a row's
+ * is_syncing flag is set, i.e. while a sync restore is writing that row. A stale
+ * is_syncing flag would silently swallow later user edits, so databaseUp() resets
+ * is_syncing on all sync tables once at startup — a restarted process has no in-flight
+ * sync, so a set flag can only be crash residue.
+ */
+
 @Deprecated("Removed, but needs to be kept due to migrations")
 class UpdateMangaVersionTrigger : DeprecatedTrigger()
 

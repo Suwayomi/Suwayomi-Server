@@ -13,6 +13,20 @@ object SafePath {
     private const val MAX_FILENAME_UTF8_BYTES = 240
 
     /**
+     * Windows reserved device names. A file whose base name (the part before
+     * the first dot) matches one of these — case-insensitively — cannot be
+     * created on Windows (e.g. "con", "con.txt", "COM1").
+     */
+    private val WINDOWS_RESERVED_NAMES: Set<String> =
+        buildSet {
+            addAll(listOf("CON", "PRN", "AUX", "NUL"))
+            for (i in 0..9) {
+                add("COM$i")
+                add("LPT$i")
+            }
+        }
+
+    /**
      * Mutate the given filename to make it valid for a FAT filesystem,
      * replacing any invalid characters with "_". This method doesn't allow hidden files (starting
      * with a dot), but you can manually add it later.
@@ -31,7 +45,20 @@ object SafePath {
             }
         }
 
-        return truncateFilename(sb.toString())
+        return disambiguateReservedName(truncateFilename(sb.toString()))
+    }
+
+    /**
+     * Prefix Windows reserved names with "_" so the result is creatable on
+     * every supported filesystem.
+     */
+    private fun disambiguateReservedName(filename: String): String {
+        val baseName = filename.substringBefore('.')
+        return if (baseName.uppercase() in WINDOWS_RESERVED_NAMES) {
+            "_$filename"
+        } else {
+            filename
+        }
     }
 
     private fun truncateFilename(filename: String): String {

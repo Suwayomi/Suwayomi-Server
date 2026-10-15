@@ -7,7 +7,9 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import io.javalin.http.UploadedFile
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -16,6 +18,7 @@ import suwayomi.tachidesk.graphql.types.ExtensionStoreType
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.impl.extension.Extension
 import suwayomi.tachidesk.manga.impl.extension.ExtensionsList
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -89,6 +92,12 @@ class ExtensionMutation {
         patch: UpdateExtensionPatch,
     ) {
         if (patch.install == true && !permissions.hasPermission(UserPermission.INSTALL_EXTENSIONS)) {
+            throw ForbiddenException()
+        }
+
+        // an update installs a new APK/JAR over the existing extension, so it is gated on the
+        // same permission as install (mirrors the REST `GET extension/update/{pkgName}` check)
+        if (patch.update == true && !permissions.hasPermission(UserPermission.INSTALL_EXTENSIONS)) {
             throw ForbiddenException()
         }
 
@@ -182,10 +191,11 @@ class ExtensionMutation {
                             .selectAll()
                             .where { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
 
-                    // hide NSFW extensions from users without the NSFW permission
-                    // if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
-                    //     query.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
-                    // }
+                    // hide NSFW extensions from users without the NSFW permission —
+                    // same gate as the extensions() query
+                    if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
+                        query.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
+                    }
 
                     query.map { ExtensionType(it) }
                 }
@@ -224,7 +234,12 @@ class ExtensionMutation {
             val pkgName = Extension.installExternalExtension(extensionFile.content(), extensionFile.filename())
 
             val dbExtension =
-                transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }
+                transaction {
+                    ExtensionTable
+                        .selectAll()
+                        .where { ExtensionTable.pkgName eq pkgName }
+                        .firstOrNull() ?: throw IllegalArgumentException("Extension not found: $pkgName")
+                }
 
             InstallExternalExtensionPayload(
                 clientMutationId,

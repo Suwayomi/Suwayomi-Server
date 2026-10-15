@@ -13,13 +13,25 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
 import java.io.IOException
 
+/**
+ * Streams a backup as per-manga `MangaChunk` records followed by one trailing record holding
+ * the rest of the backup — the wire layout SyncYomi servers (and their restore) expect.
+ *
+ * `contentLength()` stays -1 (chunked): with gzip the compressed size is unknown until the
+ * stream is written anyway.
+ */
 internal class BackupRequestBody(
     private val backup: Backup,
     private val protoBuf: ProtoBuf,
     private val gzip: Boolean = false,
 ) : RequestBody() {
-    val metaBytes: ByteArray =
+    /**
+     * The trailing record: the backup with its manga list stripped. Encoded lazily so the
+     * full encode only happens when the emptiness check or the actual upload needs it.
+     */
+    val metaBytes: ByteArray by lazy {
         protoBuf.encodeToByteArray(Backup.serializer(), backup.copy(backupManga = emptyList()))
+    }
 
     override fun contentType(): MediaType? = "application/octet-stream".toMediaType()
 

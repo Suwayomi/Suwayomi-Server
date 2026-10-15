@@ -16,8 +16,10 @@ import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.neq
+import org.jetbrains.exposed.v1.jdbc.andWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -32,6 +34,7 @@ import suwayomi.tachidesk.graphql.queries.filter.StringFilter
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEnum
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithDerivedBoolean
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
@@ -41,13 +44,17 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.formatStringKeyCursor
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.validatePagination
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionType
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
 class ExtensionQuery {
@@ -59,11 +66,11 @@ class ExtensionQuery {
         permissions: List<UserPermission>,
     ): CompletableFuture<ExtensionType> =
         dataFetchingEnvironment.getValueFromDataLoader<String, ExtensionType>("ExtensionDataLoader", pkgName).thenApply { extension ->
-            // if (extension != null && extension.contentWarning >= ContentWarning.MIXED &&
-            //     !permissions.hasPermission(UserPermission.ACCESS_NSFW)
-            // ) {
-            //     throw ForbiddenException()
-            // }
+            if (extension != null && extension.contentWarning >= ContentWarning.MIXED &&
+                !permissions.hasPermission(UserPermission.ACCESS_NSFW)
+            ) {
+                throw ForbiddenException()
+            }
             extension
         }
 
@@ -95,8 +102,14 @@ class ExtensionQuery {
             val value =
                 when (this) {
                     PKG_NAME -> type.pkgName
-                    NAME -> type.pkgName + "\\-" + type.name
-                    APK_NAME -> type.pkgName + "\\-" + type.apkName
+
+                    // length-prefixed composite, matching what the String-key
+                    // greaterNotUnique/lessNotUnique overloads parse
+                    NAME -> formatStringKeyCursor(type.pkgName, type.name)
+
+                    // deprecated alias for the pkgName sort column, so it emits the
+                    // pkgName cursor — not the unrelated apk file name
+                    APK_NAME -> type.pkgName
                 }
             return Cursor(value)
         }
@@ -143,10 +156,14 @@ class ExtensionQuery {
             opAnd.eq(versionCode?.toLong(), ExtensionTable.versionCode)
             opAnd.eq(versionCodeLong, ExtensionTable.versionCode)
             opAnd.eq(lang, ExtensionTable.lang)
-            opAnd.eq(
-                isNsfw?.let { if (it) ContentWarning.MIXED.ordinal else ContentWarning.SAFE.ordinal },
-                ExtensionTable.contentWarning,
-            )
+            // isNsfw is a derived boolean: contentWarning >= MIXED
+            opAnd.andWhere(isNsfw) {
+                if (it) {
+                    ExtensionTable.contentWarning greaterEq ContentWarning.MIXED.ordinal
+                } else {
+                    ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal
+                }
+            }
             opAnd.eq(contentWarning?.ordinal, ExtensionTable.contentWarning)
             opAnd.eq(isInstalled, ExtensionTable.isInstalled)
             opAnd.eq(hasUpdate, ExtensionTable.hasUpdate)
@@ -194,8 +211,10 @@ class ExtensionQuery {
                 andFilterWithCompareString(ExtensionTable.jarUrl, jarUrl),
                 andFilterWithCompareString(ExtensionTable.extensionLib, extensionLib),
                 andFilterWithCompareString(ExtensionTable.versionName, versionName),
+                andFilterWithCompare(ExtensionTable.versionCode, versionCode?.toLongFilter()),
                 andFilterWithCompare(ExtensionTable.versionCode, versionCodeLong),
                 andFilterWithCompareString(ExtensionTable.lang, lang),
+                andFilterWithDerivedBoolean(ExtensionTable.contentWarning greaterEq ContentWarning.MIXED.ordinal, isNsfw),
                 andFilterWithCompareEnum(ExtensionTable.contentWarning, contentWarning),
                 andFilterWithCompare(ExtensionTable.isInstalled, isInstalled),
                 andFilterWithCompare(ExtensionTable.hasUpdate, hasUpdate),
@@ -227,6 +246,8 @@ class ExtensionQuery {
         last: Int? = null,
         offset: Int? = null,
     ): ExtensionNodeList {
+        validatePagination(first, last, offset)
+
         val queryResults =
             transaction {
                 val res = ExtensionTable.selectAll()
@@ -236,24 +257,26 @@ class ExtensionQuery {
                 res.applyOps(condition, filter)
 
                 // hide NSFW extensions from users without the NSFW permission
-                // if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
-                //     res.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
-                // }
+                if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
+                    res.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
+                }
 
                 val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
                 val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
                 val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
 
                 val (total, firstResult, lastResult) =
-                    res.applySortAndGetPaginationInfo(actualSort, before, last, PaginationNeeds.of(dataFetchingEnvironment)) {
+                    res.applySortAndGetPaginationInfo(actualSort, last, PaginationNeeds.of(dataFetchingEnvironment)) {
                         it?.get(ExtensionTable.pkgName)
                     }
 
+                // the cursor predicate and cursor producer use the *effective* first sort key,
+                // which may also come from the deprecated orderBy/orderByType arguments
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = order?.firstOrNull()?.by ?: orderBy ?: ExtensionOrderBy.PKG_NAME,
+                    orderByType = order?.firstOrNull()?.byType ?: orderByType,
                 )
 
                 if (first != null) {
@@ -262,10 +285,12 @@ class ExtensionQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                // `last` fetches the tail in reversed order; flip it back to forward order
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (ExtensionType) -> Cursor = (order?.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME)::asCursor
+        val getAsCursor: (ExtensionType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: ExtensionOrderBy.PKG_NAME)::asCursor
 
         val resultsAsType = queryResults.results.map { ExtensionType(it) }
 

@@ -11,16 +11,21 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
+import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.exists
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.leftJoin
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
+import org.jetbrains.exposed.v1.core.notExists
+import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -38,6 +43,7 @@ import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
 import suwayomi.tachidesk.graphql.queries.filter.applyOps
 import suwayomi.tachidesk.graphql.queries.filter.coalesceDefault
+import suwayomi.tachidesk.graphql.queries.filter.escapeLikePattern
 import suwayomi.tachidesk.graphql.server.primitives.Cursor
 import suwayomi.tachidesk.graphql.server.primitives.Order
 import suwayomi.tachidesk.graphql.server.primitives.OrderBy
@@ -48,6 +54,7 @@ import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.validatePagination
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
@@ -65,28 +72,63 @@ class MangaQuery {
     ): CompletableFuture<MangaType> = dataFetchingEnvironment.getValueFromDataLoader("MangaDataLoader", id)
 
     enum class MangaOrderBy(
-        override val column: Column<*>,
+        override val column: ExpressionWithColumnType<*>,
     ) : OrderBy<MangaType> {
         ID(MangaTable.id),
         TITLE(MangaTable.title),
-        IN_LIBRARY_AT(MangaUserTable.inLibraryAt),
+
+        // LEFT JOIN'd per-user column: NULL (manga has no user row) must sort and compare
+        // as 0, matching the `getOrNull(...) ?: 0` mapping in MangaType
+        IN_LIBRARY_AT(coalesceDefault(MangaUserTable.inLibraryAt, 0L)),
         LAST_FETCHED_AT(MangaTable.lastFetchedAt),
         ;
 
         override fun greater(cursor: Cursor): Op<Boolean> =
             when (this) {
-                ID -> MangaTable.id greater cursor.value.toInt()
-                TITLE -> greaterNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
-                IN_LIBRARY_AT -> greaterNotUnique(MangaUserTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
-                LAST_FETCHED_AT -> greaterNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
+                ID -> {
+                    MangaTable.id greater cursor.value.toInt()
+                }
+
+                TITLE -> {
+                    greaterNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
+                }
+
+                IN_LIBRARY_AT -> {
+                    greaterNotUnique(
+                        coalesceDefault(MangaUserTable.inLibraryAt, 0L),
+                        MangaTable.id,
+                        cursor,
+                        String::toLong,
+                    )
+                }
+
+                LAST_FETCHED_AT -> {
+                    greaterNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
+                }
             }
 
         override fun less(cursor: Cursor): Op<Boolean> =
             when (this) {
-                ID -> MangaTable.id less cursor.value.toInt()
-                TITLE -> lessNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
-                IN_LIBRARY_AT -> lessNotUnique(MangaUserTable.inLibraryAt, MangaTable.id, cursor, String::toLong)
-                LAST_FETCHED_AT -> lessNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
+                ID -> {
+                    MangaTable.id less cursor.value.toInt()
+                }
+
+                TITLE -> {
+                    lessNotUnique(MangaTable.title, MangaTable.id, cursor, String::toString)
+                }
+
+                IN_LIBRARY_AT -> {
+                    lessNotUnique(
+                        coalesceDefault(MangaUserTable.inLibraryAt, 0L),
+                        MangaTable.id,
+                        cursor,
+                        String::toLong,
+                    )
+                }
+
+                LAST_FETCHED_AT -> {
+                    lessNotUnique(MangaTable.lastFetchedAt, MangaTable.id, cursor, String::toLong)
+                }
             }
 
         override fun asCursor(type: MangaType): Cursor {
@@ -136,16 +178,34 @@ class MangaQuery {
             opAnd.eq(artist, MangaTable.artist)
             opAnd.eq(author, MangaTable.author)
             opAnd.eq(description, MangaTable.description)
-            opAnd.andWhereAll(genre) { MangaTable.genre like "%$it%" }
+            opAnd.andWhereAll(genre) { genreListContains(it) }
             opAnd.eq(status?.value, MangaTable.status)
             opAnd.eq(inLibrary, coalesceDefault(MangaUserTable.inLibrary, false))
             opAnd.eq(inLibraryAt, coalesceDefault(MangaUserTable.inLibraryAt, 0))
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
-            opAnd.andWhere(categoryIds) { CategoryMangaTable.category inList it }
+            opAnd.andWhere(categoryIds) {
+                // an explicitly empty id list matches nothing instead of silently degrading to no filter
+                if (it.isEmpty()) Op.FALSE else CategoryMangaTable.category inList it
+            }
 
             return opAnd.op
+        }
+
+        /**
+         * `genre` is stored as a single comma-separated string (both `","` and `", "` separators
+         * occur in the wild), so a plain substring `LIKE` would also match partial genre names.
+         * Compare it as a list element under both separators, with the value escaped as a literal.
+         */
+        private fun genreListContains(genre: String): Op<Boolean> {
+            val escaped = escapeLikePattern(genre)
+            return (MangaTable.genre eq genre) or
+                (MangaTable.genre like LikePattern("$escaped,%", '\\')) or // "g, ..." (covers "g, " too)
+                (MangaTable.genre like LikePattern("%, $escaped", '\\')) or // "..., g"
+                (MangaTable.genre like LikePattern("%,$escaped", '\\')) or // "...,g"
+                (MangaTable.genre like LikePattern("%, $escaped,%", '\\')) or // "..., g, ..."
+                (MangaTable.genre like LikePattern("%,$escaped,%", '\\')) // "...,g,..."
         }
     }
 
@@ -225,14 +285,80 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
-                andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
-            )
+            ) + categoryIdOps()
+
+        /**
+         * Category predicates are evaluated per manga, not per joined `CategoryMangaTable`
+         * row: a manga with categories {1, 5} would otherwise satisfy `notIn: [5]` on its
+         * (manga, 1) join row. Positive membership goes through `EXISTS`, negations through
+         * `NOT EXISTS` over a correlated subquery, so `and`/`or`/`not` combinators keep
+         * per-manga semantics as well.
+         */
+        private fun categoryIdOps(): List<Op<Boolean>> {
+            val filter = categoryId ?: return emptyList()
+
+            fun categoryRowsWhere(op: Op<Boolean>? = null) =
+                CategoryMangaTable
+                    .select(CategoryMangaTable.manga)
+                    .where {
+                        if (op == null) {
+                            CategoryMangaTable.manga eq MangaTable.id
+                        } else {
+                            (CategoryMangaTable.manga eq MangaTable.id) and op
+                        }
+                    }
+
+            val ops = mutableListOf<Op<Boolean>>()
+
+            filter.isNull?.let { isNull ->
+                ops += if (isNull) notExists(categoryRowsWhere()) else exists(categoryRowsWhere())
+            }
+
+            // membership predicates: the manga must have *a* category row satisfying them
+            val positiveFilter =
+                IntFilter(
+                    equalTo = filter.equalTo,
+                    notDistinctFrom = filter.notDistinctFrom,
+                    `in` = filter.`in`,
+                    lessThan = filter.lessThan,
+                    lessThanOrEqualTo = filter.lessThanOrEqualTo,
+                    greaterThan = filter.greaterThan,
+                    greaterThanOrEqualTo = filter.greaterThanOrEqualTo,
+                )
+            andFilterWithCompareEntity(CategoryMangaTable.category, positiveFilter)?.let {
+                ops += exists(categoryRowsWhere(it))
+            }
+
+            // single negations: the manga must have *no* category row matching them;
+            // AND-ed exclusions are equivalent to one NOT EXISTS over their OR
+            val noMatchOps = mutableListOf<Op<Boolean>>()
+            filter.notEqualTo?.let { noMatchOps += CategoryMangaTable.category eq it }
+            filter.notIn?.takeIf { it.isNotEmpty() }?.let { noMatchOps += CategoryMangaTable.category inList it }
+            filter.notEqualToAny?.takeIf { it.isNotEmpty() }?.let { noMatchOps += CategoryMangaTable.category inList it }
+            filter.distinctFrom?.let { noMatchOps += CategoryMangaTable.category eq it }
+            filter.distinctFromAll?.takeIf { it.isNotEmpty() }?.let { noMatchOps += CategoryMangaTable.category inList it }
+            noMatchOps.reduceOrNull { acc, op -> acc or op }?.let { ops += notExists(categoryRowsWhere(it)) }
+
+            // OR-ed negations: at least one value must have no matching category row
+            filter.notEqualToAll?.let { values ->
+                val notExistsOps: List<Op<Boolean>> =
+                    values.map { value -> notExists(categoryRowsWhere(CategoryMangaTable.category eq value)) }
+                notExistsOps.reduceOrNull { acc, op -> acc or op }?.let { ops += it }
+            }
+            filter.distinctFromAny?.let { values ->
+                val notExistsOps: List<Op<Boolean>> =
+                    values.map { value -> notExists(categoryRowsWhere(CategoryMangaTable.category eq value)) }
+                notExistsOps.reduceOrNull { acc, op -> acc or op }?.let { ops += it }
+            }
+
+            return ops
+        }
 
         fun isFilteringForCategories(): Boolean =
             this.categoryId != null ||
-                this.or?.any { it.isFilteringForCategories() } != null ||
-                this.and?.any { it.isFilteringForCategories() } != null ||
-                this.not?.isFilteringForCategories() != null
+                this.or?.any { it.isFilteringForCategories() } == true ||
+                this.and?.any { it.isFilteringForCategories() } == true ||
+                this.not?.isFilteringForCategories() == true
     }
 
     @RequireAuth
@@ -259,6 +385,8 @@ class MangaQuery {
         last: Int? = null,
         offset: Int? = null,
     ): MangaNodeList {
+        validatePagination(first, last, offset)
+
         val queryResults =
             transaction {
                 val mangaIdsQuery =
@@ -287,17 +415,18 @@ class MangaQuery {
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
                         actualSort,
-                        before,
                         last,
                         MangaTable.id,
                         PaginationNeeds.of(dataFetchingEnvironment),
                     )
 
+                // the cursor predicate and cursor producer use the *effective* first sort key,
+                // which may also come from the deprecated orderBy/orderByType arguments
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: MangaOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = order?.firstOrNull()?.by ?: orderBy ?: MangaOrderBy.ID,
+                    orderByType = order?.firstOrNull()?.byType ?: orderByType,
                 )
 
                 if (first != null) {
@@ -306,10 +435,12 @@ class MangaQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                // `last` fetches the tail in reversed order; flip it back to forward order
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (MangaType) -> Cursor = (order?.firstOrNull()?.by ?: MangaOrderBy.ID)::asCursor
+        val getAsCursor: (MangaType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: MangaOrderBy.ID)::asCursor
 
         val resultsAsType = queryResults.results.map { MangaType(it) }
 

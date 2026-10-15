@@ -30,10 +30,26 @@ import suwayomi.tachidesk.server.user.UserCodeService
 import suwayomi.tachidesk.server.user.UserPermission
 import suwayomi.tachidesk.server.user.UserRole
 import suwayomi.tachidesk.server.user.UserType
+import suwayomi.tachidesk.server.user.assertPermissionsAssignable
 import java.util.concurrent.CompletableFuture
 import suwayomi.tachidesk.graphql.types.UserType as GqlUserType
 
 class UserMutation {
+    companion object {
+        const val MIN_PASSWORD_LENGTH = 8
+
+        // used to spend a bcrypt round when the login username does not exist, so the
+        // response time does not reveal whether the account exists
+        private val dummyPasswordHash: String by lazy { Bcrypt.encryptPassword("suwayomi-dummy-password") }
+
+        fun requireValidPassword(password: String) {
+            require(password.isNotBlank()) { "Password must not be blank" }
+            require(password.length >= MIN_PASSWORD_LENGTH) {
+                "Password must be at least $MIN_PASSWORD_LENGTH characters long"
+            }
+        }
+    }
+
     data class LoginInput(
         val clientMutationId: String? = null,
         val username: String,
@@ -61,7 +77,12 @@ class UserMutation {
                     .where { UserAccountTable.username.lowerCase() eq input.username.lowercase() }
                     .firstOrNull()
             }
-        if (user != null && Bcrypt.verify(user[UserAccountTable.password], input.password)) {
+        if (user == null) {
+            // dummy verify to align the timing with the existing-user/wrong-password path
+            Bcrypt.verify(dummyPasswordHash, input.password)
+            throw Exception("Incorrect username or password.")
+        }
+        if (Bcrypt.verify(user[UserAccountTable.password], input.password)) {
             return future {
                 val jwt = Jwt.generateJwt(user[UserAccountTable.id].value)
                 LoginPayload(
@@ -108,8 +129,17 @@ class UserMutation {
 
     @RequireAuth
     @RequirePermissions(UserPermission.MANAGE_USERS)
-    fun register(input: RegisterInput): RegisterPayload {
+    fun register(
+        @GraphQLIgnore
+        userId: Int,
+        input: RegisterInput,
+    ): RegisterPayload {
         val (clientMutationId, username, password, userPermissions) = input
+
+        // the caller may only hand out permissions they hold themselves; a null set is
+        // intentionally exempt — createUser grants the defaultPermissions baseline for it
+        assertPermissionsAssignable(userId, userPermissions ?: emptyList())
+        requireValidPassword(password)
 
         val userExists =
             transaction {
@@ -220,6 +250,7 @@ class UserMutation {
 
     @GraphQLDescription("Redeems a recovery code with a self-chosen new password.")
     fun redeemRecoveryCode(input: RedeemRecoveryCodeInput): CompletableFuture<RedeemRecoveryCodePayload> {
+        requireValidPassword(input.newPassword)
         val redeemedUserId = UserCodeService.redeemRecoveryCode(input.code, input.newPassword)
 
         return future {
@@ -258,6 +289,7 @@ class UserMutation {
 
     @GraphQLDescription("Redeems a registration code with a username and a self-chosen password.")
     fun redeemRegistrationCode(input: RedeemRegistrationCodeInput): CompletableFuture<RedeemRegistrationCodePayload> {
+        requireValidPassword(input.password)
         val redeemedUserId =
             UserCodeService.redeemRegistrationCode(input.code, input.username, input.password)
 
@@ -297,11 +329,13 @@ class UserMutation {
     @RequirePermissions(UserPermission.MANAGE_USERS)
     fun updateUser(
         @GraphQLIgnore
+        userId: Int,
+        @GraphQLIgnore
         role: List<UserRole>,
         input: UpdateUserInput,
     ): UpdateUserPayload {
-        val (clientMutationId, userId, permissions, newRole) = input
-        require(userId != 1) {
+        val (clientMutationId, targetUserId, permissions, newRole) = input
+        require(targetUserId != 1) {
             "The built-in admin user cannot be modified"
         }
         newRole?.let { newRole ->
@@ -312,38 +346,48 @@ class UserMutation {
                 "Only ADMIN users can grant roles"
             }
         }
+        if (permissions != null) {
+            // the caller may only hand out permissions they hold themselves
+            assertPermissionsAssignable(userId, permissions)
+        }
 
         transaction {
             UserAccountTable
                 .selectAll()
-                .where { UserAccountTable.id eq userId }
+                .where { UserAccountTable.id eq targetUserId }
                 .firstOrNull()
-                ?: throw IllegalArgumentException("user $userId not found")
+                ?: throw IllegalArgumentException("user $targetUserId not found")
 
             if (permissions != null) {
-                UserPermissionsTable.deleteWhere { UserPermissionsTable.user eq userId }
+                UserPermissionsTable.deleteWhere { UserPermissionsTable.user eq targetUserId }
 
                 UserPermissionsTable.batchInsert(permissions) { permission ->
-                    this[UserPermissionsTable.user] = userId
+                    this[UserPermissionsTable.user] = targetUserId
                     this[UserPermissionsTable.permission] = permission.name
                 }
             }
 
             if (newRole != null) {
-                UserRolesTable.deleteWhere { UserRolesTable.user eq userId }
+                UserRolesTable.deleteWhere { UserRolesTable.user eq targetUserId }
 
                 UserRolesTable.insert {
-                    it[UserRolesTable.user] = userId
+                    it[UserRolesTable.user] = targetUserId
                     it[UserRolesTable.role] = newRole.name
                 }
             }
+        }
+
+        if (permissions != null || newRole != null) {
+            // permission/role changes must take effect immediately: revoke the target's
+            // existing JWTs so old tokens cannot keep working with stale grants
+            SessionVersion.bump(targetUserId)
         }
 
         val user =
             transaction {
                 UserAccountTable
                     .selectAll()
-                    .where { UserAccountTable.id eq userId }
+                    .where { UserAccountTable.id eq targetUserId }
                     .first()
                     .let { GqlUserType(it) }
             }
@@ -375,6 +419,7 @@ class UserMutation {
         }
 
         val (clientMutationId, newPassword, oldPassword) = input
+        requireValidPassword(newPassword)
         transaction {
             val currentPassword =
                 UserAccountTable

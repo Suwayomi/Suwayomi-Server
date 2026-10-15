@@ -42,9 +42,12 @@ import xyz.nulldev.androidcompat.service.ServiceSupport;
 import xyz.nulldev.androidcompat.util.KoinGlobalHelper;
 
 import java.io.*;
-import java.util.HashMap;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Custom context implementation.
@@ -78,7 +81,7 @@ public class CustomContext extends Context {
 
     private Logger logger = LoggerFactory.getLogger(CustomContext.class);
 
-    private Map<String, Object> serviceMap = new HashMap<>();
+    private Map<String, Object> serviceMap = new ConcurrentHashMap<>();
     {
         serviceMap.put(Context.CONNECTIVITY_SERVICE, ConnectivityManager.INSTANCE);
         serviceMap.put(Context.POWER_SERVICE, PowerManager.INSTANCE);
@@ -86,12 +89,14 @@ public class CustomContext extends Context {
 
     @Override
     public AssetManager getAssets() {
-        return null;
+        throw new UnsupportedOperationException(
+                "AssetManager is not available in the Suwayomi AndroidCompat environment");
     }
 
     @Override
     public Resources getResources() {
-        return null;
+        throw new UnsupportedOperationException(
+                "Resources is not available in the Suwayomi AndroidCompat environment");
     }
 
     @Override
@@ -101,12 +106,13 @@ public class CustomContext extends Context {
 
     @Override
     public ContentResolver getContentResolver() {
-        return null;
+        throw new UnsupportedOperationException(
+                "ContentResolver is not available in the Suwayomi AndroidCompat environment");
     }
 
     @Override
     public Looper getMainLooper() {
-        return null;
+        return Looper.getMainLooper();
     }
 
     @Override
@@ -121,7 +127,8 @@ public class CustomContext extends Context {
 
     @Override
     public Resources.Theme getTheme() {
-        return null;
+        throw new UnsupportedOperationException(
+                "Themes are not available in the Suwayomi AndroidCompat environment");
     }
 
     @Override
@@ -131,17 +138,18 @@ public class CustomContext extends Context {
 
     @Override
     public String getPackageName() {
-        return null;
+        String packageName = applicationInfo.packageName;
+        return packageName != null ? packageName : "suwayomi";
     }
 
     @Override
     public String getBasePackageName() {
-        return null;
+        return getPackageName();
     }
 
     @Override
     public String getOpPackageName() {
-        return null;
+        return getPackageName();
     }
 
     @Override
@@ -151,69 +159,143 @@ public class CustomContext extends Context {
 
     @Override
     public String getPackageResourcePath() {
-        return null;
+        return new File(androidFiles.getPackagesDir(), getPackageName()).getAbsolutePath();
     }
 
     @Override
     public String getPackageCodePath() {
-        return null;
+        return new File(androidFiles.getPackagesDir(), getPackageName()).getAbsolutePath();
     }
 
-    /** Fake shared prefs! **/
-    private Map<String, SharedPreferences> prefs = new HashMap<>(); //Cache
+    /** Fake shared prefs, keyed by caller name but stored isolated per package! **/
+    private Map<String, SharedPreferences> prefs = new ConcurrentHashMap<>(); //Cache
+
+    /**
+     * Builds the on-disk key used by {@link JavaSharedPreferences} for a logical
+     * preference name. Keys are namespaced by the current package name so that
+     * extensions using the same preference name don't share storage. A hash of
+     * the raw name is appended because {@code SafePath.buildValidFilename}
+     * collapses distinct names such as {@code "a/b"} and {@code "a_b"} onto the
+     * same file.
+     */
+    private String sharedPrefsStorageKey(String name) {
+        String hash = Integer.toHexString(name.hashCode());
+        return getPackageName() + ":" + name + "." + hash;
+    }
 
     @Override
-    public synchronized SharedPreferences getSharedPreferences(String s, int i) {
-        SharedPreferences preferences = prefs.get(s);
-        //Create new shared preferences if one does not exist
-        if(preferences == null) {
-            preferences = new JavaSharedPreferences(s);
-            prefs.put(s, preferences);
-        }
-        return preferences;
+    public SharedPreferences getSharedPreferences(String s, int i) {
+        // The plain name doubles as the legacy adoption source: releases
+        // before the per-package namespacing stored the values under
+        // settings/<safe(name)>.xml.
+        return prefs.computeIfAbsent(s, name -> new JavaSharedPreferences(sharedPrefsStorageKey(name), name));
     }
 
     @Override
     public SharedPreferences getSharedPreferences(@NotNull File file, int mode) {
-        String path = file.getAbsolutePath().replace('\\', '/');
-        int firstSlash = path.indexOf("/");
-        return getSharedPreferences(path.substring(firstSlash), mode);
+        // Key the preferences by the file's absolute path (the previous
+        // implementation truncated the path at the first slash, both losing the
+        // drive letter on Windows and colliding distinct files).
+        String name = "file:" + file.getAbsolutePath();
+        // Those older files were stored under the slash-truncated path.
+        String normalized = file.getAbsolutePath().replace('\\', '/');
+        int firstSlash = normalized.indexOf('/');
+        String legacyName = firstSlash >= 0 ? normalized.substring(firstSlash) : normalized;
+        return prefs.computeIfAbsent(
+                name, n -> new JavaSharedPreferences(sharedPrefsStorageKey(n), legacyName));
     }
 
     @Override
     public boolean moveSharedPreferencesFrom(Context sourceContext, String name) {
-        return false;
+        SharedPreferences source = sourceContext.getSharedPreferences(name, Context.MODE_PRIVATE);
+        if (source == null) {
+            return false;
+        }
+        SharedPreferences.Editor editor = getSharedPreferences(name, Context.MODE_PRIVATE).edit();
+        editor.clear();
+        for (Map.Entry<String, ?> entry : source.getAll().entrySet()) {
+            Object value = entry.getValue();
+            if (value == null) {
+                continue;
+            }
+            String key = entry.getKey();
+            if (value instanceof String) {
+                editor.putString(key, (String) value);
+            } else if (value instanceof Integer) {
+                editor.putInt(key, (Integer) value);
+            } else if (value instanceof Long) {
+                editor.putLong(key, (Long) value);
+            } else if (value instanceof Float) {
+                editor.putFloat(key, (Float) value);
+            } else if (value instanceof Boolean) {
+                editor.putBoolean(key, (Boolean) value);
+            } else if (value instanceof java.util.Set) {
+                editor.putStringSet(key, new java.util.HashSet<>((java.util.Set<String>) value));
+            }
+        }
+        return editor.commit();
     }
 
     @Override
     public boolean deleteSharedPreferences(String name) {
-        JavaSharedPreferences item = (JavaSharedPreferences) prefs.remove(name);
-        return item.deleteAll();
+        SharedPreferences item = prefs.remove(name);
+        JavaSharedPreferences preferences;
+        if (item instanceof JavaSharedPreferences) {
+            preferences = (JavaSharedPreferences) item;
+        } else {
+            // Not in the cache: delete whatever is persisted under the storage
+            // key (and under the legacy name, so it is not adopted back later).
+            preferences = new JavaSharedPreferences(sharedPrefsStorageKey(name), name);
+        }
+        return preferences.deleteAll();
+    }
+
+    private static void validateFileName(String name) {
+        if (name == null || name.contains("/") || name.contains("\\")) {
+            throw new IllegalArgumentException("File " + name + " contains a path separator");
+        }
     }
 
     @Override
     public FileInputStream openFileInput(String s) throws FileNotFoundException {
-        return null;
+        return new FileInputStream(getFileStreamPath(s));
     }
 
     @Override
     public FileOutputStream openFileOutput(String s, int i) throws FileNotFoundException {
-        return null;
+        boolean append = (i & Context.MODE_APPEND) != 0;
+        File target = getFileStreamPath(s);
+        File parent = target.getParentFile();
+        if (parent != null) {
+            parent.mkdirs();
+        }
+        return new FileOutputStream(target, append);
     }
 
     @Override
     public boolean deleteFile(String s) {
-        return false;
+        return getFileStreamPath(s).delete();
     }
 
     @Override
     public File getFileStreamPath(String s) {
-        return null;
+        validateFileName(s);
+        return new File(getFilesDir(), s);
     }
 
     @Override
     public File getSharedPreferencesPath(String name) {
-        return null;
+        // Adopt the pre-namespacing file first so the returned path reflects
+        // the effective on-disk location even before the prefs are opened.
+        JavaSharedPreferences.adoptLegacyStorageFile(sharedPrefsStorageKey(name), name);
+        // Mirrors JavaSharedPreferences' storage layout:
+        // <ApplicationRootDir>/settings/<safe(name)>.xml
+        return Paths.get(
+                        xyz.nulldev.ts.config.ApplicationRootDirKt.getApplicationRootDir(),
+                        "settings",
+                        xyz.nulldev.androidcompat.util.SafePath.INSTANCE
+                                .buildValidFilename(sharedPrefsStorageKey(name)) + ".xml")
+                .toFile();
     }
 
     @Override
@@ -233,7 +315,8 @@ public class CustomContext extends Context {
 
     @Override
     public File getExternalFilesDir(String s) {
-        return androidFiles.getExternalFilesDirs().get(0);
+        List<File> dirs = androidFiles.getExternalFilesDirs();
+        return dirs.isEmpty() ? null : dirs.get(0);
     }
 
     @Override
@@ -244,7 +327,8 @@ public class CustomContext extends Context {
 
     @Override
     public File getObbDir() {
-        return androidFiles.getObbDirs().get(0);
+        List<File> dirs = androidFiles.getObbDirs();
+        return dirs.isEmpty() ? null : dirs.get(0);
     }
 
     @Override
@@ -265,7 +349,8 @@ public class CustomContext extends Context {
 
     @Override
     public File getExternalCacheDir() {
-        return androidFiles.getExternalCacheDirs().get(0);
+        List<File> dirs = androidFiles.getExternalCacheDirs();
+        return dirs.isEmpty() ? null : dirs.get(0);
     }
 
     @Override
@@ -282,12 +367,16 @@ public class CustomContext extends Context {
 
     @Override
     public String[] fileList() {
-        return new String[0];
+        String[] files = getFilesDir().list();
+        return files != null ? files : new String[0];
     }
 
     @Override
     public File getDir(String s, int i) {
-        return null;
+        validateFileName(s);
+        File dir = new File(getDataDir(), s);
+        dir.mkdirs();
+        return dir;
     }
 
     @Override
@@ -302,22 +391,38 @@ public class CustomContext extends Context {
 
     @Override
     public boolean moveDatabaseFrom(Context sourceContext, String name) {
-        return false;
+        File source = sourceContext.getDatabasePath(name);
+        if (source == null || !source.exists()) {
+            return false;
+        }
+        try {
+            File target = getDatabasePath(name);
+            File parent = target.getParentFile();
+            if (parent != null) {
+                parent.mkdirs();
+            }
+            Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return true;
+        } catch (IOException e) {
+            logger.error("Failed to move database " + name, e);
+            return false;
+        }
     }
 
     @Override
     public boolean deleteDatabase(String s) {
-        return false;
+        return getDatabasePath(s).delete();
     }
 
     @Override
     public File getDatabasePath(String s) {
-        return new File(new File(androidFiles.getRootDir(), "databases"), s);
+        return new File(androidFiles.getDatabasesDir(), s);
     }
 
     @Override
     public String[] databaseList() {
-        return new String[0];
+        String[] list = androidFiles.getDatabasesDir().list();
+        return list != null ? list : new String[0];
     }
 
     @Override
@@ -510,6 +615,7 @@ public class CustomContext extends Context {
         return null;
     }
 
+    @Override
     public void unregisterReceiver(BroadcastReceiver broadcastReceiver) {
 
     }
@@ -522,8 +628,10 @@ public class CustomContext extends Context {
 
     @Override
     public boolean stopService(Intent intent) {
+        String name = serviceSupport.intentToClassName(intent);
+        boolean wasRunning = serviceSupport.getRunningServices().containsKey(name);
         serviceSupport.stopService(this, intent);
-        return true;
+        return wasRunning;
     }
 
     @Override
@@ -540,12 +648,16 @@ public class CustomContext extends Context {
 
     @Override
     public boolean bindService(Intent intent, ServiceConnection serviceConnection, int i) {
+        // Service binding is not implemented in this environment; services can
+        // only be started/stopped. Returning false is the documented failure
+        // contract (the ServiceConnection callbacks are never invoked).
+        logger.warn("bindService is not supported; service not bound: {}", intent);
         return false;
     }
 
     @Override
     public void unbindService(ServiceConnection serviceConnection) {
-
+        // no-op: services are never bound (see bindService)
     }
 
     @Override
@@ -555,11 +667,21 @@ public class CustomContext extends Context {
 
     @Override
     public Object getSystemService(String s) {
-        return serviceMap.get(s);
+        Object service = serviceMap.get(s);
+        if (service == null) {
+            logger.warn("getSystemService: no compat implementation registered for '{}'", s);
+        }
+        return service;
     }
 
     @Override
     public String getSystemServiceName(Class<?> aClass) {
+        for (Map.Entry<String, Object> entry : serviceMap.entrySet()) {
+            Object service = entry.getValue();
+            if (service != null && aClass.isInstance(service)) {
+                return entry.getKey();
+            }
+        }
         return null;
     }
 
@@ -615,27 +737,27 @@ public class CustomContext extends Context {
 
     @Override
     public int checkUriPermission(Uri uri, int i, int i1, int i2) {
-        return 0;
+        return PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
     public int checkUriPermission(Uri uri, int pid, int uid, int modeFlags, IBinder callerToken) {
-        return 0;
+        return PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
     public int checkCallingUriPermission(Uri uri, int i) {
-        return 0;
+        return PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
     public int checkCallingOrSelfUriPermission(Uri uri, int i) {
-        return 0;
+        return PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
     public int checkUriPermission(Uri uri, String s, String s1, int i, int i1, int i2) {
-        return 0;
+        return PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -660,17 +782,22 @@ public class CustomContext extends Context {
 
     @Override
     public Context createPackageContext(String s, int i) throws PackageManager.NameNotFoundException {
-        return null;
+        // Validate the package exists, then degrade to this context: there is
+        // only one filesystem sandbox in this environment.
+        fakePackageManager.getPackageInfo(s, 0);
+        return this;
     }
 
     @Override
     public Context createPackageContextAsUser(String packageName, int flags, UserHandle user) throws PackageManager.NameNotFoundException {
-        return null;
+        fakePackageManager.getPackageInfo(packageName, flags);
+        return this;
     }
 
     @Override
     public Context createApplicationContext(ApplicationInfo application, int flags) throws PackageManager.NameNotFoundException {
-        return null;
+        fakePackageManager.getPackageInfo(application.packageName, 0);
+        return this;
     }
 
     @Override
@@ -680,31 +807,35 @@ public class CustomContext extends Context {
 
     @Override
     public Context createConfigurationContext(Configuration configuration) {
-        return null;
+        // No configuration subsystem: the single compat context is returned.
+        return this;
     }
 
     @Override
     public Context createDisplayContext(Display display) {
-        return null;
+        // Single-display environment: the single compat context is returned.
+        return this;
     }
 
     @Override
     public Context createDeviceProtectedStorageContext() {
-        return null;
+        // No separate device-protected storage area: use this context.
+        return this;
     }
 
     @Override
     public Context createCredentialProtectedStorageContext() {
-        return null;
+        return this;
     }
 
     @Override
     public DisplayAdjustments getDisplayAdjustments(int displayId) {
-        return null;
+        return new DisplayAdjustments();
     }
 
     @Override
     public Display getDisplay() {
+        // There is no display subsystem; null is the documented "no display" contract.
         return null;
     }
 

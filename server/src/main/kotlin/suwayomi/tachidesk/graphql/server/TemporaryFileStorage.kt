@@ -1,12 +1,11 @@
 package suwayomi.tachidesk.graphql.server
 
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import io.javalin.http.NotFoundResponse
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.deleteIfExists
@@ -14,11 +13,10 @@ import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
 import kotlin.io.path.name
 import kotlin.io.path.outputStream
-import kotlin.time.Duration.Companion.days
 
 @OptIn(ExperimentalPathApi::class)
 object TemporaryFileStorage {
-    private val folder = Files.createTempDirectory("Tachidesk")
+    private val folder = Files.createTempDirectory("Tachidesk").normalize()
 
     init {
         Runtime.getRuntime().addShutdownHook(
@@ -28,27 +26,37 @@ object TemporaryFileStorage {
         )
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
+    // a single daemon scheduler instead of one parked coroutine per stored file
+    private val cleanupScheduler =
+        Executors.newSingleThreadScheduledExecutor { runnable ->
+            Thread(runnable, "temporary-file-cleanup").apply { isDaemon = true }
+        }
+
     fun saveFile(
         name: String,
         content: InputStream,
     ) {
-        val file = folder.resolve(name)
+        val file = folder.resolve(name).normalize()
+        require(file.startsWith(folder)) {
+            "Invalid file name $name"
+        }
         content.use { inStream ->
             file.outputStream().use {
                 inStream.copyTo(it)
             }
         }
-        GlobalScope.launch {
-            delay(1.days)
-            file.deleteIfExists()
-        }
+        cleanupScheduler.schedule(
+            Runnable { file.deleteIfExists() },
+            1,
+            TimeUnit.DAYS,
+        )
     }
 
     fun retrieveFile(name: String): Path {
         val file = folder.resolve(name).normalize()
-        check(file.startsWith(folder) && file.exists()) {
-            "File $name is not in ${folder.name}"
+        // a wrong guess or a traversal attempt must look like an expired file: 404, not 500
+        if (!file.startsWith(folder) || !file.exists()) {
+            throw NotFoundResponse("File not found")
         }
         return file
     }
