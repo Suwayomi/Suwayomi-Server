@@ -138,6 +138,12 @@ object UserCodeService {
         userPermissions: List<UserPermission>?,
     ): IssuedCode =
         transaction {
+            // a code can only delegate permissions the issuer currently holds; a null set is
+            // intentionally exempt — the redeemed account gets the defaultPermissions baseline
+            if (userPermissions != null) {
+                assertPermissionsAssignable(issuedBy, userPermissions)
+            }
+
             val now = now()
             val code = generateCode()
             val expiresAt = now + REGISTRATION_TTL
@@ -250,6 +256,14 @@ object UserCodeService {
                 null
             }
 
+        // re-validate the bound permission set against the issuer's *current* permissions:
+        // the issuer may have been demoted since the code was created, and a code must not
+        // grant more than the issuer could delegate right now (prevents permission drift);
+        // null (no bound set) is intentionally exempt — it grants defaultPermissions below
+        if (permissions != null) {
+            assertPermissionsAssignable(match[UserCodeTable.createdBy], permissions)
+        }
+
         val userId = createUser(username, password, permissions)
 
         // backfill the code row with the new user for the audit trail
@@ -357,6 +371,8 @@ object UserCodeService {
                         it[UserAccountTable.password] = Bcrypt.encryptPassword(password)
                     }.value
 
+            // null = no explicit set requested: granting the defaultPermissions baseline is
+            // intentional, not an oversight (docs/Multi-User-Authentication.md)
             val permissions = permissions ?: UserPermission.defaultPermissions
             if (permissions.isNotEmpty()) {
                 UserPermissionsTable.batchInsert(permissions) {

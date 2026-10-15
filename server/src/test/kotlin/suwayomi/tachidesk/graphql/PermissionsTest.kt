@@ -311,7 +311,7 @@ class PermissionsTest : GraphQLTest() {
     }
 
     @Test
-    fun updateExtensionsUpdateAllowedWithoutInstallPermission() {
+    fun updateExtensionsUpdateForbiddenWithoutInstallPermission() {
         val userId = createTestUser("extupdate1")
         val user = userWithPermissions(userId)
 
@@ -330,7 +330,31 @@ class PermissionsTest : GraphQLTest() {
                 user = user,
             )
 
-        // plain updates do not require the install/uninstall permissions
+        // an update installs a new APK over the existing extension, so it is gated on
+        // INSTALL_EXTENSIONS just like install and the REST `extension/update` endpoint
+        response.assertForbidden()
+    }
+
+    @Test
+    fun updateExtensionsUpdateAllowedWithInstallPermission() {
+        val userId = createTestUser("extupdate2")
+        val user = userWithPermissions(userId, UserPermission.INSTALL_EXTENSIONS)
+
+        val response =
+            graphql(
+                """
+                mutation(${'$'}input: UpdateExtensionsInput!) {
+                    updateExtensions(input: ${'$'}input) {
+                        extensions {
+                            pkgName
+                        }
+                    }
+                }
+                """.trimIndent(),
+                mapOf("input" to mapOf("ids" to listOf(SAFE_EXT_NAME), "patch" to mapOf("update" to true))),
+                user = user,
+            )
+
         response.assertNoErrors()
     }
 

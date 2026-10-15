@@ -10,6 +10,9 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
   publish:
     runs-on: windows-latest # action can only be run on windows
@@ -21,13 +24,23 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-          elif [ "${{ github.event_name }}" = "release" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          elif [ "$EVENT_NAME" = "release" ]; then
+            VERSION="$RELEASE_TAG"
           else
             VERSION="$(gh release view --json tagName -q .tagName)"
+          fi
+
+          # Constrain the version shape so shell metacharacters can't reach
+          # downstream steps; fail closed on anything unexpected.
+          if [[ ! "$VERSION" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.]+)*$ ]]; then
+            echo "invalid version: $VERSION" >&2
+            exit 1
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -43,6 +56,9 @@ jobs:
             "repos/Suwayomi/winget-pkgs/merge-upstream" \
             -f branch=master
 
+      # TODO(security): vedantmgoyal2009/winget-releaser is referenced via the
+      # mutable major tag @v2. Pin to a commit SHA once the repo owner has
+      # verified the exact upstream revision to trust.
       - uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: Suwayomi.Suwayomi-Server

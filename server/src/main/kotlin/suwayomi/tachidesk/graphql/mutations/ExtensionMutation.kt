@@ -92,6 +92,12 @@ class ExtensionMutation {
             throw ForbiddenException()
         }
 
+        // an update installs a new APK/JAR over the existing extension, so it is gated on the
+        // same permission as install (mirrors the REST `GET extension/update/{pkgName}` check)
+        if (patch.update == true && !permissions.hasPermission(UserPermission.INSTALL_EXTENSIONS)) {
+            throw ForbiddenException()
+        }
+
         if (patch.uninstall == true && !permissions.hasPermission(UserPermission.UNINSTALL_EXTENSIONS)) {
             throw ForbiddenException()
         }

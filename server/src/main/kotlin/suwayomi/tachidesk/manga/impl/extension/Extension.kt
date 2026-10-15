@@ -52,6 +52,7 @@ import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
+import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
@@ -60,6 +61,7 @@ import suwayomi.tachidesk.server.database.dbTransaction
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import uy.kohesive.injekt.injectLazy
+import xyz.nulldev.androidcompat.util.SafePath
 import java.io.InputStream
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -91,11 +93,28 @@ object Extension {
 
     private suspend fun fetchExtensionFile(url: String): Path {
         val name = Uri.parse(url).lastPathSegment!!
+        requireSafePathComponent(name)
         val savePath = Path(applicationDirs.tempRoot) / "extensions" / name
         // download jar file
         downloadExtension(url, savePath)
 
         return savePath
+    }
+
+    private fun isSafePathComponent(name: String): Boolean = SafePath.buildValidFilename(name) == name
+
+    private fun requireSafePathComponent(name: String) {
+        require(isSafePathComponent(name)) { "Invalid file name component \"$name\"" }
+    }
+
+    private fun requireSafePathComponentOrDelete(
+        extPackage: ExtensionPackage,
+        name: String,
+    ) {
+        if (!isSafePathComponent(name)) {
+            extPackage.file.deleteExisting()
+            throw Exception("Invalid file name component \"$name\"")
+        }
     }
 
     suspend fun installExtension(
@@ -374,12 +393,20 @@ object Extension {
         val metadata = extPackage.metadata
         val pkgName = metadata.packageName
 
+        // the package name and the version name end up as parts of file paths below the
+        // extensions root and the icon cache; reject anything that could escape them
+        requireSafePathComponentOrDelete(extPackage, pkgName)
+        requireSafePathComponentOrDelete(extPackage, metadata.versionName)
+        requireSafePathComponentOrDelete(extPackage, extPackage.getApkName())
+
         val extension =
             transaction {
                 ExtensionTable
                     .select(
                         ExtensionTable.isInstalled,
                         ExtensionTable.versionCode,
+                        ExtensionTable.storeIndexUrl,
+                        ExtensionTable.signatureHash,
                     ).where { ExtensionTable.pkgName eq pkgName }
                     .firstOrNull()
             }
@@ -404,6 +431,61 @@ object Extension {
                 "Lib version is $libVersion, while only versions " +
                     "$LIB_VERSION_MIN to $LIB_VERSION_MAX are allowed",
             )
+        }
+
+        // Verify the package signature before any of its files are written or its code is loaded.
+        // APKs must carry a cryptographically valid signature; JAR packages cannot be signed and
+        // are only gated by the install permission.
+        val signatureHash =
+            when (extPackage) {
+                is ExtensionPackage.Apk -> PackageTools.getSignatureHash(extPackage.file)
+                is ExtensionPackage.Jar -> null
+            }
+        if (extPackage is ExtensionPackage.Apk && signatureHash == null) {
+            extPackage.file.deleteExisting()
+            throw Exception("Extension \"$pkgName\" is not signed or its signature could not be verified")
+        }
+        // a previously recorded signature must match so that an extension cannot be taken over
+        // by a different signer; extensions installed before signature tracking start with no
+        // recorded hash and are trusted on first install (TOFU)
+        val recordedSignatureHash = extension?.get(ExtensionTable.signatureHash)
+        if (recordedSignatureHash != null && signatureHash == null) {
+            // the extension was previously installed with a signature but the new package is
+            // unsigned (JAR); refuse to silently drop the recorded trust anchor
+            extPackage.file.deleteExisting()
+            throw Exception(
+                "Extension \"$pkgName\" was previously installed with a signature but this package is unsigned. " +
+                    "Uninstall and reinstall the extension to install it anyway",
+            )
+        }
+        if (signatureHash != null) {
+            // if the extension is provided by a store, the signature must match the store's signing key
+            val storeSigningKey =
+                extension
+                    ?.get(ExtensionTable.storeIndexUrl)
+                    ?.let { indexUrl ->
+                        transaction {
+                            ExtensionStoreTable
+                                .select(ExtensionStoreTable.signingKey)
+                                .where { ExtensionStoreTable.indexUrl eq indexUrl }
+                                .firstOrNull()
+                                ?.get(ExtensionStoreTable.signingKey)
+                        }
+                    }?.takeUnless { it.isBlank() }
+            if (storeSigningKey != null && !signatureHash.equals(storeSigningKey, ignoreCase = true)) {
+                extPackage.file.deleteExisting()
+                throw Exception(
+                    "Extension \"$pkgName\" is not signed with the signing key of its extension store",
+                )
+            }
+
+            if (recordedSignatureHash != null && !signatureHash.equals(recordedSignatureHash, ignoreCase = true)) {
+                extPackage.file.deleteExisting()
+                throw Exception(
+                    "Extension \"$pkgName\" was signed with a different key. " +
+                        "Uninstall and reinstall the extension to install it anyway",
+                )
+            }
         }
 
         var contentWarning =
@@ -438,7 +520,19 @@ object Extension {
         logger.debug { "Main class for extension is $className" }
 
         val extensionsRoot = Path(applicationDirs.extensionsRoot)
-        val jarFile = extPackage.prepareJarAndIcons(extensionsRoot)
+        val jarFile =
+            try {
+                extPackage.prepareJarAndIcons(extensionsRoot)
+            } catch (e: Throwable) {
+                // don't leave behind partially written artifacts (e.g. on a zip-slip abort)
+                val jarPath = getJarPath(extPackage.getApkName())
+                tryToDeleteFile(jarPath)
+                // merge artifact of extractAssetsFromApk may have been partially written
+                tryToDeleteFile(jarPath.parent / "${jarPath.nameWithoutExtension}_temp.jar")
+                runCatching { (extPackage.file.parent / "${extPackage.file.nameWithoutExtension}_assets").toFile().deleteRecursively() }
+                extPackage.file.deleteIfExists()
+                throw e
+            }
 
         val oldJarFile =
             try {
@@ -481,6 +575,7 @@ object Extension {
                         versionName = metadata.versionName,
                         versionCode = metadata.versionCode,
                         contentWarning = contentWarning,
+                        signatureHash = signatureHash,
                     )
 
                     val removeOldJarFile = oldJarFile != null && !jarFile.isSameFileAs(oldJarFile)
@@ -512,6 +607,7 @@ object Extension {
         versionName: String,
         versionCode: Int,
         contentWarning: Int,
+        signatureHash: String?,
     ) {
         // collect sources from the extension
         val httpSources: List<Source> =
@@ -542,6 +638,12 @@ object Extension {
                 it[this.isInstalled] = true
                 it[this.hasUpdate] = false
                 it[this.classFQName] = className
+
+                // remember the verified signature so that later installs/updates must be signed with
+                // the same key; null for unsigned packages (JARs) which keep any previously recorded hash
+                if (signatureHash != null) {
+                    it[this.signatureHash] = signatureHash
+                }
             }
 
             val extensionId =
@@ -619,10 +721,14 @@ object Extension {
         pkgName: String,
         inputStream: InputStream,
     ) {
-        val iconCacheDir = Path(applicationDirs.extensionsRoot) / "icon"
+        val iconCacheDir = (Path(applicationDirs.extensionsRoot) / "icon").normalize()
         iconCacheDir.createDirectories()
+        val iconPath = (iconCacheDir / pkgName).normalize()
+        require(iconPath.startsWith(iconCacheDir) && iconPath.parent == iconCacheDir) {
+            "Invalid extension icon file name \"$pkgName\""
+        }
         clearCachedImage(iconCacheDir.absolutePathString(), pkgName)
-        saveImage("$iconCacheDir/$pkgName", inputStream, null)
+        saveImage(iconPath.absolutePathString(), inputStream, null)
     }
 
     @OptIn(ExperimentalPathApi::class)
@@ -630,13 +736,15 @@ object Extension {
         apkFile: Path,
         jarFile: Path,
     ) {
-        val assetsFolder = apkFile.parent / "${apkFile.nameWithoutExtension}_assets"
+        val assetsFolder = (apkFile.parent / "${apkFile.nameWithoutExtension}_assets").normalize()
         assetsFolder.createDirectories()
         ZipInputStream(apkFile.inputStream()).use { zipInputStream ->
             var zipEntry = zipInputStream.nextEntry
             while (zipEntry != null) {
                 if (zipEntry.name.startsWith("assets/") && !zipEntry.isDirectory) {
-                    val assetFile = assetsFolder / zipEntry.name
+                    // normalize the entry name and make sure it cannot escape the assets folder (zip-slip)
+                    val assetFile = (assetsFolder / zipEntry.name).normalize()
+                    require(assetFile.startsWith(assetsFolder)) { "Illegal asset path \"${zipEntry.name}\" in APK" }
                     assetFile.createParentDirectories()
                     assetFile.outputStream().use { outputStream ->
                         zipInputStream.copyTo(outputStream)
@@ -751,6 +859,9 @@ object Extension {
                     it[isInstalled] = false
                     it[hasUpdate] = false
                     it[apkName] = null
+                    // clear the recorded trust anchor so a reinstall can switch signers (or accept
+                    // an unsigned package); the install path pins the new signature again on success
+                    it[signatureHash] = null
                 }
             }
 
@@ -776,6 +887,9 @@ object Extension {
     }
 
     suspend fun getExtensionIcon(pkgName: String): Pair<InputStream, String> {
+        // the package name is used as a file name below the icon cache directory
+        requireSafePathComponent(pkgName)
+
         val cacheSaveDir = "${applicationDirs.extensionsRoot}/icon"
 
         if (pkgName == LocalSource::class.java.`package`.name) {

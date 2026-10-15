@@ -35,5 +35,8 @@ object ExtensionTable : IntIdTable() {
     val hasUpdate = bool("has_update").default(false)
     val isObsolete = bool("is_obsolete").default(false)
 
+    // SHA-256 fingerprint (hex) of the verified signer certificate; null until first signed install (TOFU)
+    val signatureHash = varchar("signature_hash", 64).nullable()
+
     val classFQName = varchar("class_name", 1024).default("") // fully qualified name
 }

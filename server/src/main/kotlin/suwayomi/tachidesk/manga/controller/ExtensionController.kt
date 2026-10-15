@@ -15,6 +15,8 @@ import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
+import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.requirePermissions
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -59,7 +61,9 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.INSTALL_EXTENSIONS)
                 ctx.future {
                     future {
                         Extension.installExtension(pkgName)
@@ -69,6 +73,7 @@ object ExtensionController {
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
@@ -87,7 +92,9 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.INSTALL_EXTERNAL_EXTENSIONS)
                 val uploadedFile = ctx.uploadedFile("file")!!
                 logger.debug { "Uploaded extension file name: " + uploadedFile.filename() }
 
@@ -103,6 +110,7 @@ object ExtensionController {
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
         )
@@ -118,7 +126,9 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.INSTALL_EXTENSIONS)
                 ctx.future {
                     future {
                         Extension.updateExtension(pkgName)
@@ -128,6 +138,7 @@ object ExtensionController {
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.NOT_FOUND)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
@@ -144,13 +155,16 @@ object ExtensionController {
                 }
             },
             behaviorOf = { ctx, pkgName ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val user = ctx.getAttribute(Attribute.TachideskUser)
+                user.requireUser()
+                user.requirePermissions(UserPermission.UNINSTALL_EXTENSIONS)
                 Extension.uninstallExtension(pkgName)
                 ctx.status(200)
             },
             withResults = {
                 httpCode(HttpStatus.CREATED)
                 httpCode(HttpStatus.FOUND)
+                httpCode(HttpStatus.FORBIDDEN)
                 httpCode(HttpStatus.NOT_FOUND)
                 httpCode(HttpStatus.INTERNAL_SERVER_ERROR)
             },
