@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import suwayomi.tachidesk.manga.impl.Manga
@@ -18,6 +19,21 @@ import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
 
 class MissingThumbnailException : Exception("No thumbnail found")
+
+/**
+ * Marks a fetch-stage failure — "the request to the source itself failed" — with
+ * the original fetch error as the cause. Two callers key off the marker:
+ * - negative cache: the same wrapper replays a remembered failure, telling the
+ *   "cache this error once" paths apart from "replay it and keep its TTL".
+ * - no double fetch: the in-library path skips its direct-fetch fallback for a
+ *   marked failure — the fallback would only repeat the same request against
+ *   the same dead source. A failure after a successful fetch (e.g. persisting
+ *   to the downloads dir — the image is already in the temp cache by then, so
+ *   the fallback is a file read, not another request) keeps the fallback.
+ */
+class ThumbnailFetchFailedException(
+    cause: Throwable,
+) : Exception(cause)
 
 private val applicationDirs: ApplicationDirs by injectLazy()
 
@@ -57,7 +73,16 @@ class ThumbnailFileProvider(
                 return@withLock true
             }
 
-            val (inputStream, mime) = Manga.fetchMangaThumbnail(mangaId)
+            val (inputStream, mime) =
+                try {
+                    Manga.fetchMangaThumbnail(mangaId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: ThumbnailFetchFailedException) {
+                    throw e // remembered failure replayed inside the fetch — keep the marker
+                } catch (e: Exception) {
+                    throw ThumbnailFetchFailedException(e)
+                }
             inputStream.use { image ->
                 makeSureDownloadDirExists()
                 val filePath = getThumbnailDownloadPath(mangaId)

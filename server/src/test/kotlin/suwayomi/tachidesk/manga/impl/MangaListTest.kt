@@ -10,6 +10,7 @@ package suwayomi.tachidesk.manga.impl
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SManga
+import kotlinx.coroutines.test.runTest
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -20,12 +21,16 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class MangaListTest : GraphQLTest() {
     // users created for the membership permutations — deleted by identity in tearDown so
@@ -60,6 +65,23 @@ class MangaListTest : GraphQLTest() {
 
     @Test
     fun localBrowseUpdatesMangaSavedByAnotherUser() = checkBrowse("false:true", true, "Updated")
+
+    @Test
+    fun latestOnASourceWithoutLatestSupportIsASourceException() =
+        runTest {
+            // a source that cannot serve "latest" is a source fault (424 via the
+            // SourceException handler), not a server defect — a bare Exception
+            // used to fall through to 500
+            val sourceId = 424242L
+            GetSource.registerSource(sourceId to StubSource(sourceId))
+            try {
+                assertFailsWith<SourceException> {
+                    MangaList.getMangaList(sourceId, pageNum = 1, popular = false)
+                }
+            } finally {
+                GetSource.unregisterSource(sourceId)
+            }
+        }
 
     private fun checkBrowse(
         memberships: String,

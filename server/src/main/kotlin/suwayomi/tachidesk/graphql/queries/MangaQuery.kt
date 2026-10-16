@@ -52,6 +52,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.validatePagination
@@ -387,6 +388,16 @@ class MangaQuery {
     ): MangaNodeList {
         validatePagination(first, last, offset)
 
+        // the sort keys requested by the client; a unique key is appended inside the
+        // transaction as the final tie-break. The cursor predicate and cursor producer
+        // use the *effective* first sort key, which may also come from the deprecated
+        // orderBy/orderByType arguments
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: MangaOrderBy.ID
+        // the unique tie-break must follow the first key's direction: the composite
+        // cursor predicate compares (key, id) lexicographically in a single direction
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val mangaIdsQuery =
@@ -408,9 +419,7 @@ class MangaQuery {
                         MangaTable.getWithUserData(userId).selectAll().applyOps(condition, filter)
                     }
 
-                val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + MangaOrder(MangaOrderBy.ID, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
@@ -420,13 +429,11 @@ class MangaQuery {
                         PaginationNeeds.of(dataFetchingEnvironment),
                     )
 
-                // the cursor predicate and cursor producer use the *effective* first sort key,
-                // which may also come from the deprecated orderBy/orderByType arguments
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: orderBy ?: MangaOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType ?: orderByType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -440,7 +447,7 @@ class MangaQuery {
                 QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (MangaType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: MangaOrderBy.ID)::asCursor
+        val getAsCursor: (MangaType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { MangaType(it) }
 

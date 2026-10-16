@@ -42,6 +42,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.validatePagination
@@ -182,6 +183,16 @@ class SourceQuery {
         future {
             validatePagination(first, last, offset)
 
+            // the sort keys requested by the client; a unique key is appended inside the
+            // transaction as the final tie-break. The cursor predicate and cursor producer
+            // use the *effective* first sort key, which may also come from the deprecated
+            // orderBy/orderByType arguments
+            val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
+            val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: SourceOrderBy.ID
+            // the unique tie-break must follow the first key's direction: the composite
+            // cursor predicate compares (key, id) lexicographically in a single direction
+            val cursorOrderType = requestedSort.cursorOrderType()
+
             val (queryResults, resultsAsType) =
                 suspendTransaction {
                     val res = SourceTable.selectAll()
@@ -193,9 +204,7 @@ class SourceQuery {
                         res.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.value }
                     }
 
-                    val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    val actualSort = requestedSort + SourceOrder(SourceOrderBy.ID, cursorOrderType)
 
                     val (total, firstResult, lastResult) =
                         res.applySortAndGetPaginationInfo(
@@ -205,13 +214,11 @@ class SourceQuery {
                             PaginationNeeds.of(dataFetchingEnvironment),
                         )
 
-                    // the cursor predicate and cursor producer use the *effective* first sort
-                    // key, which may also come from the deprecated orderBy/orderByType arguments
                     res.applyBeforeAfter(
                         before = before,
                         after = after,
-                        orderBy = order?.firstOrNull()?.by ?: orderBy ?: SourceOrderBy.ID,
-                        orderByType = order?.firstOrNull()?.byType ?: orderByType,
+                        orderBy = effectiveOrderBy,
+                        orderByType = cursorOrderType,
                     )
 
                     if (first != null) {
@@ -227,7 +234,7 @@ class SourceQuery {
                     }
                 }
 
-            val getAsCursor: (SourceType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: SourceOrderBy.ID)::asCursor
+            val getAsCursor: (SourceType) -> Cursor = effectiveOrderBy::asCursor
 
             SourceNodeList(
                 resultsAsType,

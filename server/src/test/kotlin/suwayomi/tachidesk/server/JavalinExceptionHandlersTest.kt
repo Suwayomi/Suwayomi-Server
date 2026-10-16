@@ -19,6 +19,7 @@ import okhttp3.Request
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.server.JavalinSetup.defineCore
 import suwayomi.tachidesk.server.JavalinSetup.defineExceptionHandlers
 import suwayomi.tachidesk.server.util.Param
@@ -26,6 +27,9 @@ import suwayomi.tachidesk.server.util.getParam
 import suwayomi.tachidesk.test.ApplicationTest
 import tools.jackson.core.JacksonException
 import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.SocketException
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -43,6 +47,20 @@ class JavalinExceptionHandlersTest {
                     config.routes.get("/source-error") { throw HttpException(404) }
                     config.routes.get("/source-unreachable") {
                         throw IOException("cdn.example: Name or service not known", UnknownHostException("cdn.example"))
+                    }
+                    config.routes.get("/source-timeout") {
+                        throw SocketTimeoutException("Read timed out")
+                    }
+                    config.routes.get("/call-timeout") {
+                        // OkHttp's expired callTimeout surfaces as a plain InterruptedIOException
+                        throw InterruptedIOException("timeout")
+                    }
+                    config.routes.get("/network-unreachable") {
+                        // ENETUNREACH surfaces as a bare SocketException, not ConnectException
+                        throw SocketException("Network is unreachable")
+                    }
+                    config.routes.get("/source-business-error") {
+                        throw SourceException("Source 1 doesn't support latest")
                     }
                 }
                 // loopback only: listening on every interface makes the OS firewall ask to let Java in
@@ -62,6 +80,22 @@ class JavalinExceptionHandlersTest {
     @Test
     fun anUnreachableSourceIsAFailedDependency() {
         assertEquals(424, get("/source-unreachable").first)
+    }
+
+    @Test
+    fun aTimedOutSourceIsAFailedDependency() {
+        assertEquals(424, get("/source-timeout").first)
+        assertEquals(424, get("/call-timeout").first)
+    }
+
+    @Test
+    fun anUnreachableNetworkIsAFailedDependency() {
+        assertEquals(424, get("/network-unreachable").first)
+    }
+
+    @Test
+    fun aSourceBusinessErrorIsAFailedDependency() {
+        assertEquals(424 to "Source 1 doesn't support latest", get("/source-business-error"))
     }
 
     private fun get(path: String): Pair<Int, String> =

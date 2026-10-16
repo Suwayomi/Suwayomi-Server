@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import okhttp3.Cache
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
@@ -163,4 +164,34 @@ class NetworkHelper(
     @Deprecated("The regular client handles Cloudflare by default")
     @Suppress("UNUSED")
     val cloudflareClient by lazy { client }
+
+    /**
+     * Shared dispatcher for thumbnail fetches: covers get more per-host slots than
+     * OkHttp's default maxRequestsPerHost of 5, so one dead image host stalls only its
+     * own slots instead of queuing every cover behind them. Page and download calls
+     * keep the default dispatcher, so a cover storm cannot starve them either.
+     * The global maxRequests stays at the OkHttp default (64).
+     */
+    val thumbnailDispatcher: Dispatcher by lazy {
+        Dispatcher().apply { maxRequestsPerHost = THUMBNAIL_MAX_REQUESTS_PER_HOST }
+    }
+
+    /**
+     * A thumbnail-fetch variant of [base] — the shared [client] by default, or a
+     * source's own client when the extension overrides it. Connection pooling,
+     * proxies, cookies and interceptors are inherited; only dispatching and timeouts
+     * change: a stalled or dead cover settles within seconds instead of holding a
+     * dispatcher slot for the full 2-minute callTimeout.
+     */
+    fun thumbnailClient(base: OkHttpClient = client): OkHttpClient =
+        base
+            .newBuilder()
+            .dispatcher(thumbnailDispatcher)
+            .connectTimeout(THUMBNAIL_CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
+            .callTimeout(THUMBNAIL_CALL_TIMEOUT_S, TimeUnit.SECONDS)
+            .build()
 }
+
+private const val THUMBNAIL_MAX_REQUESTS_PER_HOST = 20
+private const val THUMBNAIL_CONNECT_TIMEOUT_S = 10L
+private const val THUMBNAIL_CALL_TIMEOUT_S = 15L

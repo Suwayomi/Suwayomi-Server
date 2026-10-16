@@ -98,6 +98,26 @@ fun validatePagination(
 }
 
 /**
+ * The effective direction of the first sort key — the direction the whole cursor
+ * machinery must assume for the ordering.
+ *
+ * [applyBeforeAfter] builds composite "key, id" cursor predicates that compare
+ * both columns in a single direction: `key < v OR (key = v AND id < c)` under
+ * DESC. That predicate only selects the rows actually after the cursor when the
+ * unique tie-break sorts in the same direction as the primary key, so callers
+ * must append their unique base sort with this value rather than a constant
+ * `SortOrder.ASC`. A fixed ASC tie-break under a DESC primary key inverts the
+ * comparison inside tied blocks: rows with an id above the cursor are skipped
+ * while ids below it are re-selected (duplicated nodes, missing rows) and, once
+ * the cursor passes the smallest id of a tie block, the page comes back empty
+ * while `hasNextPage` stays true.
+ *
+ * A `null` `byType` sorts ASC, so an empty list or a direction-less first key
+ * resolves to [SortOrder.ASC].
+ */
+fun <By : Any> List<Order<By>>.cursorOrderType(): SortOrder = firstOrNull()?.byType ?: SortOrder.ASC
+
+/**
  * Applies the `after`/`before` cursor predicates for the given effective ordering.
  *
  * Both bounds are applied independently so a client may pass `after` and `before`

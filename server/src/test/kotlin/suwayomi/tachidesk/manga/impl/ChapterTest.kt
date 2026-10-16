@@ -858,6 +858,38 @@ class ChapterTest : ApplicationTest() {
             }
         }
 
+    @Test
+    fun chapterListReadsBackPerUserReadState() =
+        runTest {
+            val mangaId = createLibraryManga("CHAPTER_LIST_READBACK")
+            createChaptersForDownloadTest(mangaId, listOf("1", "2", "3"), downloaded = false)
+
+            // the REST PATCH chapter endpoint (read=true&lastPageRead=5) funnels into modifyChapter
+            Chapter.modifyChapter(
+                userId = 1,
+                mangaId = mangaId,
+                chapterIndex = 3,
+                isRead = true,
+                isBookmarked = null,
+                markPrevRead = null,
+                lastPageRead = 5,
+            )
+
+            val chapters = Chapter.getChapterList(1, mangaId)
+            val modified = chapters.first { it.index == 3 }
+            assertTrue(modified.read)
+            assertEquals(5, modified.lastPageRead)
+
+            val untouched = chapters.first { it.index == 1 }
+            assertEquals(false, untouched.read)
+            assertEquals(0, untouched.lastPageRead)
+
+            // the joined state is the caller's own — another user's list is unaffected
+            val otherUser = createSecondUser("chapter-list-other")
+            val otherChapters = Chapter.getChapterList(otherUser, mangaId)
+            assertEquals(false, otherChapters.first { it.index == 3 }.read)
+        }
+
     private fun createChaptersForDownloadTest(
         mangaId: Int,
         urls: List<String>,

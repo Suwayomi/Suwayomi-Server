@@ -276,9 +276,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Chapter.getChapterList(mangaId, onlineFetch) }
+                    future { Chapter.getChapterList(userId, mangaId, onlineFetch) }
                         .thenApply { ctx.json(it) }
                 }
             },

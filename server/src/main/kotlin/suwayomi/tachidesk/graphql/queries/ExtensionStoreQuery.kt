@@ -29,6 +29,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.validatePagination
@@ -122,16 +123,22 @@ class ExtensionStoreQuery {
     ): ExtensionStoreNodeList {
         validatePagination(first, last, offset)
 
+        // the sort keys requested by the client; a unique key is appended inside the
+        // transaction as the final tie-break — the base sort always applies because
+        // cursor predicates and page bounds are meaningless on an unordered result set
+        val requestedSort = order.orEmpty()
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: ExtensionStoreOrderBy.INDEX_URL
+        // the unique tie-break must follow the first key's direction: the composite
+        // cursor predicate compares (key, id) lexicographically in a single direction
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = ExtensionStoreTable.selectAll()
 
                 res.applyOps(condition, filter)
 
-                // the base sort always applies: cursor predicates and page bounds are
-                // meaningless on an unordered result set
-                val baseSort = listOf(ExtensionStoreOrder(ExtensionStoreOrderBy.INDEX_URL, SortOrder.ASC))
-                val actualSort = (order.orEmpty() + baseSort)
+                val actualSort = requestedSort + ExtensionStoreOrder(ExtensionStoreOrderBy.INDEX_URL, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
@@ -144,8 +151,8 @@ class ExtensionStoreQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: ExtensionStoreOrderBy.INDEX_URL,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -159,7 +166,7 @@ class ExtensionStoreQuery {
                 QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (ExtensionStoreType) -> Cursor = (order?.firstOrNull()?.by ?: ExtensionStoreOrderBy.INDEX_URL)::asCursor
+        val getAsCursor: (ExtensionStoreType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { ExtensionStoreType(it) }
 

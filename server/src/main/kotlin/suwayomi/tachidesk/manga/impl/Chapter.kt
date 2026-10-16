@@ -77,15 +77,17 @@ object Chapter {
 
     /** get chapter list when showing a manga */
     suspend fun getChapterList(
+        userId: Int,
         mangaId: Int,
         onlineFetch: Boolean = false,
     ): List<ChapterDataClass> =
         if (onlineFetch) {
-            getSourceChapters(mangaId)
+            getSourceChapters(userId, mangaId)
         } else {
             val (chapters, chaptersLastFetchedAt) =
                 transaction {
                     ChapterTable
+                        .getWithUserData(userId)
                         .selectAll()
                         .where { ChapterTable.manga eq mangaId }
                         .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
@@ -106,7 +108,7 @@ object Chapter {
             // refetch via onlineFetch = true.
             chapters.ifEmpty {
                 if (chaptersLastFetchedAt == 0L) {
-                    getSourceChapters(mangaId)
+                    getSourceChapters(userId, mangaId)
                 } else {
                     emptyList()
                 }
@@ -122,7 +124,10 @@ object Chapter {
                 .toInt()
         }
 
-    private suspend fun getSourceChapters(mangaId: Int): List<ChapterDataClass> {
+    private suspend fun getSourceChapters(
+        userId: Int,
+        mangaId: Int,
+    ): List<ChapterDataClass> {
         Manga.updateMangaAndChapters(
             mangaId,
             updateManga = false,
@@ -131,6 +136,7 @@ object Chapter {
 
         return transaction {
             ChapterTable
+                .getWithUserData(userId)
                 .selectAll()
                 .where { ChapterTable.manga eq mangaId }
                 .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)

@@ -46,6 +46,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.validatePagination
@@ -217,14 +218,21 @@ class UserQuery {
     ): UserNodeList {
         validatePagination(first, last, offset)
 
+        // the sort keys requested by the client; a unique key is appended inside the
+        // transaction as the final tie-break
+        val requestedSort = order.orEmpty()
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: UserOrderBy.ID
+        // the unique tie-break must follow the first key's direction: the composite
+        // cursor predicate compares (key, id) lexicographically in a single direction
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = UserAccountTable.selectAll()
 
                 res.applyOps(condition, filter)
 
-                val baseSort = listOf(UserOrder(UserOrderBy.ID, SortOrder.ASC))
-                val actualSort = (order.orEmpty() + baseSort)
+                val actualSort = requestedSort + UserOrder(UserOrderBy.ID, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
@@ -237,8 +245,8 @@ class UserQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: UserOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -252,7 +260,7 @@ class UserQuery {
                 QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (UserType) -> Cursor = (order?.firstOrNull()?.by ?: UserOrderBy.ID)::asCursor
+        val getAsCursor: (UserType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { UserType(it) }
 

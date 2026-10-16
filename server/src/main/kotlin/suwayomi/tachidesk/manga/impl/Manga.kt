@@ -43,6 +43,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ThumbnailFetchFailedException
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
@@ -70,6 +71,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger { }
 
@@ -424,7 +426,11 @@ object Manga {
             } ?: throw NullPointerException("No thumbnail found")
 
         return try {
-            source.client
+            network
+                // keep the source's own client config but run thumbnail calls on the
+                // thumbnail dispatcher with tight timeouts: a dead image host must not
+                // queue every cover behind its per-host slots for 30s+
+                .thumbnailClient(source.client)
                 .newCall(
                     GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
                 ).awaitSuccess()
@@ -463,7 +469,9 @@ object Manga {
         return when (val source = getSourceOrStub(sourceId)) {
             is HttpSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
-                    fetchHttpSourceMangaThumbnail(source, mangaEntry)
+                    fetchRemoteThumbnail(mangaId) {
+                        fetchHttpSourceMangaThumbnail(source, mangaEntry)
+                    }
                 }
             }
 
@@ -485,13 +493,16 @@ object Manga {
 
             is StubSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
-                    val thumbnailUrl =
-                        mangaEntry[MangaTable.thumbnail_url]
-                            ?: throw NullPointerException("No thumbnail found")
-                    network.client
-                        .newCall(
-                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                        ).awaitSuccess()
+                    fetchRemoteThumbnail(mangaId) {
+                        val thumbnailUrl =
+                            mangaEntry[MangaTable.thumbnail_url]
+                                ?: throw NullPointerException("No thumbnail found")
+                        network
+                            .thumbnailClient()
+                            .newCall(
+                                GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
+                            ).awaitSuccess()
+                    }
                 }
             }
 
@@ -501,7 +512,79 @@ object Manga {
         }
     }
 
-    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+    /**
+     * Short-term memory of failed thumbnail fetches. Thumbnail requests bypass the
+     * HTTP cache (FORCE_NETWORK), so without this every page render re-hits a dead
+     * source and re-occupies its per-host dispatcher slots. Entries expire quickly so
+     * a just-recovered source is retried soon, and [clearThumbnail] drops the entry
+     * when the cover changes. Successful fetches land in the file caches and are
+     * never stored here.
+     *
+     * Only fetch-stage failures are recorded — inside the serialized fetch in
+     * [fetchRemoteThumbnail] — and only source-side ones: [IOException] covers HTTP
+     * error responses, timeouts and unreachable hosts, while database and
+     * programming errors propagate uncached. LocalSource reads covers off the
+     * disk — no fetch, so nothing is ever recorded for it.
+     */
+    private val thumbnailFetchFailures: Cache<Int, Throwable> =
+        Cache
+            .Builder<Int, Throwable>()
+            .expireAfterWrite(THUMBNAIL_FAILURE_TTL)
+            .build()
+
+    /**
+     * Surfaces the same error the request would have produced. Failures of the
+     * fetch stage are already recorded where they are thrown (see
+     * [fetchRemoteThumbnail]); everything else — database and programming
+     * errors — is not a source outage and propagates without being cached.
+     */
+    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> =
+        try {
+            getMangaThumbnailImpl(mangaId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ThumbnailFetchFailedException) {
+            // a remembered failure replayed by a gate or by the serialized
+            // re-check — unwrap the original error; re-caching it would extend
+            // the entry's TTL on every hit
+            throw e.cause ?: e
+        }
+
+    /**
+     * Runs a remote thumbnail fetch behind the failure cache. Called as the
+     * fetcher inside [getImageResponse]'s per-key mutex — i.e. after the stored
+     * temp-file check and serialized with every other fetch of the same cover —
+     * so a request that queued behind an in-flight fetch replays the failure it
+     * just recorded instead of re-hitting the dead source. The gates in
+     * [getMangaThumbnailImpl] sit outside any lock and cannot catch that herd;
+     * this check is the one that merges it.
+     */
+    private suspend fun fetchRemoteThumbnail(
+        mangaId: Int,
+        fetch: suspend () -> Response,
+    ): Response {
+        throwCachedThumbnailFailure(mangaId)
+        try {
+            return fetch()
+        } catch (e: IOException) {
+            thumbnailFetchFailures.put(mangaId, e)
+            throw e
+        }
+    }
+
+    /**
+     * Replays a remembered fetch failure for [mangaId], if any. Called only right
+     * before a path that would hit the source — a stored cover file must always win
+     * over a stale failure, so this is deliberately not checked on entry.
+     */
+    private suspend fun throwCachedThumbnailFailure(mangaId: Int) {
+        thumbnailFetchFailures.get(mangaId)?.let {
+            logger.debug { "Replaying the cached thumbnail failure for manga $mangaId" }
+            throw ThumbnailFetchFailedException(it)
+        }
+    }
+
+    private suspend fun getMangaThumbnailImpl(mangaId: Int): Pair<InputStream, String> {
         val mangaInLibrary =
             transaction {
                 MangaUserTable
@@ -524,11 +607,16 @@ object Manga {
                 return ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
                 // no stored thumbnail yet — download it and serve the file
+                throwCachedThumbnailFailure(mangaId)
                 try {
                     ThumbnailDownloadHelper.download(mangaId)
                     return ThumbnailDownloadHelper.getImage(mangaId)
                 } catch (e: CancellationException) {
                     throw e
+                } catch (e: ThumbnailFetchFailedException) {
+                    // the download's own source fetch already failed — the direct
+                    // fetch below would just repeat that same request
+                    throw e.cause ?: e
                 } catch (e: Exception) {
                     logger.warn(e) { "Thumbnail download failed for manga $mangaId, falling back to a direct fetch" }
                 }
@@ -541,12 +629,18 @@ object Manga {
             }
         }
 
+        // LocalSource reads covers straight off the disk — only remote source hits
+        // are throttled by the failure cache
+        if (mangaSource != LocalSource.ID) {
+            throwCachedThumbnailFailure(mangaId)
+        }
         return fetchMangaThumbnail(mangaId)
     }
 
     fun clearThumbnail(mangaId: Int) {
         val fileName = mangaId.toString()
 
+        thumbnailFetchFailures.invalidate(mangaId)
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
     }
@@ -613,3 +707,5 @@ object Manga {
         return true
     }
 }
+
+private val THUMBNAIL_FAILURE_TTL = 90.seconds

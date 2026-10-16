@@ -33,6 +33,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -156,6 +157,16 @@ class TrackQuery {
     ): TrackerNodeList {
         validatePagination(first, last, offset)
 
+        // the sort keys requested by the client; a unique key is appended below as the
+        // final tie-break. Cursor predicates use the *effective* first sort key (which
+        // may also come from the deprecated orderBy/orderByType arguments) and are
+        // evaluated in the forward direction
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
+        val realOrderBy = requestedSort.firstOrNull()?.by ?: TrackerOrderBy.ID
+        // the unique tie-break must follow the first key's direction: the composite
+        // cursor predicate compares (key, id) lexicographically in a single direction
+        val realOrderByType = requestedSort.cursorOrderType()
+
         val (queryResults, resultsAsType) =
             run {
                 var res = TrackerManager.services.map { TrackerType(it, userId) }
@@ -170,9 +181,7 @@ class TrackQuery {
                         }
                 }
 
-                val baseSort = listOf(TrackerOrder(TrackerOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + TrackerOrder(TrackerOrderBy.ID, realOrderByType)
 
                 // composite comparator: the first key in actualSort is primary and the appended
                 // ID base sort is the final tie-breaker — the SQL queries get the same priority
@@ -205,12 +214,7 @@ class TrackQuery {
                 val firstResult = forward.firstOrNull()
                 val lastResult = forward.lastOrNull()
 
-                // cursor predicates use the *effective* first sort key (which may also come
-                // from the deprecated orderBy/orderByType arguments) and are evaluated in the
-                // forward direction; after and before may both be set as a Relay window
-                val realOrderBy = order?.firstOrNull()?.by ?: orderBy ?: TrackerOrderBy.ID
-                val realOrderByType = order?.firstOrNull()?.byType ?: orderByType
-
+                // after and before may both be set as a Relay window
                 var window = forward
                 try {
                     if (after != null) {
@@ -221,7 +225,7 @@ class TrackQuery {
                                         realOrderBy.less(it, after)
                                     }
 
-                                    null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
+                                    SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
                                         realOrderBy.greater(
                                             it,
                                             after,
@@ -235,7 +239,7 @@ class TrackQuery {
                             window.filter {
                                 when (realOrderByType) {
                                     SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> realOrderBy.greater(it, before)
-                                    null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> realOrderBy.less(it, before)
+                                    SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> realOrderBy.less(it, before)
                                 }
                             }
                     }
@@ -256,7 +260,7 @@ class TrackQuery {
                 QueryResults(total.toLong(), firstResult, lastResult, emptyList()) to page
             }
 
-        val getAsCursor: (TrackerType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: TrackerOrderBy.ID)::asCursor
+        val getAsCursor: (TrackerType) -> Cursor = realOrderBy::asCursor
 
         return TrackerNodeList(
             resultsAsType,
@@ -467,15 +471,23 @@ class TrackQuery {
     ): TrackRecordNodeList {
         validatePagination(first, last, offset)
 
+        // the sort keys requested by the client; a unique key is appended inside the
+        // transaction as the final tie-break. The cursor predicate and cursor producer
+        // use the *effective* first sort key, which may also come from the deprecated
+        // orderBy/orderByType arguments
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: TrackRecordOrderBy.ID
+        // the unique tie-break must follow the first key's direction: the composite
+        // cursor predicate compares (key, id) lexicographically in a single direction
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = TrackRecordTable.selectAll().where { TrackRecordTable.user eq userId }
 
                 res.applyOps(condition, filter)
 
-                val baseSort = listOf(TrackRecordOrder(TrackRecordOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + TrackRecordOrder(TrackRecordOrderBy.ID, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
@@ -485,13 +497,11 @@ class TrackQuery {
                         PaginationNeeds.of(dataFetchingEnvironment),
                     )
 
-                // the cursor predicate and cursor producer use the *effective* first sort key,
-                // which may also come from the deprecated orderBy/orderByType arguments
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: orderBy ?: TrackRecordOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType ?: orderByType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -505,7 +515,7 @@ class TrackQuery {
                 QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (TrackRecordType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: TrackRecordOrderBy.ID)::asCursor
+        val getAsCursor: (TrackRecordType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { TrackRecordType(it) }
 

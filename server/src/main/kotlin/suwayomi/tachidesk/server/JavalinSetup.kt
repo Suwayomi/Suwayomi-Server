@@ -48,6 +48,7 @@ import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.manga.impl.extension.InvalidExtensionException
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
+import suwayomi.tachidesk.manga.impl.util.network.isRequestTimeout
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
@@ -440,9 +441,11 @@ object JavalinSetup {
         }
 
         exception(IOException::class.java) { e, ctx ->
-            if (e.isHostUnreachable()) {
-                // A source host being down isn't a server fault
-                logger.warn { "Source host unreachable while handling ${ctx.path()}: ${e.message}" }
+            if (e.isHostUnreachable() || e.isRequestTimeout()) {
+                // A source host being down or a call stalling past the timeout isn't
+                // a server fault — and a 5xx would invite clients to retry straight
+                // into the dead host
+                logger.warn { "Source request failed while handling ${ctx.path()}: ${e.message}" }
                 ctx.sourceFailed(e.message)
                 return@exception
             }

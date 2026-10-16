@@ -94,7 +94,7 @@ private fun clampLastPageReads(
  */
 class SourceException(
     message: String?,
-    cause: Throwable,
+    cause: Throwable? = null,
 ) : IOException(message ?: "Source request failed", cause)
 
 suspend fun refreshChapterPageList(

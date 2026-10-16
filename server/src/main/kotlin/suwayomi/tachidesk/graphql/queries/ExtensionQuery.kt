@@ -44,6 +44,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.formatStringKeyCursor
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
@@ -248,6 +249,16 @@ class ExtensionQuery {
     ): ExtensionNodeList {
         validatePagination(first, last, offset)
 
+        // the sort keys requested by the client; a unique key is appended inside the
+        // transaction as the final tie-break. The cursor predicate and cursor producer
+        // use the *effective* first sort key, which may also come from the deprecated
+        // orderBy/orderByType arguments
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME
+        // the unique tie-break must follow the first key's direction: the composite
+        // cursor predicate compares (key, id) lexicographically in a single direction
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = ExtensionTable.selectAll()
@@ -261,22 +272,18 @@ class ExtensionQuery {
                     res.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.value }
                 }
 
-                val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + ExtensionOrder(ExtensionOrderBy.PKG_NAME, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(actualSort, last, PaginationNeeds.of(dataFetchingEnvironment)) {
                         it?.get(ExtensionTable.pkgName)
                     }
 
-                // the cursor predicate and cursor producer use the *effective* first sort key,
-                // which may also come from the deprecated orderBy/orderByType arguments
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: orderBy ?: ExtensionOrderBy.PKG_NAME,
-                    orderByType = order?.firstOrNull()?.byType ?: orderByType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -290,7 +297,7 @@ class ExtensionQuery {
                 QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (ExtensionType) -> Cursor = (order?.firstOrNull()?.by ?: orderBy ?: ExtensionOrderBy.PKG_NAME)::asCursor
+        val getAsCursor: (ExtensionType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { ExtensionType(it) }
 
