@@ -8,7 +8,7 @@ import io.github.config4k.toConfig
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.server.settings.SettingsRegistry
 
-private val logger = KotlinLogging.logger {  }
+private val logger = KotlinLogging.logger { }
 
 private fun migrateConfigValue(
     configDocument: ConfigDocument,
@@ -57,24 +57,36 @@ fun migrateConfig(
             return@forEach
         }
 
-        logger.debug { "Migrating config value: $configKey -> $toConfigKey" }
-
-        when (deprecated) {
-            is SettingsRegistry.SettingDeprecated.Migrate.Config -> {
-                updatedConfig = deprecated.migrateConfig(config.getValue(configKey), updatedConfig)
+        // `config` is the raw user config: if the user already set the replacement key
+        // explicitly, that value wins over whatever the legacy key maps to
+        if (deprecated is SettingsRegistry.SettingDeprecated.Migrate.ConfigValue &&
+            config.hasPath(toConfigKey)
+        ) {
+            logger.warn {
+                "Skipping migration of $configKey: $toConfigKey is already set explicitly"
             }
+        } else {
+            when (deprecated) {
+                is SettingsRegistry.SettingDeprecated.Migrate.Config -> {
+                    logger.debug { "Migrating config value with custom logic: $configKey" }
+                    updatedConfig = deprecated.migrateConfig(config.getValue(configKey), updatedConfig)
+                }
 
-            is SettingsRegistry.SettingDeprecated.Migrate.ConfigValue -> {
-                updatedConfig =
-                    migrateConfigValue(
-                        updatedConfig,
-                        config,
-                        configKey,
-                        toConfigKey,
-                        deprecated.migrateConfigValue,
-                    )
+                is SettingsRegistry.SettingDeprecated.Migrate.ConfigValue -> {
+                    updatedConfig =
+                        migrateConfigValue(
+                            updatedConfig,
+                            config,
+                            configKey,
+                            toConfigKey,
+                            deprecated.migrateConfigValue,
+                        )
+                }
             }
         }
+
+        // drop the legacy key either way so it isn't carried forward forever
+        updatedConfig = updatedConfig.withoutPath(configKey)
     }
 
     return updatedConfig

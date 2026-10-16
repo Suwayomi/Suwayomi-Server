@@ -7,6 +7,7 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 @Serializable
 data class KitsuSearchResult(
@@ -20,20 +21,20 @@ data class KitsuSearchResultData(
 
 @Serializable
 data class KitsuAlgoliaSearchResult(
-    val hits: List<KitsuAlgoliaSearchItem>,
+    val hits: List<KitsuAlgoliaSearchItem> = emptyList(),
 )
 
 @Serializable
 data class KitsuAlgoliaSearchItem(
     val id: Long,
-    val canonicalTitle: String,
-    val chapterCount: Int?,
-    val subtype: String?,
-    val posterImage: KitsuSearchItemCover?,
-    val synopsis: String?,
-    val averageRating: Double?,
-    val startDate: Long?,
-    val endDate: Long?,
+    val canonicalTitle: String = "",
+    val chapterCount: Int? = null,
+    val subtype: String? = null,
+    val posterImage: KitsuSearchItemCover? = null,
+    val synopsis: String? = null,
+    val averageRating: Double? = null,
+    val startDate: Long? = null,
+    val endDate: Long? = null,
 ) {
     fun toTrack(): TrackSearch =
         TrackSearch.create(TrackerManager.KITSU).apply {
@@ -43,12 +44,58 @@ data class KitsuAlgoliaSearchItem(
             cover_url = posterImage?.original ?: ""
             summary = synopsis ?: ""
             tracking_url = KitsuApi.mangaUrl(remote_id)
-            score = averageRating ?: -1.0
+            score = averageRating ?: 0.0
             publishing_status = if (endDate == null) "Publishing" else "Finished"
             publishing_type = subtype ?: ""
-            start_date = startDate?.let {
-                val outputDf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                outputDf.format(Date(it * 1000))
-            } ?: ""
+            start_date =
+                startDate?.let {
+                    // epoch seconds from Algolia — render in UTC so the
+                    // JVM default zone cannot shift the date
+                    val outputDf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                    outputDf.timeZone = TimeZone.getTimeZone("UTC")
+                    outputDf.format(Date(it * 1000))
+                } ?: ""
         }
 }
+
+/**
+ * The edge API (`GET /manga/{id}`, used by the `id:` search prefix) returns a
+ * JSON:API document whose numeric fields differ from Algolia's — notably
+ * `averageRating` is a percentage string there.
+ */
+@Serializable
+data class KitsuMangaResponse(
+    val data: KitsuMangaData? = null,
+)
+
+@Serializable
+data class KitsuMangaData(
+    val id: String,
+    val attributes: KitsuMangaAttributes = KitsuMangaAttributes(),
+) {
+    fun toTrack(fallbackId: Long): TrackSearch =
+        TrackSearch.create(TrackerManager.KITSU).apply {
+            remote_id = this@KitsuMangaData.id.toLongOrNull() ?: fallbackId
+            title = attributes.canonicalTitle
+            total_chapters = attributes.chapterCount ?: 0
+            cover_url = attributes.posterImage?.original ?: ""
+            summary = attributes.synopsis ?: ""
+            tracking_url = KitsuApi.mangaUrl(remote_id)
+            score = attributes.averageRating?.toDoubleOrNull() ?: 0.0
+            publishing_status = if (attributes.endDate == null) "Publishing" else "Finished"
+            publishing_type = attributes.subtype ?: ""
+            start_date = attributes.startDate ?: ""
+        }
+}
+
+@Serializable
+data class KitsuMangaAttributes(
+    val canonicalTitle: String = "",
+    val chapterCount: Int? = null,
+    val subtype: String? = null,
+    val posterImage: KitsuSearchItemCover? = null,
+    val synopsis: String? = null,
+    val averageRating: String? = null,
+    val startDate: String? = null,
+    val endDate: String? = null,
+)

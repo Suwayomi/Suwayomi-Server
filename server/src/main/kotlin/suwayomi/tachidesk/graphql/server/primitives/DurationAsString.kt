@@ -26,10 +26,8 @@ private class GraphqlDurationAsStringCoercing : Coercing<Duration, String> {
         when (input) {
             is Duration -> input.toIsoString()
 
-            is String -> Duration.parse(input).toIsoString()
-
             else -> throw CoercingSerializeException(
-                "Expected a Duration or String but was ${CoercingUtil.typeName(input)}",
+                "Expected a Duration but was ${CoercingUtil.typeName(input)}",
             )
         }
 

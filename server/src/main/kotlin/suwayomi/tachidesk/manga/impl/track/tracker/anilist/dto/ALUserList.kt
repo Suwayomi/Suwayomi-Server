@@ -5,7 +5,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ALUserListMangaQueryResult(
-    val data: ALUserListMangaPage,
+    // absent when AniList answers with an `errors`-only payload
+    val data: ALUserListMangaPage? = null,
 )
 
 @Serializable
@@ -20,25 +21,29 @@ data class ALUserListMediaList(
 )
 
 @Serializable
+// The AniList schema marks nearly every field nullable; missing fields used
+// to blow up decoding with MissingFieldException -> 500.
 data class ALUserListItem(
     val id: Long,
-    val status: String,
-    val scoreRaw: Int,
-    val progress: Int,
-    val startedAt: ALFuzzyDate,
-    val completedAt: ALFuzzyDate,
-    val media: ALSearchItem,
-    val private: Boolean,
+    val status: String? = null,
+    val scoreRaw: Int? = null,
+    val progress: Int? = null,
+    val startedAt: ALFuzzyDate = ALFuzzyDate(),
+    val completedAt: ALFuzzyDate = ALFuzzyDate(),
+    val media: ALSearchItem? = null,
+    val private: Boolean = false,
 ) {
-    fun toALUserManga(): ALUserManga =
-        ALUserManga(
-            libraryId = this@ALUserListItem.id,
-            listStatus = status,
-            scoreRaw = scoreRaw,
-            chaptersRead = progress,
-            startDateFuzzy = startedAt.toEpochMilli(),
-            completedDateFuzzy = completedAt.toEpochMilli(),
-            manga = media.toALManga(),
-            private = private,
-        )
+    fun toALUserManga(): ALUserManga? =
+        media?.let {
+            ALUserManga(
+                libraryId = this@ALUserListItem.id,
+                listStatus = status ?: "",
+                scoreRaw = scoreRaw ?: 0,
+                chaptersRead = progress ?: 0,
+                startDateFuzzy = startedAt.toEpochMilli(),
+                completedDateFuzzy = completedAt.toEpochMilli(),
+                manga = it.toALManga(),
+                private = private,
+            )
+        }
 }

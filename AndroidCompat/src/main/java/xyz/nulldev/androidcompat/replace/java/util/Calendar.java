@@ -13,6 +13,15 @@ import com.ibm.icu.util.ULocale;
 import java.util.Date;
 import java.util.Locale;
 
+/**
+ * java.util.Calendar replacement backed by an ICU calendar.
+ *
+ * All field state lives in the ICU {@code delegate}; the base class' fields[]
+ * array is intentionally bypassed (the previous implementation left
+ * computeTime()/computeFields() empty which produced "get(YEAR) == 0" style
+ * bugs). The two compute* hooks still mirror state into the base fields[] for
+ * any residual base-class code path.
+ */
 public class Calendar extends java.util.Calendar {
     private com.ibm.icu.util.Calendar delegate;
 
@@ -20,39 +29,113 @@ public class Calendar extends java.util.Calendar {
         this.delegate = delegate;
     }
 
+    /** Returns the underlying ICU calendar. */
+    public com.ibm.icu.util.Calendar getDelegate() {
+        return delegate;
+    }
+
+    private static com.ibm.icu.util.Calendar unwrap(java.util.Calendar cal) {
+        return cal instanceof Calendar ? ((Calendar) cal).getDelegate() : null;
+    }
+
     public static java.util.Calendar getInstance() {
         return new Calendar(com.ibm.icu.util.Calendar.getInstance());
     }
 
-    public static com.ibm.icu.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone) {
-        return com.ibm.icu.util.Calendar.getInstance(zone);
+    public static java.util.Calendar getInstance(java.util.TimeZone zone) {
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(toIcuTimeZone(zone)));
+    }
+
+    public static java.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone) {
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(zone));
     }
 
     public static java.util.Calendar getInstance(Locale aLocale) {
         return new Calendar(com.ibm.icu.util.Calendar.getInstance(aLocale));
     }
 
-    public static com.ibm.icu.util.Calendar getInstance(ULocale locale) {
-        return com.ibm.icu.util.Calendar.getInstance(locale);
+    public static java.util.Calendar getInstance(ULocale locale) {
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(locale));
     }
 
-    public static com.ibm.icu.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone, Locale aLocale) {
-        return com.ibm.icu.util.Calendar.getInstance(zone, aLocale);
+    public static java.util.Calendar getInstance(java.util.TimeZone zone, Locale aLocale) {
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(toIcuTimeZone(zone), aLocale));
     }
 
-    public static com.ibm.icu.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone, ULocale locale) {
-        return com.ibm.icu.util.Calendar.getInstance(zone, locale);
+    public static java.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone, Locale aLocale) {
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(zone, aLocale));
+    }
+
+    public static java.util.Calendar getInstance(java.util.TimeZone zone, ULocale locale) {
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(toIcuTimeZone(zone), locale));
+    }
+
+    public static java.util.Calendar getInstance(com.ibm.icu.util.TimeZone zone, ULocale locale) {
+        return new Calendar(com.ibm.icu.util.Calendar.getInstance(zone, locale));
+    }
+
+    private static com.ibm.icu.util.TimeZone toIcuTimeZone(java.util.TimeZone zone) {
+        if (zone instanceof TimeZone) {
+            return ((TimeZone) zone).getDelegate();
+        }
+        return com.ibm.icu.util.TimeZone.getTimeZone(zone.getID());
     }
 
     public static Locale[] getAvailableLocales() {
         return com.ibm.icu.util.Calendar.getAvailableLocales();
     }
 
+    /**
+     * Mirrors the delegate's computed field values into the base class
+     * fields[] so residual base-class reads observe real values. All public
+     * read paths go straight to the delegate.
+     */
     @Override
-    protected void computeTime() {}
+    protected void computeFields() {
+        for (int i = 0; i < FIELD_COUNT; i++) {
+            fields[i] = delegate.get(i);
+            isSet[i] = true;
+        }
+        areFieldsSet = true;
+        // areAllFieldsSet is package-private in java.util.Calendar; the base
+        // class computes it lazily from isSet[]/fields[] anyway.
+        isTimeSet = true;
+    }
+
+    /**
+     * Pushes explicitly-set base fields into the delegate and adopts the
+     * delegate's computed time. All public write paths go straight to the
+     * delegate, so this only matters for residual base-class write paths.
+     */
+    @Override
+    protected void computeTime() {
+        for (int i = 0; i < FIELD_COUNT; i++) {
+            if (isSet[i]) {
+                delegate.set(i, fields[i]);
+            }
+        }
+        time = delegate.getTimeInMillis();
+        isTimeSet = true;
+    }
 
     @Override
-    protected void computeFields() {}
+    public int get(int field) {
+        return delegate.get(field);
+    }
+
+    @Override
+    public void set(int field, int value) {
+        delegate.set(field, value);
+    }
+
+    // NOTE: java.util.Calendar#clear(), #clear(int) and #isSet(int) are final
+    // in the JDK and cannot be overridden. The delegate keeps its own state,
+    // so all public accessor paths implemented here stay consistent.
+
+    @Override
+    public boolean isLenient() {
+        return delegate.isLenient();
+    }
 
     public static ULocale[] getAvailableULocales() {
         return com.ibm.icu.util.Calendar.getAvailableULocales();
@@ -84,6 +167,12 @@ public class Calendar extends java.util.Calendar {
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof Calendar) {
+            return delegate.equals(((Calendar) obj).delegate);
+        }
         return delegate.equals(obj);
     }
 
@@ -98,12 +187,14 @@ public class Calendar extends java.util.Calendar {
 
     @Override
     public boolean before(Object when) {
-        return delegate.before(when);
+        return when instanceof java.util.Calendar
+                && getTimeInMillis() < ((java.util.Calendar) when).getTimeInMillis();
     }
 
     @Override
     public boolean after(Object when) {
-        return delegate.after(when);
+        return when instanceof java.util.Calendar
+                && getTimeInMillis() > ((java.util.Calendar) when).getTimeInMillis();
     }
 
     @Override
@@ -131,8 +222,43 @@ public class Calendar extends java.util.Calendar {
         roll(field, up ? 1 : -1);
     }
 
-    public String getDisplayName(Locale loc) {
-        return delegate.getDisplayName(loc);
+    /**
+     * ICU calendars only expose a calendar-type display name, so field
+     * names are resolved through {@link com.ibm.icu.text.DateFormatSymbols}
+     * mirroring the JDK contract (short names for SHORT_/NARROW_ styles).
+     */
+    @Override
+    public String getDisplayName(int field, int style, Locale locale) {
+        com.ibm.icu.text.DateFormatSymbols symbols =
+                com.ibm.icu.text.DateFormatSymbols.getInstance(ULocale.forLocale(locale));
+        boolean shortStyle =
+                style == SHORT_FORMAT
+                        || style == SHORT_STANDALONE
+                        || style == NARROW_FORMAT
+                        || style == NARROW_STANDALONE;
+        String[] names;
+        int index;
+        switch (field) {
+            case MONTH:
+                names = shortStyle ? symbols.getShortMonths() : symbols.getMonths();
+                index = delegate.get(MONTH);
+                break;
+            case DAY_OF_WEEK:
+                names = shortStyle ? symbols.getShortWeekdays() : symbols.getWeekdays();
+                index = delegate.get(DAY_OF_WEEK);
+                break;
+            case AM_PM:
+                names = symbols.getAmPmStrings();
+                index = delegate.get(AM_PM);
+                break;
+            case ERA:
+                names = shortStyle ? symbols.getEras() : symbols.getEraNames();
+                index = delegate.get(ERA);
+                break;
+            default:
+                return null;
+        }
+        return index >= 0 && index < names.length ? names[index] : null;
     }
 
     public String getDisplayName(ULocale loc) {
@@ -141,6 +267,15 @@ public class Calendar extends java.util.Calendar {
 
     public int compareTo(com.ibm.icu.util.Calendar that) {
         return delegate.compareTo(that);
+    }
+
+    @Override
+    public int compareTo(java.util.Calendar anotherCalendar) {
+        com.ibm.icu.util.Calendar unwrapped = unwrap(anotherCalendar);
+        if (unwrapped != null) {
+            return delegate.compareTo(unwrapped);
+        }
+        return Long.compare(getTimeInMillis(), anotherCalendar.getTimeInMillis());
     }
 
     public DateFormat getDateTimeFormat(int dateStyle, int timeStyle, Locale loc) {
@@ -165,6 +300,11 @@ public class Calendar extends java.util.Calendar {
     }
 
     @Override
+    public void setTimeZone(java.util.TimeZone value) {
+        delegate.setTimeZone(toIcuTimeZone(value));
+    }
+
+    @Override
     public java.util.TimeZone getTimeZone() {
         return new TimeZone(delegate.getTimeZone());
     }
@@ -172,11 +312,6 @@ public class Calendar extends java.util.Calendar {
     @Override
     public void setLenient(boolean lenient) {
         delegate.setLenient(lenient);
-    }
-
-    @Override
-    public boolean isLenient() {
-        return delegate.isLenient();
     }
 
     public void setRepeatedWallTimeOption(int option) {
@@ -255,7 +390,7 @@ public class Calendar extends java.util.Calendar {
 
     @Override
     public Object clone() {
-        return delegate.clone();
+        return new Calendar((com.ibm.icu.util.Calendar) delegate.clone());
     }
 
     @Override

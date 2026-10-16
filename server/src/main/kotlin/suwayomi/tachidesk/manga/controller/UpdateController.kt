@@ -9,6 +9,7 @@ import suwayomi.tachidesk.manga.impl.update.IUpdater
 import suwayomi.tachidesk.manga.impl.update.UpdateStatus
 import suwayomi.tachidesk.manga.impl.update.UpdaterSocket
 import suwayomi.tachidesk.manga.model.dataclass.MangaChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.PAGINATION_FACTOR
 import suwayomi.tachidesk.manga.model.dataclass.PaginatedList
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
@@ -43,6 +44,12 @@ object UpdateController {
             },
             behaviorOf = { ctx, pageNum ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                // `pageNum * PAGINATION_FACTOR` is computed as Int downstream; keep the page
+                // number inside the non-overflowing range so huge values become a 400
+                // instead of a wrapped-around (negative) slice index
+                require(pageNum >= 0 && pageNum <= Int.MAX_VALUE / PAGINATION_FACTOR) {
+                    "'pageNum' must be between 0 and ${Int.MAX_VALUE / PAGINATION_FACTOR}"
+                }
                 ctx.future {
                     future {
                         Chapter.getRecentChapters(userId, pageNum)

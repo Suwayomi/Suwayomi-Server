@@ -51,11 +51,11 @@ object CategoryController {
             },
             behaviorOf = { ctx, name ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                if (Category.createCategory(userId, name) != -1) {
-                    ctx.status(200)
-                } else {
-                    ctx.status(HttpStatus.BAD_REQUEST)
-                }
+                require(name.isNotBlank()) { "category name must not be blank" }
+                // createCategory always resolves to a concrete category id (the old
+                // `!= -1` branch was dead code)
+                Category.createCategory(userId, name)
+                ctx.status(200)
             },
             withResults = {
                 httpCode(HttpStatus.OK)
@@ -139,6 +139,9 @@ object CategoryController {
             },
             behaviorOf = { ctx, from, to ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                // positions are 1-based; `0` is the reserved Default category — previously
+                // 0 was silently ignored and negatives crashed with a 500
+                require(from > 0 && to > 0) { "'from' and 'to' must be > 0" }
                 Category.reorderCategory(userId, from, to)
                 ctx.status(200)
             },

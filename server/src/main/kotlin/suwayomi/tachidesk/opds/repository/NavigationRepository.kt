@@ -3,6 +3,7 @@ package suwayomi.tachidesk.opds.repository
 import dev.icerock.moko.resources.StringResource
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.alias
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.countDistinct
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.innerJoin
@@ -30,7 +31,7 @@ import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
 import suwayomi.tachidesk.opds.dto.OpdsRootNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsSourceNavEntry
 import suwayomi.tachidesk.opds.dto.OpdsStatusNavEntry
-import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
+import suwayomi.tachidesk.opds.util.OpdsPaging
 import suwayomi.tachidesk.opds.util.OpdsStringUtil.formatSourceName
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
@@ -154,18 +155,18 @@ object NavigationRepository {
                     ).select(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
                     .where { ExtensionTable.isInstalled eq true }
                     .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
-                    .orderBy(SourceTable.name to SortOrder.ASC)
+                    .orderBy(SourceTable.name to SortOrder.ASC, SourceTable.id to SortOrder.ASC)
 
             // hide NSFW sources from users without the NSFW permission
             if (!includeNsfw) {
-                query.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.ordinal }
+                query.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.value }
             }
 
             val totalCount = query.count()
             val sources =
                 query
                     .limit(perPage)
-                    .offset(((pageNum - 1) * perPage).toLong())
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
                     .map {
                         OpdsSourceNavEntry(
                             id = it[SourceTable.id].value,
@@ -218,14 +219,15 @@ object NavigationRepository {
 
             query
                 .groupBy(SourceTable.id, SourceTable.name, SourceTable.lang, ExtensionTable.pkgName)
-                .orderBy(SourceTable.name to SortOrder.ASC)
+                .orderBy(SourceTable.name to SortOrder.ASC, SourceTable.id to SortOrder.ASC)
 
             val totalCount = query.count()
 
             if (pageNum != null) {
+                val perPage = opdsItemsPerPage(userId)
                 query
-                    .limit(opdsItemsPerPage(userId))
-                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
+                    .limit(perPage)
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
             }
 
             val sources =
@@ -283,20 +285,24 @@ object NavigationRepository {
                         { MangaTable.sourceReference },
                         { SourceTable.id },
                     ).select(CategoryTable.id, CategoryTable.name, mangaCount)
-                    .where { MangaUserTable.inLibrary eq true }
+                    .where {
+                        // categories are per-user; never surface another user's categories
+                        (MangaUserTable.inLibrary eq true) and (CategoryTable.user eq userId)
+                    }
 
             query.applyOpdsMangaFilter(userId, activeFilters, excludeField = "category_id")
 
             query
                 .groupBy(CategoryTable.id, CategoryTable.name)
-                .orderBy(CategoryTable.order to SortOrder.ASC)
+                .orderBy(CategoryTable.order to SortOrder.ASC, CategoryTable.id to SortOrder.ASC)
 
             val totalCount = query.count()
 
             if (pageNum != null) {
+                val perPage = opdsItemsPerPage(userId)
                 query
-                    .limit(opdsItemsPerPage(userId))
-                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
+                    .limit(perPage)
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
             }
 
             val categories =
@@ -356,9 +362,7 @@ object NavigationRepository {
 
             val finalGenres =
                 if (pageNum != null) {
-                    val fromIndex = ((pageNum - 1) * opdsItemsPerPage(userId))
-                    val toIndex = minOf(fromIndex + opdsItemsPerPage(userId), distinctGenres.size)
-                    if (fromIndex < distinctGenres.size) distinctGenres.subList(fromIndex, toIndex) else emptyList()
+                    OpdsPaging.pageSlice(distinctGenres, pageNum, opdsItemsPerPage(userId))
                 } else {
                     distinctGenres
                 }
@@ -366,7 +370,9 @@ object NavigationRepository {
             val paginatedGenres =
                 finalGenres.map { genreName ->
                     OpdsGenreNavEntry(
-                        id = genreName.encodeForOpdsURL(),
+                        // keep the raw name here; callers encode it for the URL context
+                        // (path segment vs. query parameter) they actually emit
+                        id = genreName,
                         title = genreName,
                         mangaCount = genreCounts[genreName]?.toLong() ?: 0L,
                     )
@@ -442,9 +448,7 @@ object NavigationRepository {
 
         val paginatedStatuses =
             if (pageNum != null) {
-                val fromIndex = ((pageNum - 1) * opdsItemsPerPage(userId))
-                val toIndex = minOf(fromIndex + opdsItemsPerPage(userId), allStatuses.size)
-                if (fromIndex < allStatuses.size) allStatuses.subList(fromIndex, toIndex) else emptyList()
+                OpdsPaging.pageSlice(allStatuses, pageNum, opdsItemsPerPage(userId))
             } else {
                 allStatuses
             }
@@ -494,9 +498,10 @@ object NavigationRepository {
             val totalCount = query.count()
 
             if (pageNum != null) {
+                val perPage = opdsItemsPerPage(userId)
                 query
-                    .limit(opdsItemsPerPage(userId))
-                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
+                    .limit(perPage)
+                    .offset(OpdsPaging.offsetFor(pageNum, perPage))
             }
 
             val languages =

@@ -16,17 +16,21 @@
 
 package xyz.nulldev.androidcompat.res;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Custom implementation of R.java.
  */
 public class RCompat {
     //Resources stored in memory
-    private static Map<Integer, Resource> resources = new HashMap<>();
-    //The last used resource ID, used to generate new resource IDs
-    private static int lastRes = 0;
+    private static final Map<Integer, Resource> resources = new ConcurrentHashMap<>();
+
+    //The last used resource ID, used to generate new resource IDs.
+    //IDs start at 0x7f000000 like real app resources so that resource id 0
+    //keeps its "no resource" sentinel meaning.
+    private static final AtomicInteger lastRes = new AtomicInteger(0x7f000000);
 
     /**
      * Add a new String resource.
@@ -47,7 +51,7 @@ public class RCompat {
      * @return The ID of the added resource.
      */
     public static int res(Resource res) {
-        int nextRes = lastRes++;
+        int nextRes = lastRes.getAndIncrement();
         resources.put(nextRes, res);
         return nextRes;
     }
@@ -56,9 +60,27 @@ public class RCompat {
      * Get a string resource
      * @param id The id of the resource
      * @return The string resource
+     * @throws NotFoundException if no resource exists for the given id
      */
     public static String getString(int id) {
-        return cast(resources.get(id), StringResource.class).getValue();
+        Resource resource = resources.get(id);
+        if (resource == null) {
+            throw new NotFoundException("No resource found for id: " + id);
+        }
+        return (String) cast(resource, StringResource.class).getValue();
+    }
+
+    /**
+     * Thrown when a resource lookup misses, mirroring
+     * android.content.res.Resources.NotFoundException.
+     */
+    public static class NotFoundException extends RuntimeException {
+        public NotFoundException() {
+        }
+
+        public NotFoundException(String message) {
+            super(message);
+        }
     }
 
     /**

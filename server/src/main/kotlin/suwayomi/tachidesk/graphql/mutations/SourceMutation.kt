@@ -8,7 +8,6 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
-import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
@@ -21,6 +20,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.directives.RequirePermissions
+import suwayomi.tachidesk.graphql.queries.filter.prefixLikePattern
 import suwayomi.tachidesk.graphql.types.FilterChange
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.graphql.types.MetaInput
@@ -38,7 +38,9 @@ import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UserPermission
+import suwayomi.tachidesk.server.user.hasPermission
 import java.util.concurrent.CompletableFuture
 
 class SourceMutation {
@@ -224,18 +226,23 @@ class SourceMutation {
                         val keyCondition: Op<Boolean>? =
                             item.keys?.takeIf { it.isNotEmpty() }?.let { SourceMetaTable.key inList it }
 
+                        // empty prefixes can't form a meaningful LIKE pattern, and each prefix is
+                        // escaped so a caller's '%', '_' or '\' can't act as a wildcard
                         val prefixCondition: Op<Boolean>? =
                             item.prefixes
                                 ?.filter { it.isNotEmpty() }
-                                ?.map { (SourceMetaTable.key like LikePattern("$it%")) as Op<Boolean> }
+                                ?.map { (SourceMetaTable.key like prefixLikePattern(it)) as Op<Boolean> }
                                 ?.reduceOrNull { acc, op -> acc or op }
 
                         val metaKeyCondition =
                             if (keyCondition != null && prefixCondition != null) {
                                 keyCondition or prefixCondition
                             } else {
-                                keyCondition ?: prefixCondition!!
+                                keyCondition ?: prefixCondition
                             }
+                        requireNotNull(metaKeyCondition) {
+                            "At least one non-empty key or prefix is required for each item"
+                        }
 
                         val condition =
                             (SourceMetaTable.user eq userId) and (SourceMetaTable.ref inList item.sourceIds) and metaKeyCondition
@@ -304,15 +311,19 @@ class SourceMutation {
                         .selectAll()
                         .where { SourceTable.id eq sourceId }
                         .firstOrNull()
-                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal }
+                        ?.let { it[SourceTable.contentWarning] >= ContentWarning.MIXED.value }
                         ?: false
                 }
 
-            // if (isSourceNsfw && !permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
-            //     throw ForbiddenException()
-            // }
+            // NSFW sources are off-limits without the permission — same gate as the
+            // source()/sources() queries
+            if (isSourceNsfw && !permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
+                throw ForbiddenException()
+            }
 
-            val source = GetSource.getSourceOrNull(sourceId)!!
+            val source =
+                GetSource.getSourceOrNull(sourceId)
+                    ?: throw IllegalArgumentException("Source not found: $sourceId")
             val mangasPage =
                 when (type) {
                     FetchSourceMangaType.SEARCH -> {
@@ -397,7 +408,12 @@ class SourceMutation {
                 preferences = Source.getSourcePreferencesRaw(sourceId).map { preferenceOf(it) },
                 source =
                     suspendTransaction {
-                        SourceType(SourceTable.selectAll().where { SourceTable.id eq sourceId }.first())!!
+                        SourceType(
+                            SourceTable
+                                .selectAll()
+                                .where { SourceTable.id eq sourceId }
+                                .firstOrNull() ?: throw IllegalArgumentException("Source not found: $sourceId"),
+                        ) ?: throw IllegalArgumentException("Source not found: $sourceId")
                     },
             )
         }

@@ -6,9 +6,9 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 
 @Serializable
 data class BGMSearchResult(
-    val total: Int,
-    val limit: Int,
-    val offset: Int,
+    val total: Int = 0,
+    val limit: Int = 0,
+    val offset: Int = 0,
     val data: List<BGMSubject> = emptyList(),
 )
 
@@ -17,15 +17,15 @@ data class BGMSearchResult(
 data class BGMSubject(
     val id: Long,
     @SerialName("name_cn")
-    val nameCn: String,
-    val name: String,
-    val summary: String?,
-    val date: String?, // YYYY-MM-DD
-    val images: BGMSubjectImages?,
+    val nameCn: String = "",
+    val name: String = "",
+    val summary: String? = null,
+    val date: String? = null, // YYYY-MM-DD
+    val images: BGMSubjectImages? = null,
     val volumes: Long = 0,
     val eps: Int = 0,
-    val rating: BGMSubjectRating?,
-    val platform: String?,
+    val rating: BGMSubjectRating? = null,
+    val platform: String? = null,
 ) {
     fun toTrackSearch(trackId: Int): TrackSearch =
         TrackSearch.create(trackId).apply {

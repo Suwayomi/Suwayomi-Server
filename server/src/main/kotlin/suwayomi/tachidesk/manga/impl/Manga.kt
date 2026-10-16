@@ -16,12 +16,12 @@ import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.SMangaUpdate
-import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import io.javalin.http.HttpStatus
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.CacheControl
@@ -43,7 +43,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
-import suwayomi.tachidesk.manga.impl.util.network.await
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ThumbnailFetchFailedException
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
@@ -60,8 +60,10 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.columns.validateMetaValueLength
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.manga.model.table.updateStrategyOrDefault
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
@@ -69,6 +71,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger { }
 
@@ -112,7 +115,7 @@ object Manga {
                 description = mangaEntry[MangaTable.description]
                 genre = mangaEntry[MangaTable.genre]
                 status = mangaEntry[MangaTable.status]
-                update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
+                update_strategy = updateStrategyOrDefault(mangaEntry[MangaTable.updateStrategy])
                 memo = mangaEntry[MangaTable.memo]
                 initialized = mangaEntry[MangaTable.initialized]
             }
@@ -196,21 +199,26 @@ object Manga {
         source: Source,
         sManga: SManga,
     ): SManga {
+        val mangaId = mangaEntry[MangaTable.id].value
+        val currentTitle = mangaEntry[MangaTable.title]
+        val remoteTitle =
+            try {
+                sManga.title
+            } catch (_: UninitializedPropertyAccessException) {
+                ""
+            }
+
+        // Filesystem work runs outside the transaction: the download-dir rename only
+        // depends on values already resolved here and its result gates the title write.
+        // If the tx rolls back afterwards the renamed dir is orphaned — the next update
+        // reconciles directory drift instead of holding IO inside the DB transaction.
+        val hasChangedTitle = remoteTitle.isNotEmpty() && remoteTitle != currentTitle
+        val canUpdateTitle =
+            hasChangedTitle &&
+                updateMangaDownloadDir(mangaId, currentTitle, source.toString(), remoteTitle)
+        val thumbnailChanged = !sManga.thumbnail_url.isNullOrEmpty()
+
         suspendTransaction {
-            val mangaId = mangaEntry[MangaTable.id].value
-            val currentTitle = mangaEntry[MangaTable.title]
-            val remoteTitle =
-                try {
-                    sManga.title
-                } catch (_: UninitializedPropertyAccessException) {
-                    ""
-                }
-
-            val hasChangedTitle = remoteTitle.isNotEmpty() && remoteTitle != currentTitle
-            val canUpdateTitle =
-                hasChangedTitle &&
-                    updateMangaDownloadDir(mangaId, currentTitle, source.toString(), remoteTitle)
-
             MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id] }) {
                 if (canUpdateTitle) {
                     it[MangaTable.title] = remoteTitle
@@ -223,10 +231,9 @@ object Manga {
                     ?: mangaEntry[MangaTable.description]
                 it[MangaTable.genre] = sManga.genre ?: mangaEntry[MangaTable.genre]
                 it[MangaTable.status] = sManga.status
-                if (!sManga.thumbnail_url.isNullOrEmpty()) {
+                if (thumbnailChanged) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
                     it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                    clearThumbnail(mangaId)
                 }
 
                 it[MangaTable.realUrl] =
@@ -252,6 +259,12 @@ object Manga {
                 it[MangaTable.updateStrategy] = sManga.update_strategy.name
                 it[MangaTable.memo] = sManga.memo
             }
+        }
+
+        // clear cached thumbnails only after the update committed — clearing inside the
+        // transaction would leave rolled-back rows pointing at already-deleted files
+        if (thumbnailChanged) {
+            clearThumbnail(mangaId)
         }
 
         return sManga
@@ -326,6 +339,9 @@ object Manga {
         userId: Int,
         metaByMangaId: Map<Int, Map<String, String>>,
     ) {
+        // MANGAMETA.value is varchar(4096): reject oversized input instead of letting the
+        // write die on an opaque SQL truncation error mid-transaction
+        metaByMangaId.values.forEach { it.values.forEach(::validateMetaValueLength) }
         transaction {
             val mangaIds = metaByMangaId.keys
             val metaKeys = metaByMangaId.flatMap { it.value.keys }
@@ -410,7 +426,11 @@ object Manga {
             } ?: throw NullPointerException("No thumbnail found")
 
         return try {
-            source.client
+            network
+                // keep the source's own client config but run thumbnail calls on the
+                // thumbnail dispatcher with tight timeouts: a dead image host must not
+                // queue every cover behind its per-host slots for 30s+
+                .thumbnailClient(source.client)
                 .newCall(
                     GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
                 ).awaitSuccess()
@@ -449,7 +469,9 @@ object Manga {
         return when (val source = getSourceOrStub(sourceId)) {
             is HttpSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
-                    fetchHttpSourceMangaThumbnail(source, mangaEntry)
+                    fetchRemoteThumbnail(mangaId) {
+                        fetchHttpSourceMangaThumbnail(source, mangaEntry)
+                    }
                 }
             }
 
@@ -471,13 +493,16 @@ object Manga {
 
             is StubSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
-                    val thumbnailUrl =
-                        mangaEntry[MangaTable.thumbnail_url]
-                            ?: throw NullPointerException("No thumbnail found")
-                    network.client
-                        .newCall(
-                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                        ).await()
+                    fetchRemoteThumbnail(mangaId) {
+                        val thumbnailUrl =
+                            mangaEntry[MangaTable.thumbnail_url]
+                                ?: throw NullPointerException("No thumbnail found")
+                        network
+                            .thumbnailClient()
+                            .newCall(
+                                GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
+                            ).awaitSuccess()
+                    }
                 }
             }
 
@@ -487,7 +512,79 @@ object Manga {
         }
     }
 
-    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+    /**
+     * Short-term memory of failed thumbnail fetches. Thumbnail requests bypass the
+     * HTTP cache (FORCE_NETWORK), so without this every page render re-hits a dead
+     * source and re-occupies its per-host dispatcher slots. Entries expire quickly so
+     * a just-recovered source is retried soon, and [clearThumbnail] drops the entry
+     * when the cover changes. Successful fetches land in the file caches and are
+     * never stored here.
+     *
+     * Only fetch-stage failures are recorded — inside the serialized fetch in
+     * [fetchRemoteThumbnail] — and only source-side ones: [IOException] covers HTTP
+     * error responses, timeouts and unreachable hosts, while database and
+     * programming errors propagate uncached. LocalSource reads covers off the
+     * disk — no fetch, so nothing is ever recorded for it.
+     */
+    private val thumbnailFetchFailures: Cache<Int, Throwable> =
+        Cache
+            .Builder<Int, Throwable>()
+            .expireAfterWrite(THUMBNAIL_FAILURE_TTL)
+            .build()
+
+    /**
+     * Surfaces the same error the request would have produced. Failures of the
+     * fetch stage are already recorded where they are thrown (see
+     * [fetchRemoteThumbnail]); everything else — database and programming
+     * errors — is not a source outage and propagates without being cached.
+     */
+    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> =
+        try {
+            getMangaThumbnailImpl(mangaId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ThumbnailFetchFailedException) {
+            // a remembered failure replayed by a gate or by the serialized
+            // re-check — unwrap the original error; re-caching it would extend
+            // the entry's TTL on every hit
+            throw e.cause ?: e
+        }
+
+    /**
+     * Runs a remote thumbnail fetch behind the failure cache. Called as the
+     * fetcher inside [getImageResponse]'s per-key mutex — i.e. after the stored
+     * temp-file check and serialized with every other fetch of the same cover —
+     * so a request that queued behind an in-flight fetch replays the failure it
+     * just recorded instead of re-hitting the dead source. The gates in
+     * [getMangaThumbnailImpl] sit outside any lock and cannot catch that herd;
+     * this check is the one that merges it.
+     */
+    private suspend fun fetchRemoteThumbnail(
+        mangaId: Int,
+        fetch: suspend () -> Response,
+    ): Response {
+        throwCachedThumbnailFailure(mangaId)
+        try {
+            return fetch()
+        } catch (e: IOException) {
+            thumbnailFetchFailures.put(mangaId, e)
+            throw e
+        }
+    }
+
+    /**
+     * Replays a remembered fetch failure for [mangaId], if any. Called only right
+     * before a path that would hit the source — a stored cover file must always win
+     * over a stale failure, so this is deliberately not checked on entry.
+     */
+    private suspend fun throwCachedThumbnailFailure(mangaId: Int) {
+        thumbnailFetchFailures.get(mangaId)?.let {
+            logger.debug { "Replaying the cached thumbnail failure for manga $mangaId" }
+            throw ThumbnailFetchFailedException(it)
+        }
+    }
+
+    private suspend fun getMangaThumbnailImpl(mangaId: Int): Pair<InputStream, String> {
         val mangaInLibrary =
             transaction {
                 MangaUserTable
@@ -506,20 +603,44 @@ object Manga {
             }
 
         if (mangaInLibrary && mangaSource != LocalSource.ID) {
-            return try {
-                ThumbnailDownloadHelper.getImage(mangaId)
+            try {
+                return ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
-                ThumbnailDownloadHelper.download(mangaId)
-                ThumbnailDownloadHelper.getImage(mangaId)
+                // no stored thumbnail yet — download it and serve the file
+                throwCachedThumbnailFailure(mangaId)
+                try {
+                    ThumbnailDownloadHelper.download(mangaId)
+                    return ThumbnailDownloadHelper.getImage(mangaId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: ThumbnailFetchFailedException) {
+                    // the download's own source fetch already failed — the direct
+                    // fetch below would just repeat that same request
+                    throw e.cause ?: e
+                } catch (e: Exception) {
+                    logger.warn(e) { "Thumbnail download failed for manga $mangaId, falling back to a direct fetch" }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // a corrupt or unreadable stored thumbnail must not 500 — fall back to
+                // fetching the image from the source directly
+                logger.warn(e) { "Serving the stored thumbnail failed for manga $mangaId, falling back to a direct fetch" }
             }
         }
 
+        // LocalSource reads covers straight off the disk — only remote source hits
+        // are throttled by the failure cache
+        if (mangaSource != LocalSource.ID) {
+            throwCachedThumbnailFailure(mangaId)
+        }
         return fetchMangaThumbnail(mangaId)
     }
 
     fun clearThumbnail(mangaId: Int) {
         val fileName = mangaId.toString()
 
+        thumbnailFetchFailures.invalidate(mangaId)
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
     }
@@ -529,7 +650,9 @@ object Manga {
             ChapterTable
                 .selectAll()
                 .where { ChapterTable.manga eq mangaId }
-                .maxByOrNull { it[ChapterTable.sourceOrder] }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                .limit(1)
+                .firstOrNull()
         }?.let { ChapterTable.toDataClass(it) }
 
     fun getUnreadChapters(
@@ -550,7 +673,7 @@ object Manga {
         logContext: KLogger = logger,
         mangaId: Int,
     ): Boolean {
-        val log = KotlinLogging.logger("${logContext.name}::isInExcludedDownloadCategory($mangaId)")
+        val log = KotlinLogging.logger("${logContext.name}::isInIncludedDownloadCategory($mangaId)")
 
         // Verify the manga is configured to be downloaded based on it's categories.
         var mangaCategories = CategoryManga.getMangaCategories(userId, mangaId).toSet()
@@ -584,3 +707,5 @@ object Manga {
         return true
     }
 }
+
+private val THUMBNAIL_FAILURE_TTL = 90.seconds

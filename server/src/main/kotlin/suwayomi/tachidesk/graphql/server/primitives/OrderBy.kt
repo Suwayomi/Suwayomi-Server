@@ -1,7 +1,10 @@
 package suwayomi.tachidesk.graphql.server.primitives
 
+import graphql.schema.CoercingParseValueException
 import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Expression
+import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
@@ -15,7 +18,13 @@ import org.jetbrains.exposed.v1.jdbc.Query
 import org.jetbrains.exposed.v1.jdbc.andWhere
 
 interface OrderBy<T> {
-    val column: Column<*>
+    /**
+     * The expression the list query puts into its ORDER BY clause.
+     *
+     * Widened from [Column] to [Expression] so a sort key can also be a computed expression
+     * (e.g. a `COALESCE` over a nullable column coming from a `LEFT JOIN` on per-user data).
+     */
+    val column: Expression<*>
 
     fun asCursor(type: T): Cursor
 
@@ -24,7 +33,11 @@ interface OrderBy<T> {
     fun less(cursor: Cursor): Op<Boolean>
 }
 
-interface Order<By : OrderBy<*>> {
+/**
+ * [By] is not bound to [OrderBy] on purpose: the in-memory `trackers()` query reuses
+ * this interface with its own non-SQL order-key enum.
+ */
+interface Order<By : Any> {
     val by: By
     val byType: SortOrder?
 }
@@ -54,6 +67,64 @@ fun SortOrder?.maybeSwap(value: Any?): SortOrder =
         this ?: SortOrder.ASC
     }
 
+/**
+ * Upper bound for `first`/`last` so a single page can't pull an unbounded result set
+ * into memory. The engine layer may add its own instrumentation on top of this
+ * query-layer validation.
+ */
+// Upstream applied client-provided page sizes unbounded; the stock WebUI pages in
+// chunks of 150 (e.g. GET_CHAPTERS_UPDATES), so the cap stays well above that while
+// still rejecting absurd values. The complexity limit bounds the real response cost.
+const val MAX_PAGE_SIZE = 1000
+
+/**
+ * Validates Relay-style pagination arguments for all list queries.
+ *
+ * - `first`/`last` must be within `0..maxPageSize` (`null` means unpaginated and stays allowed)
+ * - `first` and `last` are mutually exclusive
+ * - `offset` must be non-negative and is only supported together with `first`
+ */
+fun validatePagination(
+    first: Int?,
+    last: Int?,
+    offset: Int?,
+    maxPageSize: Int = MAX_PAGE_SIZE,
+) {
+    require(first == null || first in 0..maxPageSize) { "first must be in 0..$maxPageSize" }
+    require(last == null || last in 0..maxPageSize) { "last must be in 0..$maxPageSize" }
+    require(first == null || last == null) { "first and last are mutually exclusive" }
+    require(offset == null || offset >= 0) { "offset must be >= 0" }
+    require(offset == null || last == null) { "offset with last is not supported" }
+}
+
+/**
+ * The effective direction of the first sort key — the direction the whole cursor
+ * machinery must assume for the ordering.
+ *
+ * [applyBeforeAfter] builds composite "key, id" cursor predicates that compare
+ * both columns in a single direction: `key < v OR (key = v AND id < c)` under
+ * DESC. That predicate only selects the rows actually after the cursor when the
+ * unique tie-break sorts in the same direction as the primary key, so callers
+ * must append their unique base sort with this value rather than a constant
+ * `SortOrder.ASC`. A fixed ASC tie-break under a DESC primary key inverts the
+ * comparison inside tied blocks: rows with an id above the cursor are skipped
+ * while ids below it are re-selected (duplicated nodes, missing rows) and, once
+ * the cursor passes the smallest id of a tie block, the page comes back empty
+ * while `hasNextPage` stays true.
+ *
+ * A `null` `byType` sorts ASC, so an empty list or a direction-less first key
+ * resolves to [SortOrder.ASC].
+ */
+fun <By : Any> List<Order<By>>.cursorOrderType(): SortOrder = firstOrNull()?.byType ?: SortOrder.ASC
+
+/**
+ * Applies the `after`/`before` cursor predicates for the given effective ordering.
+ *
+ * Both bounds are applied independently so a client may pass `after` and `before`
+ * together to select the window between two cursors. Cursor values that fail to
+ * parse are reported as a client-facing [CoercingParseValueException] instead of an
+ * uncontrolled [NumberFormatException]/index error.
+ */
 fun <T> Query.applyBeforeAfter(
     before: Cursor?,
     after: Cursor?,
@@ -61,31 +132,47 @@ fun <T> Query.applyBeforeAfter(
     orderByType: SortOrder?,
 ) {
     if (after != null) {
-        andWhere {
-            when (orderByType) {
-                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> orderBy.less(after)
-                null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> orderBy.greater(after)
+        try {
+            andWhere {
+                when (orderByType) {
+                    SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> orderBy.less(after)
+                    null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> orderBy.greater(after)
+                }
             }
+        } catch (e: RuntimeException) {
+            throw CoercingParseValueException("Invalid cursor format", e)
         }
-    } else if (before != null) {
-        andWhere {
-            when (orderByType) {
-                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> orderBy.greater(before)
-                null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> orderBy.less(before)
+    }
+    if (before != null) {
+        try {
+            andWhere {
+                when (orderByType) {
+                    SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> orderBy.greater(before)
+                    null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> orderBy.less(before)
+                }
             }
+        } catch (e: RuntimeException) {
+            throw CoercingParseValueException("Invalid cursor format", e)
         }
     }
 }
 
-fun <T : OrderBy<*>, Id : Any> Query.applySort(
+/**
+ * Applies the ORDER BY clause for a list query.
+ *
+ * [last] paginates backwards from the end of the window: the rows are fetched in the
+ * swapped direction and the caller must reverse them back to forward order before
+ * building nodes/edges. `before` is only a cursor predicate and never swaps the sort.
+ * [reverse] is used by the pagination-info bound queries to fetch the opposite bound.
+ */
+fun <T : OrderBy<*>> Query.applySort(
     sort: List<Order<T>>,
-    before: Id?,
-    last: Id?,
+    last: Int?,
     reverse: Boolean = false,
 ): Query {
     sort.forEach { order ->
         val orderByColumn = order.by.column
-        val orderType = order.byType.maybeSwap(last ?: before)
+        val orderType = order.byType.maybeSwap(last)
 
         val finalOrderType =
             if (reverse) {
@@ -131,22 +218,23 @@ data class PaginationNeeds(
 
 fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
     sort: List<Order<T>>,
-    before: Cursor?,
     last: Int?,
     needs: PaginationNeeds,
     selectValue: (resultRow: ResultRow?) -> V?,
 ): PaginationInfo<V> {
     val baseQuery = this.copy()
 
-    this.applySort(sort, before, last)
+    this.applySort(sort, last)
 
     return PaginationInfo(
         total = if (needs.total) baseQuery.count() else 0,
+        // The bounds describe the whole filtered set, so they are always evaluated on the
+        // forward sort — `last` must only affect how the returned page itself is fetched.
         firstResult =
             if (needs.bounds) {
                 baseQuery
                     .copy()
-                    .applySort(sort, before, last)
+                    .applySort(sort, last = null)
                     .limit(1)
                     .firstOrNull()
                     ?.let(selectValue)
@@ -157,7 +245,7 @@ fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
             if (needs.bounds) {
                 baseQuery
                     .copy()
-                    .applySort(sort, before, last, true)
+                    .applySort(sort, last = null, reverse = true)
                     .limit(1)
                     .firstOrNull()
                     ?.let(selectValue)
@@ -169,15 +257,21 @@ fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
 
 fun <T : OrderBy<*>, Id : Any> Query.applySortAndGetPaginationInfo(
     sort: List<Order<T>>,
-    before: Cursor?,
     last: Int?,
     idColumn: Column<EntityID<Id>>,
     needs: PaginationNeeds,
-): PaginationInfo<Id> = applySortAndGetPaginationInfo(sort, before, last, needs) { it?.get(idColumn)?.value }
+): PaginationInfo<Id> = applySortAndGetPaginationInfo(sort, last, needs) { it?.get(idColumn)?.value }
+
+private fun <R> parseCursorValue(block: () -> R): R =
+    try {
+        block()
+    } catch (e: RuntimeException) {
+        throw CoercingParseValueException("Invalid cursor format", e)
+    }
 
 @JvmName("greaterNotUniqueIntKey")
 fun <T : Comparable<T>> greaterNotUnique(
-    column: Column<T>,
+    column: ExpressionWithColumnType<T>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
     toValue: (String) -> T,
@@ -185,7 +279,7 @@ fun <T : Comparable<T>> greaterNotUnique(
 
 @JvmName("greaterNotUniqueLongKey")
 fun <T : Comparable<T>> greaterNotUnique(
-    column: Column<T>,
+    column: ExpressionWithColumnType<T>,
     idColumn: Column<EntityID<Long>>,
     cursor: Cursor,
     toValue: (String) -> T,
@@ -193,51 +287,75 @@ fun <T : Comparable<T>> greaterNotUnique(
 
 @JvmName("greaterNotUniqueIntKeyIntValue")
 fun greaterNotUnique(
-    column: Column<EntityID<Int>>,
+    column: ExpressionWithColumnType<EntityID<Int>>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
 ): Op<Boolean> = greaterNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
 
 private fun <K : Comparable<K>, V : Comparable<V>> greaterNotUniqueImpl(
-    column: Column<V>,
+    column: ExpressionWithColumnType<V>,
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
     toValue: (String) -> V,
 ): Op<Boolean> {
-    val id = toKey(cursor.value.substringBefore('-'))
-    val value = toValue(cursor.value.substringAfter('-'))
+    // composite "id-value" cursor: the sort value follows the id so it may itself contain '-'
+    val (id, value) =
+        parseCursorValue {
+            toKey(cursor.value.substringBefore('-')) to toValue(cursor.value.substringAfter('-'))
+        }
     return (column greater value) or ((column eq value) and (idColumn greater id))
 }
 
 @JvmName("greaterNotUniqueEntityValue")
 private fun <K : Comparable<K>, V : Comparable<V>> greaterNotUniqueImpl(
-    column: Column<EntityID<V>>,
+    column: ExpressionWithColumnType<EntityID<V>>,
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
     toValue: (String) -> V,
 ): Op<Boolean> {
-    val id = toKey(cursor.value.substringBefore('-'))
-    val value = toValue(cursor.value.substringAfter('-'))
+    val (id, value) =
+        parseCursorValue {
+            toKey(cursor.value.substringBefore('-')) to toValue(cursor.value.substringAfter('-'))
+        }
     return (column greater value) or ((column eq value) and (idColumn greater id))
 }
 
+/**
+ * Builds the cursor value for a `String` id column whose values may themselves contain
+ * `-` (e.g. arbitrary meta keys). Layout: `"<idLength>:<id><value>"` — a length prefix so
+ * the split is unambiguous without escaping.
+ */
+fun formatStringKeyCursor(
+    id: String,
+    value: String,
+): String = "${id.length}:$id$value"
+
+private fun parseStringKeyCursor(cursor: Cursor): Pair<String, String> =
+    parseCursorValue {
+        val separatorIndex = cursor.value.indexOf(':')
+        val idLength = cursor.value.substring(0, separatorIndex).toInt()
+        val id = cursor.value.substring(separatorIndex + 1, separatorIndex + 1 + idLength)
+        val value = cursor.value.substring(separatorIndex + 1 + idLength)
+        id to value
+    }
+
 @JvmName("greaterNotUniqueStringKey")
 fun <T : Comparable<T>> greaterNotUnique(
-    column: Column<T>,
+    column: ExpressionWithColumnType<T>,
     idColumn: Column<String>,
     cursor: Cursor,
     toValue: (String) -> T,
 ): Op<Boolean> {
-    val id = cursor.value.substringBefore("\\-")
-    val value = toValue(cursor.value.substringAfter("\\-"))
+    val (id, rawValue) = parseStringKeyCursor(cursor)
+    val value = parseCursorValue { toValue(rawValue) }
     return (column greater value) or ((column eq value) and (idColumn greater id))
 }
 
 @JvmName("lessNotUniqueIntKey")
 fun <T : Comparable<T>> lessNotUnique(
-    column: Column<T>,
+    column: ExpressionWithColumnType<T>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
     toValue: (String) -> T,
@@ -245,7 +363,7 @@ fun <T : Comparable<T>> lessNotUnique(
 
 @JvmName("lessNotUniqueLongKey")
 fun <T : Comparable<T>> lessNotUnique(
-    column: Column<T>,
+    column: ExpressionWithColumnType<T>,
     idColumn: Column<EntityID<Long>>,
     cursor: Cursor,
     toValue: (String) -> T,
@@ -253,44 +371,48 @@ fun <T : Comparable<T>> lessNotUnique(
 
 @JvmName("lessNotUniqueIntKeyIntValue")
 fun lessNotUnique(
-    column: Column<EntityID<Int>>,
+    column: ExpressionWithColumnType<EntityID<Int>>,
     idColumn: Column<EntityID<Int>>,
     cursor: Cursor,
 ): Op<Boolean> = lessNotUniqueImpl(column, idColumn, cursor, String::toInt, String::toInt)
 
 private fun <K : Comparable<K>, V : Comparable<V>> lessNotUniqueImpl(
-    column: Column<V>,
+    column: ExpressionWithColumnType<V>,
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
     toValue: (String) -> V,
 ): Op<Boolean> {
-    val id = toKey(cursor.value.substringBefore('-'))
-    val value = toValue(cursor.value.substringAfter('-'))
+    val (id, value) =
+        parseCursorValue {
+            toKey(cursor.value.substringBefore('-')) to toValue(cursor.value.substringAfter('-'))
+        }
     return (column less value) or ((column eq value) and (idColumn less id))
 }
 
 @JvmName("lessNotUniqueEntityValue")
 private fun <K : Comparable<K>, V : Comparable<V>> lessNotUniqueImpl(
-    column: Column<EntityID<V>>,
+    column: ExpressionWithColumnType<EntityID<V>>,
     idColumn: Column<EntityID<K>>,
     cursor: Cursor,
     toKey: (String) -> K,
     toValue: (String) -> V,
 ): Op<Boolean> {
-    val id = toKey(cursor.value.substringBefore('-'))
-    val value = toValue(cursor.value.substringAfter('-'))
+    val (id, value) =
+        parseCursorValue {
+            toKey(cursor.value.substringBefore('-')) to toValue(cursor.value.substringAfter('-'))
+        }
     return (column less value) or ((column eq value) and (idColumn less id))
 }
 
 @JvmName("lessNotUniqueStringKey")
 fun <T : Comparable<T>> lessNotUnique(
-    column: Column<T>,
+    column: ExpressionWithColumnType<T>,
     idColumn: Column<String>,
     cursor: Cursor,
     toValue: (String) -> T,
 ): Op<Boolean> {
-    val id = cursor.value.substringBefore("\\-")
-    val value = toValue(cursor.value.substringAfter("\\-"))
+    val (id, rawValue) = parseStringKeyCursor(cursor)
+    val value = parseCursorValue { toValue(rawValue) }
     return (column less value) or ((column eq value) and (idColumn less id))
 }

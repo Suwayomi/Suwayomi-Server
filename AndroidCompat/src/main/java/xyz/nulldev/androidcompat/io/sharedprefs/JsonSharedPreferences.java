@@ -25,8 +25,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * JSON implementation of Android's SharedPreferences.
@@ -35,6 +39,19 @@ public class JsonSharedPreferences implements SharedPreferences {
 
     private static final String KEY_TYPE = "t";
     private static final String KEY_VALUE = "v";
+
+    /** Sentinel marking a key to be removed in an editor's modification map. */
+    private static final Object REMOVED = new Object();
+
+    /**
+     * Single-threaded daemon writer so apply() writes are asynchronous and
+     * serialized in call order.
+     */
+    private static final ExecutorService DISK_WRITER = Executors.newSingleThreadExecutor(r -> {
+        Thread thread = new Thread(r, "JsonSharedPreferences-writer");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     private Map<String, Object> prefs = new HashMap<>(); //In-memory preference values
     private List<OnSharedPreferenceChangeListener> listeners = new ArrayList<>(); //Change listeners
@@ -154,6 +171,59 @@ public class JsonSharedPreferences implements SharedPreferences {
         return object;
     }
 
+    /**
+     * Atomically write the current prefs to disk (temp file + move).
+     * @return true on success.
+     */
+    private boolean writeToDisk() {
+        if (file == null) {
+            return true;
+        }
+        String serialized = saveToString();
+        try {
+            File parent = file.getParentFile();
+            if (parent != null) {
+                parent.mkdirs();
+            }
+            File tempFile = new File(parent != null ? parent : file.getCanonicalFile().getParentFile(),
+                    file.getName() + ".tmp");
+            Files.write(tempFile.toPath(), serialized.getBytes(StandardCharsets.UTF_8));
+            try {
+                Files.move(tempFile.toPath(), file.toPath(),
+                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tempFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+            return true;
+        } catch (IOException e) {
+            logger.error("Failed to save shared prefs!", e);
+            return false;
+        }
+    }
+
+    /**
+     * Notify change listeners with a snapshot taken inside the lock while the
+     * callbacks themselves run outside the lock.
+     */
+    private void notifyListeners(List<String> affectedKeys) {
+        if (affectedKeys.isEmpty()) {
+            return;
+        }
+        List<OnSharedPreferenceChangeListener> snapshot;
+        synchronized (this) {
+            snapshot = new ArrayList<>(listeners);
+        }
+        for (String key : affectedKeys) {
+            for (OnSharedPreferenceChangeListener listener : snapshot) {
+                try {
+                    listener.onSharedPreferenceChanged(this, key);
+                } catch (RuntimeException e) {
+                    logger.error("Error in SharedPreferences listener", e);
+                }
+            }
+        }
+    }
+
     @Override
     public synchronized Map<String, ?> getAll() {
         return new HashMap<>(prefs);
@@ -226,121 +296,130 @@ public class JsonSharedPreferences implements SharedPreferences {
 
     public class JsonSharedPreferencesEditor implements Editor {
 
-        Map<String, Object> prefsClone = new HashMap<>(prefs);
-
-        List<String> affectedKeys = new ArrayList<>(); //List of all affected keys to invoke listeners on once changes applied
+        /**
+         * Per-key pending changes merged into {@link #prefs} at commit time,
+         * matching Android SharedPreferencesImpl.EditorImpl semantics.
+         * {@link JsonSharedPreferences#REMOVED} marks a key to be deleted.
+         */
+        private final Map<String, Object> mModified = new HashMap<>();
+        private boolean mClear = false;
 
         private JsonSharedPreferencesEditor() {
         }
 
-        private void  recordChange(String key) {
-            if (!affectedKeys.contains(key)) {
-                affectedKeys.add(key);
-            }
+        private synchronized Editor putValue(String key, Object value) {
+            // Android treats putX(key, null) as remove(key)
+            mModified.put(key, value == null ? REMOVED : value);
+            return this;
         }
 
         public synchronized Editor put(String s, Object o) {
             PrefType.fromObject(o); // Will throw if 'o' is invalid
-
-            prefsClone.put(s, o);
-            recordChange(s);
-            return this;
+            return putValue(s, o);
         }
 
         @Override
         public synchronized Editor putString(String s, String s1) {
-            prefsClone.put(s, s1);
-            recordChange(s);
-            return this;
+            return putValue(s, s1);
         }
 
         @Override
         public synchronized Editor putStringSet(String s, Set<String> set) {
-            Set<String> clonedSet = new HashSet<>();
-            clonedSet.addAll(set);
-            prefsClone.put(s, clonedSet);
-            recordChange(s);
-            return this;
+            return putValue(s, set == null ? null : new HashSet<>(set));
         }
 
         @Override
         public synchronized Editor putInt(String s, int i) {
-            prefsClone.put(s, i);
-            recordChange(s);
-            return this;
+            return putValue(s, i);
         }
 
         @Override
         public synchronized Editor putLong(String s, long l) {
-            prefsClone.put(s, l);
-            recordChange(s);
-            return this;
+            return putValue(s, l);
         }
 
         @Override
         public synchronized Editor putFloat(String s, float v) {
-            prefsClone.put(s, v);
-            recordChange(s);
-            return this;
+            return putValue(s, v);
         }
 
         @Override
         public synchronized Editor putBoolean(String s, boolean b) {
-            prefsClone.put(s, b);
-            recordChange(s);
-            return this;
+            return putValue(s, b);
         }
 
         @Override
         public synchronized Editor remove(String s) {
-            prefsClone.remove(s);
-            recordChange(s);
+            mModified.put(s, REMOVED);
             return this;
         }
 
         @Override
         public synchronized Editor clear() {
-            prefsClone.keySet().forEach(this::recordChange);
-            prefsClone.clear();
+            mClear = true;
+            mModified.clear();
             return this;
         }
 
-        @Override
-        public synchronized boolean commit() {
-            synchronized (JsonSharedPreferences.this) {
-                //Backup prefs
-                Map<String, Object> oldPrefs = prefs;
-                prefs = prefsClone;
-                if(file != null) {
-                    //Delete old on-disk copy of preferences
-                    if(file.exists()) {
-                        file.delete();
-                    }
-                    //Save new preferences to disk
-                    String string = saveToString();
-                    try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)))) {
-                        writer.print(string);
-                    } catch (IOException e) {
-                        logger.error("Failed to save shared prefs!", e);
-                        prefs = oldPrefs;
-                        return false;
-                    }
-                }
-                //Invoke preference change listeners
-                for (String key : affectedKeys) {
-                    for (OnSharedPreferenceChangeListener listener : listeners) {
-                        listener.onSharedPreferenceChanged(JsonSharedPreferences.this, key);
-                    }
-                }
-                affectedKeys.clear();
-                return true;
+        /**
+         * Merge this editor's per-key diff into the live preference map.
+         * Must be called while synchronized on {@link JsonSharedPreferences.this}.
+         * @return the logical keys that changed (for listener notification).
+         */
+        private List<String> commitToMemoryLocked() {
+            List<String> affectedKeys = new ArrayList<>();
+            Map<String, Object> modified;
+            boolean clear;
+            synchronized (this) {
+                modified = new HashMap<>(mModified);
+                clear = mClear;
+                mModified.clear();
+                mClear = false;
             }
+
+            if (clear) {
+                affectedKeys.addAll(prefs.keySet());
+                prefs.clear();
+            }
+            for (Map.Entry<String, Object> entry : modified.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                if (value == REMOVED) {
+                    if (prefs.containsKey(key)) {
+                        prefs.remove(key);
+                        affectedKeys.add(key);
+                    }
+                } else {
+                    prefs.put(key, value);
+                    affectedKeys.add(key);
+                }
+            }
+            return affectedKeys;
+        }
+
+        @Override
+        public boolean commit() {
+            List<String> affectedKeys;
+            synchronized (JsonSharedPreferences.this) {
+                affectedKeys = commitToMemoryLocked();
+            }
+            boolean written = writeToDisk();
+            // Android notifies listeners even when the disk write fails.
+            notifyListeners(affectedKeys);
+            return written;
         }
 
         @Override
         public void apply() {
-            //TODO Threading?
-            commit();
+            // Update memory immediately; persist asynchronously.
+            List<String> affectedKeys;
+            synchronized (JsonSharedPreferences.this) {
+                affectedKeys = commitToMemoryLocked();
+            }
+            if (file != null) {
+                DISK_WRITER.execute(JsonSharedPreferences.this::writeToDisk);
+            }
+            notifyListeners(affectedKeys);
         }
     }
 

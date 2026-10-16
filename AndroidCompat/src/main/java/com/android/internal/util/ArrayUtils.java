@@ -423,9 +423,13 @@ public class ArrayUtils {
         if (a == b) {
             return true;
         }
+        // null check must precede size() — a null-vs-list compare used to NPE here
+        if (a == null || b == null) {
+            return false;
+        }
         final int sizeA = a.size();
         final int sizeB = b.size();
-        if (a == null || b == null || sizeA != sizeB) {
+        if (sizeA != sizeB) {
             return false;
         }
         boolean diff = false;

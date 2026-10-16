@@ -10,15 +10,12 @@ package suwayomi.tachidesk.graphql.dataLoaders
 import com.expediagroup.graphql.dataloader.KotlinDataLoader
 import graphql.GraphQLContext
 import org.dataloader.DataLoader
-import org.dataloader.DataLoaderFactory
-import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
-import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.server.getAttribute
 import suwayomi.tachidesk.graphql.server.primitives.inIds
 import suwayomi.tachidesk.graphql.types.CategoryNodeList
@@ -34,17 +31,16 @@ class CategoryDataLoader : KotlinDataLoader<Int, CategoryType> {
     override val dataLoaderName = "CategoryDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, CategoryType> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val categories =
                         CategoryTable
                             .selectAll()
                             .where { CategoryTable.id inIds ids and (CategoryTable.user eq userId) }
                             .associateBy { it[CategoryTable.id].value }
-                    ids.map { categories[it]?.let { row -> CategoryType(row) } }
+                    ids.map { categories[it]?.let { row -> CategoryType(row) } }.asDataLoaderResults()
                 }
             }
         }
@@ -54,11 +50,10 @@ class CategoriesForMangaDataLoader : KotlinDataLoader<Int, CategoryNodeList> {
     override val dataLoaderName = "CategoriesForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, CategoryNodeList> =
-        DataLoaderFactory.newDataLoader<Int, CategoryNodeList> { ids ->
+        newBatchedDataLoader<Int, CategoryNodeList> { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val itemsByRef =
                         CategoryMangaTable
                             .innerJoin(
@@ -83,11 +78,10 @@ class CategoryCountForMangaDataLoader : KotlinDataLoader<Int, Int> {
     override val dataLoaderName = "CategoryCountForMangaDataLoader"
 
     override fun getDataLoader(graphQLContext: GraphQLContext): DataLoader<Int, Int> =
-        DataLoaderFactory.newDataLoader { ids ->
+        newBatchedDataLoader { ids ->
             future {
                 val userId = graphQLContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
-                transaction {
-                    addLogger(Slf4jSqlDebugLogger)
+                loggedTransaction {
                     val count = CategoryMangaTable.id.count()
                     val countByMangaId =
                         CategoryMangaTable

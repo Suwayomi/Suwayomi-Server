@@ -1,6 +1,7 @@
 package suwayomi.tachidesk.manga.impl.track.tracker
 
 import eu.kanade.tachiyomi.network.NetworkHelper
+import io.github.oshai.kotlinlogging.KotlinLogging
 import okhttp3.OkHttpClient
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
@@ -13,6 +14,7 @@ abstract class Tracker(
 ) {
     val trackPreferences = TrackerPreferences
     private val networkService: NetworkHelper by injectLazy()
+    private val logger = KotlinLogging.logger {}
 
     open val client: OkHttpClient
         get() = networkService.client
@@ -77,6 +79,16 @@ abstract class Tracker(
         url: String,
     ) {}
 
+    /**
+     * Credential login entry point.
+     *
+     * Contract: [loginImpl] may persist a usable token (interceptor and/or
+     * `track_token_*` preference) before a later step (e.g. fetching the user
+     * profile) fails. To prevent that half-logged-in state, any failure — of
+     * any type, so `Throwable` is caught, not just `Exception` — triggers
+     * [logout] and the original throwable is rethrown unchanged so callers can
+     * keep mapping concrete error types (a9c1c17e).
+     */
     suspend fun login(
         userId: Int,
         username: String,
@@ -85,19 +97,58 @@ abstract class Tracker(
         try {
             loginImpl(userId, username, password)
         } catch (e: Throwable) {
-            logout(userId)
+            logoutQuietly(userId)
             throw e
         }
     }
 
+    /**
+     * OAuth callback login entry point. Applies the same failure cleanup as
+     * [login]: a callback that persisted a token but failed afterwards logs the
+     * user out instead of leaving a working interceptor behind while
+     * `isLoggedIn` reports false.
+     */
+    suspend fun loginOAuth(
+        userId: Int,
+        callbackUrl: String,
+    ) {
+        try {
+            authCallback(userId, callbackUrl)
+        } catch (e: Throwable) {
+            logoutQuietly(userId)
+            throw e
+        }
+    }
+
+    /** Logout that never masks the original login failure. */
+    private suspend fun logoutQuietly(userId: Int) {
+        try {
+            logout(userId)
+        } catch (e: Throwable) {
+            logger.warn(e) { "logout after failed login threw" }
+        }
+    }
+
+    /**
+     * Performs the actual login. Implementations should additionally wrap
+     * their body in `try { ... } catch { logout(userId); throw }` when partial
+     * persistence is possible, as defence in depth on top of [login]'s wrapper.
+     */
     abstract suspend fun loginImpl(
         userId: Int,
         username: String,
         password: String,
     )
 
+    /**
+     * Clears the user's credentials AND any persisted OAuth/session token.
+     * Trackers overriding this must call `super.logout(userId)` and then clear
+     * their in-memory state; overrides must not throw — [login]'s failure
+     * cleanup depends on logout being safe to run on a half-logged-in state.
+     */
     open suspend fun logout(userId: Int) {
         trackPreferences.setTrackCredentials(userId, this, "", "")
+        trackPreferences.setTrackToken(userId, this, null)
     }
 
     open fun isLoggedIn(userId: Int): Boolean =
@@ -123,17 +174,35 @@ abstract class Tracker(
     }
 }
 
-fun String.extractToken(key: String): String? {
-    val regex = "$key=(.*?)$".toRegex()
-    for (s in this.split("&")) {
-        val matchResult = regex.find(s)
-        if (matchResult?.groups?.get(1) != null) {
-            return matchResult.groups[1]!!.value
-        }
-    }
-    return null
-}
+/**
+ * Extracts the value of a single `key=value` pair from an OAuth callback.
+ *
+ * Accepts both a raw `a=b&c=d` string and a full redirect URL. The parameter
+ * area starts after the first `?` (or, for fragment-only callbacks like
+ * AniList's implicit-flow `#access_token=...`, the whole string is it) and
+ * inside it `&` *and* `#` both separate pairs — a code-flow callback like
+ * `?code=abc#state=x` mixes query and fragment parameters, and a trailing
+ * `#` must not drop the query that precedes it. Where both sides carry the
+ * key, the earlier segment wins (the query precedes the fragment in a
+ * well-formed URL, so the code-flow `code` beats any fragment decoy).
+ * Matching is anchored on the segment start (`key=` at position 0), so a
+ * key is never picked up as the suffix of another parameter (`error_code`
+ * vs `code`). An absent key, and a `key=` pair with an empty value, both
+ * return null.
+ */
+fun String.extractToken(key: String): String? =
+    substringAfter('?')
+        .split('&', '#')
+        .firstOrNull { it.substringBefore('=') == key }
+        ?.substringAfter('=')
+        ?.takeUnless { it.isEmpty() }
 
 class TokenExpired : IOException("Token is expired, re-logging required")
 
+/**
+ * Raised by tracker interceptors when an OAuth token refresh fails for reasons
+ * other than an expired/revoked grant (which is [TokenExpired] and also sets
+ * the `track_token_expired_*` flag via `Tracker.setAuthExpired`). Kept in the
+ * shared layer so every tracker surfaces the same semantic failure.
+ */
 class TokenRefreshFailed : IOException("Token refresh failed")

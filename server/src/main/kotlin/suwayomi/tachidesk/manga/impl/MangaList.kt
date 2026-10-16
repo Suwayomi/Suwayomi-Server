@@ -18,6 +18,7 @@ import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -44,13 +45,25 @@ object MangaList {
                 if (source.supportsLatest) {
                     source.getLatestUpdates(pageNum)
                 } else {
-                    throw Exception("Source $source doesn't support latest")
+                    throw SourceException("Source $source doesn't support latest")
                 }
             }
         return mangasPage.processEntries(sourceId)
     }
 
-    fun MangasPage.insertOrUpdate(sourceId: Long): List<Int> =
+    fun MangasPage.insertOrUpdate(sourceId: Long): List<Int> {
+        // collected during the transaction and cleared after commit — deleting files
+        // inside the transaction would orphan them if it rolls back
+        val thumbnailsToClear = mutableListOf<Int>()
+        val mangaIds = insertOrUpdateTransaction(sourceId, thumbnailsToClear)
+        thumbnailsToClear.forEach { Manga.clearThumbnail(it) }
+        return mangaIds
+    }
+
+    private fun MangasPage.insertOrUpdateTransaction(
+        sourceId: Long,
+        thumbnailsToClear: MutableList<Int>,
+    ): List<Int> =
         transaction {
             val existingMangaUrlsToId =
                 MangaTable
@@ -83,7 +96,7 @@ object MangaList {
                     }.associate { Pair(it[MangaTable.url], it[MangaTable.id].value) }
 
             // delete thumbnail in case cached data still exists
-            insertedMangaUrlsToId.forEach { (_, id) -> Manga.clearThumbnail(id) }
+            insertedMangaUrlsToId.forEach { (_, id) -> thumbnailsToClear.add(id) }
 
             val mangaToUpdate =
                 mangas
@@ -113,7 +126,7 @@ object MangaList {
                             this[MangaTable.memo] = sManga.memo
                             if (!sManga.thumbnail_url.isNullOrEmpty() && manga[MangaTable.thumbnail_url] != sManga.thumbnail_url) {
                                 this[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                                Manga.clearThumbnail(manga[MangaTable.id].value)
+                                thumbnailsToClear.add(manga[MangaTable.id].value)
                             } else {
                                 this[MangaTable.thumbnailUrlLastFetched] =
                                     manga[MangaTable.thumbnailUrlLastFetched]

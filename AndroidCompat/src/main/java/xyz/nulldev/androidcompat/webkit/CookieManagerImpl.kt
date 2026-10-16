@@ -9,7 +9,14 @@ import java.net.URI
 
 @Suppress("DEPRECATION")
 class CookieManagerImpl : CookieManager() {
-    private val cookieHandler = CookieHandler.getDefault() as java.net.CookieManager
+    /**
+     * NOTE: this delegates to the JVM-default [CookieHandler]; the cookie
+     * store is therefore shared with every other consumer of the default
+     * CookieHandler in this process (documented shared-cookie-jar model).
+     */
+    private val cookieHandler =
+        CookieHandler.getDefault() as? java.net.CookieManager
+            ?: java.net.CookieManager().also { CookieHandler.setDefault(it) }
     private var acceptCookie = true
     private var acceptThirdPartyCookies = true
     private var allowFileSchemeCookies = false
@@ -69,7 +76,11 @@ class CookieManagerImpl : CookieManager() {
     @Deprecated("Deprecated in Java")
     override fun removeSessionCookie() {}
 
-    override fun removeSessionCookies(callback: ValueCallback<Boolean>?) {}
+    override fun removeSessionCookies(callback: ValueCallback<Boolean>?) {
+        // java.net.CookieStore cannot distinguish session cookies; report
+        // failure instead of silently dropping the callback.
+        callback?.onReceiveValue(false)
+    }
 
     @Deprecated("Deprecated in Java")
     override fun removeExpiredCookie() {}
@@ -91,6 +102,6 @@ class CookieManagerImpl : CookieManager() {
     override fun allowFileSchemeCookiesImpl(): Boolean = allowFileSchemeCookies
 
     override fun setAcceptFileSchemeCookiesImpl(accept: Boolean) {
-        allowFileSchemeCookies = acceptCookie
+        allowFileSchemeCookies = accept
     }
 }

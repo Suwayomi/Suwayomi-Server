@@ -7,6 +7,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserSettingsTable
 import suwayomi.tachidesk.graphql.types.DownloadConversion
@@ -39,10 +40,49 @@ class UserSettingsBackfillTest : ApplicationTest() {
         )
     }
 
+    // every server.* key setConfigValues() touches anywhere in this class; GlobalConfigManager
+    // is a JVM singleton shared with the rest of the suite, so values are captured verbatim
+    // and restored — never reset to an assumed default
+    private val globalConfigKeys =
+        listOf(
+            "server.excludeUnreadChapters",
+            "server.excludeNotStarted",
+            "server.autoDownloadNewChapters",
+            "server.opdsItemsPerPage",
+            "server.opdsChapterSortOrder",
+            "server.syncInterval",
+            "server.syncYomiHost",
+            "server.serveConversions",
+        )
+
+    private lateinit var originalGlobalValues: Map<String, Any?>
+
+    @BeforeEach
+    fun captureGlobalConfig() {
+        originalGlobalValues =
+            globalConfigKeys.associateWith { key ->
+                if (GlobalConfigManager.config.hasPath(key)) {
+                    GlobalConfigManager.config.getValue(key).unwrapped()
+                } else {
+                    null
+                }
+            }
+    }
+
     @AfterEach
     fun tearDown() {
         backfillFile.delete()
         userSettings.resetAll(1)
+
+        // updateValue writes both server.conf and the in-memory config, so replaying the
+        // captured raw values restores the exact pre-test state
+        runBlocking {
+            originalGlobalValues.forEach { (key, value) ->
+                if (value != null) {
+                    GlobalConfigManager.updateValue(key, value)
+                }
+            }
+        }
     }
 
     private fun setConfigValues(vararg values: Pair<String, Any>) {

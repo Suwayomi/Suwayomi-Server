@@ -13,7 +13,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.UserHandle;
-import kotlin.NotImplementedError;
 import xyz.nulldev.androidcompat.pm.InstalledPackage;
 import xyz.nulldev.androidcompat.pm.PackageController;
 import xyz.nulldev.androidcompat.util.KoinGlobalHelper;
@@ -36,67 +35,80 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public PackageInfo getPackageInfo(VersionedPackage versionedPackage, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        return getPackageInfo(versionedPackage.getPackageName(), flags);
     }
 
     @Override
     public PackageInfo getPackageInfoAsUser(String packageName, int flags, int userId) throws NameNotFoundException {
-        return getPackageInfo(packageName, userId);
+        // Single-user compatibility environment: flags are passed through, userId is ignored.
+        return getPackageInfo(packageName, flags);
     }
 
     @Override
     public String[] currentToCanonicalPackageNames(String[] names) {
-        throw new NotImplementedError();
+        // No renamed packages in this environment: canonical == current.
+        return names == null ? null : names.clone();
     }
 
     @Override
     public String[] canonicalToCurrentPackageNames(String[] names) {
-        throw new NotImplementedError();
+        return names == null ? null : names.clone();
     }
 
     @Override
     public Intent getLaunchIntentForPackage(String packageName) {
-        throw new NotImplementedError();
+        if (controller.findPackage(packageName) == null) return null;
+        return new Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_LAUNCHER)
+                .setPackage(packageName);
     }
 
     @Override
     public Intent getLeanbackLaunchIntentForPackage(String packageName) {
-        throw new NotImplementedError();
+        if (controller.findPackage(packageName) == null) return null;
+        return new Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+                .setPackage(packageName);
     }
 
     @Override
     public int[] getPackageGids(String packageName) throws NameNotFoundException {
-        return new int[0];
+        return getPackageGids(packageName, 0);
     }
 
     @Override
     public int[] getPackageGids(String packageName, int flags) throws NameNotFoundException {
+        // Throws NameNotFoundException for unknown packages, per contract.
+        getPackageInfo(packageName, flags);
         return new int[0];
     }
 
     @Override
     public int getPackageUid(String packageName, int flags) throws NameNotFoundException {
-        return 0;
+        ApplicationInfo info = getPackageInfo(packageName, flags).applicationInfo;
+        if (info == null) throw new NameNotFoundException(packageName);
+        return info.uid;
     }
 
     @Override
     public int getPackageUidAsUser(String packageName, int userId) throws NameNotFoundException {
-        return 0;
+        return getPackageUid(packageName, 0);
     }
 
     @Override
     public int getPackageUidAsUser(String packageName, int flags, int userId) throws NameNotFoundException {
-        return 0;
+        return getPackageUid(packageName, flags);
     }
 
     @Override
     public PermissionInfo getPermissionInfo(String name, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        // No permission database in this environment.
+        throw new NameNotFoundException(name);
     }
 
     @Override
     public List<PermissionInfo> queryPermissionsByGroup(String group, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        throw new NameNotFoundException(String.valueOf(group));
     }
 
     @Override
@@ -106,12 +118,12 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public PermissionGroupInfo getPermissionGroupInfo(String name, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        throw new NameNotFoundException(name);
     }
 
     @Override
     public List<PermissionGroupInfo> getAllPermissionGroups(int flags) {
-        throw new NotImplementedError();
+        return new ArrayList<>();
     }
 
     @Override
@@ -126,22 +138,22 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public ActivityInfo getActivityInfo(ComponentName component, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        throw new NameNotFoundException(String.valueOf(component));
     }
 
     @Override
     public ActivityInfo getReceiverInfo(ComponentName component, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        throw new NameNotFoundException(String.valueOf(component));
     }
 
     @Override
     public ServiceInfo getServiceInfo(ComponentName component, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        throw new NameNotFoundException(String.valueOf(component));
     }
 
     @Override
     public ProviderInfo getProviderInfo(ComponentName component, int flags) throws NameNotFoundException {
-        throw new NotImplementedError();
+        throw new NameNotFoundException(String.valueOf(component));
     }
 
     //TODO Return loaded extensions
@@ -152,12 +164,12 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public List<PackageInfo> getPackagesHoldingPermissions(String[] permissions, int flags) {
-        throw new NotImplementedError();
+        return new ArrayList<>();
     }
 
     @Override
     public List<PackageInfo> getInstalledPackagesAsUser(int flags, int userId) {
-        throw new NotImplementedError();
+        return getInstalledPackages(flags);
     }
 
     @Override
@@ -204,22 +216,30 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public void updatePermissionFlags(String permissionName, String packageName, int flagMask, int flagValues, UserHandle user) {
-        throw new NotImplementedError();
+        // All permissions are treated as granted in this environment; nothing to update.
     }
 
     @Override
     public boolean shouldShowRequestPermissionRationale(String permission) {
-        return true;
+        // All permissions are granted in this environment, so no rationale is needed.
+        return false;
     }
 
     @Override
     public int checkSignatures(String pkg1, String pkg2) {
-        return 0;
+        if (pkg1 == null || pkg2 == null
+                || controller.findPackage(pkg1) == null
+                || controller.findPackage(pkg2) == null) {
+            return PackageManager.SIGNATURE_UNKNOWN_PACKAGE;
+        }
+        // Only identical packages can claim a signature match; there is no
+        // certificate store to actually compare signatures with.
+        return pkg1.equals(pkg2) ? PackageManager.SIGNATURE_MATCH : PackageManager.SIGNATURE_NO_MATCH;
     }
 
     @Override
     public int checkSignatures(int uid1, int uid2) {
-        return 0;
+        return uid1 == uid2 ? PackageManager.SIGNATURE_MATCH : PackageManager.SIGNATURE_NO_MATCH;
     }
 
     @Override
@@ -239,7 +259,8 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public int getUidForSharedUser(String sharedUserName) throws NameNotFoundException {
-        return 0;
+        // No shared users in this environment.
+        throw new NameNotFoundException(sharedUserName);
     }
 
     @Override
@@ -259,7 +280,7 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public Drawable getInstantAppIcon(String packageName) {
-        throw new NotImplementedError();
+        return null;
     }
 
     @Override
@@ -309,12 +330,12 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public List<SharedLibraryInfo> getSharedLibraries(int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<SharedLibraryInfo> getSharedLibrariesAsUser(int flags, int userId) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
@@ -359,27 +380,27 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public List<ResolveInfo> queryIntentActivities(Intent intent, int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<ResolveInfo> queryIntentActivitiesAsUser(Intent intent, int flags, int userId) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<ResolveInfo> queryIntentActivityOptions(ComponentName caller, Intent[] specifics, Intent intent, int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<ResolveInfo> queryBroadcastReceivers(Intent intent, int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<ResolveInfo> queryBroadcastReceiversAsUser(Intent intent, int flags, int userId) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
@@ -389,22 +410,22 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public List<ResolveInfo> queryIntentServices(Intent intent, int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<ResolveInfo> queryIntentServicesAsUser(Intent intent, int flags, int userId) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<ResolveInfo> queryIntentContentProvidersAsUser(Intent intent, int flags, int userId) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<ResolveInfo> queryIntentContentProviders(Intent intent, int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
@@ -419,17 +440,17 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public List<ProviderInfo> queryContentProviders(String processName, int uid, int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public InstrumentationInfo getInstrumentationInfo(ComponentName className, int flags) throws NameNotFoundException {
-        return null;
+        throw new NameNotFoundException(String.valueOf(className));
     }
 
     @Override
     public List<InstrumentationInfo> queryInstrumentation(String targetPackage, int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
@@ -539,7 +560,8 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public CharSequence getApplicationLabel(ApplicationInfo info) {
-        return info.nonLocalizedLabel;
+        // Fall back to the package name when no label is declared, like Android.
+        return info.nonLocalizedLabel != null ? info.nonLocalizedLabel : info.packageName;
     }
 
     @Override
@@ -564,22 +586,35 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public void installPackage(Uri packageURI, PackageInstallObserver observer, int flags, String installerPackageName) {
-
+        // Package installation is not supported here, but the observer must
+        // still be invoked or the caller would wait forever.
+        if (observer != null) {
+            try {
+                observer.onPackageInstalled(
+                        packageURI != null ? String.valueOf(packageURI) : null,
+                        PackageManager.INSTALL_FAILED_INTERNAL_ERROR,
+                        "Package installation is not supported in Suwayomi AndroidCompat",
+                        null);
+            } catch (RuntimeException e) {
+                // Don't let a misbehaving observer crash the caller.
+            }
+        }
     }
 
     @Override
     public int installExistingPackage(String packageName) throws NameNotFoundException {
-        return 0;
+        getPackageInfo(packageName, 0); // NameNotFoundException if missing
+        return PackageManager.INSTALL_FAILED_INTERNAL_ERROR;
     }
 
     @Override
     public int installExistingPackage(String packageName, int installReason) throws NameNotFoundException {
-        return 0;
+        return installExistingPackage(packageName);
     }
 
     @Override
     public int installExistingPackageAsUser(String packageName, int userId) throws NameNotFoundException {
-        return 0;
+        return installExistingPackage(packageName);
     }
 
     @Override
@@ -609,12 +644,12 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public List<IntentFilterVerificationInfo> getIntentFilterVerifications(String packageName) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
     public List<IntentFilter> getAllIntentFilters(String packageName) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
@@ -659,7 +694,7 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public List<PackageInfo> getPreferredPackages(int flags) {
-        return null;
+        return new ArrayList<>();
     }
 
     @Override
@@ -814,7 +849,7 @@ public class FakePackageManager extends PackageManager {
 
     @Override
     public boolean isPackageAvailable(String packageName) {
-        return false;
+        return controller.findPackage(packageName) != null;
     }
 
     @Override

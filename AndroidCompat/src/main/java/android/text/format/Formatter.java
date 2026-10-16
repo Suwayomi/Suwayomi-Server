@@ -26,6 +26,10 @@ public class Formatter {
     /** @deprecated */
     @Deprecated
     public static String formatIpAddress(int ipv4Address) {
-        throw new RuntimeException("Stub!");
+        // Little-endian IPv4 address, matching the Android implementation.
+        return (ipv4Address & 0xff) + "." +
+                ((ipv4Address >>> 8) & 0xff) + "." +
+                ((ipv4Address >>> 16) & 0xff) + "." +
+                ((ipv4Address >>> 24) & 0xff);
     }
 }

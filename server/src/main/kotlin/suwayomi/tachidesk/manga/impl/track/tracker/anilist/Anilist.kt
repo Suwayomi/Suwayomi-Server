@@ -1,8 +1,7 @@
 package suwayomi.tachidesk.manga.impl.track.tracker.anilist
 
-import android.annotation.StringRes
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.github.reactivecircus.cache4k.Cache
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.tracker.DeletableTracker
 import suwayomi.tachidesk.manga.impl.track.tracker.Tracker
@@ -13,7 +12,6 @@ import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.hours
 
 class Anilist(
     id: Int,
@@ -36,20 +34,19 @@ class Anilist(
 
     private val json: Json by injectLazy()
 
+    // ConcurrentHashMap.computeIfAbsent guarantees a single instance per user —
+    // getOrPut/cache loaders can construct duplicates under concurrent first
+    // access, and each AnilistApi carries its own rate-limit budget.
     private val interceptors = ConcurrentHashMap<Int, AnilistInterceptor>()
-    private val apis =
-        Cache
-            .Builder<Int, AnilistApi>()
-            .expireAfterAccess(1.hours)
-            .build()
+    private val apis = ConcurrentHashMap<Int, AnilistApi>()
 
     fun interceptor(userId: Int): AnilistInterceptor =
-        interceptors.getOrPut(userId) {
+        interceptors.computeIfAbsent(userId) {
             AnilistInterceptor(userId, this)
         }
 
     suspend fun api(userId: Int): AnilistApi =
-        apis.get(userId) {
+        apis.computeIfAbsent(userId) {
             AnilistApi(client, interceptor(userId))
         }
 
@@ -63,7 +60,6 @@ class Anilist(
 
     override fun getStatusList(): List<Int> = listOf(READING, COMPLETED, ON_HOLD, DROPPED, PLAN_TO_READ, REREADING)
 
-    @StringRes
     override fun getStatus(status: Int): String? =
         when (status) {
             READING -> "Reading"
@@ -175,6 +171,12 @@ class Anilist(
         track: Track,
     ): Track = api(userId).addLibManga(track)
 
+    private fun getRemoteUserId(userId: Int): Int =
+        // the AniList account id is stored in the username slot; a logged-out
+        // or legacy state would throw NumberFormatException -> 500 here
+        getUsername(userId).toIntOrNull()
+            ?: throw IOException("Anilist: user id unavailable, log in again")
+
     override suspend fun update(
         userId: Int,
         track: Track,
@@ -183,7 +185,7 @@ class Anilist(
         // If user was using API v1 fetch library_id
         if (track.library_id == null || track.library_id!! == 0L) {
             val libManga =
-                api(userId).findLibManga(track, getUsername(userId).toInt())
+                api(userId).findLibManga(track, getRemoteUserId(userId))
                     ?: throw Exception("$track not found on user library")
             track.library_id = libManga.library_id
         }
@@ -210,7 +212,7 @@ class Anilist(
         track: Track,
     ) {
         if (track.library_id == null || track.library_id!! == 0L) {
-            val libManga = api(userId).findLibManga(track, getUsername(userId).toInt()) ?: return
+            val libManga = api(userId).findLibManga(track, getRemoteUserId(userId)) ?: return
             track.library_id = libManga.library_id
         }
 
@@ -222,9 +224,12 @@ class Anilist(
         track: Track,
         hasReadChapters: Boolean,
     ): Track {
-        val remoteTrack = api(userId).findLibManga(track, getUsername(userId).toInt())
+        val remoteTrack = api(userId).findLibManga(track, getRemoteUserId(userId))
         return if (remoteTrack != null) {
-            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = false)
+            // The remote private flag wins on rebind: keeping the local value
+            // (false when the bind form omitted it) would silently publish a
+            // private entry on the follow-up update push.
+            track.copyPersonalFrom(remoteTrack, copyRemotePrivate = true)
             track.library_id = remoteTrack.library_id
 
             if (track.status != COMPLETED) {
@@ -250,7 +255,7 @@ class Anilist(
         userId: Int,
         track: Track,
     ): Track {
-        val remoteTrack = api(userId).getLibManga(track, getUsername(userId).toInt())
+        val remoteTrack = api(userId).getLibManga(track, getRemoteUserId(userId))
         track.copyPersonalFrom(remoteTrack)
         track.title = remoteTrack.title
         track.total_chapters = remoteTrack.total_chapters
@@ -277,11 +282,19 @@ class Anilist(
         userId: Int,
         token: String,
     ) {
-        val oauth = api(userId).createOAuth(token)
-        interceptor(userId).setAuth(oauth)
-        val (username, scoreType) = api(userId).getCurrentUser()
-        trackPreferences.setScoreType(userId, this, scoreType)
-        saveCredentials(userId, username.toString(), oauth.accessToken)
+        try {
+            val oauth = api(userId).createOAuth(token)
+            interceptor(userId).setAuth(oauth)
+            val (username, scoreType) = api(userId).getCurrentUser()
+            trackPreferences.setScoreType(userId, this, scoreType)
+            saveCredentials(userId, username.toString(), oauth.accessToken)
+        } catch (e: Throwable) {
+            // setAuth persisted the token before getCurrentUser could fail —
+            // never leave a working interceptor behind while not logged in
+            interceptor(userId).setAuth(null)
+            logout(userId)
+            throw e
+        }
     }
 
     override suspend fun logout(userId: Int) {
@@ -294,14 +307,18 @@ class Anilist(
         userId: Int,
         oAuth: ALOAuth?,
     ) {
-        trackPreferences.setTrackToken(userId, this, json.encodeToString(oAuth))
+        // encoding a null oauth produced the literal string "null", which was
+        // then handed to the decoder — persist real nulls instead
+        trackPreferences.setTrackToken(userId, this, oAuth?.let { json.encodeToString(it) })
     }
 
     fun loadOAuth(userId: Int): ALOAuth? =
         try {
-            json.decodeFromString<ALOAuth>(trackPreferences.getTrackToken(userId, this)!!)
-        } catch (e: Exception) {
-            logger.error(e) { "loadOAuth err" }
+            trackPreferences
+                .getTrackToken(userId, this)
+                ?.let { json.decodeFromString<ALOAuth>(it) }
+        } catch (e: SerializationException) {
+            logger.warn(e) { "loadOAuth: dropping undecodable persisted token" }
             null
         }
 }

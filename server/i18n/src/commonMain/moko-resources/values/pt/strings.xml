@@ -8,7 +8,7 @@
     <string name="opds_feeds_languages_title">Idiomas</string>
     <string name="opds_feeds_category_specific_title">Categoria: %1$s</string>
     <string name="opds_feeds_language_specific_title">Idioma: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Fonte: %1$s</string>
+
     <string name="opds_feeds_sources_title">Todas as Fontes</string>
     <string name="opds_feeds_genre_specific_title">Gênero: %1$s</string>
     <string name="opds_feeds_categories_entry_content">Navegue por séries organizadas por categorias</string>
@@ -44,7 +44,7 @@
     <string name="opds_chapter_status_in_progress">⌛</string>
     <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_base">Série: %1$s | %2$s</string>
-    <string name="opds_chapter_details_progress">| Progresso: %1$d de %2$d</string>
+    <string name="opds_chapter_details_progress"> | Progresso: %1$d de %2$s</string>
     <string name="manga_status_unknown">Desconhecido</string>
     <string name="manga_status_ongoing">Em Andamento</string>
     <string name="manga_status_completed">Concluído</string>
@@ -52,7 +52,7 @@
     <string name="manga_status_publishing_finished">Publicação Finalizada</string>
     <string name="manga_status_cancelled">Cancelado</string>
     <string name="manga_status_on_hiatus">Em Hiato</string>
-    <string name="opds_chapter_details_scanlator">| Por %1$s</string>
+    <string name="opds_chapter_details_scanlator"> | Por %1$s</string>
     <string name="opds_feeds_explore_title">Explorar</string>
     <string name="opds_feeds_explore_entry_content">Explore novas séries de suas fontes</string>
     <string name="opds_feeds_history_title">Histórico</string>

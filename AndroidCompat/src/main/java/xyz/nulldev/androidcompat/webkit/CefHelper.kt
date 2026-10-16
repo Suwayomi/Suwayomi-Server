@@ -23,19 +23,33 @@ object CefHelper {
     fun waitForInit() =
         callbackFlow {
             val app = cefApp.first { it.isFailure || it.getOrThrow() != null }.getOrThrow()!!
-            app.onInitialization {
-                logger.debug { "CEF: Initialization state $it" }
-                when (it) {
-                    CefApp.CefAppState.INITIALIZED -> {
-                        trySend(app)
-                        close()
-                    }
+            // onInitialization only fires on state *transitions*; if CEF
+            // already reached INITIALIZED the callback would never run, so
+            // check the current state first.
+            if (CefApp.getState() == CefApp.CefAppState.INITIALIZED) {
+                trySend(app)
+                close()
+            } else {
+                app.onInitialization {
+                    logger.debug { "CEF: Initialization state $it" }
+                    when (it) {
+                        CefApp.CefAppState.INITIALIZED -> {
+                            trySend(app)
+                            close()
+                        }
 
-                    CefApp.CefAppState.SHUTTING_DOWN, CefApp.CefAppState.TERMINATED -> {
-                        close(CefException("Shutting down"))
-                    }
+                        CefApp.CefAppState.SHUTTING_DOWN, CefApp.CefAppState.TERMINATED -> {
+                            close(CefException("Shutting down"))
+                        }
 
-                    else -> {}
+                        else -> {}
+                    }
+                }
+                // Re-check: initialization may have completed between the
+                // first check and the callback registration.
+                if (CefApp.getState() == CefApp.CefAppState.INITIALIZED) {
+                    trySend(app)
+                    close()
                 }
             }
             awaitClose {}

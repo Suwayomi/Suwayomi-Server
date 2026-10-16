@@ -1417,7 +1417,8 @@ public abstract class WebSettings {
      * @param context a Context object used to access application assets
      */
     public static String getDefaultUserAgent(Context context) {
-        throw new RuntimeException("Stub!");
+        return "Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36 (KHTML, like Gecko)"
+                + " Chrome/120.0.0.0 Mobile Safari/537.36";
     }
 
     /**

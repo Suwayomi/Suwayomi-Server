@@ -15,6 +15,7 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.okio.decodeFromBufferedSource
 import kotlinx.serialization.protobuf.ProtoBuf
+import okhttp3.HttpUrl
 import okio.BufferedSource
 import okio.buffer
 import okio.gzip
@@ -25,6 +26,7 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.manga.impl.extension.github.BaseNetworkExtensionStore
 import suwayomi.tachidesk.manga.impl.extension.github.NetworkExtensionStore
 import suwayomi.tachidesk.manga.impl.extension.github.NetworkLegacyExtension
 import suwayomi.tachidesk.manga.impl.extension.github.NetworkLegacyExtensionRepo
@@ -40,49 +42,46 @@ import kotlin.coroutines.cancellation.CancellationException
 object ExtensionStoreService {
     private val logger = KotlinLogging.logger {}
 
+    /**
+     * `index_v2` redirect chains are store-controlled input; without a bound a
+     * store could make this server follow (and fetch) an unbounded chain of
+     * URLs — stack growth plus an SSRF springboard.
+     */
+    private const val MAX_INDEX_REDIRECTS = 3
+
     val network: NetworkHelper by injectLazy()
     val protoBuf: ProtoBuf by injectLazy()
     val json: Json by injectLazy()
 
-    suspend fun fetch(indexUrl: String): ExtensionStore {
-        var updatedIndexUrl: String = indexUrl
+    suspend fun fetch(indexUrl: String): ExtensionStore = fetch(indexUrl, redirectDepth = 0)
+
+    private suspend fun fetch(
+        indexUrl: String,
+        redirectDepth: Int,
+    ): ExtensionStore {
+        // Egress policy: http(s) only + (unless enabled) no private-network
+        // hosts — applied to every URL a store hands us, on every hop.
+        val validatedIndexUrl = StoreUrlPolicy.requireAllowedUrl(indexUrl).toString()
         return try {
-            val response = network.client.newCall(GET(updatedIndexUrl)).awaitSuccess()
+            val response = network.client.newCall(GET(validatedIndexUrl)).awaitSuccess()
+            val contentType =
+                response.body
+                    .contentType()
+                    ?.toString()
+                    ?.lowercase()
             response.body.source().decompressIfGzipped().use { source ->
-                val networkStore =
-                    when (source.peek().readByte()) {
-                        // "[..."
-                        0x5B.toByte() -> {
-                            run {
-                                if (!indexUrl.endsWith("/index.min.json")) {
-                                    throw IllegalArgumentException("Provided legacy store url is not valid")
-                                }
-                                updatedIndexUrl = indexUrl.replace("/index.min.json", "/repo.json")
-                                network.client.newCall(GET(updatedIndexUrl)).awaitSuccess().body.source().use {
-                                    json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(it)
-                                }
-                            }
-                        }
-
-                        // "{..."
-                        0x7B.toByte() -> {
-                            try {
-                                json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(source.peek())
-                            } catch (_: IllegalArgumentException) {
-                                json.decodeFromBufferedSource<NetworkExtensionStore>(source)
-                            }
-                        }
-
-                        else -> {
-                            protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.readByteArray())
-                        }
-                    }
+                val (networkStore, effectiveIndexUrl) = decodeIndex(source, validatedIndexUrl, contentType)
 
                 if (networkStore is NetworkLegacyExtensionRepo && networkStore.indexV2 != null) {
-                    return fetch(networkStore.indexV2)
+                    if (redirectDepth >= MAX_INDEX_REDIRECTS) {
+                        throw IllegalArgumentException(
+                            "Extension store '$indexUrl' exceeded the index_v2 redirect limit ($MAX_INDEX_REDIRECTS)",
+                        )
+                    }
+                    return fetch(networkStore.indexV2, redirectDepth + 1)
                 }
 
-                networkStore.toExtensionStore(updatedIndexUrl)
+                networkStore.toExtensionStore(effectiveIndexUrl)
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
@@ -90,6 +89,99 @@ object ExtensionStoreService {
             throw e
         }
     }
+
+    /**
+     * Decodes the store index. Format is decided by explicit markers first —
+     * Content-Type and the `.json` file extension — because a protobuf index
+     * can legitimately start with `0x5B`/`0x7B` (valid field tags) and must not
+     * be misrouted to the JSON branches where both decoders would fail.
+     * Without markers the first byte is only a hint: JSON is tried on a peeked
+     * view (which never consumes [source]) and protobuf is the fallback.
+     */
+    private suspend fun decodeIndex(
+        source: BufferedSource,
+        indexUrl: String,
+        contentType: String?,
+    ): Pair<BaseNetworkExtensionStore, String> {
+        val firstByte = source.peek().readByte().toInt() and 0xFF
+        val jsonByMarker =
+            contentType?.contains("json") == true || indexUrl.endsWith(".json", ignoreCase = true)
+        val protoByMarker =
+            contentType?.let { "protobuf" in it || "x-protobuf" in it || "octet-stream" in it } == true
+
+        return when {
+            protoByMarker -> {
+                protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.readByteArray()) to indexUrl
+            }
+
+            // "[..." — a legacy repo serves the extension list itself; the store
+            // metadata lives in repo.json next to index.min.json.
+            firstByte == '['.code && (jsonByMarker || source.peekLooksLikeJsonArray()) -> {
+                if (!indexUrl.endsWith("/index.min.json")) {
+                    throw IllegalArgumentException("Provided legacy store url is not valid")
+                }
+                val repoUrl = StoreUrlPolicy.requireAllowedUrl(indexUrl.replace("/index.min.json", "/repo.json"))
+                val store =
+                    network.client.newCall(GET(repoUrl.toString())).awaitSuccess().body.source().use {
+                        json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(it)
+                    }
+                store to repoUrl.toString()
+            }
+
+            // "{..." — either a legacy repo.json or a v2 JSON store index.
+            firstByte == '{'.code && (jsonByMarker || source.peekLooksLikeJsonObject()) -> {
+                try {
+                    json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(source.peek()) to indexUrl
+                } catch (_: IllegalArgumentException) {
+                    json.decodeFromBufferedSource<NetworkExtensionStore>(source) to indexUrl
+                }
+            }
+
+            else -> {
+                protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.readByteArray()) to indexUrl
+            }
+        }
+    }
+
+    /** True when the payload parses as the legacy JSON extension list. */
+    private fun BufferedSource.peekLooksLikeJsonArray(): Boolean =
+        try {
+            json.decodeFromBufferedSource<List<NetworkLegacyExtension>>(peek())
+            true
+        } catch (_: Exception) {
+            false
+        }
+
+    /** True when the payload parses as a JSON object under either store schema. */
+    private fun BufferedSource.peekLooksLikeJsonObject(): Boolean =
+        try {
+            json.decodeFromBufferedSource<NetworkLegacyExtensionRepo>(peek())
+            true
+        } catch (_: Exception) {
+            false
+        } ||
+            try {
+                json.decodeFromBufferedSource<NetworkExtensionStore>(peek())
+                true
+            } catch (_: Exception) {
+                false
+            }
+
+    /**
+     * Decodes a `{`-JSON-or-protobuf payload: tries JSON on a peeked view so
+     * the original stream stays intact for the protobuf fallback. Used where
+     * only a JSON object vs protobuf ambiguity exists.
+     */
+    private inline fun <reified T> BufferedSource.decodeJsonObjectOrProto(): T =
+        if (peek().readByte() == '{'.code.toByte()) {
+            try {
+                json.decodeFromBufferedSource<T>(peek())
+            } catch (_: Exception) {
+                protoBuf.decodeFromByteArray(readByteArray())
+            }
+        } else {
+            protoBuf.decodeFromByteArray(readByteArray())
+        }
 
     fun upsert(store: ExtensionStore) {
         transaction {
@@ -216,35 +308,27 @@ object ExtensionStoreService {
     suspend fun getExtensions(store: ExtensionStore): List<ExtensionInfo> {
         val extensions =
             if (store.extensionListUrl != null) {
-                val response = network.client.newCall(GET(store.extensionListUrl)).awaitSuccess()
+                // store-supplied URL: same egress policy as the index fetch
+                val listUrl: HttpUrl = StoreUrlPolicy.requireAllowedUrl(store.extensionListUrl)
+                val response = network.client.newCall(GET(listUrl.toString())).awaitSuccess()
                 response.body.source().decompressIfGzipped().use { source ->
-                    when (source.peek().readByte()) {
-                        // "{..."
-                        0x7B.toByte() -> {
-                            json.decodeFromBufferedSource<NetworkExtensionStore.ExtensionList>(source)
-                        }
-
-                        else -> {
-                            protoBuf.decodeFromByteArray<NetworkExtensionStore.ExtensionList>(
-                                source.readByteArray(),
-                            )
-                        }
-                    }.toExtensionInfos(store)
+                    source
+                        .decodeJsonObjectOrProto<NetworkExtensionStore.ExtensionList>()
+                        .toExtensionInfos(store)
                 }
             } else if (!store.isLegacy) {
-                val response = network.client.newCall(GET(store.indexUrl)).awaitSuccess()
+                val indexUrl = StoreUrlPolicy.requireAllowedUrl(store.indexUrl)
+                val response = network.client.newCall(GET(indexUrl.toString())).awaitSuccess()
                 response.body.source().decompressIfGzipped().use { source ->
-                    when (source.peek().readByte()) {
-                        // "{..."
-                        0x7B.toByte() -> json.decodeFromBufferedSource<NetworkExtensionStore>(source)
-
-                        else -> protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.readByteArray())
-                    }.extensionList!!
+                    source
+                        .decodeJsonObjectOrProto<NetworkExtensionStore>()
+                        .extensionList!!
                         .toExtensionInfos(store)
                 }
             } else {
                 val storeBaseUrl = store.indexUrl.removeSuffix("/repo.json")
-                val response = network.client.newCall(GET("$storeBaseUrl/index.min.json")).awaitSuccess()
+                val legacyIndexUrl = StoreUrlPolicy.requireAllowedUrl("$storeBaseUrl/index.min.json")
+                val response = network.client.newCall(GET(legacyIndexUrl.toString())).awaitSuccess()
                 response.body.source().use { source ->
                     json
                         .decodeFromBufferedSource<List<NetworkLegacyExtension>>(source)

@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -30,7 +31,9 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import java.io.IOException
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -84,6 +87,16 @@ private fun clampLastPageReads(
         }
 }
 
+/**
+ * A business error thrown by extension/source code (e.g. "permission denied", "not
+ * found on the site"). It is an I/O-flavoured upstream fault, not a server defect —
+ * mapped to 424 Failed Dependency with the source's own message in [JavalinSetup].
+ */
+class SourceException(
+    message: String?,
+    cause: Throwable? = null,
+) : IOException(message ?: "Source request failed", cause)
+
 suspend fun refreshChapterPageList(
     mangaId: Int,
     chapterId: Int,
@@ -96,17 +109,26 @@ suspend fun refreshChapterPageList(
         val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
         val pageList =
-            source
-                .getPageList(
-                    SChapter.create().apply {
-                        url = chapterEntry[ChapterTable.url]
-                        name = chapterEntry[ChapterTable.name]
-                        scanlator = chapterEntry[ChapterTable.scanlator]
-                        chapter_number = chapterEntry[ChapterTable.chapter_number]
-                        date_upload = chapterEntry[ChapterTable.date_upload]
-                        memo = chapterEntry[ChapterTable.memo]
-                    },
-                ).mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
+            try {
+                source
+                    .getPageList(
+                        SChapter.create().apply {
+                            url = chapterEntry[ChapterTable.url]
+                            name = chapterEntry[ChapterTable.name]
+                            scanlator = chapterEntry[ChapterTable.scanlator]
+                            chapter_number = chapterEntry[ChapterTable.chapter_number]
+                            date_upload = chapterEntry[ChapterTable.date_upload]
+                            memo = chapterEntry[ChapterTable.memo]
+                        },
+                    )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                // HttpException/host-unreachable already map to source-failure statuses
+                throw e
+            } catch (e: Exception) {
+                throw SourceException(e.message, e)
+            }.mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
 
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {
@@ -176,7 +198,22 @@ private class ChapterForDownload(
     suspend fun asDownloadReady(): ChapterDataClass {
         val log = KotlinLogging.logger("${logger.name}::asDownloadReady")
 
-        val downloadPageCount = runCatching { ChapterDownloadHelper.getImageCount(mangaId, chapterId) }.getOrDefault(0)
+        val downloadPageCount =
+            try {
+                ChapterDownloadHelper.getImageCount(mangaId, chapterId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: NoSuchElementException) {
+                // providers signal "no download present" via NoSuchElementException —
+                // that's the normal not-downloaded case, not a filesystem failure
+                0
+            } catch (e: Exception) {
+                // "download does not exist" (count 0) is normal; a filesystem read
+                // failure is not — falling through would run refreshChapterPageList and
+                // wipe isDownloaded/pageCount on a transient error
+                log.warn(e) { "Failed to inspect the downloaded chapter files" }
+                throw IOException("Failed to inspect download of chapter $chapterId", e)
+            }
         val isMarkedAsDownloaded = chapterEntry[ChapterTable.isDownloaded]
         val dbPageCount = chapterEntry[ChapterTable.pageCount]
         val doesDownloadExist = downloadPageCount != 0
@@ -221,6 +258,7 @@ private class ChapterForDownload(
         optMangaId: Int? = null,
     ) = transaction {
         ChapterTable
+            .getWithUserData(userId)
             .selectAll()
             .where {
                 if (optChapterId != null) {

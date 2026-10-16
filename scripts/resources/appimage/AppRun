@@ -1,4 +1,6 @@
 #!/bin/sh
 
 cd "$APPDIR"
-exec $APPDIR/jre/bin/java -jar $APPDIR/bin/Suwayomi-Server.jar
+# "$@" goes before -jar so args reach the JVM (e.g. -Dsuwayomi.tachidesk.config.*
+# overrides); the server itself consumes no program arguments.
+exec $APPDIR/jre/bin/java "$@" -jar $APPDIR/bin/Suwayomi-Server.jar

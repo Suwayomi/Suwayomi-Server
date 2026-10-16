@@ -28,7 +28,7 @@
     <string name="opds_feeds_genre_specific_title">Gènere: %1$s</string>
     <string name="opds_feeds_library_source_specific_title">Biblioteca - Font: %1$s</string>
     <string name="opds_feeds_language_specific_title">Idioma: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Font: %1$s</string>
+
     <string name="opds_search_shortname">Cerca OPDS de Suwayomi</string>
     <string name="opds_feeds_source_specific_popular_title">Font: %1$s - Populars</string>
     <string name="opds_feeds_source_specific_latest_title">Font: %1$s - Novetats</string>
@@ -90,9 +90,9 @@
     <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_chapter_status_unread">⭕</string>
-    <string name="opds_chapter_details_scanlator">| De %1$s</string>
+    <string name="opds_chapter_details_scanlator"> | De %1$s</string>
     <string name="opds_chapter_details_base">Sèrie: %1$s | %2$s</string>
-    <string name="opds_chapter_details_progress">| Progrés: %1$d de %2$d</string>
+    <string name="opds_chapter_details_progress"> | Progrés: %1$d de %2$s</string>
     <string name="opds_manga_summary_status">Estat: %1$s</string>
     <string name="opds_manga_summary_source">Font: %1$s</string>
     <string name="opds_manga_summary_language">Idioma: %1$s</string>

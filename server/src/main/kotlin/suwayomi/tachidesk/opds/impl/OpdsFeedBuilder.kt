@@ -18,6 +18,7 @@ import suwayomi.tachidesk.opds.repository.ChapterRepository
 import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodePathSegment
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
@@ -132,7 +133,7 @@ object OpdsFeedBuilder {
         criteria: OpdsSearchCriteria,
         pageNum: Int,
     ): String {
-        val (mangaEntries, total) = MangaRepository.findMangaByCriteria(userId, criteria)
+        val (mangaEntries, total) = MangaRepository.findMangaByCriteria(userId, criteria, pageNum)
         val builder =
             FeedBuilderInternal(
                 userId = userId,
@@ -219,7 +220,7 @@ object OpdsFeedBuilder {
             when (criteria.primaryFilter) {
                 PrimaryFilterType.SOURCE -> "source/${criteria.sourceId}"
                 PrimaryFilterType.CATEGORY -> "category/${criteria.categoryId}"
-                PrimaryFilterType.GENRE -> "genre/${criteria.genre}"
+                PrimaryFilterType.GENRE -> "genre/${criteria.genre?.encodePathSegment()}"
                 PrimaryFilterType.STATUS -> "status/${criteria.statusId}"
                 PrimaryFilterType.LANGUAGE -> "language/${criteria.langCode}"
                 else -> "library/series"
@@ -480,7 +481,7 @@ object OpdsFeedBuilder {
                         listOf(
                             OpdsLinkXml(
                                 OpdsConstants.LINK_REL_SUBSECTION,
-                                "$baseUrl/genre/${entry.id}?lang=${locale.toLanguageTag()}",
+                                "$baseUrl/genre/${entry.id.encodePathSegment()}?lang=${locale.toLanguageTag()}",
                                 OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                                 entry.title,
                                 thrCount = entry.mangaCount.toInt(),

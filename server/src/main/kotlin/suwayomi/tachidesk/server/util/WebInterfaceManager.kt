@@ -181,7 +181,16 @@ object WebInterfaceManager {
             // Use canonical path to avoid Jetty alias issues
             staticFiles.directory = File(applicationDirs.webUIServe).canonicalPath
             staticFiles.location = Location.EXTERNAL
-            staticFiles.aliasCheck = AliasCheck { _, _ -> true }
+            // only serve aliases that resolve back inside the canonical docroot —
+            // an unrestricted check would serve any file a symlink/alias points at;
+            // unresolvable aliases fail closed
+            val canonicalServeRoot = File(applicationDirs.webUIServe).canonicalFile.toPath()
+            staticFiles.aliasCheck =
+                AliasCheck { _, alias ->
+                    runCatching {
+                        alias.toRealPath().startsWith(canonicalServeRoot)
+                    }.getOrDefault(false)
+                }
         }
 
         serveWebUI = {
@@ -214,6 +223,13 @@ object WebInterfaceManager {
                     "<head>",
                     "<head>$subpathInjectionBaseTag",
                 )
+
+            if (!indexHtmlWithSubpathInjection.contains("<base")) {
+                logger.error {
+                    "createServableRoot: could not inject <base> tag into index.html " +
+                        "(no literal \"<head>\" marker found); subpath serving will likely be broken"
+                }
+            }
 
             orgIndexHtml.writeText(indexHtmlWithSubpathInjection)
         }
@@ -544,6 +560,9 @@ object WebInterfaceManager {
 
     private fun getLocalMD5Sum(fileDir: String): String {
         var sum = ""
+        // Must stay content-only: the "expected" digest is published by the WebUI
+        // release and computed with this same algorithm — mixing in file paths makes
+        // every upstream WebUI permanently fail validation (infinite re-download).
         File(fileDir).walk().toList().sortedBy { it.path }.forEach { file ->
             if (file.isFile) {
                 val md5 = MessageDigest.getInstance("MD5")
@@ -779,7 +798,12 @@ object WebInterfaceManager {
 
         zipFile.outputStream().use { webUIZipFileOut ->
 
+            // Plain HttpURLConnection is kept on purpose: the OkHttp stack pulls in the
+            // full network/Cloudflare interceptor chain which is unnecessary for a plain
+            // artifact download, and would couple bootstrap code to extension-facing infra.
             val connection = URI.create(url).toURL().openConnection() as HttpURLConnection
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 30_000
             connection.connect()
             val contentLength = connection.contentLength
 
@@ -795,13 +819,18 @@ object WebInterfaceManager {
                     }
 
                     totalCount += count
-                    val percentage = (totalCount.toFloat() / contentLength * 100).toInt()
-                    val percentageStr = percentage.toString().padStart(2, '0')
-                    print("\b\b$percentageStr")
-
                     webUIZipFileOut.write(data, 0, count)
 
-                    updateProgress(percentage)
+                    // contentLength is -1 when the server doesn't send a Content-Length
+                    // (e.g. chunked encoding); only report a percentage when the total
+                    // size is known to avoid bogus negative values
+                    if (contentLength > 0) {
+                        val percentage = (totalCount.toFloat() / contentLength * 100).toInt()
+                        val percentageStr = percentage.toString().padStart(2, '0')
+                        print("\b\b$percentageStr")
+
+                        updateProgress(percentage)
+                    }
                 }
                 println()
                 logger.info { "downloadVersionZipFile(${flavor.uiName}): Downloading WebUI Done." }

@@ -10,6 +10,9 @@ import suwayomi.tachidesk.server.JavalinSetup.future
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.CompletableFuture
 
+// the updater queue is shared process-wide state (one queue for the whole server,
+// not per user) — its status is intentionally visible to every authenticated caller,
+// matching the REST update endpoints
 class UpdateQuery {
     private val updater: IUpdater by injectLazy()
 

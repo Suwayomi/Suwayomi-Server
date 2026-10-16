@@ -3,8 +3,15 @@ package eu.kanade.tachiyomi.util.chapter
 object ChapterSanitizer {
     fun String.sanitize(title: String): String =
         trim()
-            .removePrefix(title)
-            .trim(*CHAPTER_TRIM_CHARS)
+            .let { chapterName ->
+                // The manga title prefix is stripped case-insensitively: sources
+                // are inconsistent about the title casing inside chapter names.
+                if (chapterName.startsWith(title, ignoreCase = true)) {
+                    chapterName.substring(title.length)
+                } else {
+                    chapterName
+                }
+            }.trim(*CHAPTER_TRIM_CHARS)
 
     private val CHAPTER_TRIM_CHARS =
         arrayOf(

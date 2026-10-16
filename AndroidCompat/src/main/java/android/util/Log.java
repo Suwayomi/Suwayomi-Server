@@ -54,8 +54,35 @@ public final class Log {
         return log(WARN, tag, msg, tr);
     }
 
-    public static boolean isLoggable(String var0, int var1) {
-        return true;
+    /**
+     * Checks whether a log statement at the given level would be emitted for
+     * the given tag. The minimum level can be forced per tag through the
+     * {@code log.tag.<tag>} system property (values V, D, I, W, E or A).
+     * VERBOSE and DEBUG are not loggable by default, matching Android.
+     */
+    public static boolean isLoggable(String tag, int level) {
+        int minLevel = minLevelForTag(tag);
+        return level >= minLevel;
+    }
+
+    private static int minLevelForTag(String tag) {
+        try {
+            String value = android.os.SystemProperties.get("log.tag." + tag, "");
+            if (value == null || value.isEmpty()) {
+                return INFO;
+            }
+            switch (Character.toUpperCase(value.charAt(0))) {
+                case 'V': return VERBOSE;
+                case 'D': return DEBUG;
+                case 'I': return INFO;
+                case 'W': return WARN;
+                case 'E': return ERROR;
+                case 'A': return ASSERT;
+                default: return INFO;
+            }
+        } catch (RuntimeException e) {
+            return INFO;
+        }
     }
 
     public static int w(String tag, Throwable tr) {
@@ -98,7 +125,8 @@ public final class Log {
     }
 
     private static int log(int level, String tag, Throwable t) {
-        return log(level, tag, "An exception occured!", t);
+        String message = t == null ? "" : String.valueOf(t.getMessage());
+        return log(level, tag, message, t);
     }
 
     private static int log(int level, String tag, String msg, Throwable t) {

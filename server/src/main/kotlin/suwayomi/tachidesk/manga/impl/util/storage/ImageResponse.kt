@@ -7,29 +7,75 @@ package suwayomi.tachidesk.manga.impl.util.storage
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.HttpException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import libcore.net.MimeUtils
 import okhttp3.Response
 import okhttp3.internal.closeQuietly
+import suwayomi.tachidesk.manga.impl.download.fileProvider.TMP_FILE_SUFFIX
+import suwayomi.tachidesk.manga.impl.download.fileProvider.moveFileReplacing
+import xyz.nulldev.androidcompat.util.SafePath
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.util.concurrent.ConcurrentHashMap
 
 object ImageResponse {
     private fun pathToInputStream(path: String): InputStream = FileInputStream(path).buffered()
 
-    /** find file with name when file extension is not known */
+    /**
+     * Serializes the find-download-write sequence per target file: concurrent writers of
+     * the same "$saveDir/$fileName" otherwise share the same "$fileName.tmp" scratch file
+     * and corrupt each other's cached image. Entries are dropped again after use since
+     * the key space is unbounded (page-level cache keys).
+     */
+    private val saveMutexes = ConcurrentHashMap<String, Mutex>()
+
+    private suspend fun <T> withSaveMutex(
+        key: String,
+        block: suspend () -> T,
+    ): T {
+        val mutex = saveMutexes.getOrPut(key) { Mutex() }
+        try {
+            return mutex.withLock { block() }
+        } finally {
+            // paired remove: only drops the entry while it still points at this instance
+            saveMutexes.remove(key, mutex)
+        }
+    }
+
+    private fun requireValidFileName(fileName: String) {
+        require(SafePath.buildValidFilename(fileName) == fileName) {
+            "Invalid image file name \"$fileName\""
+        }
+    }
+
+    /** all files named "$fileName.<anything>" in [directoryPath] */
+    private fun findFilesNameStartingWith(
+        directoryPath: String,
+        fileName: String,
+    ): List<String> {
+        val target = "$fileName."
+        return File(directoryPath)
+            .listFiles()
+            .orEmpty()
+            .filter { it.name.startsWith(target) }
+            .map { "$directoryPath/${it.name}" }
+    }
+
+    /**
+     * find file with name when file extension is not known; a leftover ".tmp" file of an
+     * interrupted download never shadows a completed file, and every other match is
+     * collected so e.g. clearCachedImage does not leave stragglers behind
+     */
     fun findFileNameStartingWith(
         directoryPath: String,
         fileName: String,
     ): String? {
-        val target = "$fileName."
-        File(directoryPath).listFiles().orEmpty().forEach { file ->
-            if (file.name.startsWith(target)) {
-                return "$directoryPath/${file.name}"
-            }
-        }
-        return null
+        val matches = findFilesNameStartingWith(directoryPath, fileName)
+        return matches.firstOrNull { !it.endsWith(TMP_FILE_SUFFIX) } ?: matches.firstOrNull()
     }
 
     fun getCachedImageResponse(
@@ -56,47 +102,66 @@ object ImageResponse {
         fileName: String,
         fetcher: suspend () -> Response,
     ): Pair<InputStream, String> {
-        File(saveDir).mkdirs()
+        requireValidFileName(fileName)
 
-        val cachedFile = findFileNameStartingWith(saveDir, fileName)
-        val filePath = "$saveDir/$fileName"
+        return withSaveMutex("$saveDir/$fileName") {
+            File(saveDir).mkdirs()
 
-        // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
-        if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
-            return getCachedImageResponse(cachedFile, filePath)
-        }
+            val cachedFile = findFileNameStartingWith(saveDir, fileName)
+            val filePath = "$saveDir/$fileName"
 
-        val response = fetcher()
-
-        try {
-            if (response.code == 200) {
-                val (actualSavePath, imageType) =
-                    saveImage(
-                        filePath,
-                        response.body.byteStream(),
-                        response.header("Content-Type"),
-                    )
-                return pathToInputStream(actualSavePath) to imageType
+            // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
+            if (cachedFile != null && !cachedFile.endsWith(TMP_FILE_SUFFIX)) {
+                getCachedImageResponse(cachedFile, filePath)
             } else {
-                throw Exception("request error! ${response.code}")
+                val response = fetcher()
+
+                try {
+                    if (response.code == 200) {
+                        val (actualSavePath, imageType) =
+                            saveImageUnlocked(
+                                filePath,
+                                response.body.byteStream(),
+                                response.header("Content-Type"),
+                            )
+                        pathToInputStream(actualSavePath) to imageType
+                    } else {
+                        throw HttpException(response.code)
+                    }
+                } catch (e: IOException) {
+                    // make sure no partial download remains (HttpException is an
+                    // IOException — a failed response also clears stale matches)
+                    clearCachedImage(saveDir, fileName)
+                    throw e
+                } finally {
+                    response.closeQuietly()
+                }
             }
-        } catch (e: IOException) {
-            // make sure no partial download remains
-            clearCachedImage(saveDir, fileName)
-            throw e
-        } finally {
-            response.closeQuietly()
         }
     }
 
     /** Save image safely */
-    fun saveImage(
+    suspend fun saveImage(
+        filePath: String,
+        image: InputStream,
+        mimeType: String?,
+    ): Pair<String, String> {
+        val fileName = File(filePath).name
+        requireValidFileName(fileName)
+        return withSaveMutex(filePath) { saveImageUnlocked(filePath, image, mimeType) }
+    }
+
+    /**
+     * [saveImage] without its per-key mutex — callers that already serialize on the same
+     * key (e.g. [getImageResponse]) must use this to avoid re-locking the held mutex.
+     */
+    private fun saveImageUnlocked(
         filePath: String,
         image: InputStream,
         mimeType: String?,
     ): Pair<String, String> {
         val mimeType = mimeType?.takeIf { it.startsWith("image/") }?.lowercase()
-        val tmpSavePath = "$filePath.tmp"
+        val tmpSavePath = "$filePath$TMP_FILE_SUFFIX"
         val tmpSaveFile = File(tmpSavePath)
         image.use { input -> tmpSaveFile.outputStream().use { output -> input.copyTo(output) } }
 
@@ -113,7 +178,14 @@ object ImageResponse {
 
         val actualSavePath = "$filePath.$extension"
 
-        tmpSaveFile.renameTo(File(actualSavePath))
+        try {
+            // an atomic sibling rename either lands the complete file or fails — a
+            // silently ignored renameTo() used to hand out a path that does not exist
+            moveFileReplacing(tmpSaveFile, File(actualSavePath))
+        } catch (e: Exception) {
+            tmpSaveFile.delete()
+            throw e
+        }
         return Pair(actualSavePath, imageType?.mime ?: mimeType ?: "image/jpeg")
     }
 
@@ -121,8 +193,8 @@ object ImageResponse {
         saveDir: String,
         fileName: String,
     ) {
-        val cachedFile = findFileNameStartingWith(saveDir, fileName)
-        cachedFile?.also {
+        requireValidFileName(fileName)
+        findFilesNameStartingWith(saveDir, fileName).forEach {
             File(it).delete()
         }
     }

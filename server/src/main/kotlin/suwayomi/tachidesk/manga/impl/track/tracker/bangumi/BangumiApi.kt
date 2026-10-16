@@ -27,6 +27,8 @@ import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.dto.BGMUser
 import suwayomi.tachidesk.manga.impl.track.tracker.model.Track
 import suwayomi.tachidesk.manga.impl.track.tracker.model.TrackSearch
 import uy.kohesive.injekt.injectLazy
+import java.io.IOException
+import java.util.UUID
 
 class BangumiApi(
     private val trackId: Int,
@@ -43,8 +45,13 @@ class BangumiApi(
             val body =
                 buildJsonObject {
                     put("type", track.toApiStatus())
-                    put("rate", track.score.toInt().coerceIn(0, 10))
-                    put("ep_status", track.last_chapter_read.toInt())
+                    // rate=0 clears the remote rating — only send it for a
+                    // real score; a negative local score (invalid scoreString
+                    // fallout) must not silently clear the remote rating
+                    if (track.score >= 0) {
+                        put("rate", track.score.toInt().coerceIn(0, 10))
+                    }
+                    put("ep_status", track.last_chapter_read.toInt().coerceAtLeast(0))
                     put("private", track.private)
                 }.toString()
                     .toRequestBody()
@@ -61,8 +68,12 @@ class BangumiApi(
             val body =
                 buildJsonObject {
                     put("type", track.toApiStatus())
-                    put("rate", track.score.toInt().coerceIn(0, 10))
-                    put("ep_status", track.last_chapter_read.toInt())
+                    // see addLibManga: rate=0 is an intentional clear, a
+                    // negative score must not be clamped into one
+                    if (track.score >= 0) {
+                        put("rate", track.score.toInt().coerceIn(0, 10))
+                    }
+                    put("ep_status", track.last_chapter_read.toInt().coerceAtLeast(0))
                     put("private", track.private)
                 }.toString()
                     .toRequestBody()
@@ -91,7 +102,8 @@ class BangumiApi(
             val url = "$API_URL/v0/search/subjects?limit=20"
             val body =
                 buildJsonObject {
-                    put("keyword", search)
+                    // the API rejects over-long keywords
+                    put("keyword", search.take(64))
                     put("sort", "match")
                     putJsonObject("filter") {
                         putJsonArray("type") {
@@ -106,18 +118,18 @@ class BangumiApi(
                     .awaitSuccess()
                     .parseAs<BGMSearchResult>()
                     .data
-                    .filter { it.platform == null || it.platform == "漫画" }
+                    .filter { it.platform == null || it.platform in MANGA_PLATFORMS }
                     .map { it.toTrackSearch(trackId) }
             }
         }
     }
 
-    suspend fun statusLibManga(
-        track: Track,
-        username: String,
-    ): Track? =
+    suspend fun statusLibManga(track: Track): Track? =
         withIOContext {
-            val url = "$API_URL/v0/users/$username/collections/${track.remote_id}"
+            // `-` is the current-user placeholder; the stored username can go
+            // stale after a bgm.tv rename and 404 every read (which then made
+            // bind re-create a duplicate collection entry)
+            val url = "$API_URL/v0/users/-/collections/${track.remote_id}"
             with(json) {
                 try {
                     authClient
@@ -125,7 +137,9 @@ class BangumiApi(
                         .awaitSuccess()
                         .parseAs<BGMCollectionResponse>()
                         .let {
-                            track.status = it.getStatus()
+                            // unknown/absent remote collection type keeps the
+                            // local status instead of crashing the sync
+                            it.getStatus()?.let { status -> track.status = status }
                             track.last_chapter_read = it.epStatus?.toDouble() ?: 0.0
                             track.score = it.rate?.toDouble() ?: 0.0
                             track.total_chapters = it.subject?.eps ?: 0
@@ -168,6 +182,7 @@ class BangumiApi(
                     .awaitSuccess()
                     .parseAs<BGMUser>()
                     .username
+                    ?: throw IOException("Bangumi: could not fetch the current user")
             }
         }
 
@@ -183,6 +198,9 @@ class BangumiApi(
 
         private const val APP_JSON = "application/json"
 
+        // subject `platform` values that are manga entries
+        private val MANGA_PLATFORMS = setOf("漫画")
+
         fun authUrl(): Uri =
             LOGIN_URL
                 .toUri()
@@ -190,6 +208,7 @@ class BangumiApi(
                 .appendQueryParameter("client_id", CLIENT_ID)
                 .appendQueryParameter("response_type", "code")
                 .appendQueryParameter("redirect_uri", REDIRECT_URL)
+                .appendQueryParameter("state", UUID.randomUUID().toString())
                 .build()
 
         fun refreshTokenRequest(token: String) =

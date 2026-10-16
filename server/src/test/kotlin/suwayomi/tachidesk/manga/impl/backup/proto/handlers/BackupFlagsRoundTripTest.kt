@@ -6,6 +6,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.SyncRestoreMode
@@ -17,6 +18,7 @@ import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
+import suwayomi.tachidesk.test.ensureDefaultCategory
 import java.util.Date
 
 // Tachiyomi sort/display/reader bitmasks are opaque to Suwayomi but must survive a sync round trip.
@@ -32,6 +34,14 @@ class BackupFlagsRoundTripTest : ApplicationTest() {
             includeServerSettings = false,
             includeUserSettings = false,
         )
+
+    @BeforeEach
+    fun setUp() {
+        // other test classes clear the CATEGORY table without restoring user 1's default row;
+        // without it normalizeCategories rewrites the restored ranks to 0-based and the version
+        // bump makes later ADOPT restores look stale
+        ensureDefaultCategory(1)
+    }
 
     @AfterEach
     fun tearDown() {

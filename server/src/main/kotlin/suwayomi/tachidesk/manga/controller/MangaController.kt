@@ -7,10 +7,14 @@ package suwayomi.tachidesk.manga.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.javalin.http.HandlerType
 import io.javalin.http.HttpStatus
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.upsert
@@ -40,9 +44,14 @@ import suwayomi.tachidesk.server.util.queryParam
 import suwayomi.tachidesk.server.util.withOperation
 import uy.kohesive.injekt.injectLazy
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 object MangaController {
     private val json: Json by injectLazy()
+    private val logger = KotlinLogging.logger { }
+
+    /** managed scope for fire-and-forget sync work (replaces GlobalScope) */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val retrieve =
         handler(
@@ -267,9 +276,9 @@ object MangaController {
                 }
             },
             behaviorOf = { ctx, mangaId, onlineFetch ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
-                    future { Chapter.getChapterList(mangaId, onlineFetch) }
+                    future { Chapter.getChapterList(userId, mangaId, onlineFetch) }
                         .thenApply { ctx.json(it) }
                 }
             },
@@ -351,7 +360,16 @@ object MangaController {
                 ctx.future {
                     future {
                         var chapter = getChapterDownloadReadyByIndex(userId, chapterIndex, mangaId)
-                        val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                        // a hung or failing sync server must not stall page loading:
+                        // time-box the progress pull and degrade to "no sync" on failure
+                        val syncResult =
+                            runCatching {
+                                withTimeoutOrNull(10.seconds) {
+                                    KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
+                                }
+                            }.onFailure {
+                                logger.warn(it) { "KoreaderSync progress check failed for chapter ${chapter.id}, continuing without it" }
+                            }.getOrNull()
 
                         if (syncResult != null) {
                             if (syncResult.shouldUpdate) {
@@ -403,7 +421,10 @@ object MangaController {
 
                 // Sync with KoreaderSync when progress is updated
                 if (lastPageRead != null || read == true) {
-                    GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
+                    scope.launch {
+                        runCatching { KoreaderSyncService.pushProgress(userId, chapterId) }
+                            .onFailure { logger.warn(it) { "KoreaderSync progress push failed for chapter $chapterId" } }
+                    }
                 }
 
                 ctx.status(200)
@@ -508,7 +529,10 @@ object MangaController {
                             val chapterId = Chapter.updateChapterProgress(userId, mangaId, chapterIndex, pageNo = index)
                             // Sync progress with KoreaderSync if chapter update was successful
                             if (chapterId != -1) {
-                                GlobalScope.launch { KoreaderSyncService.pushProgress(userId, chapterId) }
+                                scope.launch {
+                                    runCatching { KoreaderSyncService.pushProgress(userId, chapterId) }
+                                        .onFailure { logger.warn(it) { "KoreaderSync progress push failed for chapter $chapterId" } }
+                                }
                             }
                         }
                     }

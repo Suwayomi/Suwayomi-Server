@@ -1,4 +1,4 @@
-import com.google.gson.Gson
+import com.google.gson.Gson // provided via buildSrc (see buildSrc/build.gradle.kts)
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 
@@ -10,6 +10,11 @@ plugins {
     )
     id(
         libs.plugins.moko
+            .get()
+            .pluginId,
+    )
+    id(
+        libs.plugins.ktlint
             .get()
             .pluginId,
     )
@@ -73,5 +78,12 @@ tasks {
                 Gson().toJson(json, it)
             }
         }
+    }
+
+    // languages.json is consumed by the moko resource generators; regenerate
+    // it as part of the build instead of relying on manual task invocation.
+    val generateLocales = named("generateLocales")
+    matching { it.name.startsWith("generateMR") }.configureEach {
+        dependsOn(generateLocales)
     }
 }

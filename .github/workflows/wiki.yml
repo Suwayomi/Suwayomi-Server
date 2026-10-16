@@ -17,10 +17,13 @@ permissions:
 jobs:
   wiki:
     name: Publish to GitHub Wiki
+    # Forks don't have a .wiki repository; pushing there would always fail.
+    if: github.repository == 'Suwayomi/Suwayomi-Server'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: ${{github.repository}}
           path: ${{github.repository}}
@@ -28,7 +31,7 @@ jobs:
           fetch-tags: true
 
       - name: Checkout Wiki
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: ${{github.repository}}.wiki
           path: ${{github.repository}}.wiki
@@ -38,13 +41,13 @@ jobs:
           set -e
           cd $GITHUB_WORKSPACE/${{github.repository}}.wiki
           cp -r $GITHUB_WORKSPACE/${{github.repository}}/docs/* .
-          
-          stable="$(git -C $GITHUB_WORKSPACE/${{github.repository}} describe --abbrev=0 --tags)"
-          if ! git -C $GITHUB_WORKSPACE/${{github.repository}} log --exit-code --pretty= "$stable.." -- docs/Configuring-Suwayomi‐Server.md; then
+
+          stable="$(git -C $GITHUB_WORKSPACE/${{github.repository}} describe --abbrev=0 --tags || true)"
+          if [ -n "$stable" ] && ! git -C $GITHUB_WORKSPACE/${{github.repository}} log --exit-code --pretty= "$stable.." -- docs/Configuring-Suwayomi-Server.md; then
             echo "Changes to config detected, embedding link to stable"
-            sed -i '1s/^/> [!WARNING]\n> This document describes the settings available in the preview version. Please head to ['$stable'](https:\/\/github.com\/Suwayomi\/Suwayomi-Server\/blob\/'$stable'\/docs\/Configuring-Suwayomi%E2%80%90Server.md) for the current stable version\n\n/' Configuring-Suwayomi‐Server.md
+            sed -i '1s/^/> [!WARNING]\n> This document describes the settings available in the preview version. Please head to ['$stable'](https:\/\/github.com\/Suwayomi\/Suwayomi-Server\/blob\/'$stable'\/docs\/Configuring-Suwayomi-Server.md) for the current stable version\n\n/' Configuring-Suwayomi-Server.md
           fi
-          
+
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .

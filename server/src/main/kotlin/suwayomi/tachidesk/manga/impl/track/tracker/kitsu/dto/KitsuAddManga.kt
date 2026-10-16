@@ -9,5 +9,6 @@ data class KitsuAddMangaResult(
 
 @Serializable
 data class KitsuAddMangaItem(
-    val id: Long,
+    // JSON:API resource ids are strings
+    val id: String,
 )

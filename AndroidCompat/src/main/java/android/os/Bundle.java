@@ -21,7 +21,6 @@ import android.util.ArrayMap;
 import android.util.Size;
 import android.util.SizeF;
 import android.util.SparseArray;
-import kotlin.NotImplementedError;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -1137,7 +1136,9 @@ public final class Bundle extends BaseBundle implements Cloneable, Parcelable {
      */
     @Override
     public void writeToParcel(Parcel parcel, int flags) {
-        throw new NotImplementedError();
+        // Map-mode Bundle operation is fully supported; Parcel serialization
+        // is not (there is no Parcel implementation in this environment).
+        throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
 //        final boolean oldAllowFds = parcel.pushAllowFds((mFlags & FLAG_ALLOW_FDS) != 0);
 //        try {
 //            super.writeToParcelInner(parcel, flags);
@@ -1151,8 +1152,7 @@ public final class Bundle extends BaseBundle implements Cloneable, Parcelable {
      * @param parcel The parcel to overwrite this bundle from.
      */
     public void readFromParcel(Parcel parcel) {
-        super.readFromParcelInner(parcel);
-        throw new NotImplementedError();
+        throw new UnsupportedOperationException(PARCEL_NOT_SUPPORTED);
 //        mFlags = FLAG_ALLOW_FDS;
 //        maybePrefillHasFds();
     }

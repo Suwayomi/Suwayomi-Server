@@ -20,6 +20,11 @@ public class TimeZone extends java.util.TimeZone {
         this.delegate = delegate;
     }
 
+    /** Returns the underlying ICU time zone. */
+    public com.ibm.icu.util.TimeZone getDelegate() {
+        return delegate;
+    }
+
     @Override
     public int getOffset(int era, int year, int month, int day, int dayOfWeek, int milliseconds) {
         return delegate.getOffset(era, year, month, day, dayOfWeek, milliseconds);
@@ -51,6 +56,11 @@ public class TimeZone extends java.util.TimeZone {
 
     @Override
     public void setID(String ID) {
+        if (delegate.isFrozen()) {
+            // Frozen ICU zones throw UnsupportedOperationException on setID;
+            // thaw a mutable copy first.
+            delegate = delegate.cloneAsThawed();
+        }
         delegate.setID(ID);
     }
 
@@ -139,17 +149,32 @@ public class TimeZone extends java.util.TimeZone {
         com.ibm.icu.util.TimeZone.setDefault(tz);
     }
 
+    public static void setDefault(java.util.TimeZone tz) {
+        if (tz instanceof TimeZone) {
+            com.ibm.icu.util.TimeZone.setDefault(((TimeZone) tz).getDelegate());
+        } else {
+            com.ibm.icu.util.TimeZone.setDefault(com.ibm.icu.util.TimeZone.getTimeZone(tz.getID()));
+        }
+        java.util.TimeZone.setDefault(tz);
+    }
+
     public boolean hasSameRules(com.ibm.icu.util.TimeZone other) {
         return delegate.hasSameRules(other);
     }
 
     @Override
     public Object clone() {
-        return delegate.clone();
+        return new TimeZone((com.ibm.icu.util.TimeZone) delegate.clone());
     }
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj instanceof TimeZone) {
+            return delegate.equals(((TimeZone) obj).delegate);
+        }
         return delegate.equals(obj);
     }
 

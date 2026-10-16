@@ -255,6 +255,9 @@ public class JSONArray {
      * @return this array.
      */
     public JSONArray put(int index, Object value) throws JSONException {
+        if (index < 0) {
+            throw new JSONException("Negative indexes not supported");
+        }
         if (value instanceof Number) {
             // deviate from the original by checking all Numbers, not just floats & doubles
             JSON.checkDouble(((Number) value).doubleValue());
@@ -543,6 +546,9 @@ public class JSONArray {
      * array is empty.
      */
     public JSONObject toJSONObject(JSONArray names) throws JSONException {
+        if (names == null) {
+            throw new JSONException("names must not be null");
+        }
         JSONObject result = new JSONObject();
         int length = Math.min(names.length(), values.size());
         if (length == 0) {

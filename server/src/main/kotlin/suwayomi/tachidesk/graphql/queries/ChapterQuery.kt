@@ -11,7 +11,7 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
 import graphql.schema.DataFetchingEnvironment
-import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.ExpressionWithColumnType
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.greater
@@ -41,8 +41,10 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.validatePagination
 import suwayomi.tachidesk.graphql.types.ChapterNodeList
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -65,37 +67,90 @@ class ChapterQuery {
     ): CompletableFuture<ChapterType> = dataFetchingEnvironment.getValueFromDataLoader("ChapterDataLoader", id)
 
     enum class ChapterOrderBy(
-        override val column: Column<*>,
+        override val column: ExpressionWithColumnType<*>,
     ) : OrderBy<ChapterType> {
         ID(ChapterTable.id),
         SOURCE_ORDER(ChapterTable.sourceOrder),
         NAME(ChapterTable.name),
         UPLOAD_DATE(ChapterTable.date_upload),
         CHAPTER_NUMBER(ChapterTable.chapter_number),
-        LAST_READ_AT(ChapterUserTable.lastReadAt),
+
+        // LEFT JOIN'd per-user column: NULL (never read) must sort and compare as 0,
+        // matching the `getOrNull(...) ?: 0` mapping in ChapterType
+        LAST_READ_AT(coalesceDefault(ChapterUserTable.lastReadAt, 0L)),
         FETCHED_AT(ChapterTable.fetchedAt),
         ;
 
         override fun greater(cursor: Cursor): Op<Boolean> =
             when (this) {
-                ID -> ChapterTable.id greater cursor.value.toInt()
-                SOURCE_ORDER -> greaterNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
-                NAME -> greaterNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
-                UPLOAD_DATE -> greaterNotUnique(ChapterTable.date_upload, ChapterTable.id, cursor, String::toLong)
-                CHAPTER_NUMBER -> greaterNotUnique(ChapterTable.chapter_number, ChapterTable.id, cursor, String::toFloat)
-                LAST_READ_AT -> greaterNotUnique(ChapterUserTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
-                FETCHED_AT -> greaterNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
+                ID -> {
+                    ChapterTable.id greater cursor.value.toInt()
+                }
+
+                SOURCE_ORDER -> {
+                    greaterNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
+                }
+
+                NAME -> {
+                    greaterNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
+                }
+
+                UPLOAD_DATE -> {
+                    greaterNotUnique(ChapterTable.date_upload, ChapterTable.id, cursor, String::toLong)
+                }
+
+                CHAPTER_NUMBER -> {
+                    greaterNotUnique(ChapterTable.chapter_number, ChapterTable.id, cursor, String::toFloat)
+                }
+
+                LAST_READ_AT -> {
+                    greaterNotUnique(
+                        coalesceDefault(ChapterUserTable.lastReadAt, 0L),
+                        ChapterTable.id,
+                        cursor,
+                        String::toLong,
+                    )
+                }
+
+                FETCHED_AT -> {
+                    greaterNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
+                }
             }
 
         override fun less(cursor: Cursor): Op<Boolean> =
             when (this) {
-                ID -> ChapterTable.id less cursor.value.toInt()
-                SOURCE_ORDER -> lessNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
-                NAME -> lessNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
-                UPLOAD_DATE -> lessNotUnique(ChapterTable.date_upload, ChapterTable.id, cursor, String::toLong)
-                CHAPTER_NUMBER -> lessNotUnique(ChapterTable.chapter_number, ChapterTable.id, cursor, String::toFloat)
-                LAST_READ_AT -> lessNotUnique(ChapterUserTable.lastReadAt, ChapterTable.id, cursor, String::toLong)
-                FETCHED_AT -> lessNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
+                ID -> {
+                    ChapterTable.id less cursor.value.toInt()
+                }
+
+                SOURCE_ORDER -> {
+                    lessNotUnique(ChapterTable.sourceOrder, ChapterTable.id, cursor, String::toInt)
+                }
+
+                NAME -> {
+                    lessNotUnique(ChapterTable.name, ChapterTable.id, cursor, String::toString)
+                }
+
+                UPLOAD_DATE -> {
+                    lessNotUnique(ChapterTable.date_upload, ChapterTable.id, cursor, String::toLong)
+                }
+
+                CHAPTER_NUMBER -> {
+                    lessNotUnique(ChapterTable.chapter_number, ChapterTable.id, cursor, String::toFloat)
+                }
+
+                LAST_READ_AT -> {
+                    lessNotUnique(
+                        coalesceDefault(ChapterUserTable.lastReadAt, 0L),
+                        ChapterTable.id,
+                        cursor,
+                        String::toLong,
+                    )
+                }
+
+                FETCHED_AT -> {
+                    lessNotUnique(ChapterTable.fetchedAt, ChapterTable.id, cursor, String::toLong)
+                }
             }
 
         override fun asCursor(type: ChapterType): Cursor {
@@ -164,6 +219,8 @@ class ChapterQuery {
         val url: StringFilter? = null,
         val name: StringFilter? = null,
         val uploadDate: LongFilter? = null,
+        // the stored chapter_number column is Float; input is narrowed via toFloatFilter(),
+        // which matches the Float precision the API exposes on ChapterType.chapterNumber
         val chapterNumber: DoubleFilter? = null,
         val scanlator: StringFilter? = null,
         val mangaId: IntFilter? = null,
@@ -201,7 +258,9 @@ class ChapterQuery {
                 andFilterWithCompare(ChapterTable.pageCount, pageCount),
             )
 
-        fun getLibraryOp() = andFilterWithCompare(MangaUserTable.inLibrary, inLibrary)
+        // kept out of getOpList on purpose: it lives on the *manga's* user row, so the
+        // query joins MangaUserTable only when this filter is actually set
+        fun getLibraryOp() = andFilterWithCompare(coalesceDefault(MangaUserTable.inLibrary, false), inLibrary)
     }
 
     @RequireAuth
@@ -228,6 +287,18 @@ class ChapterQuery {
         last: Int? = null,
         offset: Int? = null,
     ): ChapterNodeList {
+        validatePagination(first, last, offset)
+
+        // the sort keys requested by the client; a unique key is appended inside the
+        // transaction as the final tie-break. The cursor predicate and cursor producer
+        // use the *effective* first sort key, which may also come from the deprecated
+        // orderBy/orderByType arguments
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { ChapterOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: ChapterOrderBy.ID
+        // the unique tie-break must follow the first key's direction: the composite
+        // cursor predicate compares (key, id) lexicographically in a single direction
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = ChapterTable.getWithUserData(userId).selectAll()
@@ -242,14 +313,11 @@ class ChapterQuery {
 
                 res.applyOps(condition, filter)
 
-                val baseSort = listOf(ChapterOrder(ChapterOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { ChapterOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + ChapterOrder(ChapterOrderBy.ID, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
                         actualSort,
-                        before,
                         last,
                         ChapterTable.id,
                         PaginationNeeds.of(dataFetchingEnvironment),
@@ -258,8 +326,8 @@ class ChapterQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: ChapterOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -268,10 +336,12 @@ class ChapterQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                // `last` fetches the tail in reversed order; flip it back to forward order
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (ChapterType) -> Cursor = (order?.firstOrNull()?.by ?: ChapterOrderBy.ID)::asCursor
+        val getAsCursor: (ChapterType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { ChapterType(it) }
 

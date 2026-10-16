@@ -63,7 +63,7 @@ class ExtensionType(
         versionCode = row[ExtensionTable.versionCode].toInt(),
         versionCodeLong = row[ExtensionTable.versionCode],
         lang = row[ExtensionTable.lang],
-        isNsfw = row[ExtensionTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+        isNsfw = row[ExtensionTable.contentWarning] >= ContentWarning.MIXED.value,
         contentWarning = ContentWarning.valueOf(row[ExtensionTable.contentWarning]),
         isInstalled = row[ExtensionTable.isInstalled],
         hasUpdate = row[ExtensionTable.hasUpdate],

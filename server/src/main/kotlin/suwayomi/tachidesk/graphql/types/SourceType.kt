@@ -64,7 +64,7 @@ class SourceType(
         iconUrl = Extension.proxyExtensionIconUrl(sourceExtension[ExtensionTable.pkgName]),
         supportsLatest = source.supportsLatest,
         isConfigurable = source is ConfigurableSource,
-        isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.ordinal,
+        isNsfw = row[SourceTable.contentWarning] >= ContentWarning.MIXED.value,
         displayName = source.toString(),
         homeUrl = runCatching { (source as? HttpSource)?.getHomeUrl() }.getOrNull(),
         baseUrl = runCatching { (source as? HttpSource)?.baseUrl }.getOrNull(),
@@ -314,7 +314,14 @@ private fun applyFilterChanges(
     changes: List<FilterChange>?,
 ) {
     changes?.forEach { change ->
-        when (val filter = filterList[change.position]) {
+        // same validation as Search.updateFilterList: an out-of-range position must not
+        // produce an opaque IndexOutOfBoundsException
+        val filter =
+            filterList.getOrNull(change.position)
+                ?: throw Exception(
+                    "Invalid filter position ${change.position}: source provides ${filterList.size} filters",
+                )
+        when (filter) {
             is SourceFilter.Header -> {
                 // NOOP
             }
@@ -324,8 +331,15 @@ private fun applyFilterChanges(
             }
 
             is SourceFilter.Select<*> -> {
-                filter.state = change.selectState
-                    ?: throw Exception("Expected select state change at position ${change.position}")
+                val index =
+                    change.selectState
+                        ?: throw Exception("Expected select state change at position ${change.position}")
+                if (index !in filter.values.indices) {
+                    throw Exception(
+                        "Select filter index $index out of range: filter '${filter.name}' has ${filter.values.size} values",
+                    )
+                }
+                filter.state = index
             }
 
             is SourceFilter.Text -> {

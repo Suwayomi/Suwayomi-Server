@@ -86,6 +86,12 @@ object UserSettingsBackupHandlerGenerator {
         appendLine(") {".addIndentation(indentation))
 
         settings.forEach { setting ->
+            // backup-excluded settings (credentials, instance-local values) are never
+            // restored: neither the userSettings field nor a legacy serverSettings value
+            // may import a foreign server's secrets
+            if (setting.excludeFromBackup) {
+                return@forEach
+            }
             val needsConversion = setting.typeInfo?.restoreLegacy != null
             // Only fall back to the legacy global (serverSettings) value when a global equivalent exists. Settings
             // without a global equivalent (e.g. per-user connection accounts) have no legacy value to import.
@@ -102,9 +108,10 @@ object UserSettingsBackupHandlerGenerator {
             )
             if (needsConversion) {
                 appendLine(
-                    "userConfig.${setting.key}.set(userId, UserSettingsRegistry.get(\"${setting.key}\")!!.typeInfo!!.restoreLegacy!!(it) as ${setting.internalType ?: setting.type.simpleName})".addIndentation(
-                        contentIndentation * 2,
-                    ),
+                    "userConfig.${setting.key}.set(userId, UserSettingsRegistry.get(\"${setting.key}\")!!.typeInfo!!.restoreLegacy!!(it) as ${setting.internalType ?: setting.type.simpleName})"
+                        .addIndentation(
+                            contentIndentation * 2,
+                        ),
                 )
             } else {
                 appendLine(
@@ -137,6 +144,11 @@ object UserSettingsBackupHandlerGenerator {
     }
 
     private fun getConfigAccess(setting: UserSetting<*>): String {
+        // excluded settings are written as null so credentials never enter a backup file
+        // (same semantics as the server settings generator)
+        if (setting.excludeFromBackup) {
+            return "null"
+        }
         if (setting.typeInfo?.convertToBackupType != null) {
             return "UserSettingsRegistry.get(\"${setting.key}\")!!.typeInfo!!.convertToBackupType!!(" +
                 "userConfig.${setting.key}.value(userId)" +

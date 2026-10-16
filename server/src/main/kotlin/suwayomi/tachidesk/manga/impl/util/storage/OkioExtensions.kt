@@ -22,8 +22,8 @@ import java.io.OutputStream
  */
 fun BufferedSource.saveTo(file: File) {
     try {
-        // Create parent dirs if needed
-        file.parentFile.mkdirs()
+        // Create parent dirs if needed (files without a parent have nothing to create)
+        file.parentFile?.mkdirs()
 
         // Copy to destination
         saveTo(file.outputStream())

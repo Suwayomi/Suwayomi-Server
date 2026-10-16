@@ -155,7 +155,7 @@ class UserQueryTest : GraphQLTest() {
                     }
                 }
                 """.trimIndent(),
-                mapOf("input" to mapOf("username" to "gqlregister", "password" to "newpass")),
+                mapOf("input" to mapOf("username" to "gqlregister", "password" to "newpass1")),
                 user = user,
             )
 

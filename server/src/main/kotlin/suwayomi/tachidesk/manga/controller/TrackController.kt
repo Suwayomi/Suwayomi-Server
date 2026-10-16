@@ -8,6 +8,7 @@ package suwayomi.tachidesk.manga.controller
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.HttpStatus
 import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.track.Track
@@ -54,10 +55,10 @@ object TrackController {
                 body<Track.LoginInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.LoginInput>(ctx.body())
-                logger.debug { "tracker login $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.LoginInput>(ctx.body())
+                // never log the input: it carries the tracker credentials in plaintext
+                logger.debug { "tracker login trackerId=${input.trackerId}" }
                 ctx.future {
                     future { Track.login(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }
@@ -79,10 +80,9 @@ object TrackController {
                 body<Track.LogoutInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
-                logger.debug { "tracker logout $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
+                logger.debug { "tracker logout trackerId=${input.trackerId}" }
                 ctx.future {
                     future { Track.logout(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }
@@ -104,10 +104,9 @@ object TrackController {
                 body<Track.SearchInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.SearchInput>(ctx.body())
-                logger.debug { "tracker search $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.SearchInput>(ctx.body())
+                logger.debug { "tracker search trackerId=${input.trackerId} title=${input.title}" }
                 ctx.future {
                     future { Track.search(userId, input) }
                         .thenApply { ctx.json(it) }
@@ -133,8 +132,11 @@ object TrackController {
             },
             behaviorOf = { ctx, mangaId, trackerId, remoteId, private ->
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val remoteIdLong =
+                    remoteId.toLongOrNull()
+                        ?: throw BadRequestResponse("Invalid remoteId '$remoteId': expected a number")
                 ctx.future {
-                    future { Track.bind(userId, mangaId, trackerId, remoteId.toLong(), private) }
+                    future { Track.bind(userId, mangaId, trackerId, remoteIdLong, private) }
                         .thenApply { ctx.status(HttpStatus.OK) }
                 }
             },
@@ -153,10 +155,9 @@ object TrackController {
                 body<Track.UpdateInput>()
             },
             behaviorOf = { ctx ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
-                logger.debug { "tracker update $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
+                logger.debug { "tracker update recordId=${input.recordId}" }
                 ctx.future {
                     future { Track.update(userId, input) }
                         .thenApply { ctx.status(HttpStatus.OK) }

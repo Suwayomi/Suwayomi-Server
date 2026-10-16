@@ -1,7 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "helpers:pinGitHubActionDigests"
   ],
   "semanticCommits": "disabled",
   "customManagers": [
@@ -28,7 +29,7 @@
       "depNameTemplate": "JetBrainsRuntime",
       "packageNameTemplate": "JetBrains/JetBrainsRuntime",
       "datasourceTemplate": "github-releases",
-      "versioningTemplate": "regex:^jbr-release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)b(?<build>\\d+)\\.(?<revision>\\d+)$"
+      "versioningTemplate": "regex:^jbr-release-(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)(?:\\.\\d+)?b(?<build>\\d+)\\.(?<revision>\\d+)$"
     }
   ],
   "customDatasources": {

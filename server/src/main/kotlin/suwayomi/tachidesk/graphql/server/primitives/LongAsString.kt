@@ -36,7 +36,11 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
                 ),
             )
         }
-        return input.toLong()
+        return try {
+            input.toLong()
+        } catch (e: NumberFormatException) {
+            throw CoercingParseValueException("Expected a 64-bit integer string but was '$input'", e)
+        }
     }
 
     private fun parseLiteralImpl(
@@ -53,7 +57,11 @@ private class GraphqlLongAsStringCoercing : Coercing<Long, String> {
                 ),
             )
         }
-        return input.value!!.toLong()
+        return try {
+            input.value!!.toLong()
+        } catch (e: NumberFormatException) {
+            throw CoercingParseLiteralException("Expected a 64-bit integer string but was '${input.value}'", e)
+        }
     }
 
     private fun valueToLiteralImpl(input: Any): StringValue = StringValue.newStringValue(input.toString()).build()

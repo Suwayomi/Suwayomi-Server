@@ -45,6 +45,9 @@ class SettingsMutation {
     ): SetSettingsPayload {
         val (clientMutationId, settings) = input
 
+        // user-scoped settings that were moved out of the global config always apply;
+        // without MANAGE_SETTINGS the global part of the patch is intentionally dropped
+        // and a masked view returned — silent degradation, not an error
         SettingsCompat.applyMovedSettingsToUser(userId, settings)
 
         if (!permissions.hasPermission(UserPermission.MANAGE_SETTINGS)) {
@@ -75,6 +78,8 @@ class SettingsMutation {
     ): ResetSettingsPayload {
         val (clientMutationId) = input
 
+        // without MANAGE_SETTINGS only the user-scoped settings are reset and a masked
+        // view returned — the global reset is skipped intentionally (see setSettings)
         SettingsCompat.resetMovedUserSettings(userId)
 
         if (!permissions.hasPermission(UserPermission.MANAGE_SETTINGS)) {

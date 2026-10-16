@@ -35,6 +35,9 @@ class KcefWebSettings : WebSettings() {
     private var offscreenPreRaster = false
     private var videoOverlayForEmbeddedEncryptedVideoEnabled = false
     private var safeBrowsingEnabled = true
+    private var supportZoom = true
+    private var databaseEnabled = false
+    private var appCacheEnabled = false
 
     // Integer settings
     private var textZoom = 100
@@ -82,10 +85,10 @@ class KcefWebSettings : WebSettings() {
     override fun getNavDump(): Boolean = navDumps
 
     override fun setSupportZoom(p0: Boolean) {
-        mediaPlaybackRequiresUserGesture = p0
+        supportZoom = p0
     }
 
-    override fun supportZoom() = mediaPlaybackRequiresUserGesture
+    override fun supportZoom() = supportZoom
 
     override fun setMediaPlaybackRequiresUserGesture(p0: Boolean) {
         mediaPlaybackRequiresUserGesture = p0
@@ -335,7 +338,11 @@ class KcefWebSettings : WebSettings() {
     }
 
     @Deprecated("inherit")
-    override fun setAppCacheEnabled(p0: Boolean) {}
+    override fun setAppCacheEnabled(p0: Boolean) {
+        appCacheEnabled = p0
+    }
+
+    fun getAppCacheEnabled() = appCacheEnabled
 
     @Deprecated("inherit")
     override fun setAppCachePath(p0: String?) {
@@ -348,10 +355,12 @@ class KcefWebSettings : WebSettings() {
     }
 
     @Deprecated("inherit")
-    override fun setDatabaseEnabled(p0: Boolean) {}
+    override fun setDatabaseEnabled(p0: Boolean) {
+        databaseEnabled = p0
+    }
 
     @Deprecated("inherit")
-    override fun getDatabaseEnabled() = true
+    override fun getDatabaseEnabled() = databaseEnabled
 
     override fun setDomStorageEnabled(p0: Boolean) {
         domStorageEnabled = p0
@@ -464,7 +473,7 @@ class KcefWebSettings : WebSettings() {
             mapOf(
                 BRAND_VERSION_LIST to
                     brands?.map {
-                        val fullVersion = fullVersionList?.first { f -> f.brand == it.brand }?.version ?: it.version
+                        val fullVersion = fullVersionList?.firstOrNull { f -> f.brand == it.brand }?.version ?: it.version
                         arrayOf(it.brand, it.version, fullVersion)
                     },
                 FULL_VERSION to fullVersion,
@@ -559,7 +568,17 @@ class KcefWebSettings : WebSettings() {
     }
 
     companion object {
-        fun defaultUserAgent() = System.getProperty("http.agent")
+        /**
+         * The single source of truth for the default User-Agent string. It is
+         * kept consistent with [defaultUserAgentMetadata] (Android 15,
+         * Chromium 149). `http.agent` is honored if the host process set it,
+         * but this module deliberately does NOT set that system property
+         * itself (it would be a JVM-global side effect).
+         */
+        const val DEFAULT_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 15.0.0; 2312DRAABG) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.197 Mobile Safari/537.36"
+
+        fun defaultUserAgent(): String = System.getProperty("http.agent") ?: DEFAULT_USER_AGENT
 
         // TODO: Should we support basic parsing of UA? Currently if no metadata is provided, metadata and UA will mismatch
         fun defaultUserAgentMetadata() =
