@@ -397,16 +397,7 @@ class DownloadMutation {
 
             ReorderChapterDownloadPayload(
                 clientMutationId,
-                downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first {
-                                    it.updates.indexOfFirst { it.downloadQueueItem.chapterId == reorders.first().chapterId } <=
-                                        reorders.first().to
-                                }.let { DownloadManager.getStatus() },
-                        )
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
     }
