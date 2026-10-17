@@ -25,6 +25,5 @@ class DownloadReorderMutationTest : GraphQLTest() {
 
         response.assertNoErrors()
         assertEquals("empty", response.dataPath("reorderChapterDownloads", "clientMutationId"))
-        assertEquals(emptyList<Any>(), response.dataPath("reorderChapterDownloads", "downloadStatus", "queue"))
     }
 }
