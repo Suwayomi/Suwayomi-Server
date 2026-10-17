@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Answer 424 instead of 500 when a source fails
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+- (**Downloads/API**) Avoid repeating an existing CBZ suffix in exported chapter archive filenames
 
 ### Deprecated
 - (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
