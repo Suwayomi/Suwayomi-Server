@@ -143,7 +143,7 @@ class LocalSource(
                         ?.takeIf(File::exists)
                         ?.let { thumbnail_url = it.absolutePath }
                 }
-            }
+            }.toList()
 
         // Fetch chapters of all the manga
         mangas.forEach { manga ->
@@ -214,7 +214,9 @@ class LocalSource(
 
                     // TODO: automatically convert these to ComicInfo.xml
                     legacyJsonDetailsFile != null -> {
-                        json.decodeFromStream<MangaDetails>(legacyJsonDetailsFile.inputStream()).run {
+                        legacyJsonDetailsFile.inputStream().use { stream ->
+                            json.decodeFromStream<MangaDetails>(stream)
+                        }.run {
                             title?.let { manga.title = it }
                             author?.let { manga.author = it }
                             artist?.let { manga.artist = it }
@@ -298,8 +300,10 @@ class LocalSource(
         manga: SManga,
     ) {
         val comicInfo =
-            KtXmlReader(stream, StandardCharsets.UTF_8.name()).use {
-                xml.decodeFromReader<ComicInfo>(it)
+            stream.use { input ->
+                KtXmlReader(input, StandardCharsets.UTF_8.name()).use {
+                    xml.decodeFromReader<ComicInfo>(it)
+                }
             }
 
         manga.copyFromComicInfo(comicInfo)
