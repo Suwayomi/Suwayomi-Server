@@ -16,7 +16,7 @@ class DownloadMutationTest : GraphQLTest() {
                         downloadStatus {
                             state
                             queue {
-                                chapterId
+                                state
                             }
                         }
                     }
