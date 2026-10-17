@@ -82,7 +82,11 @@ object ChapterDownloadHelper {
             val mangaTitle = row[MangaTable.title].trim()
 
             val scanlatorName = chapter.scanlator?.trim()?.takeIf { it.isNotEmpty() }
-            val chapterName = chapter.name.trim().takeIf { it.isNotEmpty() }
+            val chapterName =
+                chapter.name
+                    .trim()
+                    .let { if (it.endsWith(".cbz", ignoreCase = true)) it.dropLast(4) else it }
+                    .takeIf { it.isNotEmpty() }
 
             val fileName =
                 buildString {
