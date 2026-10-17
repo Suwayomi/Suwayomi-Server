@@ -26,6 +26,46 @@ class EpubFileTest {
         }
     }
 
+    @Test
+    fun normalizesDotSegmentsAndRootRelativeImagePaths() {
+        val expected = listOf("OPS/images/page.jpg", "images/root.jpg", "outside.jpg")
+        val file =
+            createEpub(
+                imageHrefs = listOf("./../images/page.jpg", "/images/root.jpg", "../../outside.jpg"),
+                imagePaths = expected,
+            )
+
+        EpubFile(file).use { epub ->
+            assertEquals(expected, epub.getImagesFromPages())
+            expected.forEach { assertNotNull(epub.getEntry(it)) }
+        }
+    }
+
+    @Test
+    fun preservesBackslashArchiveCompatibility() {
+        val file = createEpub(separator = "\\")
+
+        EpubFile(file).use { epub ->
+            assertEquals("OPS\\book.opf", epub.getPackageHref())
+            assertEquals(listOf("OPS\\images\\page.jpg"), epub.getImagesFromPages())
+        }
+    }
+
+    @Test
+    fun resolvesTheFallbackPackageWithoutContainerMetadata() {
+        val file =
+            createEpub(
+                packagePath = "OEBPS/content.opf",
+                imagePaths = listOf("OEBPS/images/page.jpg"),
+                includeContainer = false,
+            )
+
+        EpubFile(file).use { epub ->
+            assertEquals("OEBPS/content.opf", epub.getPackageHref())
+            assertEquals(listOf("OEBPS/images/page.jpg"), epub.getImagesFromPages())
+        }
+    }
+
     private fun createEpub(
         packagePath: String = "OPS/book.opf",
         imageHrefs: List<String> = listOf("../images/page.jpg"),
