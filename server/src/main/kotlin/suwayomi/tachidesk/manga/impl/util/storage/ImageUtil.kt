@@ -62,7 +62,10 @@ object ImageUtil {
             if (bytes.compareWith("RIFF".toByteArray())) {
                 return WEBP
             }
-            if (bytes.copyOfRange(4, 12).compareWith("ftypavif".toByteArray())) {
+            val fileType = bytes.copyOfRange(4, 12)
+            if (fileType.contentEquals("ftypavif".toByteArray()) ||
+                fileType.contentEquals("ftypavis".toByteArray())
+            ) {
                 return AVIF
             }
             if (isHEIF(bytes)) {
