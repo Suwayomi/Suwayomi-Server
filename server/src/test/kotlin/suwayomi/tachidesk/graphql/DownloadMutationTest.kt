@@ -1,5 +1,7 @@
 package suwayomi.tachidesk.graphql
 
+import kotlinx.coroutines.runBlocking
+import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.test.GraphQLTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -7,6 +9,8 @@ import kotlin.test.assertEquals
 class DownloadMutationTest : GraphQLTest() {
     @Test
     fun startDownloaderReturnsStoppedForAnEmptyQueue() {
+        runBlocking { DownloadManager.clear() }
+
         val response =
             graphql(
                 """
