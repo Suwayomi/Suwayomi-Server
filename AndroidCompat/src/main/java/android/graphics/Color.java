@@ -542,7 +542,11 @@ public class Color {
             throw new RuntimeException("3 components required for hsv");
         }
         float hue = hsv[0] < 0.0f || hsv[0] >= 360.0f ? 0.0f : hsv[0];
-        int rgb = java.awt.Color.HSBtoRGB(hue / 360.0f, saturate(hsv[1]), saturate(hsv[2]));
+        float saturation = saturate(hsv[1]);
+        if (saturation <= 1.0f / 4096.0f) {
+            saturation = 0.0f;
+        }
+        int rgb = java.awt.Color.HSBtoRGB(hue / 360.0f, saturation, saturate(hsv[2]));
         return (alpha << 24) | (rgb & 0x00ffffff);
     }
 

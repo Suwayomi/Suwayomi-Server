@@ -41,6 +41,12 @@ class ColorHsvTest {
     }
 
     @Test
+    fun nearlyZeroSaturationProducesGray() {
+        assertEquals(0xff808080.toInt(), Color.HSVToColor(floatArrayOf(0f, 0.0001f, 0.5f)))
+        assertEquals(0xff808080.toInt(), Color.HSVToColor(floatArrayOf(0f, 1f / 4096f, 0.5f)))
+    }
+
+    @Test
     fun representativeColorsRoundTrip() {
         val hsv = FloatArray(3)
         for (color in listOf(Color.BLACK, Color.WHITE, Color.CYAN, 0x7f123456, 0xffee9933.toInt())) {
