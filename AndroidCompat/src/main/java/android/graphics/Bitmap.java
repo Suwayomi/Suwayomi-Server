@@ -115,7 +115,7 @@ public final class Bitmap {
             case _TYPE_USHORT_555_RGB:
             case _TYPE_USHORT_565_RGB:
             case _TYPE_USHORT_GRAY:
-                return config.ordinal();
+                return config.nativeInt;
             default:
                 throw new UnsupportedOperationException("Bitmap.Config(" + config + ") not supported");
         }
