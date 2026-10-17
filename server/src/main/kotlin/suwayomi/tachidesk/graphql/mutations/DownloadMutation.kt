@@ -3,8 +3,6 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeout
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -16,14 +14,11 @@ import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.graphql.types.DownloadStatus
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
-import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.DEQUEUED
-import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
-import kotlin.time.Duration.Companion.seconds
 
 class DownloadMutation {
     data class DeleteDownloadedChaptersInput(
@@ -118,23 +113,11 @@ class DownloadMutation {
         val (clientMutationId, chapters) = input
 
         return future {
-            val chapterIdsToEnqueue = DownloadManager.enqueue(userId, chapters)
+            DownloadManager.enqueue(userId, chapters)
 
             EnqueueChapterDownloadsPayload(
                 clientMutationId = clientMutationId,
-                downloadStatus =
-                    if (chapterIdsToEnqueue.isNotEmpty()) {
-                        withTimeout(30.seconds) {
-                            DownloadStatus(
-                                DownloadManager.updates
-                                    .first {
-                                        DownloadManager.getStatus().queue.any { it.chapterId in chapterIdsToEnqueue }
-                                    }.let { DownloadManager.getStatus() },
-                            )
-                        }
-                    } else {
-                        DownloadStatus(DownloadManager.getStatus())
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
     }
@@ -159,22 +142,11 @@ class DownloadMutation {
         val (clientMutationId, chapter) = input
 
         return future {
-            val chapterIdsToEnqueue = DownloadManager.enqueue(userId, listOf(chapter))
+            DownloadManager.enqueue(userId, listOf(chapter))
 
             EnqueueChapterDownloadPayload(
                 clientMutationId = clientMutationId,
-                downloadStatus =
-                    if (chapterIdsToEnqueue.isNotEmpty()) {
-                        withTimeout(30.seconds) {
-                            DownloadStatus(
-                                DownloadManager.updates
-                                    .first { it.updates.any { it.downloadQueueItem.chapterId == chapter } }
-                                    .let { DownloadManager.getStatus() },
-                            )
-                        }
-                    } else {
-                        DownloadStatus(DownloadManager.getStatus())
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
     }
@@ -199,25 +171,11 @@ class DownloadMutation {
         val (clientMutationId, chapters) = input
 
         return future {
-            val chapterIdsToDequeue = DownloadManager.dequeue(userId, chapters)
+            DownloadManager.dequeue(userId, chapters)
 
             DequeueChapterDownloadsPayload(
                 clientMutationId = clientMutationId,
-                downloadStatus =
-                    if (chapterIdsToDequeue.isNotEmpty()) {
-                        withTimeout(30.seconds) {
-                            DownloadStatus(
-                                DownloadManager.updates
-                                    .first {
-                                        it.updates.any {
-                                            it.downloadQueueItem.chapterId in chapterIdsToDequeue && it.type == DEQUEUED
-                                        }
-                                    }.let { DownloadManager.getStatus() },
-                            )
-                        }
-                    } else {
-                        DownloadStatus(DownloadManager.getStatus())
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
     }
@@ -242,25 +200,11 @@ class DownloadMutation {
         val (clientMutationId, chapter) = input
 
         return future {
-            val chapterIdsToDequeue = DownloadManager.dequeue(userId, listOf(chapter))
+            DownloadManager.dequeue(userId, listOf(chapter))
 
             DequeueChapterDownloadPayload(
                 clientMutationId = clientMutationId,
-                downloadStatus =
-                    if (chapterIdsToDequeue.isNotEmpty()) {
-                        withTimeout(30.seconds) {
-                            DownloadStatus(
-                                DownloadManager.updates
-                                    .first {
-                                        it.updates.any {
-                                            it.downloadQueueItem.chapterId == chapter && it.type == DEQUEUED
-                                        }
-                                    }.let { DownloadManager.getStatus() },
-                            )
-                        }
-                    } else {
-                        DownloadStatus(DownloadManager.getStatus())
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
     }
@@ -282,14 +226,7 @@ class DownloadMutation {
 
             StartDownloaderPayload(
                 input.clientMutationId,
-                downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first { it.status == Status.Started }
-                                .let { DownloadManager.getStatus() },
-                        )
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
 
@@ -310,14 +247,7 @@ class DownloadMutation {
 
             StopDownloaderPayload(
                 input.clientMutationId,
-                downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first { it.status == Status.Stopped }
-                                .let { DownloadManager.getStatus() },
-                        )
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
 
@@ -338,14 +268,7 @@ class DownloadMutation {
 
             ClearDownloaderPayload(
                 input.clientMutationId,
-                downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first { it.status == Status.Stopped }
-                                .let { DownloadManager.getStatus() },
-                        )
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
 
@@ -370,14 +293,7 @@ class DownloadMutation {
 
             ReorderChapterDownloadPayload(
                 clientMutationId,
-                downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first { it.updates.indexOfFirst { it.downloadQueueItem.chapterId == chapter } <= to }
-                                .let { DownloadManager.getStatus() },
-                        )
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
     }
@@ -397,16 +313,7 @@ class DownloadMutation {
 
             ReorderChapterDownloadPayload(
                 clientMutationId,
-                downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first {
-                                    it.updates.indexOfFirst { it.downloadQueueItem.chapterId == reorders.first().chapterId } <=
-                                        reorders.first().to
-                                }.let { DownloadManager.getStatus() },
-                        )
-                    },
+                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
             )
         }
     }
