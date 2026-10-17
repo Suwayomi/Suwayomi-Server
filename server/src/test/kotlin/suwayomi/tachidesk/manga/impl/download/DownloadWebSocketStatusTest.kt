@@ -106,10 +106,23 @@ class DownloadWebSocketStatusTest : ApplicationTest() {
                             .jsonArray
                             .single()
                             .jsonObject
-                    assertEquals("Chapter 1", queuedJson.getValue("chapter").jsonObject.getValue("name").jsonPrimitive.content)
+                    assertEquals(
+                        "Chapter 1",
+                        queuedJson
+                            .getValue("chapter")
+                            .jsonObject
+                            .getValue("name")
+                            .jsonPrimitive
+                            .content,
+                    )
                     assertEquals(
                         "Legacy WebSocket manga",
-                        queuedJson.getValue("manga").jsonObject.getValue("title").jsonPrimitive.content,
+                        queuedJson
+                            .getValue("manga")
+                            .jsonObject
+                            .getValue("title")
+                            .jsonPrimitive
+                            .content,
                     )
                 }
             } finally {
