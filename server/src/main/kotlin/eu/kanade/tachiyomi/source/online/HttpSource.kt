@@ -461,12 +461,12 @@ abstract class HttpSource : CatalogueSource {
     private fun getUrlWithoutDomain(orig: String): String =
         try {
             val uri = URI(orig.replace(" ", "%20"))
-            var out = uri.path
-            if (uri.query != null) {
-                out += "?" + uri.query
+            var out = uri.rawPath
+            if (uri.rawQuery != null) {
+                out += "?" + uri.rawQuery
             }
-            if (uri.fragment != null) {
-                out += "#" + uri.fragment
+            if (uri.rawFragment != null) {
+                out += "#" + uri.rawFragment
             }
             out
         } catch (_: URISyntaxException) {

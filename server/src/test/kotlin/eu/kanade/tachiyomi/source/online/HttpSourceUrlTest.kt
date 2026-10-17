@@ -37,6 +37,28 @@ class HttpSourceUrlTest {
     }
 
     @Test
+    fun chapterFragmentsKeepEscapedCharacters() {
+        val chapter = SChapter.create()
+
+        with(source) {
+            chapter.setUrlWithoutDomain("https://example.com/chapter#page%23two")
+        }
+
+        assertEquals("/chapter#page%23two", chapter.url)
+    }
+
+    @Test
+    fun relativeUrlsKeepEncodedComponents() {
+        val manga = SManga.create()
+
+        with(source) {
+            manga.setUrlWithoutDomain("/series/a%2Fb?key=one%26two")
+        }
+
+        assertEquals("/series/a%2Fb?key=one%26two", manga.url)
+    }
+
+    @Test
     fun ordinaryRelativeComponentsRemainUnchanged() {
         val manga = SManga.create()
 
