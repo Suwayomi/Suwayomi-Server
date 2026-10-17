@@ -62,6 +62,29 @@ class LocalSourceMetadataTest : ApplicationTest() {
             assertEquals(FOLDER_NAME, manga.url)
         }
 
+    @Test
+    fun browsingKeepsTheTitleLoadedByADetailsRefresh() =
+        runBlocking {
+            File(mangaDirectory, "details.json").writeText("""{"title":"Metadata title"}""")
+            val initial = source.getPopularManga(1).mangas.single()
+            val refreshed = source.getMangaUpdate(initial, emptyList(), fetchDetails = true, fetchChapters = false).manga
+
+            val browsedAgain = source.getPopularManga(1).mangas.single()
+
+            assertEquals("Metadata title", refreshed.title)
+            assertEquals(refreshed.title, browsedAgain.title)
+            assertEquals(FOLDER_NAME, browsedAgain.url)
+        }
+
+    @Test
+    fun browsingWithoutMetadataKeepsTheFolderTitle() =
+        runBlocking {
+            val manga = source.getPopularManga(1).mangas.single()
+
+            assertEquals(FOLDER_NAME, manga.title)
+            assertEquals(FOLDER_NAME, manga.url)
+        }
+
     companion object {
         private const val FOLDER_NAME = "Folder title"
     }

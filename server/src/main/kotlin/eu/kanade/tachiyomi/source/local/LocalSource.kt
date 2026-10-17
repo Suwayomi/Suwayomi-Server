@@ -164,6 +164,8 @@ class LocalSource(
                         updateCover(chapter, manga)
                     }
                 }
+
+                getMangaDetails(manga)
             }
         }
 
