@@ -132,18 +132,19 @@ class LocalSource(
 
         // Transform mangaDirs to list of SManga
         val mangas =
-            mangaDirs.map { mangaDir ->
-                SManga.create().apply {
-                    title = mangaDir.name
-                    url = mangaDir.name
+            mangaDirs
+                .map { mangaDir ->
+                    SManga.create().apply {
+                        title = mangaDir.name
+                        url = mangaDir.name
 
-                    // Try to find the cover
-                    coverManager
-                        .find(mangaDir.name)
-                        ?.takeIf(File::exists)
-                        ?.let { thumbnail_url = it.absolutePath }
-                }
-            }.toList()
+                        // Try to find the cover
+                        coverManager
+                            .find(mangaDir.name)
+                            ?.takeIf(File::exists)
+                            ?.let { thumbnail_url = it.absolutePath }
+                    }
+                }.toList()
 
         // Fetch chapters of all the manga
         mangas.forEach { manga ->
@@ -214,16 +215,18 @@ class LocalSource(
 
                     // TODO: automatically convert these to ComicInfo.xml
                     legacyJsonDetailsFile != null -> {
-                        legacyJsonDetailsFile.inputStream().use { stream ->
-                            json.decodeFromStream<MangaDetails>(stream)
-                        }.run {
-                            title?.let { manga.title = it }
-                            author?.let { manga.author = it }
-                            artist?.let { manga.artist = it }
-                            description?.let { manga.description = it }
-                            genre?.let { manga.genre = it.joinToString() }
-                            status?.let { manga.status = it }
-                        }
+                        legacyJsonDetailsFile
+                            .inputStream()
+                            .use { stream ->
+                                json.decodeFromStream<MangaDetails>(stream)
+                            }.run {
+                                title?.let { manga.title = it }
+                                author?.let { manga.author = it }
+                                artist?.let { manga.artist = it }
+                                description?.let { manga.description = it }
+                                genre?.let { manga.genre = it.joinToString() }
+                                status?.let { manga.status = it }
+                            }
                     }
 
                     // Copy ComicInfo.xml from chapter archive to top level if found
