@@ -1,10 +1,10 @@
 package eu.kanade.tachiyomi.util.storage
 
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
+import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.nio.file.Path
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -100,11 +100,19 @@ class EpubFileTest {
                 }.toByteArray()
         imagePaths.forEach { entries[it] = IMAGE_BYTES }
 
-        ZipOutputStream(file.outputStream()).use { zip ->
+        ZipArchiveOutputStream(file).use { zip ->
             entries.forEach { (path, bytes) ->
-                zip.putNextEntry(ZipEntry(path.replace("/", separator)))
+                val entry =
+                    object : ZipArchiveEntry(path) {
+                        init {
+                            // FAT entries have backslashes normalized by Commons Compress when read.
+                            setPlatform(PLATFORM_UNIX)
+                            setName(path.replace("/", separator))
+                        }
+                    }
+                zip.putArchiveEntry(entry)
                 zip.write(bytes)
-                zip.closeEntry()
+                zip.closeArchiveEntry()
             }
         }
         return file
