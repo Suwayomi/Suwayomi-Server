@@ -120,7 +120,7 @@ object DownloadManager {
 
     fun notifyClient(ctx: WsContext) {
         ctx.send(
-            getStatus(),
+            getOldStatus(getStatus()),
         )
     }
 
