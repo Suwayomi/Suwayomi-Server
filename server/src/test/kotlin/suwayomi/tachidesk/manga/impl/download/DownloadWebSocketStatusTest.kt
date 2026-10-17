@@ -14,8 +14,6 @@ import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
-import io.mockk.mockkObject
-import io.mockk.unmockkObject
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -27,9 +25,7 @@ import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
 import suwayomi.tachidesk.manga.impl.download.model.DownloadState
-import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
 import suwayomi.tachidesk.manga.impl.download.model.OldDownloadStatus
-import suwayomi.tachidesk.manga.impl.download.model.Status
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -57,21 +53,16 @@ class DownloadWebSocketStatusTest : ApplicationTest() {
                             it[memo] = JsonObject.EMPTY
                         }.value
                 }
-            val status =
-                DownloadStatus(
-                    Status.Stopped,
-                    listOf(
-                        DownloadQueueItem(
-                            chapterId = chapterId,
-                            chapterIndex = 1,
-                            mangaId = mangaId,
-                            sourceId = 1L,
-                            pageCount = 4,
-                            state = DownloadState.Error,
-                            progress = 0.5f,
-                            tries = 3,
-                        ),
-                    ),
+            val queuedDownload =
+                DownloadQueueItem(
+                    chapterId = chapterId,
+                    chapterIndex = 1,
+                    mangaId = mangaId,
+                    sourceId = 1L,
+                    pageCount = 4,
+                    state = DownloadState.Error,
+                    progress = 0.5f,
+                    tries = 3,
                 )
             val replies = mutableListOf<Any>()
             val initialContext = mockk<WsContext>()
@@ -80,10 +71,15 @@ class DownloadWebSocketStatusTest : ApplicationTest() {
             every { requestContext.message() } returns "STATUS"
             every { requestContext.send(capture(replies)) } just Runs
 
-            mockkObject(DownloadManager)
+            // Seed an errored item without enqueue(), which would start a downloader.
+            val queueField = DownloadManager::class.java.getDeclaredField("downloadQueue")
+            queueField.isAccessible = true
+            @Suppress("UNCHECKED_CAST")
+            val queue = queueField.get(null) as MutableList<DownloadQueueItem>
+            val originalQueue = queue.toList()
+            assertEquals(emptyList(), originalQueue)
+            queue.add(queuedDownload)
             try {
-                every { DownloadManager.getStatus() } returns status
-
                 DownloadManager.notifyClient(initialContext)
                 DownloadManager.handleRequest(requestContext)
 
@@ -126,7 +122,8 @@ class DownloadWebSocketStatusTest : ApplicationTest() {
                     )
                 }
             } finally {
-                unmockkObject(DownloadManager)
+                queue.remove(queuedDownload)
+                assertEquals(originalQueue, queue.toList())
             }
         } finally {
             transaction {
