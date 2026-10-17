@@ -3,6 +3,8 @@
 package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -19,6 +21,7 @@ import suwayomi.tachidesk.manga.model.table.getWithUserData
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.UserPermission
 import java.util.concurrent.CompletableFuture
+import kotlin.time.Duration.Companion.seconds
 
 class DownloadMutation {
     data class DeleteDownloadedChaptersInput(
@@ -293,7 +296,14 @@ class DownloadMutation {
 
             ReorderChapterDownloadPayload(
                 clientMutationId,
-                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
+                downloadStatus =
+                    withTimeout(30.seconds) {
+                        DownloadStatus(
+                            DownloadManager.updates
+                                .first { it.updates.indexOfFirst { it.downloadQueueItem.chapterId == chapter } <= to }
+                                .let { DownloadManager.getStatus() },
+                        )
+                    },
             )
         }
     }
@@ -313,7 +323,16 @@ class DownloadMutation {
 
             ReorderChapterDownloadPayload(
                 clientMutationId,
-                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
+                downloadStatus =
+                    withTimeout(30.seconds) {
+                        DownloadStatus(
+                            DownloadManager.updates
+                                .first {
+                                    it.updates.indexOfFirst { it.downloadQueueItem.chapterId == reorders.first().chapterId } <=
+                                        reorders.first().to
+                                }.let { DownloadManager.getStatus() },
+                        )
+                    },
             )
         }
     }
