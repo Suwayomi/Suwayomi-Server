@@ -134,19 +134,23 @@ class EpubFile(
         basePath: String,
         relativePath: String,
     ): String {
-        if (relativePath.startsWith(pathSeparator)) {
-            // Path is absolute, so return as-is.
-            return relativePath
-        }
+        val path =
+            if (relativePath.startsWith(pathSeparator)) {
+                relativePath
+            } else {
+                "$basePath$pathSeparator$relativePath"
+            }
 
-        var fixedBasePath = basePath.replace(pathSeparator, File.separator)
-        if (!fixedBasePath.startsWith(File.separator)) {
-            fixedBasePath = "${File.separator}$fixedBasePath"
+        // Archive paths have a virtual root and must not acquire a host drive or filesystem path.
+        val segments = mutableListOf<String>()
+        path.split(pathSeparator).forEach { segment ->
+            when (segment) {
+                "", "." -> Unit
+                ".." -> segments.removeLastOrNull()
+                else -> segments.add(segment)
+            }
         }
-
-        val fixedRelativePath = relativePath.replace(pathSeparator, File.separator)
-        val resolvedPath = File(fixedBasePath, fixedRelativePath).canonicalPath
-        return resolvedPath.replace(File.separator, pathSeparator).substring(1)
+        return segments.joinToString(pathSeparator)
     }
 
     /**
