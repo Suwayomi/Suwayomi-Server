@@ -29,6 +29,7 @@ import java.util.zip.GZIPOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BackupHistoryOnlyRestoreTest : ApplicationTest() {
@@ -152,6 +153,128 @@ class BackupHistoryOnlyRestoreTest : ApplicationTest() {
             }
         }
 
+    @Test
+    fun partialChapterRecordsDoNotLimitRestoredFileHistory() =
+        runTest {
+            withFixture { fixture ->
+                val chapterFlags = flags.copy(includeChapters = true)
+                val backup =
+                    ProtoBackupExport.createBackup(fixture.userId, chapterFlags).use { input ->
+                        GZIPInputStream(input).use {
+                            ProtoBackupExport.parser.decodeFromByteArray(Backup.serializer(), it.readBytes())
+                        }
+                    }
+                assertEquals(
+                    listOf(fixture.chapterUrl),
+                    backup.backupManga
+                        .single()
+                        .chapters
+                        .map { it.url },
+                )
+                val omittedId = addChapter(fixture, "/omitted")
+                transaction {
+                    ChapterUserTable.insert {
+                        it[chapter] = omittedId
+                        it[user] = fixture.userId
+                        it[isBookmarked] = true
+                        it[lastPageRead] = 3
+                        it[isDownloaded] = true
+                        it[version] = 41
+                        it[lastModifiedAt] = 234_567
+                    }
+                }
+                backup.backupManga.single().history += BackupHistory("${fixture.chapterUrl}/omitted", (historySeconds + 1) * 1000)
+                clearHistory(fixture)
+                val includedBefore = assertNotNull(userSnapshot(fixture.userId, fixture.chapterId))
+                val omittedBefore = assertNotNull(userSnapshot(fixture.userId, omittedId))
+                val chapterBefore = chapterSnapshot(fixture)
+                val omittedChapterBefore = chapterSnapshot(fixture.copy(chapterId = omittedId))
+                val otherBefore = userSnapshot(fixture.otherUserId, fixture.chapterId)
+
+                restore(fixture, encode(backup), restoreFlags = chapterFlags)
+
+                val included = assertNotNull(userSnapshot(fixture.userId, fixture.chapterId))
+                val omitted = assertNotNull(userSnapshot(fixture.userId, omittedId))
+                assertEquals(historySeconds, included["last_read_at"])
+                assertEquals(includedBefore - setOf("last_read_at", "is_syncing"), included - setOf("last_read_at", "is_syncing"))
+                assertEquals(omittedBefore - "last_read_at", omitted - "last_read_at")
+                assertEquals(otherBefore, userSnapshot(fixture.otherUserId, fixture.chapterId))
+                assertEquals(chapterBefore, chapterSnapshot(fixture))
+                assertEquals(omittedChapterBefore, chapterSnapshot(fixture.copy(chapterId = omittedId)))
+                assertEquals(historySeconds + 1, omitted["last_read_at"])
+            }
+        }
+
+    @Test
+    fun historyRestoreIsMangaScopedAndSkipsNonPositiveTimestamps() =
+        runTest {
+            withFixture { fixture ->
+                withFixture { foreign ->
+                    val backup = exportHistoryOnly(fixture).second
+                    val zeroId = addChapter(fixture, "/zero")
+                    val negativeId = addChapter(fixture, "/negative")
+                    transaction {
+                        ChapterTable.update({ ChapterTable.id eq foreign.chapterId }) {
+                            it[url] = fixture.chapterUrl
+                        }
+                    }
+                    backup.backupManga.single().history +=
+                        listOf(
+                            BackupHistory("${fixture.chapterUrl}/zero", 0),
+                            BackupHistory("${fixture.chapterUrl}/negative", -1000),
+                        )
+                    val targetBefore = userSnapshot(fixture.userId, fixture.chapterId)
+                    val foreignBefore = userSnapshot(foreign.userId, foreign.chapterId)
+                    val foreignChapterBefore = chapterSnapshot(foreign)
+                    assertNull(userSnapshot(fixture.userId, foreign.chapterId))
+
+                    restore(fixture, encode(backup))
+
+                    assertEquals(targetBefore, userSnapshot(fixture.userId, fixture.chapterId))
+                    assertEquals(foreignBefore, userSnapshot(foreign.userId, foreign.chapterId))
+                    assertEquals(foreignChapterBefore, chapterSnapshot(foreign))
+                    assertNull(userSnapshot(fixture.userId, foreign.chapterId))
+                    assertNull(userSnapshot(fixture.userId, zeroId))
+                    assertNull(userSnapshot(fixture.userId, negativeId))
+                }
+            }
+        }
+
+    @Test
+    fun fullChapterAndHistoryExportStillRestoresTheOriginalGzipBytes() =
+        runTest {
+            withFixture { fixture ->
+                val chapterFlags = flags.copy(includeChapters = true)
+                val bytes = ProtoBackupExport.createBackup(fixture.userId, chapterFlags).use { it.readBytes() }
+                clearHistory(fixture)
+                val before = assertNotNull(userSnapshot(fixture.userId, fixture.chapterId))
+                val otherBefore = userSnapshot(fixture.otherUserId, fixture.chapterId)
+                val chapterBefore = chapterSnapshot(fixture)
+
+                restore(fixture, bytes, restoreFlags = chapterFlags)
+
+                val restored = assertNotNull(userSnapshot(fixture.userId, fixture.chapterId))
+                assertEquals(historySeconds, restored["last_read_at"])
+                assertEquals(before - setOf("last_read_at", "is_syncing"), restored - setOf("last_read_at", "is_syncing"))
+                assertEquals(otherBefore, userSnapshot(fixture.otherUserId, fixture.chapterId))
+                assertEquals(chapterBefore, chapterSnapshot(fixture))
+            }
+        }
+
+    private fun addChapter(
+        fixture: Fixture,
+        suffix: String,
+    ): Int =
+        transaction {
+            ChapterTable
+                .insertAndGetId {
+                    it[url] = fixture.chapterUrl + suffix
+                    it[name] = "Additional chapter"
+                    it[sourceOrder] = 5
+                    it[manga] = fixture.mangaId
+                }.value
+        }
+
     private data class Fixture(
         val userId: Int,
         val otherUserId: Int,
@@ -164,19 +287,22 @@ class BackupHistoryOnlyRestoreTest : ApplicationTest() {
         val fixture =
             transaction {
                 val unique = UUID.randomUUID().toString()
+
                 fun user(name: String): Int =
-                    UserAccountTable.insertAndGetId {
-                        it[username] = "history-$name-$unique"
-                        it[password] = "unused-test-password"
-                    }.value
+                    UserAccountTable
+                        .insertAndGetId {
+                            it[username] = "history-$name-$unique"
+                            it[password] = "unused-test-password"
+                        }.value
                 val userId = user("owner")
                 val otherUserId = user("other")
                 val mangaId =
-                    MangaTable.insertAndGetId {
-                        it[url] = "history-only/$unique"
-                        it[title] = "History-only fixture $unique"
-                        it[sourceReference] = LocalSource.ID
-                    }.value
+                    MangaTable
+                        .insertAndGetId {
+                            it[url] = "history-only/$unique"
+                            it[title] = "History-only fixture $unique"
+                            it[sourceReference] = LocalSource.ID
+                        }.value
                 MangaUserTable.insert {
                     it[manga] = mangaId
                     it[user] = userId
@@ -184,15 +310,16 @@ class BackupHistoryOnlyRestoreTest : ApplicationTest() {
                 }
                 val chapterUrl = "history-only/$unique/chapter"
                 val chapterId =
-                    ChapterTable.insertAndGetId {
-                        it[url] = chapterUrl
-                        it[name] = "Original chapter"
-                        it[sourceOrder] = 4
-                        it[chapter_number] = 7f
-                        it[pageCount] = 12
-                        it[isDownloaded] = true
-                        it[manga] = mangaId
-                    }.value
+                    ChapterTable
+                        .insertAndGetId {
+                            it[url] = chapterUrl
+                            it[name] = "Original chapter"
+                            it[sourceOrder] = 4
+                            it[chapter_number] = 7f
+                            it[pageCount] = 12
+                            it[isDownloaded] = true
+                            it[manga] = mangaId
+                        }.value
                 ChapterUserTable.insert {
                     it[chapter] = chapterId
                     it[user] = userId
