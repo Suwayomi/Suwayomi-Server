@@ -16,7 +16,6 @@ import java.net.InetAddress
 import java.net.Socket
 import java.nio.file.Files
 import java.nio.file.Path
-import java.sql.DriverManager
 import java.sql.SQLException
 import java.util.Properties
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -33,13 +32,14 @@ class PostgresTransportCompatibilityTest {
     lateinit var directory: Path
 
     private val factoryName = RecordingPostgresSocketFactory::class.java.name
+    private val driver = PostgresDriver()
     private val serviceProperty = "org.postgresql.pgservicefile"
     private val url = "jdbc:postgresql://127.0.0.1:1/postgres?connectTimeout=1&socketTimeout=1&loginTimeout=0&sslmode=disable"
 
     @BeforeEach
     fun prepareDriver() {
-        Class.forName("org.postgresql.Driver")
         RecordingPostgresSocketFactory.calls.clear()
+        PropertyRecordingPostgresSocketFactory.credentials.clear()
     }
 
     private fun credentials() =
@@ -53,7 +53,7 @@ class PostgresTransportCompatibilityTest {
         properties: Properties = credentials(),
     ): SQLException =
         assertFailsWith<SQLException> {
-            DriverManager.getConnection(url + suffix, properties).use { }
+            driver.connect(url + suffix, properties).use { }
         }
 
     private fun withService(
@@ -142,6 +142,79 @@ class PostgresTransportCompatibilityTest {
         assertTrue(generateSequence<Throwable>(failure) { it.cause }.any { it is ClassNotFoundException })
         assertEquals(emptyList(), RecordingPostgresSocketFactory.calls.toList())
     }
+
+    @Test
+    fun `inherited factory properties are preserved without mutating the caller`() {
+        val defaults =
+            credentials().apply {
+                setProperty("socketFactory", factoryName)
+                setProperty("socketFactoryArg", "inherited")
+            }
+        val properties = Properties(defaults)
+
+        attemptConnection("", properties)
+
+        assertEquals(listOf("inherited"), RecordingPostgresSocketFactory.calls.toList())
+        assertTrue(properties.isEmpty)
+        assertEquals("inherited", defaults.getProperty("socketFactoryArg"))
+    }
+
+    @Test
+    fun `URL credentials override properties without changing later connections`() {
+        val properties =
+            credentials().apply {
+                setProperty("socketFactory", PropertyRecordingPostgresSocketFactory::class.java.name)
+            }
+
+        attemptConnection("&user=url_user&password=url_password", properties)
+        attemptConnection("", properties)
+
+        assertEquals(
+            listOf("url_user" to "url_password", "transport_test" to "transport_test"),
+            PropertyRecordingPostgresSocketFactory.credentials.toList(),
+        )
+        assertEquals("transport_test", properties.getProperty("user"))
+        assertEquals("transport_test", properties.getProperty("password"))
+    }
+}
+
+class PropertyRecordingPostgresSocketFactory(
+    private val properties: Properties,
+) : SocketFactory() {
+    companion object {
+        val credentials = ConcurrentLinkedQueue<Pair<String?, String?>>()
+    }
+
+    private fun stopBeforeNetwork(): Socket {
+        credentials.add(properties.getProperty("user") to properties.getProperty("password"))
+        throw IOException("Controlled transport failure")
+    }
+
+    override fun createSocket(): Socket = stopBeforeNetwork()
+
+    override fun createSocket(
+        host: String,
+        port: Int,
+    ): Socket = stopBeforeNetwork()
+
+    override fun createSocket(
+        host: String,
+        port: Int,
+        localHost: InetAddress,
+        localPort: Int,
+    ): Socket = stopBeforeNetwork()
+
+    override fun createSocket(
+        host: InetAddress,
+        port: Int,
+    ): Socket = stopBeforeNetwork()
+
+    override fun createSocket(
+        host: InetAddress,
+        port: Int,
+        localHost: InetAddress,
+        localPort: Int,
+    ): Socket = stopBeforeNetwork()
 }
 
 class RecordingPostgresSocketFactory(

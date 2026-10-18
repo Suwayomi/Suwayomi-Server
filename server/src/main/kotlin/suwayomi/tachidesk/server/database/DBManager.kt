@@ -28,6 +28,8 @@ import suwayomi.tachidesk.server.util.ExitCode
 import suwayomi.tachidesk.server.util.shutdownApp
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.sql.SQLException
+import java.util.Properties
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -45,7 +47,7 @@ object DBManager {
                 when (serverConfig.databaseType.value) {
                     DatabaseType.POSTGRESQL -> {
                         jdbcUrl = "jdbc:${serverConfig.databaseUrl.value}"
-                        driverClassName = "org.postgresql.Driver"
+                        driverClassName = PostgresDriver::class.java.name
                         username = serverConfig.databaseUsername.value
                         password = serverConfig.databasePassword.value
                         // PostgreSQL specific optimizations
@@ -109,11 +111,18 @@ object DBManager {
         } else {
             when (serverConfig.databaseType.value) {
                 DatabaseType.POSTGRESQL -> {
+                    val url = "jdbc:${serverConfig.databaseUrl.value}"
+                    val properties =
+                        Properties().apply {
+                            setProperty("user", serverConfig.databaseUsername.value)
+                            setProperty("password", serverConfig.databasePassword.value)
+                        }
+                    val driver = PostgresDriver()
                     Database.connect(
-                        "jdbc:${serverConfig.databaseUrl.value}",
-                        "org.postgresql.Driver",
-                        user = serverConfig.databaseUsername.value,
-                        password = serverConfig.databasePassword.value,
+                        getNewConnection = {
+                            driver.connect(url, properties)
+                                ?: throw SQLException("PostgreSQL driver rejected the configured JDBC URL", "08001")
+                        },
                         databaseConfig = dbConfig,
                     )
                 }
