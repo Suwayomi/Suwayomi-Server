@@ -71,6 +71,7 @@ class BackupRestoreNotificationTest : ApplicationTest() {
                                 ProtoBackupImport.BackupRestoreState.Success,
                                 ProtoBackupImport.BackupRestoreState.Failure,
                                 -> true
+
                                 else -> false
                             }
                         } ?: false
@@ -287,7 +288,9 @@ class BackupRestoreNotificationTest : ApplicationTest() {
         return UploadedFile(part)
     }
 
-    private class GatedInput(bytes: ByteArray) : FilterInputStream(bytes.inputStream()) {
+    private class GatedInput(
+        bytes: ByteArray,
+    ) : FilterInputStream(bytes.inputStream()) {
         val started = CompletableDeferred<Unit>()
         val release = CountDownLatch(1)
 
@@ -301,7 +304,11 @@ class BackupRestoreNotificationTest : ApplicationTest() {
             return super.read()
         }
 
-        override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
+        override fun read(
+            bytes: ByteArray,
+            offset: Int,
+            length: Int,
+        ): Int {
             awaitRelease()
             return super.read(bytes, offset, length)
         }
@@ -310,10 +317,11 @@ class BackupRestoreNotificationTest : ApplicationTest() {
     private fun withUser(block: (Int) -> Unit) {
         val userId =
             transaction {
-                UserAccountTable.insertAndGetId {
-                    it[username] = "restore-notification-" + UUID.randomUUID()
-                    it[password] = "unused-test-password"
-                }.value
+                UserAccountTable
+                    .insertAndGetId {
+                        it[username] = "restore-notification-" + UUID.randomUUID()
+                        it[password] = "unused-test-password"
+                    }.value
             }
         try {
             block(userId)
