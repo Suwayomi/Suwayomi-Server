@@ -279,10 +279,22 @@ class DownloadMutation {
     fun startDownloader(input: StartDownloaderInput): CompletableFuture<StartDownloaderPayload?> =
         future {
             DownloadManager.start()
+            val status = DownloadManager.getStatus()
 
             StartDownloaderPayload(
                 input.clientMutationId,
-                downloadStatus = DownloadStatus(DownloadManager.getStatus()),
+                downloadStatus =
+                    if (status.queue.isEmpty()) {
+                        DownloadStatus(status)
+                    } else {
+                        withTimeout(30.seconds) {
+                            DownloadStatus(
+                                DownloadManager.updates
+                                    .first { it.status == Status.Started }
+                                    .let { DownloadManager.getStatus() },
+                            )
+                        }
+                    },
             )
         }
 
