@@ -333,7 +333,10 @@ class KcefWebViewProvider(
                 browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
             }
 
-            handler.post { viewClient.onPageStarted(view, frame.url, null) }
+            // "This method is called once for each main frame load so a page with iframes or framesets will call onPageStarted one time for the main frame"
+            if (frame.isMain) {
+                handler.post { viewClient.onPageStarted(view, frame.url, null) }
+            }
         }
     }
 
