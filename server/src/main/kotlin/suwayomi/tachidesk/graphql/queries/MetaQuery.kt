@@ -85,11 +85,11 @@ class MetaQuery {
     data class MetaCondition(
         val key: String? = null,
         val value: String? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(key, GlobalMetaTable.key)
-            opAnd.eq(value, GlobalMetaTable.value)
+            opAnd.eq(this.value, GlobalMetaTable.value)
 
             return opAnd.op
         }
@@ -101,11 +101,11 @@ class MetaQuery {
         override val and: List<MetaFilter>? = null,
         override val or: List<MetaFilter>? = null,
         override val not: MetaFilter? = null,
-    ) : Filter<MetaFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<MetaFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareString(GlobalMetaTable.key, key),
-                andFilterWithCompareString(GlobalMetaTable.value, value),
+                andFilterWithCompareString(GlobalMetaTable.value, this.value),
             )
     }
 
@@ -137,7 +137,7 @@ class MetaQuery {
             transaction {
                 val res = GlobalMetaTable.selectAll().where { GlobalMetaTable.user eq userId }
 
-                res.applyOps(condition, filter)
+                res.applyOps(null, condition, filter)
 
                 val baseSort = listOf(MetaOrder(MetaOrderBy.KEY, SortOrder.ASC))
                 val deprecatedSort = listOfNotNull(orderBy?.let { MetaOrder(orderBy, orderByType) })
