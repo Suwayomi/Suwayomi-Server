@@ -14,6 +14,10 @@ import eu.kanade.tachiyomi.source.model.SManga
 import io.javalin.http.BadRequestResponse
 import io.javalin.json.JavalinJackson
 import io.javalin.json.toJsonString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterAll
@@ -346,6 +350,104 @@ class FilterListTest : ApplicationTest() {
                 (filterList[6].filter.state as List<FilterObject>)[0].filter.state,
                 true,
             )
+        }
+
+    /**
+     * Group-only layout built fresh per call like a real source — a shared instance
+     * would mask a lost baseline change (strict validation already applied it to the
+     * one shared list, so replaying a broken baseline would still look correct).
+     */
+    class FreshGroupFilterListSource(
+        id: Long,
+    ) : EmptyFilterListSource(id) {
+        override fun getFilterList(): FilterList =
+            FilterList(
+                FilterListSource.Group(
+                    "my Todo",
+                    listOf(
+                        FilterListSource.TestCheckBox("Write Tests"),
+                        FilterListSource.TestCheckBox("Write More Tests"),
+                        FilterListSource.TestCheckBox("Write Even More Tests"),
+                    ),
+                ),
+            )
+    }
+
+    /** Eight independent text filters, fresh per call, for concurrent-writer tests. */
+    class FreshMultiFilterListSource(
+        id: Long,
+    ) : EmptyFilterListSource(id) {
+        override fun getFilterList(): FilterList = FilterList((0 until 8).map { FilterListSource.TextFilter("text filter $it") })
+    }
+
+    @Test
+    fun `Group changes to different children in one request are all kept`() =
+        runTest {
+            val source = registerSource(FreshGroupFilterListSource::class)
+
+            // both changes share the group's position — deduplicating the persisted
+            // baseline by position alone would keep just the last change and silently
+            // revert child 0 on every replay
+            setFilter(
+                userId,
+                source.id,
+                listOf(
+                    FilterChange(0, """{"position":0,"state":"true"}"""),
+                    FilterChange(0, """{"position":2,"state":"true"}"""),
+                ),
+            )
+
+            val groupState = getFilterList(userId, source.id, false)[0].filter.state as List<FilterObject>
+            assertEquals(true, groupState[0].filter.state)
+            assertEquals(false, groupState[1].filter.state)
+            assertEquals(true, groupState[2].filter.state)
+        }
+
+    @Test
+    fun `Group changes across requests merge per child`() =
+        runTest {
+            val source = registerSource(FreshGroupFilterListSource::class)
+
+            setFilter(userId, source.id, listOf(FilterChange(0, """{"position":0,"state":"true"}""")))
+            setFilter(userId, source.id, listOf(FilterChange(0, """{"position":2,"state":"true"}""")))
+
+            var groupState = getFilterList(userId, source.id, false)[0].filter.state as List<FilterObject>
+            assertEquals(true, groupState[0].filter.state)
+            assertEquals(false, groupState[1].filter.state)
+            assertEquals(true, groupState[2].filter.state)
+
+            // re-toggling a child replaces only that child's stored change —
+            // its sibling must survive
+            setFilter(userId, source.id, listOf(FilterChange(0, """{"position":0,"state":"false"}""")))
+
+            groupState = getFilterList(userId, source.id, false)[0].filter.state as List<FilterObject>
+            assertEquals(false, groupState[0].filter.state)
+            assertEquals(true, groupState[2].filter.state)
+        }
+
+    @Test
+    fun `concurrent setFilter calls do not lose updates`() =
+        runTest {
+            val source = registerSource(FreshMultiFilterListSource::class)
+
+            // one sequential writer per position — a non-atomic read-modify-write of
+            // the stored baseline lets a writer's stale snapshot erase other
+            // positions' already-committed changes
+            coroutineScope {
+                (0 until 8)
+                    .map { position ->
+                        async(Dispatchers.Default) {
+                            repeat(10) { i ->
+                                setFilter(userId, source.id, listOf(FilterChange(position, "p$position-v$i")))
+                            }
+                        }
+                    }.awaitAll()
+            }
+
+            val filterList = getFilterList(userId, source.id, false)
+            (0 until 8).forEach { position ->
+                assertEquals("p$position-v9", filterList[position].filter.state)
+            }
         }
 
     @Test

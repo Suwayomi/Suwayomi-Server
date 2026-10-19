@@ -43,6 +43,7 @@ import suwayomi.tachidesk.opds.dto.OpdsLibraryUpdateAcqEntry
 import suwayomi.tachidesk.opds.util.OpdsPaging
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.minutes
 
 object ChapterRepository {
@@ -138,8 +139,18 @@ object ChapterRepository {
      * Enriches raw chapter entries with page count/download state for `skipMetadata`
      * feeds (file-system probe, remote page-list fetch, CBZ size) and drops chapters that
      * are unreachable — neither downloaded nor with a known page count.
+     *
+     * [remoteFetchBudget] caps the remote `getPageList` calls issued for the whole
+     * request (shared across the forward-scan pages): once exhausted, chapters with an
+     * unknown page count stay unknown and are filtered as unreachable. Trade-off —
+     * `reachable` then under-counts, but the request can no longer block on one remote
+     * call per unknown chapter; the memo in [pageListRefreshAttempts] refills the gaps
+     * on subsequent requests once the source answers again.
      */
-    private suspend fun enrichChapterEntries(rawChapters: List<OpdsChapterListAcqEntry>): List<OpdsChapterListAcqEntry> =
+    private suspend fun enrichChapterEntries(
+        rawChapters: List<OpdsChapterListAcqEntry>,
+        remoteFetchBudget: AtomicInteger,
+    ): List<OpdsChapterListAcqEntry> =
         coroutineScope {
             rawChapters.map { entry ->
                 async(Dispatchers.IO) {
@@ -189,9 +200,14 @@ object ChapterRepository {
                                 isDownloaded = false
                             }
 
-                            if (pageCount <= 0 && pageListRefreshAttempts.get(entry.id) == null) {
+                            if (pageCount <= 0 &&
+                                pageListRefreshAttempts.get(entry.id) == null &&
+                                remoteFetchBudget.getAndUpdate { if (it > 0) it - 1 else it } > 0
+                            ) {
                                 // No files, and DB has no page count. Fetch from network
-                                // (memoized — a source outage must not be retried per request).
+                                // (memoized — a source outage must not be retried per request,
+                                // and bounded per request by remoteFetchBudget so a single
+                                // feed GET can't fan out into O(#chapters) remote calls).
                                 pageListRefreshAttempts.put(entry.id, System.currentTimeMillis())
                                 pageCount =
                                     runCatching {
@@ -247,6 +263,10 @@ object ChapterRepository {
         // until the requested page is filled or the chapter table is exhausted.
         val neededForPage = safePageNum.toLong() * perPage
         val reachable = mutableListOf<OpdsChapterListAcqEntry>()
+        // Bound remote `getPageList` fan-out per request at one page's worth: the
+        // forward scan can walk the whole chapter table, and every scanned chapter
+        // with an unknown page count would otherwise trigger a remote call.
+        val remoteFetchBudget = AtomicInteger(perPage)
         var rawTotalCount = 0L
         var lastRawPageSize = 0
         var dbPageNum = 0
@@ -255,7 +275,7 @@ object ChapterRepository {
             val (rawChapters, count) = fetchRawChaptersPage(userId, mangaId, sortColumn, sortOrder, filter, dbPageNum, perPage)
             rawTotalCount = count
             lastRawPageSize = rawChapters.size
-            reachable += enrichChapterEntries(rawChapters)
+            reachable += enrichChapterEntries(rawChapters, remoteFetchBudget)
         } while (reachable.size.toLong() < neededForPage && lastRawPageSize == perPage)
 
         val tableExhausted = lastRawPageSize < perPage

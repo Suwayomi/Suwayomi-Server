@@ -237,8 +237,10 @@ object SourceController {
                                 else -> throw BadRequestResponse("Body must be a filter object or array")
                             }
 
-                        Search.setFilter(userId, sourceId, filterChange)
-                        ctx.status(HttpStatus.OK)
+                        // keep the JSON response body (previously ctx.json of the
+                        // setFilter result) — an empty 200 broke clients reading the
+                        // response payload; MANAGE_SOURCE_PREFERENCES stays enforced
+                        ctx.json(Search.setFilter(userId, sourceId, filterChange))
                     }
                 }
             },

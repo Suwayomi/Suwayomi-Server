@@ -24,6 +24,7 @@ import java.io.File
 import java.io.FilterInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.nio.file.NoSuchFileException
 import java.util.zip.Deflater
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -34,24 +35,29 @@ class ArchiveProvider(
 ) : ChaptersFilesProvider<FileType.ZipFile>(mangaId, chapterId) {
     override suspend fun getImageFiles(): List<FileType.ZipFile> {
         val cbzPath = getChapterCbzPath(mangaId, chapterId)
-        if (!File(cbzPath).exists()) {
+        return try {
+            ZipFile
+                .builder()
+                .setFile(cbzPath)
+                .get()
+                .use { zipFile ->
+                    // collect entries while the archive is still open; the returned
+                    // ZipArchiveEntry objects stay valid for getImageInputStream, which
+                    // opens its own ZipFile instance
+                    zipFile.entries
+                        .toList()
+                        .filter { !it.isDirectory && !it.name.endsWith(TMP_FILE_SUFFIX) }
+                        .map { FileType.ZipFile(it) }
+                }
+        } catch (e: NoSuchFileException) {
             // provider contract: "no download present" surfaces as NoSuchElementException
-            // (same as FolderProvider), so callers can tell it apart from a real read failure
-            throw NoSuchElementException("CBZ archive does not exist")
+            // (same as FolderProvider), so callers can tell it apart from a real read
+            // failure. Only an absent archive maps here — a check-then-open exists()
+            // guard would also report EACCES/dangling-stat results as absent and let
+            // callers wipe isDownloaded for a file that exists but cannot be opened;
+            // every other IOException keeps its type and is treated as a real failure
+            throw NoSuchElementException("CBZ archive does not exist", e)
         }
-        return ZipFile
-            .builder()
-            .setFile(cbzPath)
-            .get()
-            .use { zipFile ->
-                // collect entries while the archive is still open; the returned
-                // ZipArchiveEntry objects stay valid for getImageInputStream, which
-                // opens its own ZipFile instance
-                zipFile.entries
-                    .toList()
-                    .filter { !it.isDirectory && !it.name.endsWith(TMP_FILE_SUFFIX) }
-                    .map { FileType.ZipFile(it) }
-            }
     }
 
     override suspend fun getImageInputStream(image: FileType.ZipFile): InputStream {

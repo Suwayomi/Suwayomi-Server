@@ -60,6 +60,10 @@ class Downloader(
 
     private val logger = KotlinLogging.logger("${Downloader::class.java.name} source($sourceId)")
 
+    // volatile so stop() — called from a different thread — never observes a stale
+    // null for a job that start() already launched, which would skip cancellation
+    // entirely and leave the stale instance running beside its replacement
+    @Volatile
     private var job: Job? = null
 
     /**
@@ -107,6 +111,15 @@ class Downloader(
         download: DownloadQueueItem?,
         immediate: Boolean,
     ) {
+        // Race point: stop() gives up waiting after STOP_TIMEOUT_MS and the manager
+        // replaces this instance, but a job blocked in a non-interruptible call (DB
+        // transaction, synchronous source request) keeps running afterwards — and a
+        // job whose `job` field was still null when stop() ran is never cancelled at
+        // all. The volatile instance flag is the generation marker that covers both
+        // cases; ensureActive below only sees coroutine-local cancellation.
+        if (stopped) {
+            throw CancellationException("downloader instance was stopped")
+        }
         notify(immediate, type, download)
         currentCoroutineContext().ensureActive()
         if (download != null && download != availableSourceDownloads.firstOrNull { it.state != Error }) {
@@ -166,7 +179,11 @@ class Downloader(
     }
 
     private suspend fun run() {
-        while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
+        // `stopped` is checked on every iteration: a stale job that outlived stop()'s
+        // timeout (or was never cancelled because `job` was still null) must quit at
+        // the next iteration boundary instead of running side effects in parallel
+        // with the replacement instance DownloadManager already started
+        while (!stopped && downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
             // an item is only ever in Error state after tries reached MAX_RETRIES, so
             // retryable items are the Queued ones (a failed attempt stays Queued with
             // an incremented try counter until the counter is exhausted)
@@ -208,6 +225,14 @@ class Downloader(
 
                 ChapterDownloadHelper.download(download.mangaId, download.chapterId, download, scope) { downloadChapter, immediate ->
                     step(PROGRESS, downloadChapter, immediate)
+                }
+                // same stale-instance race as in step(): if stop() timed out while the
+                // download call above was blocked in a non-interruptible operation,
+                // this instance was already replaced — bail via the cancellation path
+                // (which requeues the item for the new instance) instead of committing
+                // downloaded state concurrently with it
+                if (stopped) {
+                    throw CancellationException("downloader instance was stopped")
                 }
                 download.state = Finished
                 transaction {

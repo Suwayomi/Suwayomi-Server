@@ -60,6 +60,15 @@ class KcefWebView {
     companion object {
         private const val MAX_VIEWPORT_DIMENSION = 8192
 
+        // Inline/synthetic schemes legit pages use for sub-resources (e.g. anti-bot
+        // challenge pages embed data: images, blob: media and about:srcdoc iframes).
+        // These cannot reach the network or the local machine; every other non-http(s)
+        // scheme (file:, javascript:, chrome:, jar:, filesystem:, ...) stays blocked.
+        private val INLINE_SUBRESOURCE_SCHEMES = setOf("data", "blob", "about")
+
+        // Lowercase-normalized scheme of [url], or "" when it has none.
+        private fun schemeOf(url: String?): String = url?.substringBefore(':', "")?.lowercase() ?: ""
+
         private val networkHelper: NetworkHelper by injectLazy()
 
         fun Cookie.toCefCookie(): CefCookie {
@@ -230,11 +239,21 @@ class KcefWebView {
             frame: CefFrame,
             request: CefRequest,
         ): Boolean {
-            if (!WebViewUrlPolicy.isAllowed(request.url)) {
-                logger.warn { "CEF blocked resource load of disallowed URL: ${request.url}" }
+            if (WebViewUrlPolicy.isAllowed(request.url)) return false
+
+            // Main-frame document requests stay on the strict http/https policy
+            // (they are also gated by RequestHandler.onBeforeBrowse).
+            if (request.resourceType == CefRequest.ResourceType.RT_MAIN_FRAME) {
+                logger.warn { "CEF blocked main-frame load of disallowed URL: ${request.url}" }
                 return true
             }
-            return false
+
+            // Sub-resources (incl. sub-frame navigations like about:srcdoc) may use
+            // harmless inline schemes; everything else stays canceled.
+            if (schemeOf(request.url) in INLINE_SUBRESOURCE_SCHEMES) return false
+
+            logger.warn { "CEF blocked resource load of disallowed URL: ${request.url}" }
+            return true
         }
     }
 

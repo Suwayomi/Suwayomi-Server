@@ -238,10 +238,6 @@ object UserCodeService {
 
         val codeId = match[UserCodeTable.id].value
 
-        if (!claimCode(codeId, now)) {
-            throw UserCodeRedemptionException()
-        }
-
         val permissions =
             if (match[UserCodeTable.hasPermissions]) {
                 transaction {
@@ -259,9 +255,14 @@ object UserCodeService {
         // re-validate the bound permission set against the issuer's *current* permissions:
         // the issuer may have been demoted since the code was created, and a code must not
         // grant more than the issuer could delegate right now (prevents permission drift);
-        // null (no bound set) is intentionally exempt — it grants defaultPermissions below
+        // null (no bound set) is intentionally exempt — it grants defaultPermissions below.
+        // This check runs before claimCode so a rejected delegation does not burn the code.
         if (permissions != null) {
             assertPermissionsAssignable(match[UserCodeTable.createdBy], permissions)
+        }
+
+        if (!claimCode(codeId, now)) {
+            throw UserCodeRedemptionException()
         }
 
         val userId = createUser(username, password, permissions)

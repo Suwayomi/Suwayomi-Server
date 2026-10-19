@@ -136,39 +136,64 @@ object Search {
     ) {
         val source = getSourceOrStub(sourceId)
         val key = userId to source.id
-        // auto-recover the stored baseline first: an extension update may shrink or
-        // reorder the filter list, and a stored change that no longer applies would
-        // otherwise make strict validation fail on every future write — a permanent
-        // 400 until a manual reset. Dropping it matches the lenient replay the read
-        // path already does.
-        val storedChanges = filterChangesCache[key].orEmpty()
-        val applicableChanges =
-            if (storedChanges.isEmpty()) {
-                storedChanges
-            } else {
-                val probeFilterList = source.getFilterList()
-                storedChanges.filter { change ->
+        // the whole read-merge-write runs inside `compute`: a plain `cache[key] =`
+        // is a lost-update race — two concurrent setFilter calls would each persist
+        // only their own snapshot and silently drop the other's changes
+        filterChangesCache.compute(key) { _, stored ->
+            // auto-recover the stored baseline first: an extension update may shrink or
+            // reorder the filter list, and a stored change that no longer applies would
+            // otherwise make strict validation fail on every future write — a permanent
+            // 400 until a manual reset. Dropping it matches the lenient replay the read
+            // path already does.
+            val filterList = source.getFilterList()
+            val applicableChanges =
+                stored.orEmpty().filter { change ->
                     try {
-                        applyFilterChange(probeFilterList, change)
+                        applyFilterChange(filterList, change)
                         true
                     } catch (e: BadRequestResponse) {
                         false
                     }
                 }
-            }
-        // validate the full pending patch set against a fresh list before persisting —
-        // a rejected change must not corrupt the stored baseline
-        val pendingChanges = applicableChanges + changes
-        updateFilterList(source.getFilterList(), pendingChanges)
-        // each change fully replaces its filter's state, so only the last change per
-        // position needs to be kept (also keeps the cache bounded)
-        filterChangesCache[key] =
-            pendingChanges
-                .groupBy { it.position }
-                .mapValues { (_, changesAtPosition) -> changesAtPosition.last() }
-                .values
-                .toList()
+            // validate the full pending patch set before persisting — a rejected change
+            // must not corrupt the stored baseline (a `compute` block that throws
+            // stores nothing)
+            val pendingChanges = applicableChanges + changes
+            updateFilterList(filterList, pendingChanges)
+            deduplicateChanges(filterList, pendingChanges)
+        }
     }
+
+    /**
+     * Collapse the patch set to what must be persisted: each change fully replaces its
+     * filter's state, so per filter only the last change matters (also keeps the cache
+     * bounded). [Filter.Group] is the exception — its `state` nests a [FilterChange]
+     * targeting a single child, so several changes can share a group position while
+     * toggling different children; deduplicating by position alone would silently drop
+     * all but the last child change. The key is `(position, childPosition?)`: last
+     * write wins per child, while changes for different children are all kept.
+     */
+    private fun deduplicateChanges(
+        filterList: FilterList,
+        changes: List<FilterChange>,
+    ): List<FilterChange> =
+        changes
+            .groupBy { deduplicationKey(filterList, it) }
+            .mapValues { (_, sameKeyChanges) -> sameKeyChanges.last() }
+            .values
+            .toList()
+
+    private fun deduplicationKey(
+        filterList: FilterList,
+        change: FilterChange,
+    ): Pair<Int, Int?> =
+        change.position to
+            (filterList.getOrNull(change.position) as? Filter.Group<*>)
+                ?.let {
+                    runCatching { jsonMapper.fromJsonString<FilterChange>(change.state) }
+                        .getOrNull()
+                        ?.position
+                }
 
     private fun updateFilterList(
         filterList: FilterList,

@@ -91,29 +91,27 @@ object ExtensionStoreService {
     }
 
     /**
-     * Decodes the store index. Format is decided by explicit markers first —
-     * Content-Type and the `.json` file extension — because a protobuf index
-     * can legitimately start with `0x5B`/`0x7B` (valid field tags) and must not
-     * be misrouted to the JSON branches where both decoders would fail.
-     * Without markers the first byte is only a hint: JSON is tried on a peeked
-     * view (which never consumes [source]) and protobuf is the fallback.
+     * Decodes the store index. Content sniffing wins over transport metadata:
+     * a payload whose first non-whitespace byte is `[`/`{` goes to the JSON
+     * decoders — parse-confirmed on a peeked view (which never consumes
+     * [source]) unless a marker already claims JSON. The peek-parse guard
+     * protects protobuf, which can legitimately start with `0x5B`/`0x7B`
+     * (valid field tags). Content-Type and the `.json` extension remain hints
+     * for that disambiguation, and `octet-stream` in particular is only a
+     * fallback signal for payloads without a JSON signature — hosts like
+     * GitHub Releases or object stores serve JSON indexes as octet-stream, so
+     * it must never force a real JSON document into the protobuf decoder.
      */
     private suspend fun decodeIndex(
         source: BufferedSource,
         indexUrl: String,
         contentType: String?,
     ): Pair<BaseNetworkExtensionStore, String> {
-        val firstByte = source.peek().readByte().toInt() and 0xFF
+        val firstByte = source.peekFirstNonWhitespaceByte()
         val jsonByMarker =
             contentType?.contains("json") == true || indexUrl.endsWith(".json", ignoreCase = true)
-        val protoByMarker =
-            contentType?.let { "protobuf" in it || "x-protobuf" in it || "octet-stream" in it } == true
 
         return when {
-            protoByMarker -> {
-                protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.readByteArray()) to indexUrl
-            }
-
             // "[..." — a legacy repo serves the extension list itself; the store
             // metadata lives in repo.json next to index.min.json.
             firstByte == '['.code && (jsonByMarker || source.peekLooksLikeJsonArray()) -> {
@@ -137,10 +135,29 @@ object ExtensionStoreService {
                 }
             }
 
+            // no JSON signature — protobuf, whether claimed by Content-Type
+            // (protobuf/octet-stream) or simply unrecognized
             else -> {
                 protoBuf.decodeFromByteArray<NetworkExtensionStore>(source.readByteArray()) to indexUrl
             }
         }
+    }
+
+    /**
+     * First payload byte after JSON-insignificant whitespace, read on a peeked
+     * view so [this] is not consumed. JSON documents may carry leading
+     * whitespace — which is also made of valid protobuf field tags, so the
+     * signature byte must skip it. Returns -1 when nothing follows.
+     */
+    private fun BufferedSource.peekFirstNonWhitespaceByte(): Int {
+        val peeked = peek()
+        while (peeked.request(1)) {
+            val byte = peeked.readByte().toInt() and 0xFF
+            if (byte != ' '.code && byte != '\t'.code && byte != '\n'.code && byte != '\r'.code) {
+                return byte
+            }
+        }
+        return -1
     }
 
     /** True when the payload parses as the legacy JSON extension list. */
