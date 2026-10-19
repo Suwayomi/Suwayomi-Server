@@ -35,6 +35,7 @@ class KcefWebSettings : WebSettings() {
     private var offscreenPreRaster = false
     private var videoOverlayForEmbeddedEncryptedVideoEnabled = false
     private var safeBrowsingEnabled = true
+    private var includeCookiesOnIntercept = false
 
     // Integer settings
     private var textZoom = 100
@@ -437,6 +438,12 @@ class KcefWebSettings : WebSettings() {
     }
 
     override fun getDisabledActionModeMenuItems() = disabledActionModeMenuItems
+
+    fun setIncludeCookiesOnIntercept(p0: Boolean) {
+        includeCookiesOnIntercept = p0
+    }
+
+    fun getIncludeCookiesOnIntercept() = includeCookiesOnIntercept
 
     @Serializable
     // see https://chromedevtools.github.io/devtools-protocol/#/Emulation.UserAgentBrandVersion

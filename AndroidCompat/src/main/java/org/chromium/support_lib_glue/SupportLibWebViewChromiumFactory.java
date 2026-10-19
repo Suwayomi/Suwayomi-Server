@@ -33,6 +33,7 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
     private static final String[] sWebViewSupportedFeatures =
             new String[] {
                 "USER_AGENT_METADATA",
+                "COOKIE_INTERCEPT",
             };
 
     public SupportLibWebViewChromiumFactory() {

@@ -185,6 +185,7 @@ class KcefWebViewProvider(
         val request: CefRequest?,
         val frame: CefFrame?,
         val redirect: Boolean,
+        val includeCookies: Boolean,
     ) : WebResourceRequest {
         override fun getUrl(): Uri = Uri.parse(request?.url)
 
@@ -199,7 +200,7 @@ class KcefWebViewProvider(
         override fun getRequestHeaders(): Map<String, String> {
             val headers = mutableMapOf<String, String>()
             request?.getHeaderMap(headers)
-            return headers
+            return if (includeCookies) headers else headers.filterKeys { !it.equals("Cookie", true) }
         }
     }
 
@@ -419,6 +420,7 @@ class KcefWebViewProvider(
 
     private class WebResponseResourceHandler(
         val webResponse: WebResourceResponse,
+        val includeCookies: Boolean,
     ) : ArrayResponseResourceHandler() {
         override fun processRequest(
             request: CefRequest,
@@ -441,7 +443,9 @@ class KcefWebViewProvider(
             redirectUrl: StringRef,
         ) {
             super.getResponseHeaders(response, responseLength, redirectUrl)
-            webResponse.responseHeaders?.forEach { response.setHeaderByName(it.key, it.value, true) }
+            webResponse.responseHeaders
+                ?.filterKeys { includeCookies || !it.equals("set-cookie", true) }
+                ?.forEach { response.setHeaderByName(it.key, it.value, true) }
             response.status = webResponse.statusCode
             response.mimeType = webResponse.mimeType
         }
@@ -475,7 +479,7 @@ class KcefWebViewProvider(
             val cancel =
                 viewClient.shouldOverrideUrlLoading(
                     view,
-                    CefWebResourceRequest(request, frame, false),
+                    CefWebResourceRequest(request, frame, false, settings.getIncludeCookiesOnIntercept()),
                 )
             Log.v(TAG, "Resource ${request.url}, result is cancel? $cancel")
 
@@ -499,7 +503,7 @@ class KcefWebViewProvider(
                 } else {
                     viewClient.shouldInterceptRequest(
                         view,
-                        CefWebResourceRequest(request, frame, false),
+                        CefWebResourceRequest(request, frame, false, settings.getIncludeCookiesOnIntercept()),
                     )
                 }
             if (response == null) {
@@ -509,7 +513,7 @@ class KcefWebViewProvider(
                 }
             }
             response ?: return null
-            return WebResponseResourceHandler(response)
+            return WebResponseResourceHandler(response, settings.getIncludeCookiesOnIntercept())
         }
     }
 
