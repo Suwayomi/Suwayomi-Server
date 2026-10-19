@@ -156,6 +156,7 @@ object CEFManager {
                             appArgsAsList.addAll(
                                 arrayOf(
                                     "--disable-gpu",
+                                    "--mute-audio",
                                     // #1486 needed to be able to render without a window
                                     "--off-screen-rendering-enabled",
                                     // #1489 since /dev/shm is restricted in docker (OOM)
