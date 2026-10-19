@@ -8,19 +8,17 @@ package suwayomi.tachidesk.manga.impl.util.storage
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.network.HttpException
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import libcore.net.MimeUtils
 import okhttp3.Response
 import okhttp3.internal.closeQuietly
 import suwayomi.tachidesk.manga.impl.download.fileProvider.TMP_FILE_SUFFIX
 import suwayomi.tachidesk.manga.impl.download.fileProvider.moveFileReplacing
+import suwayomi.tachidesk.manga.impl.util.KeyedMutex
 import xyz.nulldev.androidcompat.util.SafePath
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
-import java.util.concurrent.ConcurrentHashMap
 
 object ImageResponse {
     private fun pathToInputStream(path: String): InputStream = FileInputStream(path).buffered()
@@ -28,23 +26,16 @@ object ImageResponse {
     /**
      * Serializes the find-download-write sequence per target file: concurrent writers of
      * the same "$saveDir/$fileName" otherwise share the same "$fileName.tmp" scratch file
-     * and corrupt each other's cached image. Entries are dropped again after use since
-     * the key space is unbounded (page-level cache keys).
+     * and corrupt each other's cached image. The key space is unbounded (page-level
+     * cache keys), so each entry is reference-counted and removed when its last
+     * holder — or queued waiter — leaves.
      */
-    private val saveMutexes = ConcurrentHashMap<String, Mutex>()
+    private val saveMutexes = KeyedMutex<String>()
 
     private suspend fun <T> withSaveMutex(
         key: String,
         block: suspend () -> T,
-    ): T {
-        val mutex = saveMutexes.getOrPut(key) { Mutex() }
-        try {
-            return mutex.withLock { block() }
-        } finally {
-            // paired remove: only drops the entry while it still points at this instance
-            saveMutexes.remove(key, mutex)
-        }
-    }
+    ): T = saveMutexes.withLock(key, block)
 
     private fun requireValidFileName(fileName: String) {
         require(SafePath.buildValidFilename(fileName) == fileName) {

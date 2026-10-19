@@ -11,11 +11,10 @@ import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.SourceFactory
 import eu.kanade.tachiyomi.source.online.HttpSource
 import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.util.KeyedMutex
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
@@ -32,8 +31,9 @@ object GetSource {
     private val applicationDirs: ApplicationDirs by injectLazy()
 
     // single-flight per source id: concurrent misses must not each run the expensive
-    // jar load in loadExtensionSources
-    private val loadMutexBySourceId = ConcurrentHashMap<Long, Mutex>()
+    // jar load in loadExtensionSources; the refcounted entry is dropped when the
+    // last holder or waiter leaves, keeping the map bounded
+    private val loadMutexBySourceId = KeyedMutex<Long>()
 
     private suspend fun getSource(sourceId: Long): Source? {
         val cachedResult: Source? = sourceCache[sourceId]
@@ -41,15 +41,8 @@ object GetSource {
             return cachedResult
         }
 
-        val mutex = loadMutexBySourceId.getOrPut(sourceId) { Mutex() }
-        return try {
-            mutex.withLock {
-                sourceCache[sourceId] ?: loadSource(sourceId)
-            }
-        } finally {
-            // paired removal keeps the map bounded; a concurrent waiter that obtained a
-            // different mutex instance is not evicted
-            loadMutexBySourceId.remove(sourceId, mutex)
+        return loadMutexBySourceId.withLock(sourceId) {
+            sourceCache[sourceId] ?: loadSource(sourceId)
         }
     }
 
