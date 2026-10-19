@@ -248,6 +248,7 @@ object ChapterRepository {
         filter: String,
         pageNum: Int,
         skipMetadata: Boolean,
+        remoteFetchBudget: AtomicInteger = AtomicInteger(opdsItemsPerPage(userId)),
     ): Pair<List<OpdsChapterListAcqEntry>, Long> {
         val perPage = opdsItemsPerPage(userId)
         val safePageNum = OpdsPaging.sanitizePageNum(pageNum)
@@ -263,10 +264,11 @@ object ChapterRepository {
         // until the requested page is filled or the chapter table is exhausted.
         val neededForPage = safePageNum.toLong() * perPage
         val reachable = mutableListOf<OpdsChapterListAcqEntry>()
-        // Bound remote `getPageList` fan-out per request at one page's worth: the
-        // forward scan can walk the whole chapter table, and every scanned chapter
-        // with an unknown page count would otherwise trigger a remote call.
-        val remoteFetchBudget = AtomicInteger(perPage)
+        // Remote `getPageList` fan-out is bounded at one page's worth per request:
+        // the forward scan can walk the whole chapter table, and every scanned
+        // chapter with an unknown page count would otherwise trigger a remote call.
+        // Callers that issue a follow-up query within the same request pass in a
+        // shared [remoteFetchBudget] so both calls draw from a single allowance.
         var rawTotalCount = 0L
         var lastRawPageSize = 0
         var dbPageNum = 0

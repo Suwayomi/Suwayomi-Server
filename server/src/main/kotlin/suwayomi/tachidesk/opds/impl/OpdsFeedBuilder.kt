@@ -23,6 +23,7 @@ import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Builds OPDS feeds by fetching data from repositories and converting it into XML format.
@@ -670,6 +671,10 @@ object OpdsFeedBuilder {
         val currentFilter =
             filterParam?.lowercase() ?: if (userConfig.opdsShowOnlyUnreadChapters.value(userId)) "unread" else "all"
         val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        // One remote-fetch budget for the whole request: the initial query and the
+        // re-query after the online refetch below share it, so a single feed GET can
+        // never issue more than a page's worth of remote `getPageList` calls.
+        val remoteFetchBudget = AtomicInteger(userConfig.opdsItemsPerPage.value(userId))
         var (chapterEntries, totalChapters) =
             ChapterRepository.getChaptersForManga(
                 userId,
@@ -679,6 +684,7 @@ object OpdsFeedBuilder {
                 currentFilter,
                 pageNum,
                 skipMetadata,
+                remoteFetchBudget,
             )
 
         // Return a not-found feed if all available chapters are filtered out as unreachable
@@ -697,7 +703,7 @@ object OpdsFeedBuilder {
             try {
                 Manga.updateMangaAndChapters(mangaId, updateManga = false)
 
-                // Re-query after fetching.
+                // Re-query after fetching, drawing from the same per-request budget.
                 val (refetchedChapters, refetchedTotal) =
                     ChapterRepository.getChaptersForManga(
                         userId,
@@ -707,6 +713,7 @@ object OpdsFeedBuilder {
                         currentFilter,
                         pageNum,
                         skipMetadata,
+                        remoteFetchBudget,
                     )
                 chapterEntries = refetchedChapters
                 totalChapters = refetchedTotal

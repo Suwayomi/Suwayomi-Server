@@ -2,6 +2,8 @@ package suwayomi.tachidesk.opds
 
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
+import eu.kanade.tachiyomi.source.model.Page
+import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
@@ -42,6 +44,7 @@ import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.server.user.UserCodeService
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -383,6 +386,67 @@ class OpdsRepositoryChangesTest : ApplicationTest() {
         assertEquals(10, chapters.size)
         // the table scan reached the end, so the reported total is the exact reachable count
         assertEquals(10L, total)
+    }
+
+    @Test
+    fun sharedRemoteFetchBudgetCapsCumulativePageListFetchesAtPerPage() {
+        userSettings.set(userId, userConfig.opdsItemsPerPage, 10)
+        val pageListFetches = AtomicInteger(0)
+        GetSource.registerSource(
+            TEST_SOURCE_ID to
+                object : StubSource(TEST_SOURCE_ID) {
+                    override suspend fun getPageList(chapter: SChapter): List<Page> {
+                        pageListFetches.incrementAndGet()
+                        return listOf(Page(0, "https://example.org/page-1"))
+                    }
+                },
+        )
+        val mangaId = createManga("Shared Remote Budget")
+        // 15 chapters with unknown page count: the first ten fill DB page 1, the
+        // other five only get scanned when the caller queries past page 1.
+        createChapters(mangaId, 15, withUserRow = true, pageCount = 0)
+
+        // One budget instance shared across both calls, like getSeriesChaptersFeed
+        // shares it between the initial query and the post-refetch re-query.
+        val sharedBudget = AtomicInteger(10)
+
+        // First call scans DB page 1 and spends the whole budget on its ten chapters.
+        val (firstPage, _) =
+            runBlocking {
+                ChapterRepository.getChaptersForManga(
+                    userId,
+                    mangaId,
+                    ChapterTable.sourceOrder,
+                    SortOrder.ASC,
+                    "all",
+                    pageNum = 1,
+                    skipMetadata = true,
+                    remoteFetchBudget = sharedBudget,
+                )
+            }
+        assertEquals(10, firstPage.size)
+        assertEquals(10, pageListFetches.get())
+
+        // Second call draws from the same (now exhausted) budget: reaching the five
+        // still-unknown chapters on DB page 2 must not issue further remote fetches.
+        val (secondPage, secondTotal) =
+            runBlocking {
+                ChapterRepository.getChaptersForManga(
+                    userId,
+                    mangaId,
+                    ChapterTable.sourceOrder,
+                    SortOrder.ASC,
+                    "all",
+                    pageNum = 2,
+                    skipMetadata = true,
+                    remoteFetchBudget = sharedBudget,
+                )
+            }
+
+        assertEquals(10, pageListFetches.get(), "two calls sharing one budget must not exceed perPage remote fetches")
+        // the still-unknown chapters stayed unreachable and were filtered out
+        assertTrue(secondPage.isEmpty())
+        assertEquals(10L, secondTotal)
     }
 
     // --- U6-C: Basic-auth username resolution ---
