@@ -108,8 +108,8 @@ class UserQuery {
         val username: String? = null,
         val role: String? = null,
         val permission: UserPermission? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, UserAccountTable.id)
             opAnd.eq(username, UserAccountTable.username)
@@ -142,8 +142,8 @@ class UserQuery {
         override val and: List<UserFilter>? = null,
         override val or: List<UserFilter>? = null,
         override val not: UserFilter? = null,
-    ) : Filter<UserFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<UserFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareEntity(UserAccountTable.id, id),
                 andFilterWithCompareString(UserAccountTable.username, username),
@@ -215,7 +215,7 @@ class UserQuery {
             transaction {
                 val res = UserAccountTable.selectAll()
 
-                res.applyOps(condition, filter)
+                res.applyOps(null, condition, filter)
 
                 val baseSort = listOf(UserOrder(UserOrderBy.ID, SortOrder.ASC))
                 val actualSort = (order.orEmpty() + baseSort)

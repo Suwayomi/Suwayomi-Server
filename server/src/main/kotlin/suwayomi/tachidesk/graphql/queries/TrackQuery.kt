@@ -351,8 +351,8 @@ class TrackQuery {
         val startDate: Long? = null,
         val finishDate: Long? = null,
         val private: Boolean? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, TrackRecordTable.id)
             opAnd.eq(mangaId, TrackRecordTable.mangaId)
@@ -391,8 +391,8 @@ class TrackQuery {
         override val and: List<TrackRecordFilter>? = null,
         override val or: List<TrackRecordFilter>? = null,
         override val not: TrackRecordFilter? = null,
-    ) : Filter<TrackRecordFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<TrackRecordFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareEntity(TrackRecordTable.id, id),
                 andFilterWithCompareEntity(TrackRecordTable.mangaId, mangaId),
@@ -439,7 +439,7 @@ class TrackQuery {
             transaction {
                 val res = TrackRecordTable.selectAll().where { TrackRecordTable.user eq userId }
 
-                res.applyOps(condition, filter)
+                res.applyOps(null, condition, filter)
 
                 val baseSort = listOf(TrackRecordOrder(TrackRecordOrderBy.ID, SortOrder.ASC))
                 val deprecatedSort = listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })

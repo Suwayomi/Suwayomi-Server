@@ -147,12 +147,13 @@ fun setupLogLevelUpdating(
     configFlow: MutableStateFlow<Boolean>,
     loggerNames: List<String>,
     defaultLevel: Level = Level.INFO,
+    debugLevel: Level = Level.DEBUG,
 ) {
     serverConfig.subscribeTo(
         configFlow,
         { debugLogsEnabled ->
             loggerNames.forEach { loggerName ->
-                setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel)
+                setLogLevelFor(loggerName, if (debugLogsEnabled) debugLevel else defaultLevel)
             }
         },
         ignoreInitialValue = false,
@@ -208,6 +209,9 @@ fun applicationSetup() {
     )
 
     setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
+    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf("Exposed"), defaultLevel = Level.OFF, debugLevel = Level.WARN)
+    setLogLevelFor("org.eclipse.jetty", Level.OFF)
+    setLogLevelFor("com.zaxxer.hikari", Level.WARN)
 
     logger.info { "Running Suwayomi-Server ${BuildConfig.VERSION}" }
 
@@ -408,9 +412,6 @@ fun applicationSetup() {
         },
         ignoreInitialValue = false,
     )
-
-    setLogLevelFor("org.eclipse.jetty", Level.OFF)
-    setLogLevelFor("com.zaxxer.hikari", Level.WARN)
 
     // socks proxy settings
     serverConfig.subscribeTo(
