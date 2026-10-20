@@ -101,7 +101,7 @@ object OpdsEntryBuilder {
         locale: Locale,
         entry: OpdsMangaAcqEntry,
     ): OpdsEntryXml {
-        val displayThumbnailUrl = entry.thumbnailUrl?.let { proxyThumbnailUrl(entry.id) }
+        val displayThumbnailUrl = entry.thumbnailUrl?.let { "${proxyThumbnailUrl(entry.id)}?opds=true" }
         val categoryScheme = if (entry.inLibrary) "$baseUrl/library/genres" else "$baseUrl/genres"
 
         val links = mutableListOf<OpdsLinkXml>()

@@ -97,14 +97,19 @@ object MangaController {
     val thumbnail =
         handler(
             pathParam<Int>("mangaId"),
+            queryParam<Boolean?>("opds"),
             documentWith = {
                 withOperation {
                     summary("Get a manga thumbnail")
                     description("Get a manga thumbnail from the source or the cache.")
                 }
             },
-            behaviorOf = { ctx, mangaId ->
-                ctx.getAttribute(Attribute.TachideskUser).requireUser()
+            behaviorOf = { ctx, mangaId, opds ->
+                if (opds == true) {
+                    ctx.getAttribute(Attribute.TachideskUser).requireUserWithBasicFallback(ctx)
+                } else {
+                    ctx.getAttribute(Attribute.TachideskUser).requireUser()
+                }
                 ctx.future {
                     future { Manga.getMangaThumbnail(mangaId) }
                         .thenApply {
