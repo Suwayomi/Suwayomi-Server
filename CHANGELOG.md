@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
 - (**API**) Answer 424 instead of 500 when a source fails
+- (**Sources**) Route image fetches (covers, reader pages, extension icons) through a dedicated dispatcher with a dead-host circuit breaker so an unreachable image host can no longer starve API calls
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
 

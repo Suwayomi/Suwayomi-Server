@@ -11,6 +11,7 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.network.interceptor.HostCircuitOpenException
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.SChapter
@@ -22,6 +23,7 @@ import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
 import io.javalin.http.HttpStatus
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.CacheControl
@@ -43,12 +45,14 @@ import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
-import suwayomi.tachidesk.manga.impl.util.network.await
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.ThumbnailFetchFailedException
+import suwayomi.tachidesk.manga.impl.util.network.MAX_CAUSE_DEPTH
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.findFileNameStartingWith
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
 import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
@@ -68,7 +72,9 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 private val logger = KotlinLogging.logger { }
 
@@ -410,7 +416,9 @@ object Manga {
             } ?: throw NullPointerException("No thumbnail found")
 
         return try {
-            source.client
+            network
+                // keep the source's client config but fetch on the image dispatcher
+                .thumbnailClient(source.client)
                 .newCall(
                     GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
                 ).awaitSuccess()
@@ -430,6 +438,11 @@ object Manga {
 
             fetchHttpSourceMangaThumbnail(source, mangaEntry, refreshUrl = true)
         } catch (e: IOException) {
+            // an open circuit already judged the image host dead — a metadata refresh would hit the main site for nothing
+            if (generateSequence<Throwable>(e) { it.cause }.take(MAX_CAUSE_DEPTH).any { it is HostCircuitOpenException }) {
+                throw e
+            }
+
             // The source may have moved its images to another CDN
             if (refreshUrl || !e.isHostUnreachable()) {
                 throw e
@@ -449,7 +462,9 @@ object Manga {
         return when (val source = getSourceOrStub(sourceId)) {
             is HttpSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
-                    fetchHttpSourceMangaThumbnail(source, mangaEntry)
+                    fetchRemoteThumbnail(mangaId, alreadySatisfied = { hasSavedThumbnail(cacheSaveDir, fileName) }) {
+                        fetchHttpSourceMangaThumbnail(source, mangaEntry)
+                    }
                 }
             }
 
@@ -471,13 +486,16 @@ object Manga {
 
             is StubSource -> {
                 getImageResponse(cacheSaveDir, fileName) {
-                    val thumbnailUrl =
-                        mangaEntry[MangaTable.thumbnail_url]
-                            ?: throw NullPointerException("No thumbnail found")
-                    network.client
-                        .newCall(
-                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                        ).await()
+                    fetchRemoteThumbnail(mangaId, alreadySatisfied = { hasSavedThumbnail(cacheSaveDir, fileName) }) {
+                        val thumbnailUrl =
+                            mangaEntry[MangaTable.thumbnail_url]
+                                ?: throw NullPointerException("No thumbnail found")
+                        network
+                            .thumbnailClient()
+                            .newCall(
+                                GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
+                            ).awaitSuccess()
+                    }
                 }
             }
 
@@ -487,7 +505,66 @@ object Manga {
         }
     }
 
-    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+    /** Failed-fetch memory: thumbnails bypass the HTTP cache (FORCE_NETWORK), so a dead source would otherwise be re-hit on every render. */
+    private val thumbnailFetchFailures: Cache<Int, Throwable> =
+        Cache
+            .Builder<Int, Throwable>()
+            .expireAfterWrite(THUMBNAIL_FAILURE_TTL)
+            .build()
+
+    // resident map bounded by manga count — an evicted-but-still-awaited mutex would break the serialization
+    private val thumbnailFetchMutexes = ConcurrentHashMap<Int, Mutex>()
+
+    /** Surfaces the original error; a replayed [ThumbnailFetchFailedException] is unwrapped. */
+    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> =
+        try {
+            getMangaThumbnailImpl(mangaId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ThumbnailFetchFailedException) {
+            throw e.cause ?: e
+        }
+
+    /** Serializes remote fetches per manga; a queued request replays the recorded failure.
+     *  A null return means [alreadySatisfied] saw the file land — the caller serves it from disk. */
+    private suspend fun fetchRemoteThumbnail(
+        mangaId: Int,
+        alreadySatisfied: () -> Boolean = { false },
+        fetch: suspend () -> Response,
+    ): Response? {
+        throwCachedThumbnailFailure(mangaId)
+        return thumbnailFetchMutexes.computeIfAbsent(mangaId) { Mutex() }.withLock {
+            throwCachedThumbnailFailure(mangaId)
+            // the winner of a concurrent fetch may have already saved the cover
+            if (alreadySatisfied()) return@withLock null
+            try {
+                fetch()
+            } catch (e: HttpException) {
+                // HttpException is not an IOException here — record HTTP errors too
+                thumbnailFetchFailures.put(mangaId, e)
+                throw ThumbnailFetchFailedException(e)
+            } catch (e: IOException) {
+                thumbnailFetchFailures.put(mangaId, e)
+                throw ThumbnailFetchFailedException(e)
+            }
+        }
+    }
+
+    /** A stored cover file only counts once renamed — a leftover ".tmp" still means a failed download. */
+    private fun hasSavedThumbnail(
+        saveDir: String,
+        fileName: String,
+    ): Boolean = findFileNameStartingWith(saveDir, fileName)?.endsWith(".tmp") == false
+
+    /** Replays a remembered fetch failure, if any — a stored cover file always wins. */
+    private fun throwCachedThumbnailFailure(mangaId: Int) {
+        thumbnailFetchFailures.get(mangaId)?.let {
+            logger.debug { "Replaying the cached thumbnail failure for manga $mangaId" }
+            throw ThumbnailFetchFailedException(it)
+        }
+    }
+
+    private suspend fun getMangaThumbnailImpl(mangaId: Int): Pair<InputStream, String> {
         val mangaInLibrary =
             transaction {
                 MangaUserTable
@@ -509,20 +586,30 @@ object Manga {
             return try {
                 ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
-                ThumbnailDownloadHelper.download(mangaId)
-                ThumbnailDownloadHelper.getImage(mangaId)
+                throwCachedThumbnailFailure(mangaId)
+                try {
+                    ThumbnailDownloadHelper.download(mangaId)
+                    ThumbnailDownloadHelper.getImage(mangaId)
+                } catch (e: ThumbnailFetchFailedException) {
+                    // the download's own source fetch already failed — don't repeat it
+                    throw e.cause ?: e
+                }
             }
         }
 
+        // a cached cover file wins over a remembered failure (fetchRemoteThumbnail still replays it before any remote call)
         return fetchMangaThumbnail(mangaId)
     }
 
     fun clearThumbnail(mangaId: Int) {
         val fileName = mangaId.toString()
 
+        thumbnailFetchFailures.invalidate(mangaId)
         clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
         clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
     }
+
+    internal fun invalidateAllThumbnailFailures() = thumbnailFetchFailures.invalidateAll()
 
     fun getLatestChapter(mangaId: Int): ChapterDataClass? =
         transaction {
@@ -584,3 +671,5 @@ object Manga {
         return true
     }
 }
+
+private val THUMBNAIL_FAILURE_TTL = 90.seconds

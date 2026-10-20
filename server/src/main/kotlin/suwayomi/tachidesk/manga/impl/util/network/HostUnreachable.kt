@@ -17,4 +17,4 @@ fun Throwable.isHostUnreachable(): Boolean =
         .take(MAX_CAUSE_DEPTH)
         .any { it is UnknownHostException || it is ConnectException || it is NoRouteToHostException }
 
-private const val MAX_CAUSE_DEPTH = 16
+internal const val MAX_CAUSE_DEPTH = 16

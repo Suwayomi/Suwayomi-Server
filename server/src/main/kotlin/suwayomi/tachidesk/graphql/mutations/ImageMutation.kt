@@ -4,6 +4,7 @@ package suwayomi.tachidesk.graphql.mutations
 
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.directives.RequirePermissions
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.user.UserPermission
@@ -44,6 +45,11 @@ class ImageMutation {
             } else {
                 null
             }
+
+        // remembered fetch failures must not outlive the files they were recorded for
+        if (downloadedThumbnails == true || cachedThumbnails == true) {
+            Manga.invalidateAllThumbnailFailures()
+        }
 
         val cachedPagesResult =
             if (cachedPages == true) {

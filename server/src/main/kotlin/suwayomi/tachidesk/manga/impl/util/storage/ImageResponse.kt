@@ -50,11 +50,12 @@ object ImageResponse {
      *
      * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
      * @param fileName what the saved cache file should be named
+     * @param fetcher fetches the image; may return null when a concurrent fetch already saved it
      */
     suspend fun getImageResponse(
         saveDir: String,
         fileName: String,
-        fetcher: suspend () -> Response,
+        fetcher: suspend () -> Response?,
     ): Pair<InputStream, String> {
         File(saveDir).mkdirs()
 
@@ -66,7 +67,14 @@ object ImageResponse {
             return getCachedImageResponse(cachedFile, filePath)
         }
 
-        val response = fetcher()
+        val response =
+            fetcher() ?: run {
+                // the fetch was satisfied by a concurrent save — serve the landed file
+                val landed =
+                    findFileNameStartingWith(saveDir, fileName)?.takeUnless { it.endsWith(".tmp") }
+                        ?: throw IOException("image fetch satisfied but no saved file found")
+                return getCachedImageResponse(landed, filePath)
+            }
 
         try {
             if (response.code == 200) {
@@ -81,8 +89,21 @@ object ImageResponse {
                 throw Exception("request error! ${response.code}")
             }
         } catch (e: IOException) {
-            // make sure no partial download remains
-            clearCachedImage(saveDir, fileName)
+            // a concurrent save may have landed the finished file — serve it, don't delete the winner's work
+            val landed =
+                File(saveDir)
+                    .listFiles()
+                    .orEmpty()
+                    .firstOrNull { it.name.startsWith("$fileName.") && !it.name.endsWith(".tmp") }
+            if (landed != null) {
+                return getCachedImageResponse("$saveDir/${landed.name}", filePath)
+            }
+            // drop only .tmp leftovers — a concurrent writer's file must never be first-match deleted
+            File(saveDir)
+                .listFiles()
+                .orEmpty()
+                .filter { it.name.startsWith("$fileName.") && it.name.endsWith(".tmp") }
+                .forEach { it.delete() }
             throw e
         } finally {
             response.closeQuietly()
@@ -96,8 +117,8 @@ object ImageResponse {
         mimeType: String?,
     ): Pair<String, String> {
         val mimeType = mimeType?.takeIf { it.startsWith("image/") }?.lowercase()
-        val tmpSavePath = "$filePath.tmp"
-        val tmpSaveFile = File(tmpSavePath)
+        // unique tmp name — concurrent saves of the same target must not splice one file
+        val tmpSaveFile = File("$filePath.${System.nanoTime()}.tmp")
         image.use { input -> tmpSaveFile.outputStream().use { output -> input.copyTo(output) } }
 
         // find image type
@@ -112,8 +133,14 @@ object ImageResponse {
             } ?: "jpg"
 
         val actualSavePath = "$filePath.$extension"
+        val targetFile = File(actualSavePath)
 
-        tmpSaveFile.renameTo(File(actualSavePath))
+        val renamed = tmpSaveFile.renameTo(targetFile)
+        tmpSaveFile.delete() // no-op after a successful rename; drops a loser's leftover tmp
+        // a failed rename with the target already there means a concurrent save won — that is success
+        if (!renamed && !targetFile.exists()) {
+            throw IOException("failed to move ${tmpSaveFile.path} to $actualSavePath")
+        }
         return Pair(actualSavePath, imageType?.mime ?: mimeType ?: "image/jpeg")
     }
 

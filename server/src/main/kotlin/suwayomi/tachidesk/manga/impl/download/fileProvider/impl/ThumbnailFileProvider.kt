@@ -14,6 +14,11 @@ import java.io.InputStream
 
 class MissingThumbnailException : Exception("No thumbnail found")
 
+/** Marks a fetch-stage failure ("the request to the source itself failed"); also wraps a replayed cached failure. */
+class ThumbnailFetchFailedException(
+    cause: Throwable,
+) : Exception(cause)
+
 private val applicationDirs: ApplicationDirs by injectLazy()
 
 class ThumbnailFileProvider(
@@ -44,6 +49,7 @@ class ThumbnailFileProvider(
             return true
         }
 
+        // source-fetch failures arrive already marked; disk-write errors below stay unmarked
         val (inputStream, mime) = Manga.fetchMangaThumbnail(mangaId)
         inputStream.use { image ->
             makeSureDownloadDirExists()

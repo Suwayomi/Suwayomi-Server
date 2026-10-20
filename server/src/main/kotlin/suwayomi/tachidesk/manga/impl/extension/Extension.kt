@@ -780,7 +780,8 @@ object Extension {
 
         if (pkgName == LocalSource::class.java.`package`.name) {
             return getImageResponse(cacheSaveDir, "localSource") {
-                network.client
+                network
+                    .imageClient()
                     .newCall(GET("", cache = CacheControl.FORCE_NETWORK))
                     .await()
             }
@@ -790,7 +791,8 @@ object Extension {
             transaction { ExtensionTable.selectAll().where { ExtensionTable.pkgName eq pkgName }.first() }[ExtensionTable.iconUrl]
 
         return getImageResponse(cacheSaveDir, pkgName) {
-            network.client
+            network
+                .imageClient()
                 .newCall(
                     GET(iconUrl, cache = CacheControl.FORCE_NETWORK),
                 ).await()
