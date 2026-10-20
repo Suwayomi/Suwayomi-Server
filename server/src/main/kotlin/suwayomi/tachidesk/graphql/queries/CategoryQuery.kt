@@ -38,6 +38,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.CategoryNodeList
@@ -153,20 +154,21 @@ class CategoryQuery {
         last: Int? = null,
         offset: Int? = null,
     ): CategoryNodeList {
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { CategoryOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: CategoryOrderBy.ID
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = CategoryTable.selectAll().where { CategoryTable.user eq userId }
 
                 res.applyOps(condition, filter)
 
-                val baseSort = listOf(CategoryOrder(CategoryOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { CategoryOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + CategoryOrder(CategoryOrderBy.ID, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
                         actualSort,
-                        before,
                         last,
                         CategoryTable.id,
                         PaginationNeeds.of(dataFetchingEnvironment),
@@ -175,8 +177,8 @@ class CategoryQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: CategoryOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -185,10 +187,11 @@ class CategoryQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (CategoryType) -> Cursor = (order?.firstOrNull()?.by ?: CategoryOrderBy.ID)::asCursor
+        val getAsCursor: (CategoryType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { CategoryType(it) }
 

@@ -24,7 +24,7 @@ interface OrderBy<T> {
     fun less(cursor: Cursor): Op<Boolean>
 }
 
-interface Order<By : OrderBy<*>> {
+interface Order<By : Any> {
     val by: By
     val byType: SortOrder?
 }
@@ -54,6 +54,10 @@ fun SortOrder?.maybeSwap(value: Any?): SortOrder =
         this ?: SortOrder.ASC
     }
 
+// the composite cursor compares (key, id) in one direction, so the appended
+// id tie-break must follow the first key's direction; a null byType sorts ASC
+fun <By : Any> List<Order<By>>.cursorOrderType(): SortOrder = firstOrNull()?.byType ?: SortOrder.ASC
+
 fun <T> Query.applyBeforeAfter(
     before: Cursor?,
     after: Cursor?,
@@ -67,7 +71,8 @@ fun <T> Query.applyBeforeAfter(
                 null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> orderBy.greater(after)
             }
         }
-    } else if (before != null) {
+    }
+    if (before != null) {
         andWhere {
             when (orderByType) {
                 SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> orderBy.greater(before)
@@ -77,15 +82,14 @@ fun <T> Query.applyBeforeAfter(
     }
 }
 
-fun <T : OrderBy<*>, Id : Any> Query.applySort(
+fun <T : OrderBy<*>> Query.applySort(
     sort: List<Order<T>>,
-    before: Id?,
-    last: Id?,
+    last: Int?,
     reverse: Boolean = false,
 ): Query {
     sort.forEach { order ->
         val orderByColumn = order.by.column
-        val orderType = order.byType.maybeSwap(last ?: before)
+        val orderType = order.byType.maybeSwap(last)
 
         val finalOrderType =
             if (reverse) {
@@ -131,14 +135,13 @@ data class PaginationNeeds(
 
 fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
     sort: List<Order<T>>,
-    before: Cursor?,
     last: Int?,
     needs: PaginationNeeds,
     selectValue: (resultRow: ResultRow?) -> V?,
 ): PaginationInfo<V> {
     val baseQuery = this.copy()
 
-    this.applySort(sort, before, last)
+    this.applySort(sort, last)
 
     return PaginationInfo(
         total = if (needs.total) baseQuery.count() else 0,
@@ -146,7 +149,7 @@ fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
             if (needs.bounds) {
                 baseQuery
                     .copy()
-                    .applySort(sort, before, last)
+                    .applySort(sort, last = null)
                     .limit(1)
                     .firstOrNull()
                     ?.let(selectValue)
@@ -157,7 +160,7 @@ fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
             if (needs.bounds) {
                 baseQuery
                     .copy()
-                    .applySort(sort, before, last, true)
+                    .applySort(sort, last = null, reverse = true)
                     .limit(1)
                     .firstOrNull()
                     ?.let(selectValue)
@@ -169,11 +172,10 @@ fun <T : OrderBy<*>, V : Any> Query.applySortAndGetPaginationInfo(
 
 fun <T : OrderBy<*>, Id : Any> Query.applySortAndGetPaginationInfo(
     sort: List<Order<T>>,
-    before: Cursor?,
     last: Int?,
     idColumn: Column<EntityID<Id>>,
     needs: PaginationNeeds,
-): PaginationInfo<Id> = applySortAndGetPaginationInfo(sort, before, last, needs) { it?.get(idColumn)?.value }
+): PaginationInfo<Id> = applySortAndGetPaginationInfo(sort, last, needs) { it?.get(idColumn)?.value }
 
 @JvmName("greaterNotUniqueIntKey")
 fun <T : Comparable<T>> greaterNotUnique(
