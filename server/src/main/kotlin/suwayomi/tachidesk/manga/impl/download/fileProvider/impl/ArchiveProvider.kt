@@ -21,6 +21,7 @@ import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.io.File
 import java.io.InputStream
+import java.nio.file.NoSuchFileException
 import java.util.zip.Deflater
 
 private val applicationDirs: ApplicationDirs by injectLazy()
@@ -30,8 +31,18 @@ class ArchiveProvider(
     chapterId: Int,
 ) : ChaptersFilesProvider<FileType.ZipFile>(mangaId, chapterId) {
     override suspend fun getImageFiles(): List<FileType.ZipFile> {
-        val zipFile = ZipFile.builder().setFile(getChapterCbzPath(mangaId, chapterId)).get()
-        return zipFile.entries.toList().map { FileType.ZipFile(it) }
+        val cbzPath = getChapterCbzPath(mangaId, chapterId)
+        return try {
+            ZipFile.builder().setFile(cbzPath).get().use { zipFile ->
+                zipFile.entries
+                    .toList()
+                    .filter { !it.isDirectory }
+                    .map { FileType.ZipFile(it) }
+            }
+        } catch (e: NoSuchFileException) {
+            // provider contract: "no download present" surfaces as NoSuchElementException
+            throw NoSuchElementException("CBZ archive does not exist", e)
+        }
     }
 
     override suspend fun getImageInputStream(image: FileType.ZipFile): InputStream =
