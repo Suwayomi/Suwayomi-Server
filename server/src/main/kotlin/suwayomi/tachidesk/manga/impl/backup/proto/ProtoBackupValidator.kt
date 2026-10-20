@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
 import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.util.badRequest
 import java.io.InputStream
 
 object ProtoBackupValidator {
@@ -72,7 +73,8 @@ object ProtoBackupValidator {
                 .gzip()
                 .buffer()
                 .use { it.readByteArray() }
-        val backup = ProtoBackupImport.parser.decodeFromByteArray(Backup.serializer(), backupString)
+        // the uploaded backup is client input: an unparseable one is a 400, not a server fault
+        val backup = badRequest { ProtoBackupImport.parser.decodeFromByteArray(Backup.serializer(), backupString) }
 
         return validate(userId, backup)
     }

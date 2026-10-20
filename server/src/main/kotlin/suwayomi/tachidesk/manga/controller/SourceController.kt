@@ -21,6 +21,7 @@ import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.server.util.badRequest
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
@@ -158,7 +159,7 @@ object SourceController {
             },
             behaviorOf = { ctx, sourceId ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val preferenceChange = ctx.bodyAsClass(SourcePreferenceChange::class.java)
+                val preferenceChange = badRequest { ctx.bodyAsClass(SourcePreferenceChange::class.java) }
                 ctx.json(Source.setSourcePreference(sourceId, preferenceChange.position, preferenceChange.value))
             },
             withResults = {
@@ -209,10 +210,12 @@ object SourceController {
                     future {
                         ctx.getAttribute(Attribute.TachideskUser).requireUser()
                         val filterChange =
-                            try {
-                                json.decodeFromString<List<FilterChange>>(ctx.body())
-                            } catch (e: Exception) {
-                                listOf(json.decodeFromString<FilterChange>(ctx.body()))
+                            badRequest {
+                                try {
+                                    json.decodeFromString<List<FilterChange>>(ctx.body())
+                                } catch (e: Exception) {
+                                    listOf(json.decodeFromString<FilterChange>(ctx.body()))
+                                }
                             }
 
                         ctx.json(Search.setFilter(sourceId, filterChange))
@@ -262,7 +265,7 @@ object SourceController {
             },
             behaviorOf = { ctx, sourceId, pageNum ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val filter = json.decodeFromString<FilterData>(ctx.body())
+                val filter = badRequest { json.decodeFromString<FilterData>(ctx.body()) }
                 ctx.future {
                     future { Search.sourceFilter(sourceId, pageNum, filter) }
                         .thenApply { ctx.json(it) }

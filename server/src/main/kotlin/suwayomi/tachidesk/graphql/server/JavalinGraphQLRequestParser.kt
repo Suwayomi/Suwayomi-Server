@@ -16,6 +16,7 @@ import io.javalin.http.Context
 import io.javalin.http.UploadedFile
 import io.javalin.json.fromJsonStream
 import io.javalin.json.fromJsonString
+import suwayomi.tachidesk.server.util.badRequest
 import java.io.IOException
 
 class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
@@ -34,17 +35,17 @@ class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
                     context.formParam("operations")
                         ?: throw IllegalArgumentException("Cannot find 'operations' body")
                 } else {
-                    return context.bodyInputStream().use { jsonMapper.fromJsonStream<GraphQLServerRequest>(it) }
+                    return context.bodyInputStream().use { badRequest { jsonMapper.fromJsonStream<GraphQLServerRequest>(it) } }
                 }
 
             val request =
-                jsonMapper.fromJsonString<GraphQLServerRequest>(formParam)
+                badRequest { jsonMapper.fromJsonString<GraphQLServerRequest>(formParam) }
 
             val map =
                 context
                     .formParam("map")
                     ?.let {
-                        jsonMapper.fromJsonString<Map<String, List<String>>>(it)
+                        badRequest { jsonMapper.fromJsonString<Map<String, List<String>>>(it) }
                     }.orEmpty()
 
             val mapItems =
