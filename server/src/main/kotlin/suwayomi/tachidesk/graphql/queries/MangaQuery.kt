@@ -15,9 +15,9 @@ import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.andIfNotNull
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
-import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
@@ -146,7 +146,26 @@ class MangaQuery {
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
-            opAnd.andWhere(categoryIds) { CategoryMangaTable.category inList it }
+            opAnd.op?.let {
+                it andIfNotNull (
+                    andExistsWhere(
+                        userId = value,
+                        query =
+                            CategoryMangaTable
+                                .innerJoin(CategoryTable)
+                                .select(intLiteral(1)),
+                        correlation =
+                            (CategoryMangaTable.manga eq MangaTable.id) and
+                                (CategoryMangaTable.user eq value),
+                        filter =
+                            categoryIds?.let {
+                                CategoryFilter(
+                                    id = IntFilter(`in` = categoryIds),
+                                )
+                            },
+                    )
+                )
+            }
 
             return opAnd.op
         }
