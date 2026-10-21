@@ -226,7 +226,6 @@ object Manga {
                 if (!sManga.thumbnail_url.isNullOrEmpty()) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
                     it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                    clearThumbnail(mangaId)
                 }
 
                 it[MangaTable.realUrl] =
@@ -439,7 +438,41 @@ object Manga {
         }
     }
 
-    suspend fun fetchMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+    private suspend fun fetchSourceThumbnailResponse(
+        source: Source,
+        mangaEntry: ResultRow,
+    ): Response =
+        when (source) {
+            is HttpSource -> {
+                fetchHttpSourceMangaThumbnail(source, mangaEntry)
+            }
+
+            is StubSource -> {
+                val thumbnailUrl =
+                    mangaEntry[MangaTable.thumbnail_url]
+                        ?: throw NullPointerException("No thumbnail found")
+                network.client
+                    .newCall(
+                        GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
+                    ).await()
+            }
+
+            else -> {
+                throw IllegalArgumentException("Unknown source")
+            }
+        }
+
+    suspend fun fetchMangaThumbnailResponse(mangaId: Int): Response {
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
+
+        return fetchSourceThumbnailResponse(source, mangaEntry)
+    }
+
+    suspend fun fetchMangaThumbnail(
+        mangaId: Int,
+        staleBefore: Long = 0,
+    ): Pair<InputStream, String> {
         val cacheSaveDir = applicationDirs.tempThumbnailCacheRoot
         val fileName = mangaId.toString()
 
@@ -447,12 +480,6 @@ object Manga {
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
         return when (val source = getSourceOrStub(sourceId)) {
-            is HttpSource -> {
-                getImageResponse(cacheSaveDir, fileName) {
-                    fetchHttpSourceMangaThumbnail(source, mangaEntry)
-                }
-            }
-
             is LocalSource -> {
                 val imageFile =
                     mangaEntry[MangaTable.thumbnail_url]?.let {
@@ -469,20 +496,10 @@ object Manga {
                 imageFile.inputStream() to contentType
             }
 
-            is StubSource -> {
-                getImageResponse(cacheSaveDir, fileName) {
-                    val thumbnailUrl =
-                        mangaEntry[MangaTable.thumbnail_url]
-                            ?: throw NullPointerException("No thumbnail found")
-                    network.client
-                        .newCall(
-                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                        ).await()
-                }
-            }
-
             else -> {
-                throw IllegalArgumentException("Unknown source")
+                getImageResponse(cacheSaveDir, fileName, staleBefore) {
+                    fetchSourceThumbnailResponse(source, mangaEntry)
+                }
             }
         }
     }
@@ -496,16 +513,18 @@ object Manga {
                         MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
                     }.any()
             }
-        val mangaSource =
+        val mangaEntry =
             transaction {
                 MangaTable
-                    .select(MangaTable.sourceReference)
+                    .select(MangaTable.sourceReference, MangaTable.thumbnailUrlLastFetched)
                     .where { MangaTable.id eq mangaId }
                     .firstOrNull()
-                    ?.get(MangaTable.sourceReference)
             }
+        val mangaSource = mangaEntry?.get(MangaTable.sourceReference)
+        val staleBefore = (mangaEntry?.get(MangaTable.thumbnailUrlLastFetched) ?: 0L) * 1000
 
         if (mangaInLibrary && mangaSource != LocalSource.ID) {
+            ThumbnailDownloadHelper.refreshIfStale(mangaId, staleBefore)
             return try {
                 ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
@@ -514,7 +533,7 @@ object Manga {
             }
         }
 
-        return fetchMangaThumbnail(mangaId)
+        return fetchMangaThumbnail(mangaId, staleBefore)
     }
 
     fun clearThumbnail(mangaId: Int) {

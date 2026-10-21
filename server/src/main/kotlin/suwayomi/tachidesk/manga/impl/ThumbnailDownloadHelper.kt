@@ -6,6 +6,11 @@ import java.io.InputStream
 object ThumbnailDownloadHelper {
     suspend fun getImage(mangaId: Int): Pair<InputStream, String> = provider(mangaId).getImage().execute()
 
+    suspend fun refreshIfStale(
+        mangaId: Int,
+        staleBefore: Long,
+    ) = provider(mangaId).refreshIfStale(staleBefore)
+
     suspend fun delete(mangaId: Int): Boolean = provider(mangaId).delete()
 
     suspend fun download(mangaId: Int): Boolean = provider(mangaId).download().execute()
