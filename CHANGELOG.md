@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
 
 ### Fixed
+- (**Database**) Keep default PostgreSQL connections independent of the manga SOCKS proxy
 - (**Tracker**) Fix the possibility of attempting to insert multiple track searches
 - (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
