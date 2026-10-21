@@ -615,7 +615,7 @@ public class Paint {
         Map<TextAttribute, Object> fontAttributes = new HashMap<TextAttribute, Object>();
         fontAttributes.put(TextAttribute.WEIGHT, typeface.getJavaWeight());
         mTypeface = typeface
-            .deriveFont(mTypeface.getFont().getStyle(), mTypeface.getFont().getSize())
+            .deriveFont(mTypeface.getFont().getSize2D())
             .deriveFont(fontAttributes);
         setFlags(mFlags);
         return typeface;
