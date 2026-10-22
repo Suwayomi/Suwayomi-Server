@@ -129,15 +129,21 @@ object ChapterDownloadHelper {
         val cbzFile = provider(chapterData.mangaId, chapterData.id).getAsArchiveStream()
 
         if (markAsRead == true) {
-            Chapter.modifyChapter(
-                userId = userId,
-                chapterData.mangaId,
-                chapterData.index,
-                isRead = true,
-                isBookmarked = null,
-                markPrevRead = null,
-                lastPageRead = null,
-            )
+            try {
+                Chapter.modifyChapter(
+                    userId = userId,
+                    chapterData.mangaId,
+                    chapterData.index,
+                    isRead = true,
+                    isBookmarked = null,
+                    markPrevRead = null,
+                    lastPageRead = null,
+                )
+            } catch (e: Exception) {
+                // the archive can be a temp file that is deleted on close
+                cbzFile.first.close()
+                throw e
+            }
         }
 
         return Triple(cbzFile.first, fileName, cbzFile.second)
