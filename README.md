@@ -22,6 +22,7 @@
   - [Advanced Methods](#advanced-methods)
     - [Running the jar release directly](#running-the-jar-release-directly)
     - [Using Suwayomi Remotely](#using-suwayomi-remotely)
+  - [One-Click Deploy](#one-click-deploy)
   - [Syncing With Mihon (Tachiyomi) and Neko](#syncing-with-mihon-tachiyomi-and-neko)
     - [The Suwayomi extension and tracker](#the-suwayomi-extension-and-tracker)
     - [The Suwayomi merge source in Neko](#the-suwayomi-merge-source-in-neko)
@@ -186,6 +187,9 @@ You can run Suwayomi on your computer or a server and connect to it remotely thr
 Check out [this wiki page](https://github.com/Suwayomi/Suwayomi-Server/wiki/Configuring-Tachidesk-Server) for a guide on configuring Suwayomi-Server. 
 
 If you face issues with your setup then we are happy to provide help, just join our discord server(a discord badge is on the top of the page, you are just a click-clack away!).
+
+## One-Click Deploy
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/Suwayomi/)
 
 ## Syncing With Mihon (Tachiyomi) and Neko
 ### The Suwayomi extension and tracker
