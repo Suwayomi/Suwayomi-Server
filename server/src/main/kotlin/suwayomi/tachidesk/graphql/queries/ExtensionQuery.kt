@@ -128,8 +128,8 @@ class ExtensionQuery {
         val isInstalled: Boolean? = null,
         val hasUpdate: Boolean? = null,
         val isObsolete: Boolean? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(storeIndexUrl, ExtensionTable.storeIndexUrl)
             opAnd.eq(repo, ExtensionTable.storeIndexUrl)
@@ -181,8 +181,8 @@ class ExtensionQuery {
         override val and: List<ExtensionFilter>? = null,
         override val or: List<ExtensionFilter>? = null,
         override val not: ExtensionFilter? = null,
-    ) : Filter<ExtensionFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<ExtensionFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareString(ExtensionTable.storeIndexUrl, storeIndexUrl),
                 andFilterWithCompareString(ExtensionTable.storeIndexUrl, repo),
@@ -233,7 +233,7 @@ class ExtensionQuery {
 
                 res.adjustWhere { ExtensionTable.name neq LocalSource.EXTENSION_NAME }
 
-                res.applyOps(condition, filter)
+                res.applyOps(null, condition, filter)
 
                 // hide NSFW extensions from users without the NSFW permission
                 // if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {

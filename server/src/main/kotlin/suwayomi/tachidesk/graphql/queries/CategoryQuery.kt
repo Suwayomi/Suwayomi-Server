@@ -96,8 +96,8 @@ class CategoryQuery {
         val name: String? = null,
         val default: Boolean? = null,
         val isDefaultCategory: Boolean? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, CategoryTable.id)
             opAnd.eq(order, CategoryTable.order)
@@ -118,8 +118,8 @@ class CategoryQuery {
         override val and: List<CategoryFilter>? = null,
         override val or: List<CategoryFilter>? = null,
         override val not: CategoryFilter? = null,
-    ) : Filter<CategoryFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<CategoryFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareEntity(CategoryTable.id, id),
                 andFilterWithCompare(CategoryTable.order, order),
@@ -127,6 +127,13 @@ class CategoryQuery {
                 andFilterWithCompare(CategoryTable.isDefault, default),
                 andFilterWithCompare(CategoryTable.isDefaultCategory, isDefaultCategory),
             )
+
+        fun isFilteringForDefaultCategory(inverted: Boolean = false): Boolean =
+            this.id?.isNull == !inverted ||
+                this.isDefaultCategory?.equalTo == !inverted ||
+                this.or?.any { it.isFilteringForDefaultCategory(inverted) } == true ||
+                this.and?.any { it.isFilteringForDefaultCategory(inverted) } == true ||
+                this.not?.isFilteringForDefaultCategory(!inverted) == true
     }
 
     @RequireAuth
@@ -157,7 +164,7 @@ class CategoryQuery {
             transaction {
                 val res = CategoryTable.selectAll().where { CategoryTable.user eq userId }
 
-                res.applyOps(condition, filter)
+                res.applyOps(null, condition, filter)
 
                 val baseSort = listOf(CategoryOrder(CategoryOrderBy.ID, SortOrder.ASC))
                 val deprecatedSort = listOfNotNull(orderBy?.let { CategoryOrder(orderBy, orderByType) })
