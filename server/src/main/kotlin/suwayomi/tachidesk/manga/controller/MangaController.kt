@@ -33,6 +33,7 @@ import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
 import suwayomi.tachidesk.server.user.requireUser
 import suwayomi.tachidesk.server.user.requireUserWithBasicFallback
+import suwayomi.tachidesk.server.util.badRequest
 import suwayomi.tachidesk.server.util.formParam
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
@@ -299,7 +300,7 @@ object MangaController {
                 ctx.future {
                     future {
                         val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                        val input = json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body())
+                        val input = badRequest { json.decodeFromString<Chapter.MangaChapterBatchEditInput>(ctx.body()) }
                         Chapter.modifyChapters(userId, input, mangaId)
                     }
                 }
@@ -323,7 +324,7 @@ object MangaController {
                 ctx.future {
                     future {
                         val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                        val input = json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body())
+                        val input = badRequest { json.decodeFromString<Chapter.ChapterBatchEditInput>(ctx.body()) }
                         Chapter.modifyChapters(
                             userId,
                             Chapter.MangaChapterBatchEditInput(

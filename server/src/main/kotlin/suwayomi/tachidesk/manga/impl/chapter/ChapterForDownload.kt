@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import io.github.oshai.kotlinlogging.KLogger
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.github.reactivecircus.cache4k.Cache
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.jetbrains.exposed.v1.core.ResultRow
@@ -31,6 +32,7 @@ import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.manga.model.table.toDataClass
+import java.io.IOException
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -84,6 +86,16 @@ private fun clampLastPageReads(
         }
 }
 
+/**
+ * A business error thrown by extension/source code (e.g. "permission denied", "not
+ * found on the site"). It is an upstream fault, not a server defect — mapped to
+ * 424 Failed Dependency with the source's own message in [suwayomi.tachidesk.server.JavalinSetup].
+ */
+class SourceException(
+    message: String?,
+    cause: Throwable? = null,
+) : IOException(message ?: "Source request failed", cause)
+
 suspend fun refreshChapterPageList(
     mangaId: Int,
     chapterId: Int,
@@ -96,17 +108,27 @@ suspend fun refreshChapterPageList(
         val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
 
         val pageList =
-            source
-                .getPageList(
-                    SChapter.create().apply {
-                        url = chapterEntry[ChapterTable.url]
-                        name = chapterEntry[ChapterTable.name]
-                        scanlator = chapterEntry[ChapterTable.scanlator]
-                        chapter_number = chapterEntry[ChapterTable.chapter_number]
-                        date_upload = chapterEntry[ChapterTable.date_upload]
-                        memo = chapterEntry[ChapterTable.memo]
-                    },
-                ).mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
+            try {
+                source
+                    .getPageList(
+                        SChapter.create().apply {
+                            url = chapterEntry[ChapterTable.url]
+                            name = chapterEntry[ChapterTable.name]
+                            scanlator = chapterEntry[ChapterTable.scanlator]
+                            chapter_number = chapterEntry[ChapterTable.chapter_number]
+                            date_upload = chapterEntry[ChapterTable.date_upload]
+                            memo = chapterEntry[ChapterTable.memo]
+                        },
+                    )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                // host-unreachable/timeout already map to source-failure statuses;
+                // HttpException is an IllegalStateException and lands in the catch below
+                throw e
+            } catch (e: Exception) {
+                throw SourceException(e.message, e)
+            }.mapIndexed { index, page -> Page(index, page.url, page.imageUrl, page.uri) }
 
         transaction {
             ChapterTable.update({ ChapterTable.id eq chapterId }) {

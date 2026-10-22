@@ -16,6 +16,7 @@ import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
 import suwayomi.tachidesk.server.user.requireUser
+import suwayomi.tachidesk.server.util.badRequest
 import suwayomi.tachidesk.server.util.handler
 import suwayomi.tachidesk.server.util.pathParam
 import suwayomi.tachidesk.server.util.queryParam
@@ -55,7 +56,7 @@ object TrackController {
             },
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.LoginInput>(ctx.body())
+                val input = badRequest { json.decodeFromString<Track.LoginInput>(ctx.body()) }
                 logger.debug { "tracker login $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
@@ -80,7 +81,7 @@ object TrackController {
             },
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.LogoutInput>(ctx.body())
+                val input = badRequest { json.decodeFromString<Track.LogoutInput>(ctx.body()) }
                 logger.debug { "tracker logout $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
@@ -105,7 +106,7 @@ object TrackController {
             },
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.SearchInput>(ctx.body())
+                val input = badRequest { json.decodeFromString<Track.SearchInput>(ctx.body()) }
                 logger.debug { "tracker search $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
@@ -154,7 +155,7 @@ object TrackController {
             },
             behaviorOf = { ctx ->
                 ctx.getAttribute(Attribute.TachideskUser).requireUser()
-                val input = json.decodeFromString<Track.UpdateInput>(ctx.body())
+                val input = badRequest { json.decodeFromString<Track.UpdateInput>(ctx.body()) }
                 logger.debug { "tracker update $input" }
                 val userId = ctx.getAttribute(Attribute.TachideskUser).requireUser()
                 ctx.future {
