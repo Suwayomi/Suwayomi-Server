@@ -9,6 +9,7 @@ package eu.kanade.tachiyomi.network
 
 import android.content.Context
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
+import eu.kanade.tachiyomi.network.interceptor.HostCircuitBreakerInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import okhttp3.Cache
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
@@ -127,4 +129,40 @@ class NetworkHelper(
     @Deprecated("The regular client handles Cloudflare by default")
     @Suppress("UNUSED")
     val cloudflareClient by lazy { client }
+
+    /** Dispatcher for image fetches (covers, pages, icons) so they never occupy the main client's queue. */
+    val imageDispatcher: Dispatcher by lazy {
+        Dispatcher().apply { maxRequestsPerHost = IMAGE_MAX_REQUESTS_PER_HOST }
+    }
+
+    /** Page/icon-tier breaker; covers carry [thumbnailHostBreaker] — each tier convicts a host on its own evidence. */
+    internal val imageHostBreaker = HostCircuitBreakerInterceptor()
+
+    /** Cover-tier counterpart of [imageHostBreaker]; tight cover timeouts must not convict a host for pages. */
+    internal val thumbnailHostBreaker = HostCircuitBreakerInterceptor()
+
+    /** Image-fetch variant of [base]: dispatcher swapped for [imageDispatcher], [imageHostBreaker]
+     *  appended unless already present (re-deriving must not double-count failures);
+     *  pooling, cookies, interceptors and timeouts are inherited. */
+    fun imageClient(base: OkHttpClient = client): OkHttpClient =
+        base
+            .newBuilder()
+            .dispatcher(imageDispatcher)
+            .apply { if (imageHostBreaker !in base.interceptors) addInterceptor(imageHostBreaker) }
+            .build()
+
+    /** Cover-fetch variant of [base]: the image dispatcher plus tight timeouts. Built off
+     *  [base] rather than [imageClient] so it carries only [thumbnailHostBreaker]. */
+    fun thumbnailClient(base: OkHttpClient = client): OkHttpClient =
+        base
+            .newBuilder()
+            .dispatcher(imageDispatcher)
+            .apply { if (thumbnailHostBreaker !in base.interceptors) addInterceptor(thumbnailHostBreaker) }
+            .connectTimeout(THUMBNAIL_CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
+            .callTimeout(THUMBNAIL_CALL_TIMEOUT_S, TimeUnit.SECONDS)
+            .build()
 }
+
+private const val IMAGE_MAX_REQUESTS_PER_HOST = 5
+private const val THUMBNAIL_CONNECT_TIMEOUT_S = 10L
+private const val THUMBNAIL_CALL_TIMEOUT_S = 15L
