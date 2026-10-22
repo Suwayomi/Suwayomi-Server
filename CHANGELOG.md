@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
 
 ### Fixed
+- (**GraphQL/WebUI**) Fix server info queries failing when WebUI serving is disabled and no local WebUI version is installed
 - (**Tracker**) Fix the possibility of attempting to insert multiple track searches
 - (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
