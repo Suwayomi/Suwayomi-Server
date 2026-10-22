@@ -165,18 +165,27 @@ object PackageTools {
         jars: List<Path>,
         block: suspend (loadSources: (jar: Path, className: String) -> Any) -> T,
     ): T {
-        val mutexes = jars.map { lockByJar.get(it.absolutePathString()) { Mutex() } }
+        val mutexes =
+            jars
+                .map { it.absolutePathString() }
+                .distinct()
+                .sorted()
+                .map { lockByJar.get(it) { Mutex() } }
 
-        mutexes.forEach { it.lock() }
-
+        var acquired = 0
         try {
+            mutexes.forEach {
+                it.lock()
+                acquired++
+            }
+
             return block { jar, className ->
                 check(jar in jars) { "Lock for $jar is not held" }
 
                 loadExtensionSourcesWithLockHeld(jar, className)
             }
         } finally {
-            mutexes.forEach { it.unlock() }
+            mutexes.take(acquired).asReversed().forEach { it.unlock() }
         }
     }
 
