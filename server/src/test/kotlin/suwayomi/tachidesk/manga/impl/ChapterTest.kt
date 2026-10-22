@@ -17,6 +17,7 @@ import kotlinx.serialization.json.JsonObject
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.innerJoin
 import org.jetbrains.exposed.v1.core.neq
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -37,12 +38,16 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.server.settings.UserSettings
+import suwayomi.tachidesk.server.settings.set
+import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -760,6 +765,175 @@ class ChapterTest : ApplicationTest() {
             }
         }
 
+    @Test
+    fun duplicateOfReadChapterGetsMarkedAsRead() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_OF_READ")
+            userConfig.markDuplicateReadChaptersAsRead.set(1, true)
+            createDuplicateTestChapter(mangaId, "scanlator-a/1", readByUserId = mapOf(1 to true))
+
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/1" to 1f, "scanlator-b/1" to 1f)
+
+            assertTrue(isRead("scanlator-b/1", 1), "The duplicate of an already read chapter should be read")
+            assertTrue(isRead("scanlator-a/1", 1), "The already read chapter should still be read")
+        }
+
+    @Test
+    fun duplicateOfReadChapterStaysUnreadWhileSettingIsDisabled() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_SETTING_DISABLED")
+            createDuplicateTestChapter(mangaId, "scanlator-a/1", readByUserId = mapOf(1 to true))
+
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/1" to 1f, "scanlator-b/1" to 1f)
+
+            assertFalse(isRead("scanlator-b/1", 1), "The duplicate should not be touched while the setting is disabled")
+        }
+
+    @Test
+    fun duplicateOfUnreadChapterStaysUnread() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_OF_UNREAD")
+            userConfig.markDuplicateReadChaptersAsRead.set(1, true)
+            createDuplicateTestChapter(mangaId, "scanlator-a/1", readByUserId = mapOf(1 to false))
+
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/1" to 1f, "scanlator-b/1" to 1f)
+
+            assertFalse(isRead("scanlator-b/1", 1), "The duplicate of an unread chapter should stay unread")
+        }
+
+    @Test
+    fun chapterWithoutRecognizedNumberIsNoDuplicate() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_UNRECOGNIZED")
+            userConfig.markDuplicateReadChaptersAsRead.set(1, true)
+            createDuplicateTestChapter(mangaId, "scanlator-a/oneshot", chapterNumber = -1f, readByUserId = mapOf(1 to true))
+
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/oneshot" to -1f, "scanlator-b/oneshot" to -1f)
+
+            assertFalse(isRead("scanlator-b/oneshot", 1), "Chapters without a recognized number are never duplicates")
+        }
+
+    @Test
+    fun duplicateThatIsAlreadyInTheDatabaseGetsMarkedAsRead() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_EXISTING")
+            userConfig.markDuplicateReadChaptersAsRead.set(1, true)
+            createDuplicateTestChapter(mangaId, "scanlator-a/1", readByUserId = mapOf(1 to true))
+            createDuplicateTestChapter(mangaId, "scanlator-b/1", readByUserId = mapOf(1 to false))
+            // "no user row" is the same as "unread"
+            createDuplicateTestChapter(mangaId, "scanlator-c/1")
+
+            // nothing new gets fetched, all chapters are kept
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/1" to 1f, "scanlator-b/1" to 1f, "scanlator-c/1" to 1f)
+
+            assertTrue(isRead("scanlator-b/1", 1), "A duplicate with an unread user row should be marked as read")
+            assertTrue(isRead("scanlator-c/1", 1), "A duplicate without a user row should be marked as read")
+        }
+
+    @Test
+    fun duplicateIsOnlyMarkedAsReadForUsersThatReadTheChapter() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_PER_USER_READ")
+            val secondUser = createSecondUser()
+            userConfig.markDuplicateReadChaptersAsRead.set(1, true)
+            userConfig.markDuplicateReadChaptersAsRead.set(secondUser, true)
+            createDuplicateTestChapter(mangaId, "scanlator-a/1", readByUserId = mapOf(1 to true, secondUser to false))
+
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/1" to 1f, "scanlator-b/1" to 1f)
+
+            assertTrue(isRead("scanlator-b/1", 1), "The user that read the chapter should get the duplicate marked")
+            assertFalse(isRead("scanlator-b/1", secondUser), "The user that did not read it should not be affected")
+        }
+
+    @Test
+    fun duplicateIsOnlyMarkedAsReadForUsersThatEnabledTheSetting() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_PER_USER_SETTING")
+            val secondUser = createSecondUser()
+            userConfig.markDuplicateReadChaptersAsRead.set(1, true)
+            createDuplicateTestChapter(mangaId, "scanlator-a/1", readByUserId = mapOf(1 to true, secondUser to true))
+
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/1" to 1f, "scanlator-b/1" to 1f)
+
+            assertTrue(isRead("scanlator-b/1", 1), "The user that enabled the setting should get the duplicate marked")
+            assertFalse(isRead("scanlator-b/1", secondUser), "The user that did not enable it should not be affected")
+        }
+
+    @Test
+    fun readStateOfKeptChapterIsNeverCleared() =
+        runTest {
+            val mangaId = createLibraryManga("DUPLICATE_KEEPS_READ")
+            userConfig.markDuplicateReadChaptersAsRead.set(1, true)
+            createDuplicateTestChapter(mangaId, "scanlator-a/1", readByUserId = mapOf(1 to true))
+            createDuplicateTestChapter(mangaId, "scanlator-a/2", chapterNumber = 2f, readByUserId = mapOf(1 to true))
+
+            fetchDuplicateTestChapters(mangaId, "scanlator-a/1" to 1f, "scanlator-a/2" to 2f)
+
+            assertTrue(isRead("scanlator-a/1", 1), "A read chapter should stay read")
+            assertTrue(isRead("scanlator-a/2", 1), "A read chapter should stay read")
+        }
+
+    private fun createDuplicateTestChapter(
+        mangaId: Int,
+        url: String,
+        chapterNumber: Float = 1f,
+        readByUserId: Map<Int, Boolean> = emptyMap(),
+    ) {
+        transaction {
+            val chapterId =
+                ChapterTable
+                    .insertAndGetId {
+                        it[ChapterTable.url] = url
+                        it[ChapterTable.name] = getDuplicateTestChapterName(chapterNumber)
+                        it[ChapterTable.chapter_number] = chapterNumber
+                        it[ChapterTable.sourceOrder] = 1
+                        it[ChapterTable.manga] = mangaId
+                        it[ChapterTable.memo] = JsonObject.EMPTY
+                    }.value
+
+            ChapterUserTable.batchInsert(readByUserId.entries) { (userId, isRead) ->
+                this[ChapterUserTable.chapter] = chapterId
+                this[ChapterUserTable.user] = userId
+                this[ChapterUserTable.isRead] = isRead
+            }
+        }
+    }
+
+    private suspend fun fetchDuplicateTestChapters(
+        mangaId: Int,
+        vararg chapterNumberByUrl: Pair<String, Float>,
+    ) {
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        val fetchedChapters =
+            chapterNumberByUrl.map { (url, chapterNumber) ->
+                SChapter.create().apply {
+                    this.url = url
+                    this.name = getDuplicateTestChapterName(chapterNumber)
+                    this.chapter_number = chapterNumber
+                }
+            }
+
+        Chapter.updateChapterListDatabase(mangaEntry, fetchedChapters, source)
+    }
+
+    /** A chapter without a recognized number must not contain anything a chapter number could be parsed from */
+    private fun getDuplicateTestChapterName(chapterNumber: Float): String =
+        if (chapterNumber < 0f) "Oneshot" else "Chapter ${chapterNumber.toInt()}"
+
+    /** A chapter without a user row is unread for that user */
+    private fun isRead(
+        url: String,
+        userId: Int,
+    ): Boolean =
+        transaction {
+            ChapterUserTable
+                .innerJoin(ChapterTable, onColumn = { ChapterUserTable.chapter }, otherColumn = { ChapterTable.id })
+                .select(ChapterUserTable.isRead)
+                .where { (ChapterTable.url eq url) and (ChapterUserTable.user eq userId) }
+                .singleOrNull()
+                ?.get(ChapterUserTable.isRead) ?: false
+        }
+
     private fun createChaptersForDownloadTest(
         mangaId: Int,
         urls: List<String>,
@@ -790,6 +964,10 @@ class ChapterTest : ApplicationTest() {
 
     @AfterEach
     internal fun tearDown() {
+        // the settings are cached, thus, deleting their rows together with the users is not enough
+        transaction { UserAccountTable.select(UserAccountTable.id).map { it[UserAccountTable.id].value } }
+            .forEach { userId -> UserSettings.reset(userId, userConfig.markDuplicateReadChaptersAsRead) }
+
         clearTables(
             ChapterUserTable,
             ChapterTable,
