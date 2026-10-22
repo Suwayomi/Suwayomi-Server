@@ -24,6 +24,7 @@ import org.cef.CefApp
 import org.cef.CefSettings.LogSeverity
 import org.cef.SystemBootstrap
 import sun.misc.Signal
+import sun.misc.SignalHandler
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -74,6 +75,7 @@ object CEFManager {
     private val applicationDirs by lazy { Injekt.get<ApplicationDirs>() }
     private val cefDir by lazy { Path(applicationDirs.dataRoot) / "bin/kcef" }
     private val releaseFile by lazy { cefDir / "release" }
+    private var jvmSignalHandlers = emptyMap<Signal, SignalHandler>()
 
     fun init() =
         scope.launch {
@@ -115,6 +117,7 @@ object CEFManager {
 
             val app =
                 if (CefApp.getInstanceIfAny() == null) {
+                    jvmSignalHandlers = saveShutdownSignalHandlers()
                     val config =
                         JCefAppConfig.getInstance(cefDir.toString(), false).apply {
                             appArgsAsList.addAll(
@@ -188,17 +191,35 @@ object CEFManager {
     /**
      * Chromium replaces the JVM's handlers of these signals with its own, which only close its browsers and let a second
      * signal kill the process, so the server no longer shut down on them and none of its shutdown hooks ran (#2158).
-     * Exits like the JVM's own handler does, which runs the shutdown hooks, CEF's included.
+     * Saves the JVM's handlers before CEF starts so they can be put back once it initialized.
      */
+    private fun saveShutdownSignalHandlers(): Map<Signal, SignalHandler> =
+        listOf("TERM", "INT", "HUP")
+            .mapNotNull { name ->
+                try {
+                    val signal = Signal(name)
+                    signal to currentHandler(signal)
+                } catch (e: IllegalArgumentException) {
+                    // the signal doesn't exist on this OS, or the JVM reserves it
+                    logger.debug(e) { "Could not save the handler of SIG$name" }
+                    null
+                }
+            }.toMap()
+
+    /**
+     * Java has no getter for a signal's handler: [Signal.handle] only returns the previous one when installing another.
+     * Swaps in a temporary handler, then puts the original back and returns it. The temporary one exits like the JVM's
+     * so that a signal arriving in between still shuts the server down.
+     */
+    private fun currentHandler(signal: Signal): SignalHandler {
+        val original = Signal.handle(signal) { exitProcess(128 + it.number) }
+        Signal.handle(signal, original)
+        return original
+    }
+
     private fun restoreShutdownSignalHandlers() {
-        listOf("TERM", "INT", "HUP").forEach { name ->
-            try {
-                Signal.handle(Signal(name)) { signal -> exitProcess(128 + signal.number) }
-            } catch (e: IllegalArgumentException) {
-                // the signal doesn't exist on this OS, or the JVM leaves it alone (-Xrs)
-                logger.debug(e) { "Could not restore the handler of SIG$name" }
-            }
-        }
+        jvmSignalHandlers.forEach { (signal, handler) -> Signal.handle(signal, handler) }
+        jvmSignalHandlers = emptyMap()
     }
 
     internal fun isInstallationValid(releaseFile: Path): Boolean {
