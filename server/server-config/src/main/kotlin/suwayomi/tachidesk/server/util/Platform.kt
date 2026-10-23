@@ -208,6 +208,19 @@ sealed class ARCH(
         name: String,
     ) : ARCH(name, "riscv", "riscv32", "riscv64")
 
+    class PPC64(
+        name: String,
+    ) : ARCH(name, "ppc64", "ppc64le")
+
+    class S390X(
+        name: String,
+    ) : ARCH(name, "s390x")
+
+    // Matches no aliases, so architecture-specific downloads (e.g. CEF) are not found
+    class Unknown(
+        name: String,
+    ) : ARCH(name)
+
     private fun matches(value: String): Boolean = aliases.any { value.startsWith(it, ignoreCase = true) }
 
     companion object {
@@ -218,12 +231,14 @@ sealed class ARCH(
                 ::ARM64,
                 ::ARM,
                 ::RISCV,
+                ::PPC64,
+                ::S390X,
             )
 
         fun from(name: String): ARCH =
             types
                 .map { it(name) }
                 .firstOrNull { it.matches(name) }
-                ?: throw UnsupportedOperationException("Unsupported architecture: $name")
+                ?: Unknown(name)
     }
 }
