@@ -10,10 +10,14 @@ package suwayomi.tachidesk.server.util
 import dorkbox.desktop.Desktop
 import io.github.oshai.kotlinlogging.KotlinLogging
 import suwayomi.tachidesk.graphql.types.WebUIInterface
+import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.serverConfig
+import uy.kohesive.injekt.injectLazy
+import java.io.File
 
 object Browser {
     private val logger = KotlinLogging.logger { }
+    private val applicationDirs: ApplicationDirs by injectLazy()
     private val electronInstances = mutableListOf<Any>()
 
     private fun getAppBaseUrl(): String {
@@ -30,7 +34,11 @@ object Browser {
             if (serverConfig.webUIInterface.value == WebUIInterface.ELECTRON) {
                 try {
                     val electronPath = serverConfig.electronPath.value
-                    electronInstances.add(ProcessBuilder(electronPath, appBaseUrl).start())
+                    // electron can't load its entry point from inside the jar.
+                    // not in the temp dir, which might be shared with other users (e.g. /tmp)
+                    val mainScript = File(applicationDirs.dataRoot, "electron-main.js")
+                    mainScript.writeBytes(javaClass.getResourceAsStream("/electron/main.js")!!.use { it.readBytes() })
+                    electronInstances.add(ProcessBuilder(electronPath, mainScript.path, appBaseUrl).start())
                 } catch (e: Throwable) {
                     // cover both java.lang.Exception and java.lang.Error
                     logger.error(e) { "openInBrowser: failed to launch electron due to" }
