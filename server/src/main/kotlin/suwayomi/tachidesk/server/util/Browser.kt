@@ -34,8 +34,9 @@ object Browser {
             if (serverConfig.webUIInterface.value == WebUIInterface.ELECTRON) {
                 try {
                     val electronPath = serverConfig.electronPath.value
-                    // electron can't load its entry point from inside the jar
-                    val mainScript = File(applicationDirs.tempRoot, "electron-main.js")
+                    // electron can't load its entry point from inside the jar.
+                    // not in the temp dir, which might be shared with other users (e.g. /tmp)
+                    val mainScript = File(applicationDirs.dataRoot, "electron-main.js")
                     mainScript.writeBytes(javaClass.getResourceAsStream("/electron/main.js")!!.use { it.readBytes() })
                     electronInstances.add(ProcessBuilder(electronPath, mainScript.path, appBaseUrl).start())
                 } catch (e: Throwable) {
