@@ -175,8 +175,10 @@ object KoreaderSyncService {
             ChapterTable
                 .getWithUserData(userId)
                 .innerJoin(MangaTable, { ChapterTable.manga }, { MangaTable.id })
-                .select(ChapterTable.columns + MangaTable.title + ChapterUserTable.lastPageRead + ChapterUserTable.lastReadAt)
-                .where(condition)
+                .select(
+                    ChapterTable.columns + MangaTable.title + ChapterUserTable.isRead + ChapterUserTable.lastPageRead +
+                        ChapterUserTable.lastReadAt,
+                ).where(condition)
                 .toList()
         }
 
@@ -449,7 +451,13 @@ object KoreaderSyncService {
         }
 
         try {
-            val pageRead = (chapter.getOrNull(ChapterUserTable.lastPageRead) ?: 0) + 1
+            // A chapter marked as read is finished, whatever page was open last
+            val pageRead =
+                if (chapter.getOrNull(ChapterUserTable.isRead) == true) {
+                    pageCount
+                } else {
+                    (chapter.getOrNull(ChapterUserTable.lastPageRead) ?: 0) + 1
+                }
             val payload =
                 KoreaderProgressPayload(
                     document = chapterHash,
@@ -467,7 +475,7 @@ object KoreaderSyncService {
                     addHeader("x-auth-key", settings.userkey)
                 }
 
-            logger.info { "[KOSYNC PUSH] url= ${request.url} - Sending data: $requestBody" }
+            logger.debug { "[KOSYNC PUSH] url= ${request.url} - Sending data: $requestBody" }
 
             network.client.newCall(request).await().use { response ->
                 val responseBody = response.body.string()

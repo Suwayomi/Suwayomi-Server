@@ -339,6 +339,25 @@ class KoreaderSyncServiceTest : ApplicationTest() {
     }
 
     @Test
+    fun pushOfAReadChapterSendsItsLastPage() {
+        connect(KoreaderSyncChecksumMethod.FILENAME)
+        val chapterId = createChapter("Chapter 1")
+        transaction {
+            ChapterUserTable.update({ ChapterUserTable.chapter eq chapterId }) { it[isRead] = true }
+        }
+
+        runBlocking { KoreaderSyncService.pushProgress(userId, chapterId) }
+
+        assertEquals(
+            "20",
+            syncServer.progress.values
+                .single()["progress"]
+                ?.jsonPrimitive
+                ?.content,
+        )
+    }
+
+    @Test
     fun pullIgnoresProgressPushedByThisServer() {
         connect(KoreaderSyncChecksumMethod.FILENAME)
         val chapterId = createChapter("Chapter 1")
