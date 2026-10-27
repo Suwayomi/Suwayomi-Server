@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
 - (**Updates**) Index chapters by fetch time for the updates list
 - (**WebView**) Start CEF the first time a webview needs it instead of at startup
+- (**WebView**) Stream frames as JPEG binary messages at up to 20 fps, sending only the latest frame and waiting for the client to receive the previous ones, instead of a PNG in JSON for every repaint
 
 ### Fixed
 - (**API**) Answer 424 instead of 500 when a source fails
@@ -51,6 +52,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**TrayIcon**) Use DorkBox OS 1.11 to restore tray menus on localized Windows
 - (**WebUI/API**) Fix server info queries failing when WebUI serving is disabled and no local WebUI version is installed
 - (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
+- (**WebView**) Fix the WebView page keeping every received frame in memory
 - (**WebView**) Fix WebView pages sometimes staying open and running after being closed
 - (**WebView**) Pass `evaluateJavascript` results to extensions serialized as JSON, like Android
 - (**WebView**) Report dead renderers through `onRenderProcessGone` instead of leaving extensions waiting
