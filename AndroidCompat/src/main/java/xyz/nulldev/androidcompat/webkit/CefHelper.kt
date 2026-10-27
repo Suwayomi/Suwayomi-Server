@@ -48,7 +48,7 @@ object CefHelper {
 
     fun doCreateApp(
         cefDir: Path,
-        cachePath: Path,
+        cachePath: Path?,
         logSeverity: LogSeverity,
         configBlock: (JCefAppConfig) -> Unit = {},
     ) {
@@ -74,7 +74,7 @@ object CefHelper {
                             )
                             cefSettings.apply {
                                 windowless_rendering_enabled = true
-                                cache_path = cachePath.absolutePathString()
+                                cache_path = cachePath?.absolutePathString()
                                 log_severity = logSeverity
                             }
                         }.apply(configBlock)
@@ -93,7 +93,7 @@ object CefHelper {
                 logger.debug { "Getting existing app instance" }
                 CefApp.getInstance()
             }
-        CefHelper.cefApp.value = Result.success(app)
+        cefApp.value = Result.success(app)
     }
 
     class CefException(
