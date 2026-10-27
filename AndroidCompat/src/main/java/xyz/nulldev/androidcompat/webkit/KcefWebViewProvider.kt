@@ -95,6 +95,7 @@ import kotlin.math.min
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.jvm.javaMethod
+import kotlin.runCatching
 
 class KcefWebViewProvider(
     private val view: WebView,
@@ -117,7 +118,10 @@ class KcefWebViewProvider(
         const val QUERY_FN = "__\$_suwayomiQuery"
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
 
-        private val initHandler: InitBrowserHandler by KoinPlatformTools.defaultContext().get().inject()
+        private fun findHandler(): Lazy<InitBrowserHandler?> =
+            runCatching { KoinPlatformTools.defaultContext().get() }.getOrNull()?.let { it.inject<InitBrowserHandler>() } ?: lazy { null }
+
+        private val initHandler by findHandler()
     }
 
     interface InitBrowserHandler {
@@ -600,7 +604,7 @@ class KcefWebViewProvider(
                     addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
                 }
             }
-        initHandler.init(this)
+        initHandler?.init(this)
     }
 
     // Deprecated - should never be called
