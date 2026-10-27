@@ -1,14 +1,15 @@
 package android.webkit
 
-import kotlinx.coroutines.flow.first
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import ca.gosyer.appdirs.AppDirs
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.mockk
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.cef.CefSettings.LogSeverity
 import org.cef.network.CefCookie
@@ -16,20 +17,20 @@ import org.cef.network.CefCookieManager
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import xyz.nulldev.androidcompat.webkit.CefHelper
-import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
 import xyz.nulldev.androidcompat.webkit.KcefWebSettings
+import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
 import java.nio.file.Path
+import java.util.Date
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.div
 import kotlin.test.Test
-import kotlin.test.assertTrue
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import java.util.Date
 
 @OptIn(ExperimentalPathApi::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -78,6 +79,10 @@ class CefProviderTest {
         }
     }
 
+    private class FailResponse(
+        mimeType: String = "text/html",
+    ) : WebResourceResponse(mimeType, "utf8", 400, "Not Found", null, null)
+
     @BeforeAll
     fun init() {
         System.loadLibrary("jawt")
@@ -86,7 +91,7 @@ class CefProviderTest {
         val cefDir = Path(root) / "bin/kcef"
         CefHelper.doCreateApp(
             cefDir,
-            null, // Path(System.getProperty("java.io.tmpdir")) / "TachideskTest/kcef",
+            null,
             LogSeverity.LOGSEVERITY_VERBOSE,
         ) { config ->
             config.getLoader().loadLibrary("cef")
@@ -125,28 +130,38 @@ class CefProviderTest {
 
                 val latch1 = CountDownLatch(1)
                 settings.setIncludeCookiesOnIntercept(false)
-                provider.setWebViewClient(object : WebViewClient() {
-                    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                        logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
-                        assertFalse(request.requestHeaders.keys.any { it.equals("Cookie", true) })
-                        latch1.countDown()
-                        return null
-                    }
-                })
-                provider.loadUrl("https://example.com")
+                provider.setWebViewClient(
+                    object : WebViewClient() {
+                        override fun shouldInterceptRequest(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): WebResourceResponse? {
+                            logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                            assertFalse(request.requestHeaders.keys.any { it.equals("Cookie", true) })
+                            latch1.countDown()
+                            return FailResponse()
+                        }
+                    },
+                )
+                provider.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
                 assertTrue(latch1.await(10, TimeUnit.SECONDS))
 
                 val latch2 = CountDownLatch(1)
                 settings.setIncludeCookiesOnIntercept(true)
-                provider.setWebViewClient(object : WebViewClient() {
-                    override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                        logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
-                        assertTrue(request.requestHeaders.keys.any { it.equals("Cookie", true) })
-                        latch2.countDown()
-                        return null
-                    }
-                })
-                provider.loadUrl("https://example.com")
+                provider.setWebViewClient(
+                    object : WebViewClient() {
+                        override fun shouldInterceptRequest(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): WebResourceResponse? {
+                            logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                            assertTrue(request.requestHeaders.keys.any { it.equals("Cookie", true) })
+                            latch2.countDown()
+                            return FailResponse()
+                        }
+                    },
+                )
+                provider.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
                 assertTrue(latch2.await(10, TimeUnit.SECONDS))
 
                 view.destroy()

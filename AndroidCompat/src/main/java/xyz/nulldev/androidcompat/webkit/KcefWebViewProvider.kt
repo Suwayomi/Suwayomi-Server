@@ -432,7 +432,7 @@ class KcefWebViewProvider(
         ): Boolean {
             Log.v(TAG, "Handling request from client's response for ${request.url}")
             try {
-                resolvedData = webResponse.data.readAllBytes()
+                resolvedData = webResponse.data?.readAllBytes() ?: byteArrayOf()
                 Log.v(TAG, "Resolved client response for ${resolvedData?.size} bytes")
             } catch (e: IOException) {
                 Log.w(TAG, "Failed to read client data", e)
