@@ -39,6 +39,7 @@ import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
+import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
@@ -206,6 +207,7 @@ object JavalinSetup {
         }
 
         post(loginPath) { ctx ->
+            val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             val sessionToken = ctx.sessionAttribute<String>("form-csrf-token")
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
@@ -215,9 +217,9 @@ object JavalinSetup {
 
             val error =
                 if (sessionToken == null || ctx.formParam("csrf-token") != sessionToken) {
-                    "Form expired"
+                    MR.strings.login_csrf_expired.localized(locale)
                 } else if (!isValid) {
-                    "Invalid username or password"
+                    MR.strings.login_failed.localized(locale)
                 } else {
                     ctx.req().changeSessionId()
                     val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
@@ -236,7 +238,6 @@ object JavalinSetup {
             ctx.req().session.invalidate()
             val randomToken = UUID.randomUUID().toString()
             ctx.sessionAttribute("form-csrf-token", randomToken)
-            val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             ctx.render(
                 "Login.jte",
