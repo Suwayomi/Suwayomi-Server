@@ -3,6 +3,7 @@
 
 @param locale: java.util.Locale
 @param error: String
+@param csrf_token: String
 
 <!DOCTYPE html>
 <html lang="en">
@@ -158,6 +159,7 @@
                     <input type="text" name="user" id="user" required placeholder="${MR.strings.login_placeholder_username.localized(locale)}"/>
                     <label for="pass">${MR.strings.login_label_password.localized(locale)}:</label>
                     <input type="password" name="pass" id="pass" required placeholder="${MR.strings.login_placeholder_password.localized(locale)}"/>
+                    <input type="hidden" name="csrf-token" value="${csrf_token}"/>
             </div>
             <div class="submit">
                 <button type="submit">${MR.strings.login_label_login.localized(locale)}</button>

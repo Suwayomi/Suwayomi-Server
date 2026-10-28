@@ -189,6 +189,8 @@ object JavalinSetup {
         val loginPath = ServerSubpath.maybeAddAsPrefix("/login.html")
 
         get(loginPath) { ctx ->
+            val randomToken = UUID.randomUUID().toString()
+            ctx.sessionAttribute("form-csrf-token", randomToken)
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             val httpCacheSeconds = 1.days.inWholeSeconds
@@ -198,18 +200,25 @@ object JavalinSetup {
                 mapOf(
                     "locale" to locale,
                     "error" to "",
+                    "csrf_token" to randomToken,
                 ),
             )
         }
 
         post(loginPath) { ctx ->
+            val sessionToken = ctx.sessionAttribute<String>("form-csrf-token")
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
             val isValid =
                 username == serverConfig.authUsername.value &&
                     password == serverConfig.authPassword.value
 
-            if (isValid) {
+            val error = if (sessionToken == null || ctx.formParam("csrf-token") != sessionToken) {
+                "Form expired"
+            } else if (!isValid) {
+                "Invalid username or password"
+            } else {
+                ctx.req().changeSessionId()
                 val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
                 val uri = URI(redirect)
                 if (uri.host != null || uri.scheme != null) {
@@ -223,14 +232,17 @@ object JavalinSetup {
                 throw RedirectResponse(HttpStatus.SEE_OTHER)
             }
 
+            ctx.req().session.invalidate()
+            val randomToken = UUID.randomUUID().toString()
+            ctx.sessionAttribute("form-csrf-token", randomToken)
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
-            ctx.req().session.invalidate()
             ctx.render(
                 "Login.jte",
                 mapOf(
                     "locale" to locale,
-                    "error" to "Invalid username or password",
+                    "error" to error,
+                    "csrf_token" to randomToken,
                 ),
             )
         }
