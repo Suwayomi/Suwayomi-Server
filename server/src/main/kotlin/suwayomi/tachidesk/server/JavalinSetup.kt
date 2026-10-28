@@ -8,6 +8,7 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.network.HttpException
+import java.util.UUID
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -276,6 +277,12 @@ object JavalinSetup {
             if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
+            }
+
+            if (authMode == AuthMode.BASIC_AUTH && ctx.sessionAttribute<String>("csrf-token") == null) {
+                val randomToken = UUID.randomUUID().toString()
+                ctx.sessionAttribute("csrf-token", randomToken)
+                ctx.res().addHeader("Set-Cookie", "suwayomi-basic-csrf=$randomToken; HttpOnly; SameSite=Strict")
             }
 
             ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromContext(ctx) })
