@@ -105,6 +105,10 @@ Syncyomi has released its next version of syncing your library, optimizing the s
 - (**WebView**) Fix `kcef` causing the server startup to fail
 - (**WebView**) Fix authentication with subpath option
 - (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
+- (**Security**) Form submissions now require a CSRF cookie to prevent forgery
+
+### Removed
+- (**API**) The deprecated REST API has been removed
 
 ## [v2.3.2243] - 2026-07-13
 
