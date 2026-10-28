@@ -13,10 +13,10 @@ import io.javalin.http.HttpStatus
 import io.javalin.websocket.WsConfig
 import suwayomi.tachidesk.graphql.server.TachideskGraphQLServer
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
-import suwayomi.tachidesk.server.JavalinSetup.future
-import kotlin.io.path.inputStream
-import suwayomi.tachidesk.server.serverConfig
 import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.serverConfig
+import kotlin.io.path.inputStream
 
 object GraphQLController {
     private val server = TachideskGraphQLServer.create()
@@ -33,7 +33,11 @@ object GraphQLController {
             return
         }
         if (isFormContentType && serverConfig.authMode.value == AuthMode.BASIC_AUTH &&
-            (ctx.sessionAttribute<String>("csrf-token") == null || ctx.sessionAttribute<String>("csrf-token") != ctx.cookie("suwayomi-basic-csrf"))) {
+            (
+                ctx.sessionAttribute<String>("csrf-token") == null ||
+                    ctx.sessionAttribute<String>("csrf-token") != ctx.cookie("suwayomi-basic-csrf")
+            )
+        ) {
             // Basic Auth is handled by the browser, also for POST in <form>
             // Thus, it conveniently ignores our CORS, so we add a CSRF cookie
             ctx.status(401)

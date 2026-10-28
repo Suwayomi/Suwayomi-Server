@@ -8,7 +8,6 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.network.HttpException
-import java.util.UUID
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -57,6 +56,7 @@ import java.net.NetworkInterface
 import java.net.URI
 import java.net.URLEncoder
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days
@@ -213,24 +213,25 @@ object JavalinSetup {
                 username == serverConfig.authUsername.value &&
                     password == serverConfig.authPassword.value
 
-            val error = if (sessionToken == null || ctx.formParam("csrf-token") != sessionToken) {
-                "Form expired"
-            } else if (!isValid) {
-                "Invalid username or password"
-            } else {
-                ctx.req().changeSessionId()
-                val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
-                val uri = URI(redirect)
-                if (uri.host != null || uri.scheme != null) {
-                    throw IllegalArgumentException("Given redirect is not relative, refusing")
+            val error =
+                if (sessionToken == null || ctx.formParam("csrf-token") != sessionToken) {
+                    "Form expired"
+                } else if (!isValid) {
+                    "Invalid username or password"
+                } else {
+                    ctx.req().changeSessionId()
+                    val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
+                    val uri = URI(redirect)
+                    if (uri.host != null || uri.scheme != null) {
+                        throw IllegalArgumentException("Given redirect is not relative, refusing")
+                    }
+                    // NOTE: We currently have no session handler attached.
+                    // Thus, all sessions are stored in memory and not persisted.
+                    // Furthermore, default session timeout appears to be 30m
+                    ctx.header("Location", redirect)
+                    ctx.sessionAttribute("logged-in", username)
+                    throw RedirectResponse(HttpStatus.SEE_OTHER)
                 }
-                // NOTE: We currently have no session handler attached.
-                // Thus, all sessions are stored in memory and not persisted.
-                // Furthermore, default session timeout appears to be 30m
-                ctx.header("Location", redirect)
-                ctx.sessionAttribute("logged-in", username)
-                throw RedirectResponse(HttpStatus.SEE_OTHER)
-            }
 
             ctx.req().session.invalidate()
             val randomToken = UUID.randomUUID().toString()
