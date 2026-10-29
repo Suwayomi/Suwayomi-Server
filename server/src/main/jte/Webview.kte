@@ -570,7 +570,43 @@
 
                 /// Server events
 
+                // decode one frame at a time; frames that arrive meanwhile replace each other, only the newest is drawn
+                let decoding = false;
+                let pendingFrame = null;
+                const decodeNextFrame = () => {
+                    const data = pendingFrame;
+                    if (data === null) return;
+                    pendingFrame = null;
+                    decoding = true;
+                    // started inside a promise so that even a synchronous error ends up in catch/finally below
+                    Promise.resolve().then(() => createImageBitmap(new Blob([data], { type: "image/jpeg" }))).then(bitmap => {
+                        try {
+                            if (frame.width !== bitmap.width || frame.height !== bitmap.height) {
+                                frame.width = bitmap.width;
+                                frame.height = bitmap.height;
+                            }
+                            ctx.drawImage(bitmap, 0, 0);
+                        } finally {
+                            bitmap.close();
+                        }
+                    }).catch(err => console.error('Failed to decode frame', err)).finally(() => {
+                        decoding = false;
+                        decodeNextFrame();
+                    });
+                };
+                const drawFrame = (data) => {
+                    pendingFrame = data;
+                    if (!decoding) decodeNextFrame();
+                };
+
                 socket.addEventListener('message', e => {
+                    // frames are sent as binary messages, everything else is JSON
+                    if (typeof e.data !== 'string') {
+                        // confirm receipt right away, the server waits for this before sending more frames
+                        socket.send(JSON.stringify({ type: 'frameReceived' }));
+                        drawFrame(e.data);
+                        return;
+                    }
                     const obj = JSON.parse(e.data);
                     switch (obj.type) {
                         case "addressChange":
@@ -592,17 +628,6 @@
                             }
                             urlInput.value = obj.url;
                             setTitle(obj.title);
-                        } break;
-                        case "render": {
-                            const img = new Image();
-                            const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
-                            const url = URL.createObjectURL(imgData);
-                            img.addEventListener('load', e => {
-                                frame.width = img.width;
-                                frame.height = img.height;
-                                ctx.drawImage(img, 0, 0);
-                            });
-                            img.src = url;
                         } break;
                         case "consoleMessage": {
                             const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;

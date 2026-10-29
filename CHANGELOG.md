@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
+- (**WebView**) Stream frames as JPEG binary messages at up to 20 fps, sending only the latest frame and waiting for the client to receive the previous ones, instead of a PNG in JSON for every repaint
 
 ### Fixed
 - (**Tracker**) Fix the possibility of attempting to insert multiple track searches
@@ -26,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Answer 424 instead of 500 when a source fails
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+- (**WebView**) Fix the WebView page keeping every received frame in memory
 - (**Extension**) Fix extension update/installation failure due to a missing older extension file
 
 ### Deprecated

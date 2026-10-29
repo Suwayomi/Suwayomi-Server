@@ -2,6 +2,14 @@ package suwayomi.tachidesk.global.impl
 
 import eu.kanade.tachiyomi.network.NetworkHelper
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -41,12 +49,22 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.Date
+import javax.imageio.IIOImage
 import javax.imageio.ImageIO
+import javax.imageio.ImageWriteParam
+import javax.imageio.stream.MemoryCacheImageOutputStream
 import javax.swing.JPanel
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource
+
+private val FRAME_INTERVAL = 50.milliseconds
+private const val JPEG_QUALITY = 0.8f
 
 class KcefWebView {
     private val logger = KotlinLogging.logger {}
     private val renderHandler = RenderHandler()
+    private val frameScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val frameRequests = Channel<Unit>(Channel.CONFLATED)
     private var kcefClient: CefClient? = null
     private var browser: CefBrowser? = null
     private var width = 1000
@@ -99,13 +117,6 @@ class KcefWebView {
     @SerialName("statusChange")
     private data class StatusEvent(
         val message: String,
-    ) : Event()
-
-    @Suppress("ArrayInDataClass")
-    @Serializable
-    @SerialName("render")
-    private data class RenderEvent(
-        val image: ByteArray,
     ) : Event()
 
     @Serializable
@@ -212,7 +223,18 @@ class KcefWebView {
     // Loosely based on
     // https://github.com/JetBrains/jcef/blob/main/java/org/cef/browser/CefBrowserOsr.java
     private inner class RenderHandler : CefRenderHandlerAdapter() {
-        var myImage: BufferedImage? = null
+        private val lock = Any()
+        private var pixels = IntArray(0)
+        private var pixelsWidth = 0
+        private var pixelsHeight = 0
+        private var hasNewPixels = false
+        private var image: BufferedImage? = null
+        private val jpegWriter = ImageIO.getImageWritersByFormatName("jpeg").next()
+        private val jpegParams =
+            jpegWriter.defaultWriteParam.apply {
+                compressionMode = ImageWriteParam.MODE_EXPLICIT
+                compressionQuality = JPEG_QUALITY
+            }
 
         override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, width, height)
 
@@ -224,28 +246,57 @@ class KcefWebView {
             width: Int,
             height: Int,
         ) {
-            var image = myImage ?: BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE)
+            if (width <= 0 || height <= 0) return
+            synchronized(lock) {
+                if (pixels.size != width * height) {
+                    pixels = IntArray(width * height)
+                }
+                buffer.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().get(pixels)
+                pixelsWidth = width
+                pixelsHeight = height
+                hasNewPixels = true
+            }
+            frameRequests.trySend(Unit)
+        }
 
-            if (image.width != width || image.height != height) {
-                image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB_PRE)
+        // Paints that arrive while a frame is being encoded or sent are coalesced, only the latest one is sent
+        fun sendFrame() {
+            val frame =
+                synchronized(lock) {
+                    if (!hasNewPixels) return
+                    if (!WebView.canSendFrame) {
+                        // the client hasn't received the previous frames yet, retry with the newest pixels later
+                        frameRequests.trySend(Unit)
+                        return
+                    }
+                    hasNewPixels = false
+                    val current =
+                        image?.takeIf { it.width == pixelsWidth && it.height == pixelsHeight }
+                            ?: BufferedImage(pixelsWidth, pixelsHeight, BufferedImage.TYPE_INT_RGB).also { image = it }
+                    pixels.copyInto((current.raster.dataBuffer as DataBufferInt).data)
+                    current
+                }
+
+            // JPEG has no transparency: blend transparent areas onto white, like a browser shows a page without background.
+            // CEF's pixels are premultiplied, so blending onto white is color + (255 - alpha).
+            val data = (frame.raster.dataBuffer as DataBufferInt).data
+            for (i in data.indices) {
+                val pixel = data[i]
+                val inverseAlpha = 255 - (pixel ushr 24)
+                if (inverseAlpha != 0) {
+                    val red = ((pixel shr 16) and 0xFF) + inverseAlpha
+                    val green = ((pixel shr 8) and 0xFF) + inverseAlpha
+                    val blue = (pixel and 0xFF) + inverseAlpha
+                    data[i] = (red shl 16) or (green shl 8) or blue
+                }
             }
 
-            val dst = (image.raster.getDataBuffer() as DataBufferInt).getData()
-            val src = buffer.order(ByteOrder.LITTLE_ENDIAN).asIntBuffer()
-            src.get(dst)
-
-            myImage = image
             val stream = ByteArrayOutputStream()
-            val success = ImageIO.write(myImage, "png", stream)
-            if (!success) {
-                throw IllegalStateException("Failed to convert image to PNG")
+            MemoryCacheImageOutputStream(stream).use {
+                jpegWriter.output = it
+                jpegWriter.write(null, IIOImage(frame, null, null), jpegParams)
             }
-
-            WebView.notifyAllClients(
-                Json.encodeToString<Event>(
-                    RenderEvent(stream.toByteArray()),
-                ),
-            )
+            WebView.sendFrame(stream.toByteArray(), this@KcefWebView)
         }
     }
 
@@ -277,9 +328,24 @@ class KcefWebView {
                 }
             }
         }
+
+        frameScope.launch {
+            for (request in frameRequests) {
+                val started = TimeSource.Monotonic.markNow()
+                try {
+                    renderHandler.sendFrame()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.warn(e) { "Failed to send WebView frame" }
+                }
+                delay(FRAME_INTERVAL - started.elapsedNow())
+            }
+        }
     }
 
     fun destroy() {
+        frameScope.coroutineContext.cancelChildren()
         flush()
         browser?.close(true)
         browser?.dispose()
