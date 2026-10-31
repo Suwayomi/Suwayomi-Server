@@ -5,6 +5,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import org.cef.CefClient
 import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
@@ -30,6 +33,41 @@ fun CefBrowser.evaluateJavaScriptDecoded(
     expression: String,
     cb: (String?) -> Unit,
 ) = evaluateJavaScript(expression) { cb(JsHandler.plainValue(it)) }
+
+/**
+ * Evaluates [script] in the main frame with Android's `WebView.evaluateJavascript` semantics:
+ * any script reports its completion value JSON-encoded, and "null" when it is undefined or the
+ * script throws. [evaluateJavaScript] runs the script as a function body, so a multi-line script
+ * there returns nothing unless it ends with its own `return`. DevTools evaluation is also exempt
+ * from the page's Content Security Policy, as Android's is.
+ */
+fun CefBrowser.evaluateJavaScriptLikeAndroid(
+    script: String,
+    cb: (String) -> Unit,
+) {
+    val params =
+        buildJsonObject {
+            put("expression", script)
+            put("returnByValue", true)
+        }
+    devToolsClient
+        .executeDevToolsMethod("Runtime.evaluate", params.toString())
+        .handle { response, error ->
+            if (error != null) logger.debug(error) { "JavaScript evaluation failed" }
+            androidEvaluationResult(response)
+        }.thenAccept { cb(it) }
+}
+
+/** Converts a DevTools `Runtime.evaluate` response to the value Android passes to its callback. */
+internal fun androidEvaluationResult(response: String?): String =
+    runCatching {
+        val evaluation = Json.parseToJsonElement(response!!).jsonObject
+        evaluation["result"]
+            ?.jsonObject
+            ?.get("value")
+            ?.takeUnless { "exceptionDetails" in evaluation }
+            ?.toString()
+    }.getOrNull() ?: "null"
 
 fun CefBrowser.dispose() {
     stopLoad()
