@@ -211,6 +211,15 @@ public final class Bitmap {
         return new Bitmap(newImage);
     }
 
+    public static Bitmap createBitmap(int[] colors, int width, int height, Config config) {
+        checkWidthHeight(width, height);
+
+        BufferedImage image = new BufferedImage(width, height, configToBufferedImageType(config));
+        image.setRGB(0, 0, width, height, colors, 0, width);
+
+        return new Bitmap(image);
+    }
+
     public boolean compress(CompressFormat format, int quality, OutputStream stream) {
         if (stream == null) {
             throw new NullPointerException();
