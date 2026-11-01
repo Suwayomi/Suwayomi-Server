@@ -84,6 +84,7 @@ koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 
 # tray icon
 systemtray-core = "com.dorkbox:SystemTray:4.4"
+systemtray-os = "com.dorkbox:OS:1.11" # fixes localized Windows version detection; supports Java 21
 systemtray-utils = "com.dorkbox:Utilities:1.46" # version locked by SystemTray
 systemtray-desktop = "com.dorkbox:Desktop:1.1" # version locked by SystemTray
 
@@ -256,7 +257,8 @@ exposed = [
 systemtray = [
     "systemtray-core",
     "systemtray-utils",
-    "systemtray-desktop"
+    "systemtray-desktop",
+    "systemtray-os",
 ]
 polyglot = [
     "polyglot-core",
