@@ -90,7 +90,7 @@ object ChapterDownloadHelper {
         val chapterName =
             chapter.name
                 .trim()
-                .removeSuffix(".cbz")
+                .run { if (endsWith(".cbz", true)) substring(0, length - 4) else this }
                 .takeIf { it.isNotEmpty() }
 
         val fileName =

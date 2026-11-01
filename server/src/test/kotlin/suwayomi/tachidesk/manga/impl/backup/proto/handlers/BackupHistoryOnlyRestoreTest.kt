@@ -332,7 +332,6 @@ class BackupHistoryOnlyRestoreTest : ApplicationTest() {
                     it[version] = 17
                     it[lastModifiedAt] = 123_456
                     it[isSyncing] = false
-                    it[koreaderHash] = "0123456789abcdef0123456789abcdef"
                 }
                 ChapterUserTable.insert {
                     it[chapter] = chapterId
