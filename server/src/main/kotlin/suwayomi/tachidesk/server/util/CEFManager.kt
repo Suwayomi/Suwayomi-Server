@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -77,9 +79,12 @@ object CEFManager {
     private val releaseFile by lazy { cefDir / "release" }
     private var jvmSignalHandlers = emptyMap<Signal, SignalHandler>()
 
+    private val startMutex = Mutex()
+
     fun init() =
         scope.launch {
-            serverConfig.subscribeTo(serverConfig.kcefEnabled, CEFManager::initAsync, ignoreInitialValue = false)
+            CefHelper.requestStart = ::requestStart
+            serverConfig.subscribeTo(serverConfig.kcefEnabled, CEFManager::prepareAsync, ignoreInitialValue = false)
 
             Runtime.getRuntime().addShutdownHook(
                 thread(start = false) {
@@ -92,28 +97,56 @@ object CEFManager {
             )
         }
 
-    private suspend fun initAsync(): Unit =
-        try {
-            CefHelper.cefApp.value = Result.success(null)
+    /** Provides a valid installation but leaves starting CEF, and its processes, to the first webview */
+    private suspend fun prepareAsync(): Unit =
+        startMutex.withLock {
+            try {
+                CefHelper.cefApp.value = Result.success(null)
 
-            if (!serverConfig.kcefEnabled.value) {
-                logger.info { "CEF is disabled" }
-                CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
-                return
+                if (!serverConfig.kcefEnabled.value) {
+                    logger.info { "CEF is disabled" }
+                    CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
+                    return
+                }
+
+                CefApp.getInstanceIfAny()?.let {
+                    logger.debug { "Getting existing app instance" }
+                    CefHelper.cefApp.value = Result.success(it)
+                    return
+                }
+
+                if (!isInstallationValid(releaseFile)) {
+                    downloadRelease(cefDir)
+
+                    if (!isInstallationValid(releaseFile)) {
+                        throw CefException("Failed to provide a valid installation, this is a bug!")
+                    }
+                    logger.info { "Downloaded CEF successfully!" }
+                }
+                logger.info { "CEF will start once a webview needs it" }
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to set up CEF" }
+                CefHelper.cefApp.value = Result.failure(e)
             }
+        }
 
+    private fun isStartPending() = serverConfig.kcefEnabled.value && CefHelper.cefApp.value.let { it.isSuccess && it.getOrNull() == null }
+
+    private fun requestStart() {
+        if (!isStartPending()) return
+        scope.launch {
+            startMutex.withLock {
+                if (isStartPending()) startAsync()
+            }
+        }
+    }
+
+    private suspend fun startAsync(): Unit =
+        try {
+            logger.info { "Starting CEF" }
             System.loadLibrary("jawt")
 
             if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
-
-            if (!isInstallationValid(releaseFile)) {
-                downloadRelease(cefDir)
-
-                if (!isInstallationValid(releaseFile)) {
-                    throw CefException("Failed to provide a valid installation, this is a bug!")
-                }
-                logger.info { "Downloaded CEF successfully!" }
-            }
 
             val app =
                 if (CefApp.getInstanceIfAny() == null) {
@@ -184,7 +217,7 @@ object CEFManager {
             restoreShutdownSignalHandlers()
             return
         } catch (e: Throwable) {
-            logger.error(e) { "Failed to set up CEF" }
+            logger.error(e) { "Failed to start CEF" }
             CefHelper.cefApp.value = Result.failure(e)
         }
 

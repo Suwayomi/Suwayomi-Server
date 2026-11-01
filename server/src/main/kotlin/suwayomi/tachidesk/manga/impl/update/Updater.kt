@@ -420,7 +420,7 @@ class Updater : IUpdater {
                         }
                     }.filter {
                         if (it.initialized && userConfig.excludeNotStarted.value(userId)) {
-                            it.lastReadAt != null
+                            (it.lastReadAt ?: 0L) > 0L
                         } else {
                             true
                         }
