@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Start CEF the first time a webview needs it instead of at startup
 
 ### Fixed
+- (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
 - (**Extension/Android**) Fix Paint typeface replacements losing italic style and fractional text sizes
 - (**Downloads/GraphQL**) Fix single-chapter enqueue requests timing out when the chapter is already queued
 - (**Extension/Android**) Preserve bold style and the default font size for `Typeface.DEFAULT_BOLD`
