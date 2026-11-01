@@ -18,15 +18,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
+- (**WebView**) Start CEF the first time a webview needs it instead of at startup
 
 ### Fixed
 - (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
+- (**Extension/Android**) Fix Paint typeface replacements losing italic style and fractional text sizes
+- (**Downloads/GraphQL**) Fix single-chapter enqueue requests timing out when the chapter is already queued
+- (**Extension/Android**) Preserve bold style and the default font size for `Typeface.DEFAULT_BOLD`
+- (**Extension/Android**) Implement HSV color conversions without Android native functions
+- (**GraphQL/WebUI**) Fix server info queries failing when WebUI serving is disabled and no local WebUI version is installed
 - (**Tracker**) Fix the possibility of attempting to insert multiple track searches
 - (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
 - (**API**) Answer 424 instead of 500 when a source fails
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+- (**Extension/Android**) Preserve image types when creating or copying bitmaps with their reported configurations
+- (**Image**) Recognize the AVIF image-sequence brand when identifying page images
+- (**Downloads/API**) Avoid repeating an existing CBZ suffix in exported chapter archive filenames
+- (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
+- (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
+- (**Extension**) Fix extension update/installation failure due to a missing older extension file
+- (**WebView**) Pass `evaluateJavascript` results to extensions serialized as JSON, like Android
 
 ### Deprecated
 - (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching

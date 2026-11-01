@@ -76,6 +76,7 @@ import kotlin.io.path.deleteExisting
 import kotlin.io.path.deleteIfExists
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.div
+import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.isSameFileAs
@@ -483,7 +484,7 @@ object Extension {
                         contentWarning = contentWarning,
                     )
 
-                    val removeOldJarFile = oldJarFile != null && !jarFile.isSameFileAs(oldJarFile)
+                    val removeOldJarFile = oldJarFile != null && oldJarFile.exists() && !jarFile.isSameFileAs(oldJarFile)
                     if (removeOldJarFile) {
                         tryToDeleteFile(oldJarFile)
                     }

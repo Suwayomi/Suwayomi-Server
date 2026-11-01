@@ -168,8 +168,10 @@ class DownloadMutation {
                         withTimeout(30.seconds) {
                             DownloadStatus(
                                 DownloadManager.updates
-                                    .first { it.updates.any { it.downloadQueueItem.chapterId == chapter } }
-                                    .let { DownloadManager.getStatus() },
+                                    .first { update ->
+                                        update.initial?.any { it.chapterId == chapter } == true ||
+                                            update.updates.any { it.downloadQueueItem.chapterId == chapter }
+                                    }.let { DownloadManager.getStatus() },
                             )
                         }
                     } else {

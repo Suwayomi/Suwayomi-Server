@@ -29,6 +29,7 @@ import xyz.nulldev.androidcompat.pm.toPackageInfo
 import java.net.URL
 import java.net.URLClassLoader
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.io.path.Path
 import kotlin.io.path.absolutePathString
@@ -158,7 +159,7 @@ object PackageTools {
             .expireAfterAccess(10.minutes)
             .build()
 
-    val jarLoaderMap = mutableMapOf<String, URLClassLoader>()
+    val jarLoaderMap = ConcurrentHashMap<String, URLClassLoader>()
 
     suspend fun <T> blockJarUsageWhile(
         jars: List<Path>,
