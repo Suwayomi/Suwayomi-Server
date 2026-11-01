@@ -34,6 +34,8 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import org.eclipse.jetty.ee10.servlet.SessionHandler
+import org.eclipse.jetty.http.HttpCookie
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
@@ -112,6 +114,14 @@ object JavalinSetup {
                         )
                         connectorAdded = true
                     }
+                }
+
+                config.jetty.modifyServletContextHandler {
+                    it.sessionHandler =
+                        SessionHandler().apply {
+                            setHttpOnly(true)
+                            sameSite = HttpCookie.SameSite.STRICT
+                        }
                 }
 
                 config.bundledPlugins.enableCors { cors ->
