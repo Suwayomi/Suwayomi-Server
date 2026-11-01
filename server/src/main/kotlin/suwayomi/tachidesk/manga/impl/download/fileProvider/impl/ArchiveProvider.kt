@@ -40,7 +40,7 @@ class ArchiveProvider(
                     .map { FileType.ZipFile(it) }
             }
         } catch (e: NoSuchFileException) {
-            // provider contract: "no download present" surfaces as NoSuchElementException
+            // "no download present" should throw NoSuchElementException
             throw NoSuchElementException("CBZ archive does not exist", e)
         }
     }
