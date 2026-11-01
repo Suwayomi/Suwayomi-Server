@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**API**) Answer 424 instead of 500 when a source fails
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+- (**Image**) Recognize the AVIF image-sequence brand when identifying page images
 - (**Downloads/API**) Avoid repeating an existing CBZ suffix in exported chapter archive filenames
 - (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
 - (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
