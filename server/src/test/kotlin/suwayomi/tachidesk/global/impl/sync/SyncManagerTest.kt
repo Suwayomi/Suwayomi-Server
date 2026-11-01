@@ -13,20 +13,28 @@ import io.mockk.coEvery
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import kotlinx.coroutines.test.runTest
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.or
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.types.StartSyncResult
+import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
+import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupManga
+import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.userSettings
 import suwayomi.tachidesk.server.settings.value
 import suwayomi.tachidesk.test.ApplicationTest
+import suwayomi.tachidesk.test.clearTables
+import suwayomi.tachidesk.test.createLibraryManga
 import suwayomi.tachidesk.util.HAScheduler
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -37,6 +45,7 @@ import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -247,5 +256,52 @@ class SyncManagerTest : ApplicationTest() {
             Thread.sleep(50)
         }
         assertTrue(!syncPreferences.contains("last_scheduled_sync_$userId"))
+    }
+
+    @Test
+    fun aRemovalFromTheServerLeavesLocalEditsTracked() =
+        runTest {
+            val mangaId = createLibraryManga("removed-remotely", userId)
+            syncPreferences
+                .edit()
+                .putInt("sync_schema_$userId", 1)
+                .putLong("last_sync_timestamp_$userId", 1L)
+                .putLong("last_pushed_at_$userId", (Clock.System.now() + 1.hours).epochSeconds)
+                .apply()
+            mockkObject(SyncYomiSyncService)
+            coEvery { SyncYomiSyncService.needsFullSync(any()) } returns false
+            val removal = BackupManga(source = 1, url = "removed-remotely", favorite = false, version = 1)
+            coEvery { SyncYomiSyncService.doSync(any(), any(), any(), any(), any()) } returns
+                SyncYomiSyncService.SyncResult(Backup(backupManga = listOf(removal)), changed = true, protocolV2 = true)
+            userSettings.set(userId, userConfig.syncYomiEnabled, true)
+
+            SyncManager.startSync(userId)
+            awaitTerminalSyncState(userId)
+
+            val (inLibrary, isSyncing) =
+                transaction {
+                    MangaUserTable
+                        .selectAll()
+                        .where { (MangaUserTable.manga eq mangaId) and (MangaUserTable.user eq userId) }
+                        .single()
+                        .let { it[MangaUserTable.inLibrary] to it[MangaUserTable.isSyncing] }
+                }
+            assertIs<SyncManager.SyncState.Success>(SyncManager.lastSyncState(userId).value)
+            assertEquals(false, inLibrary)
+            assertEquals(false, isSyncing)
+
+            unmockkObject(SyncYomiSyncService)
+            clearTables(MangaTable)
+        }
+
+    private fun awaitTerminalSyncState(userId: Int) {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (
+            SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Error &&
+            SyncManager.lastSyncState(userId).value !is SyncManager.SyncState.Success &&
+            System.currentTimeMillis() < deadline
+        ) {
+            Thread.sleep(50)
+        }
     }
 }

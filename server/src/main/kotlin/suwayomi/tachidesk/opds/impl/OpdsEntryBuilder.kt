@@ -186,9 +186,10 @@ object OpdsEntryBuilder {
      * @param manga The parent manga's details.
      * @param addMangaTitle Whether to prepend the manga title to the entry title.
      * @param skipMetadataFeed Whether to skip the metadata feed.
+     * @param syncResult The remote KOReader Sync progress, if any.
      * @return An [OpdsEntryXml] object for the chapter.
      */
-    suspend fun createChapterListEntry(
+    fun createChapterListEntry(
         userId: Int,
         baseUrl: String,
         locale: Locale,
@@ -196,20 +197,17 @@ object OpdsEntryBuilder {
         manga: OpdsMangaDetails,
         addMangaTitle: Boolean,
         skipMetadataFeed: Boolean,
+        syncResult: KoreaderSyncService.SyncResult?,
     ): OpdsEntryXml {
         var effectiveLastPageRead = chapter.lastPageRead
         var effectiveLastReadAt = chapter.lastReadAt
 
-        if (skipMetadataFeed) {
-            val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
-
-            // If sync strategy dictates an update (e.g. KEEP_REMOTE), use remote data.
-            // If sync strategy is PROMPT (isConflict=true), we ignore it here (effectively KEEP_LOCAL/DISABLED)
-            // because we cannot show a prompt in the chapter list feed.
-            if (syncResult != null && syncResult.shouldUpdate) {
-                effectiveLastPageRead = syncResult.pageRead
-                effectiveLastReadAt = syncResult.timestamp
-            }
+        // Use the remote progress when the strategy dictates an update
+        // (e.g. KEEP_REMOTE). PROMPT conflicts keep the local progress
+        // (effectively KEEP_LOCAL) since the list feed cannot show a prompt.
+        if (syncResult != null && syncResult.shouldUpdate) {
+            effectiveLastPageRead = syncResult.pageRead
+            effectiveLastReadAt = syncResult.timestamp
         }
 
         val statusKey =
@@ -330,10 +328,7 @@ object OpdsEntryBuilder {
         // Check remote progress before building the entry
         val syncResult = KoreaderSyncService.checkAndPullProgress(userId, chapter.id)
 
-        // Exists a conflict if the sync service reports a conflict and the page numbers differ.
-        val hasConflict = syncResult?.isConflict == true && syncResult.pageRead != chapter.lastPageRead
-
-        if (hasConflict) {
+        if (syncResult?.isConflict == true) {
             // Generate two entries: one for local progress and another for remote.
             val localEntry =
                 buildSingleChapterMetadataEntry(
@@ -353,7 +348,7 @@ object OpdsEntryBuilder {
                     locale,
                     chapter,
                     manga,
-                    progressSource = ProgressSource.Remote(syncResult!!.pageRead, syncResult.timestamp, syncResult.device),
+                    progressSource = ProgressSource.Remote(syncResult.pageRead, syncResult.timestamp, syncResult.device),
                     isConflict = true,
                 )
             return Pair(localEntry, remoteEntry)
