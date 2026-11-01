@@ -261,7 +261,7 @@ server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
 server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 ```
-- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters. **Deprecated:** now per-user.
+- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters. FILENAME only matches when KOReader keeps the server file names of the downloads ("Use server filenames" in the catalog settings). **Deprecated:** now per-user.
 - `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read. **Deprecated:** now per-user.
 - `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local. **Deprecated:** now per-user.
 - `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local. **Deprecated:** now per-user.
