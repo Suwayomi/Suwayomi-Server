@@ -20,3 +20,10 @@ internal fun hasNewerHistory(
     localLastReadAt: Map<String, Long>,
     remote: BackupManga,
 ): Boolean = remote.history.any { it.lastRead.milliseconds.inWholeSeconds > (localLastReadAt[it.url] ?: 0L) }
+
+/** Must match the SyncYomi server's chapter key byte for byte, or the server tombstones nothing. */
+internal fun chapterTombstoneKey(
+    sourceId: Long,
+    mangaUrl: String,
+    chapterUrl: String,
+): String = "$sourceId|$mangaUrl\u001f$chapterUrl"
