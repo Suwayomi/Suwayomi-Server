@@ -1,12 +1,12 @@
 [versions]
 kotlin = "2.4.21"
 coroutines = "1.11.0"
-serialization = "1.11.0"
+serialization = "1.12.0"
 jvmTarget = "21"
-okhttp = "5.5.0" # Major version is locked by Tachiyomi extensions
+okhttp = "5.5.1" # Major version is locked by Tachiyomi extensions
 javalin = "7.2.3"
 jte = "3.2.4"
-jackson = "3.2.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
+jackson = "3.2.4" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "1.4.0"
 dex2jar = "2.4.38"
 polyglot = "25.4.4.1.1"
@@ -84,6 +84,7 @@ koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 
 # tray icon
 systemtray-core = "com.dorkbox:SystemTray:4.4"
+systemtray-os = "com.dorkbox:OS:1.11" # fixes localized Windows version detection; supports Java 21
 systemtray-utils = "com.dorkbox:Utilities:1.46" # version locked by SystemTray
 systemtray-desktop = "com.dorkbox:Desktop:1.1" # version locked by SystemTray
 
@@ -137,7 +138,7 @@ settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.r
 settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization-jvm", version.ref = "settings" }
 
 # ICU4J
-icu4j = "com.ibm.icu:icu4j:78.3"
+icu4j = "com.ibm.icu:icu4j:79.1"
 
 # Image Decoding implementation provider
 twelvemonkeys-common-lang = { module = "com.twelvemonkeys.common:common-lang", version.ref = "twelvemonkeys" }
@@ -256,7 +257,8 @@ exposed = [
 systemtray = [
     "systemtray-core",
     "systemtray-utils",
-    "systemtray-desktop"
+    "systemtray-desktop",
+    "systemtray-os",
 ]
 polyglot = [
     "polyglot-core",

@@ -167,6 +167,7 @@ class Downloader(
 
             try {
                 download.state = Downloading
+                download.errorMessage = null
                 step(PROGRESS, download, true)
 
                 val chapter = getChapterDownloadReadyById(0, download.chapterId)
@@ -220,11 +221,13 @@ class Downloader(
             } catch (e: EmptyChapterException) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries = MAX_RETRIES
+                download.errorMessage = e.message ?: e::class.simpleName
                 download.state = Error
                 notify(false, ERROR, download)
             } catch (e: Exception) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries++
+                download.errorMessage = e.message ?: e::class.simpleName
                 download.state = Queued
                 if (download.tries >= MAX_RETRIES) {
                     download.state = Error

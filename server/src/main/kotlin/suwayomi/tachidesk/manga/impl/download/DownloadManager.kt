@@ -10,8 +10,6 @@ package suwayomi.tachidesk.manga.impl.download
 import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.javalin.websocket.WsContext
-import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -65,7 +63,6 @@ private val logger = KotlinLogging.logger {}
 @OptIn(FlowPreview::class)
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadQueueItem>()
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
     private val downloaders = ConcurrentHashMap<Long, Downloader>()
@@ -106,40 +103,6 @@ object DownloadManager {
 
             if (downloadQueue.size > 0) {
                 logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
-            }
-        }
-    }
-
-    fun addClient(ctx: WsContext) {
-        clients[ctx.sessionId()] = ctx
-    }
-
-    fun removeClient(ctx: WsContext) {
-        clients.remove(ctx.sessionId())
-    }
-
-    fun notifyClient(ctx: WsContext) {
-        ctx.send(
-            getStatus(),
-        )
-    }
-
-    fun handleRequest(ctx: WsMessageContext) {
-        when (ctx.message()) {
-            "STATUS" -> {
-                notifyClient(ctx)
-            }
-
-            else -> {
-                ctx.send(
-                    """
-                        |Invalid command.
-                        |Supported commands are:
-                        |    - STATUS
-                        |       sends the current download status
-                        |
-                    """.trimMargin(),
-                )
             }
         }
     }
@@ -204,12 +167,6 @@ object DownloadManager {
             val status = getStatus()
             scope.launch {
                 statusFlow.emit(status)
-                if (clients.isNotEmpty()) {
-                    val status = getOldStatus(status)
-                    clients.forEach {
-                        it.value.send(status)
-                    }
-                }
             }
 
             return
@@ -257,6 +214,7 @@ object DownloadManager {
                             it.state,
                             it.progress,
                             it.tries,
+                            it.errorMessage,
                         )
                     }
                 }
@@ -352,21 +310,30 @@ object DownloadManager {
 
         val chapterIds =
             transaction {
-                ChapterUserTable.batchUpsert(chapterIds, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
+                val isDownloadedById =
+                    ChapterTable
+                        .select(ChapterTable.id, ChapterTable.isDownloaded)
+                        .where { ChapterTable.id inList chapterIds }
+                        .associate { it[ChapterTable.id].value to it[ChapterTable.isDownloaded] }
+
+                // a client can still hold the ids of chapters that a chapter list refresh replaced, which must not fail the others
+                val missingChapterIds = chapterIds.filter { it !in isDownloadedById }
+                if (missingChapterIds.isNotEmpty()) {
+                    logger.info { "Skipping the download of chapters that don't exist: $missingChapterIds" }
+                }
+                val existingChapterIds = chapterIds.filter { it in isDownloadedById }
+                if (existingChapterIds.isEmpty()) return@transaction emptyList()
+
+                ChapterUserTable.batchUpsert(existingChapterIds, ChapterUserTable.chapter, ChapterUserTable.user) { chapterId ->
                     this[ChapterUserTable.user] = userId
                     this[ChapterUserTable.chapter] = chapterId
                     this[ChapterUserTable.isDownloadRequested] = true
                 }
 
-                val chapterIdsToEnqueue =
-                    ChapterTable
-                        .select(ChapterTable.id)
-                        .where { (ChapterTable.id inList chapterIds) and (ChapterTable.isDownloaded eq false) }
-                        .map { it[ChapterTable.id].value }
-                        .toSet()
+                val chapterIdsToEnqueue = existingChapterIds.filter { isDownloadedById[it] == false }.toSet()
 
                 // the shared download already exists, so it counts as downloaded for the user right away
-                val chapterIdsAlreadyDownloaded = chapterIds.filter { it !in chapterIdsToEnqueue }
+                val chapterIdsAlreadyDownloaded = existingChapterIds.filter { it !in chapterIdsToEnqueue }
                 if (chapterIdsAlreadyDownloaded.isNotEmpty()) {
                     ChapterUserTable.update({
                         (ChapterUserTable.user eq userId) and
@@ -473,6 +440,7 @@ object DownloadManager {
 
             downloadChapter.state = Queued
             downloadChapter.progress = 0f
+            downloadChapter.errorMessage = null
 
             return downloadChapter
         }

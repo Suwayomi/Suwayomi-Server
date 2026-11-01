@@ -5,6 +5,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsMangaDetails
@@ -100,6 +101,8 @@ object OpdsFeedBuilder {
             )
         builder.totalResults = total
         val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        val syncResults =
+            if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, historyItems.map { it.chapter.id }) else emptyMap()
         builder.entries.addAll(
             historyItems.map { item ->
                 val mangaDetails =
@@ -112,6 +115,7 @@ object OpdsFeedBuilder {
                     mangaDetails,
                     true,
                     skipMetadata,
+                    syncResults[item.chapter.id],
                 )
             },
         )
@@ -621,6 +625,8 @@ object OpdsFeedBuilder {
             )
         builder.totalResults = total
         val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        val syncResults =
+            if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, updateItems.map { it.chapter.id }) else emptyMap()
         builder.entries.addAll(
             updateItems.map { item ->
                 val mangaDetails =
@@ -633,6 +639,7 @@ object OpdsFeedBuilder {
                     mangaDetails,
                     true,
                     skipMetadata,
+                    syncResults[item.chapter.id],
                 )
             },
         )
@@ -757,6 +764,8 @@ object OpdsFeedBuilder {
             currentFilter,
             filterCounts,
         )
+        val syncResults =
+            if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, chapterEntries.map { it.id }) else emptyMap()
         builder.entries.addAll(
             chapterEntries.map { chapter ->
                 OpdsEntryBuilder.createChapterListEntry(
@@ -767,6 +776,7 @@ object OpdsFeedBuilder {
                     mangaDetails,
                     false,
                     skipMetadata,
+                    syncResults[chapter.id],
                 )
             },
         )
