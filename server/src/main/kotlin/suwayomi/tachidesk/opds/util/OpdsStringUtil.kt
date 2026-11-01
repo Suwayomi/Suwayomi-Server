@@ -15,7 +15,9 @@ object OpdsStringUtil {
      * Encodes a string to be used in OPDS URLs.
      * @return The URL-encoded string
      */
-    fun String.encodeForOpdsURL(): String = URLEncoder.encode(this, Charsets.UTF_8)
+    fun String.encodeForOpdsURL(): String = URLEncoder.encode(this, Charsets.UTF_8).replace("+", "%20")
+
+    fun String.escapeXml(): String = replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     /**
      * Converts a string into a URL-friendly slug.

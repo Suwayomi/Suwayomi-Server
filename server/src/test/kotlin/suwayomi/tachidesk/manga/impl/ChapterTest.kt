@@ -274,6 +274,32 @@ class ChapterTest : ApplicationTest() {
         }
 
     @Test
+    fun enqueueDownloadSkipsChaptersThatNoLongerExist() =
+        runTest {
+            val mangaId = createLibraryManga("DOWNLOAD_ENQUEUE_MISSING_TEST")
+            val chapterId =
+                createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = false).single()
+            // the id of a chapter that a chapter list refresh deleted
+            val deletedChapterId =
+                createChaptersForDownloadTest(mangaId, listOf("2"), downloaded = false).single()
+            transaction { ChapterTable.deleteWhere { ChapterTable.id eq deletedChapterId } }
+
+            val returned = DownloadManager.enqueue(1, listOf(deletedChapterId, chapterId))
+
+            assertEquals(listOf(chapterId), returned)
+            val requestedChapterIds =
+                transaction {
+                    ChapterUserTable
+                        .selectAll()
+                        .where { (ChapterUserTable.user eq 1) and (ChapterUserTable.isDownloadRequested eq true) }
+                        .map { it[ChapterUserTable.chapter].value }
+                }
+            assertEquals(listOf(chapterId), requestedChapterIds)
+
+            DownloadManager.dequeue(1, listOf(chapterId))
+        }
+
+    @Test
     fun enqueueDownloadOfAlreadyDownloadedChapterMarksUserDownloadedImmediately() =
         runTest {
             val mangaId = createLibraryManga("DOWNLOAD_EXISTING_TEST")
