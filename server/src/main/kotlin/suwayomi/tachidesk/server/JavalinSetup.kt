@@ -296,7 +296,10 @@ object JavalinSetup {
             if (authMode == AuthMode.BASIC_AUTH && ctx.sessionAttribute<String>("csrf-token") == null) {
                 val randomToken = UUID.randomUUID().toString()
                 ctx.sessionAttribute("csrf-token", randomToken)
-                ctx.res().addHeader("Set-Cookie", "suwayomi-basic-csrf=$randomToken; HttpOnly; SameSite=Strict")
+                ctx.res().addHeader(
+                    "Set-Cookie",
+                    "suwayomi-basic-csrf=$randomToken; Path=${ServerSubpath.maybeAddAsPrefix("/")}; HttpOnly; SameSite=Strict",
+                )
             }
 
             ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromContext(ctx) })
