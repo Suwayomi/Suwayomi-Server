@@ -25,7 +25,7 @@ import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import xyz.nulldev.androidcompat.webkit.dispose
 import xyz.nulldev.androidcompat.webkit.disposeWithJsHandler
-import xyz.nulldev.androidcompat.webkit.evaluateJavaScript
+import xyz.nulldev.androidcompat.webkit.evaluateJavaScriptDecoded
 import java.awt.Component
 import java.awt.HeadlessException
 import java.awt.Rectangle
@@ -165,7 +165,7 @@ class KcefWebView {
             url: String,
         ) {
             if (!frame.isMain) return
-            this@KcefWebView.browser!!.evaluateJavaScript("return document.title") {
+            this@KcefWebView.browser!!.evaluateJavaScriptDecoded("return document.title") {
                 WebView.notifyAllClients(
                     Json.encodeToString<Event>(
                         AddressEvent(url, it ?: ""),
@@ -729,7 +729,7 @@ class KcefWebView {
         status: Int = 0,
         error: String? = null,
     ) {
-        browser!!.evaluateJavaScript("return document.title") {
+        browser!!.evaluateJavaScriptDecoded("return document.title") {
             logger.trace { "Load finished with title $it" }
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(

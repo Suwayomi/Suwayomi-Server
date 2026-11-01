@@ -745,7 +745,7 @@ class KcefWebViewProvider(
         )
             {
                 Log.v(TAG, "JS returned: $it")
-                it?.let { handler.post { resultCallback?.onReceiveValue(it) } }
+                handler.post { resultCallback?.onReceiveValue(it) }
             }
     }
 
