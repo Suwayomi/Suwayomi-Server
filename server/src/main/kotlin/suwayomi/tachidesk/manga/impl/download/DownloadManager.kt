@@ -257,6 +257,7 @@ object DownloadManager {
                             it.state,
                             it.progress,
                             it.tries,
+                            it.errorMessage,
                         )
                     }
                 }
@@ -482,6 +483,7 @@ object DownloadManager {
 
             downloadChapter.state = Queued
             downloadChapter.progress = 0f
+            downloadChapter.errorMessage = null
 
             return downloadChapter
         }
