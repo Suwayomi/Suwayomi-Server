@@ -10,8 +10,6 @@ package suwayomi.tachidesk.manga.impl.download
 import android.app.Application
 import android.content.Context
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.javalin.websocket.WsContext
-import io.javalin.websocket.WsMessageContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -65,7 +63,6 @@ private val logger = KotlinLogging.logger {}
 @OptIn(FlowPreview::class)
 object DownloadManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val clients = ConcurrentHashMap<String, WsContext>()
     private val downloadQueue = CopyOnWriteArrayList<DownloadQueueItem>()
     private val downloadUpdates = CopyOnWriteArraySet<DownloadUpdate>()
     private val downloaders = ConcurrentHashMap<Long, Downloader>()
@@ -106,40 +103,6 @@ object DownloadManager {
 
             if (downloadQueue.size > 0) {
                 logger.info { "restoreAndResumeDownloads: Restored download queue, starting downloads..." }
-            }
-        }
-    }
-
-    fun addClient(ctx: WsContext) {
-        clients[ctx.sessionId()] = ctx
-    }
-
-    fun removeClient(ctx: WsContext) {
-        clients.remove(ctx.sessionId())
-    }
-
-    fun notifyClient(ctx: WsContext) {
-        ctx.send(
-            getStatus(),
-        )
-    }
-
-    fun handleRequest(ctx: WsMessageContext) {
-        when (ctx.message()) {
-            "STATUS" -> {
-                notifyClient(ctx)
-            }
-
-            else -> {
-                ctx.send(
-                    """
-                        |Invalid command.
-                        |Supported commands are:
-                        |    - STATUS
-                        |       sends the current download status
-                        |
-                    """.trimMargin(),
-                )
             }
         }
     }
@@ -204,12 +167,6 @@ object DownloadManager {
             val status = getStatus()
             scope.launch {
                 statusFlow.emit(status)
-                if (clients.isNotEmpty()) {
-                    val status = getOldStatus(status)
-                    clients.forEach {
-                        it.value.send(status)
-                    }
-                }
             }
 
             return
