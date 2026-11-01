@@ -77,9 +77,11 @@ These clients are built-in options, and the server can keep them automatically u
 - [Suwayomi-VUI](https://github.com/Suwayomi/Suwayomi-VUI): Web app, PWA
 
 ##### Other clients (potentially inactive or abandoned)
+- [Kaori](https://github.com/riyaniii/Kaori): A comic reader for GNOME, with a beautiful libadwaita UI, and natural touchpad gestures.
 - [Tachidesk-VaadinUI](https://github.com/Suwayomi/Tachidesk-VaadinUI): Desktop app (windows, linux, mac); UI in the browser, manages its own suwayomi server instance
 - [Moku](https://github.com/Youwes09/Moku): Desktop app (windows, linux, mac), can manage its own suwayomi server instance
 - [Tachidesk-JUI](https://github.com/Suwayomi/Tachidesk-JUI): Desktop app (windows, linux, mac); can manage its own suwayomi server instance
+- [Suwayomi-Tsumiru](https://github.com/Suwayomi/Suwayomi-Tsumiru): Android app; iOS app; Desktop app (windows, linux, mac); Web app; successor to Tachidesk-Sorayomi with offline reading of downloaded chapters; requires access to a running server
 - [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): Web app; Desktop app (windows, linux, mac); Android app; requires access to a running server
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): Android app; iOS app Desktop app (linux); requires access to a running server
 - [Suwayomi Client for KOReader](https://github.com/LK4D4/suwayomi.koplugin): KOReader plugin; works anywhere KOReader can run (Android, Kindle, Kobo, etc.); requires access to a running server

@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
+- (**WebView**) Start CEF the first time a webview needs it instead of at startup
 
 ### Fixed
 - (**Tracker**) Fix the possibility of attempting to insert multiple track searches
@@ -27,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
 - (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
+- (**Extension**) Fix extension update/installation failure due to a missing older extension file
 
 ### Deprecated
 - (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching

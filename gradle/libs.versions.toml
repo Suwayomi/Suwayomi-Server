@@ -1,12 +1,12 @@
 [versions]
 kotlin = "2.4.21"
 coroutines = "1.11.0"
-serialization = "1.11.0"
+serialization = "1.12.0"
 jvmTarget = "21"
-okhttp = "5.5.0" # Major version is locked by Tachiyomi extensions
+okhttp = "5.5.1" # Major version is locked by Tachiyomi extensions
 javalin = "7.2.3"
 jte = "3.2.4"
-jackson = "3.2.3" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
+jackson = "3.2.4" # jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
 exposed = "1.4.0"
 dex2jar = "2.4.38"
 polyglot = "25.4.4.1.1"
@@ -120,7 +120,7 @@ appdirs = "ca.gosyer:kotlin-multiplatform-appdirs:2.0.0"
 cache4k = "io.github.reactivecircus.cache4k:cache4k:0.14.0"
 zip4j = "net.lingala.zip4j:zip4j:2.11.6"
 commonscompress = "org.apache.commons:commons-compress:1.28.0"
-junrar = "com.github.junrar:junrar:8.1.1"
+junrar = "com.github.junrar:junrar:8.1.2"
 
 # AES/CBC/PKCS7Padding Cypher provider
 bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.86"
@@ -137,7 +137,7 @@ settings-core = { module = "com.russhwolf:multiplatform-settings-jvm", version.r
 settings-serialization = { module = "com.russhwolf:multiplatform-settings-serialization-jvm", version.ref = "settings" }
 
 # ICU4J
-icu4j = "com.ibm.icu:icu4j:78.3"
+icu4j = "com.ibm.icu:icu4j:79.1"
 
 # Image Decoding implementation provider
 twelvemonkeys-common-lang = { module = "com.twelvemonkeys.common:common-lang", version.ref = "twelvemonkeys" }
@@ -164,7 +164,7 @@ jcef = { module = "org.jetbrains.intellij.deps.jcef:jcef", version.ref = "jcef" 
 
 # User
 bcrypt = "at.favre.lib:bcrypt:0.10.2"
-jwt = "com.auth0:java-jwt:4.6.1"
+jwt = "com.auth0:java-jwt:4.6.2"
 
 # lint - used for renovate to update ktlint version
 ktlint = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
