@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
 - (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
 - (**Extension**) Fix extension update/installation failure due to a missing older extension file
+- (**WebView**) Pass `evaluateJavascript` results to extensions serialized as JSON, like Android
 
 ### Deprecated
 - (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
