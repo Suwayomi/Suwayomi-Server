@@ -63,11 +63,10 @@ object GraphQLController {
     }
 
     fun retrieveFile(ctx: Context) {
-        val filename = ctx.pathParam("file")
-        val file = TemporaryFileStorage.retrieveFile(filename)
+        val stored = TemporaryFileStorage.retrieveFile(ctx.pathParam("file"))
         ctx.contentType("application/octet-stream")
-        ctx.header("Content-Disposition", """attachment; filename="$filename"""")
-        ctx.result(file.inputStream())
+        ctx.header("Content-Disposition", """attachment; filename="${stored.filename}"""")
+        ctx.result(stored.path.inputStream())
     }
 
     fun webSocket(ws: WsConfig) {

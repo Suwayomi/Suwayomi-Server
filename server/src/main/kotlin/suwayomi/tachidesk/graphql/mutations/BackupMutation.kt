@@ -126,11 +126,11 @@ class BackupMutation {
 
         val backup = ProtoBackupExport.createBackup(userId, effectiveFlags)
 
-        TemporaryFileStorage.saveFile(filename, backup)
+        val token = TemporaryFileStorage.saveFile(filename, backup)
 
         return CreateBackupPayload(
             clientMutationId = input?.clientMutationId,
-            url = "/api/graphql/files/backup/$filename",
+            url = "/api/graphql/files/backup/$token",
         )
     }
 }
