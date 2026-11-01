@@ -96,6 +96,70 @@ class BackupMangaHandlerSinceTest : ApplicationTest() {
     }
 
     @Test
+    fun `uploads a library removal as not favorite`() {
+        val kept = createLibraryManga("kept")
+        val removed = createLibraryManga("removed")
+        stampManga(kept, 10)
+        stampManga(removed, 10)
+        removeFromLibrary(removed, at = 30)
+
+        val uploaded = BackupMangaHandler.backup(1, flags, since = 20, removedSince = 20).associate { it.title to it.favorite }
+
+        assertEquals(mapOf("removed" to false), uploaded)
+    }
+
+    @Test
+    fun `uploads a library removal with a full upload`() {
+        val kept = createLibraryManga("kept")
+        val removed = createLibraryManga("removed")
+        removeFromLibrary(removed, at = 30)
+
+        val uploaded = BackupMangaHandler.backup(1, flags, since = null, removedSince = 20).associate { it.title to it.favorite }
+
+        assertEquals(mapOf("kept" to true, "removed" to false), uploaded)
+    }
+
+    @Test
+    fun `leaves out removals older than the last upload and manga never in the library`() {
+        val old = createLibraryManga("old")
+        removeFromLibrary(old, at = 10)
+        val browsed = createLibraryManga("browsed")
+        transaction {
+            MangaUserTable.update({ MangaUserTable.manga eq browsed }) {
+                it[inLibrary] = false
+                it[inLibraryAt] = 0
+            }
+        }
+        stampManga(browsed, 30)
+
+        assertEquals(emptySet<String>(), BackupMangaHandler.backup(1, flags, since = 20, removedSince = 20).map { it.title }.toSet())
+    }
+
+    @Test
+    fun `a file backup leaves out removed manga`() {
+        val removed = createLibraryManga("removed")
+        removeFromLibrary(removed, at = 30)
+
+        assertEquals(emptySet<String>(), titles(null))
+    }
+
+    private fun removeFromLibrary(
+        id: Int,
+        at: Long,
+    ) {
+        transaction {
+            MangaUserTable.update({ MangaUserTable.manga eq id }) {
+                it[inLibraryAt] = 5
+                it[inLibrary] = false
+                it[isSyncing] = true
+            }
+            MangaUserTable.update({ MangaUserTable.manga eq id }) {
+                it[lastModifiedAt] = at
+            }
+            MangaUserTable.update({ MangaUserTable.manga eq id }) { it[isSyncing] = false }
+        }
+    }
+
     fun `a chapter fetched after the given time is part of the delta`() {
         val manga = createLibraryManga("fresh")
         stampManga(manga, 10)
