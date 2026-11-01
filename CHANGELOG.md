@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Start CEF the first time a webview needs it instead of at startup
 
 ### Fixed
+- (**GraphQL/Backup**) Fix restore mutations timing out when progress notifications arrive before subscription
 - (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
 - (**Extension/Android**) Fix Paint typeface replacements losing italic style and fractional text sizes
 - (**Downloads/GraphQL**) Fix single-chapter enqueue requests timing out when the chapter is already queued
