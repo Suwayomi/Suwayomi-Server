@@ -14,3 +14,10 @@ internal fun changedSince(
     mangas
         .filter { it.lastModifiedAt >= since || it.chapters.any { c -> c.lastModifiedAt >= since } }
         .onEach { manga -> manga.chapters = manga.chapters.filter { it.lastModifiedAt >= since } }
+
+/** Must match the SyncYomi server's chapter key byte for byte, or the server tombstones nothing. */
+internal fun chapterTombstoneKey(
+    sourceId: Long,
+    mangaUrl: String,
+    chapterUrl: String,
+): String = "$sourceId|$mangaUrl\u001f$chapterUrl"
