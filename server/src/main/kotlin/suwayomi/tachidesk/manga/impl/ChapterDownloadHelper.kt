@@ -87,7 +87,7 @@ object ChapterDownloadHelper {
         chapter: ChapterDataClass,
     ): String {
         val scanlatorName = chapter.scanlator?.trim()?.takeIf { it.isNotEmpty() }
-        val chapterName = chapter.name.trim().takeIf { it.isNotEmpty() }
+        val chapterName = chapter.name.trim().removeSuffix(".cbz").takeIf { it.isNotEmpty() }
 
         val fileName =
             buildString {
