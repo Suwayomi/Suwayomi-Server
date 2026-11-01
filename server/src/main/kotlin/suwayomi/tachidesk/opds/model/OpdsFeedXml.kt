@@ -40,10 +40,10 @@ data class OpdsFeedXml(
     @XmlElement(true)
     @XmlSerialName("link", OpdsConstants.NS_ATOM, "")
     val links: List<OpdsLinkXml>,
-    @XmlElement(true)
-    @XmlSerialName("entry", OpdsConstants.NS_ATOM, "")
-    val entries: List<OpdsEntryXml>,
     // OpenSearch elements
+    @XmlElement(true)
+    @XmlSerialName("Query", OpdsConstants.NS_OPENSEARCH, "opensearch")
+    val query: OpdsSearchQueryXml? = null,
     @XmlElement(true)
     @XmlSerialName("totalResults", OpdsConstants.NS_OPENSEARCH, "opensearch")
     val totalResults: Long? = null,
@@ -53,4 +53,8 @@ data class OpdsFeedXml(
     @XmlElement(true)
     @XmlSerialName("startIndex", OpdsConstants.NS_OPENSEARCH, "opensearch")
     val startIndex: Int? = null,
+    // Atom requires the entries to follow the feed metadata
+    @XmlElement(true)
+    @XmlSerialName("entry", OpdsConstants.NS_ATOM, "")
+    val entries: List<OpdsEntryXml>,
 )

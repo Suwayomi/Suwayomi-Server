@@ -12,6 +12,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -23,6 +25,8 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.cef.CefApp
 import org.cef.CefSettings.LogSeverity
 import org.cef.SystemBootstrap
+import sun.misc.Signal
+import sun.misc.SignalHandler
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.generated.BuildConfig
 import suwayomi.tachidesk.server.serverConfig
@@ -63,6 +67,7 @@ import kotlin.io.path.readText
 import kotlin.io.path.setPosixFilePermissions
 import kotlin.io.path.writeText
 import kotlin.streams.asSequence
+import kotlin.system.exitProcess
 
 private val logger = KotlinLogging.logger {}
 
@@ -72,10 +77,14 @@ object CEFManager {
     private val applicationDirs by lazy { Injekt.get<ApplicationDirs>() }
     private val cefDir by lazy { Path(applicationDirs.dataRoot) / "bin/kcef" }
     private val releaseFile by lazy { cefDir / "release" }
+    private var jvmSignalHandlers = emptyMap<Signal, SignalHandler>()
+
+    private val startMutex = Mutex()
 
     fun init() =
         scope.launch {
-            serverConfig.subscribeTo(serverConfig.kcefEnabled, CEFManager::initAsync, ignoreInitialValue = false)
+            CefHelper.requestStart = ::requestStart
+            serverConfig.subscribeTo(serverConfig.kcefEnabled, CEFManager::prepareAsync, ignoreInitialValue = false)
 
             Runtime.getRuntime().addShutdownHook(
                 thread(start = false) {
@@ -88,31 +97,60 @@ object CEFManager {
             )
         }
 
-    private suspend fun initAsync(): Unit =
-        try {
-            CefHelper.cefApp.value = Result.success(null)
+    /** Provides a valid installation but leaves starting CEF, and its processes, to the first webview */
+    private suspend fun prepareAsync(): Unit =
+        startMutex.withLock {
+            try {
+                CefHelper.cefApp.value = Result.success(null)
 
-            if (!serverConfig.kcefEnabled.value) {
-                logger.info { "CEF is disabled" }
-                CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
-                return
+                if (!serverConfig.kcefEnabled.value) {
+                    logger.info { "CEF is disabled" }
+                    CefHelper.cefApp.value = Result.failure(CefException("CEF is disabled"))
+                    return
+                }
+
+                CefApp.getInstanceIfAny()?.let {
+                    logger.debug { "Getting existing app instance" }
+                    CefHelper.cefApp.value = Result.success(it)
+                    return
+                }
+
+                if (!isInstallationValid(releaseFile)) {
+                    downloadRelease(cefDir)
+
+                    if (!isInstallationValid(releaseFile)) {
+                        throw CefException("Failed to provide a valid installation, this is a bug!")
+                    }
+                    logger.info { "Downloaded CEF successfully!" }
+                }
+                logger.info { "CEF will start once a webview needs it" }
+            } catch (e: Throwable) {
+                logger.error(e) { "Failed to set up CEF" }
+                CefHelper.cefApp.value = Result.failure(e)
             }
+        }
 
+    private fun isStartPending() = serverConfig.kcefEnabled.value && CefHelper.cefApp.value.let { it.isSuccess && it.getOrNull() == null }
+
+    private fun requestStart() {
+        if (!isStartPending()) return
+        scope.launch {
+            startMutex.withLock {
+                if (isStartPending()) startAsync()
+            }
+        }
+    }
+
+    private suspend fun startAsync(): Unit =
+        try {
+            logger.info { "Starting CEF" }
             System.loadLibrary("jawt")
 
             if (serverConfig.debugLogsEnabled.value) System.setProperty("jcef.log.verbose", "true")
 
-            if (!isInstallationValid(releaseFile)) {
-                downloadRelease(cefDir)
-
-                if (!isInstallationValid(releaseFile)) {
-                    throw CefException("Failed to provide a valid installation, this is a bug!")
-                }
-                logger.info { "Downloaded CEF successfully!" }
-            }
-
             val app =
                 if (CefApp.getInstanceIfAny() == null) {
+                    jvmSignalHandlers = saveShutdownSignalHandlers()
                     val config =
                         JCefAppConfig.getInstance(cefDir.toString(), false).apply {
                             appArgsAsList.addAll(
@@ -176,11 +214,46 @@ object CEFManager {
             logger.debug { "CEF app created" }
 
             CefHelper.waitForInit().first()
+            restoreShutdownSignalHandlers()
             return
         } catch (e: Throwable) {
-            logger.error(e) { "Failed to set up CEF" }
+            logger.error(e) { "Failed to start CEF" }
             CefHelper.cefApp.value = Result.failure(e)
         }
+
+    /**
+     * Chromium replaces the JVM's handlers of these signals with its own, which only close its browsers and let a second
+     * signal kill the process, so the server no longer shut down on them and none of its shutdown hooks ran (#2158).
+     * Saves the JVM's handlers before CEF starts so they can be put back once it initialized.
+     */
+    private fun saveShutdownSignalHandlers(): Map<Signal, SignalHandler> =
+        listOf("TERM", "INT", "HUP")
+            .mapNotNull { name ->
+                try {
+                    val signal = Signal(name)
+                    signal to currentHandler(signal)
+                } catch (e: IllegalArgumentException) {
+                    // the signal doesn't exist on this OS, or the JVM reserves it
+                    logger.debug(e) { "Could not save the handler of SIG$name" }
+                    null
+                }
+            }.toMap()
+
+    /**
+     * Java has no getter for a signal's handler: [Signal.handle] only returns the previous one when installing another.
+     * Swaps in a temporary handler, then puts the original back and returns it. The temporary one exits like the JVM's
+     * so that a signal arriving in between still shuts the server down.
+     */
+    private fun currentHandler(signal: Signal): SignalHandler {
+        val original = Signal.handle(signal) { exitProcess(128 + it.number) }
+        Signal.handle(signal, original)
+        return original
+    }
+
+    private fun restoreShutdownSignalHandlers() {
+        jvmSignalHandlers.forEach { (signal, handler) -> Signal.handle(signal, handler) }
+        jvmSignalHandlers = emptyMap()
+    }
 
     internal fun isInstallationValid(releaseFile: Path): Boolean {
         if (!releaseFile.exists() || !releaseFile.isRegularFile()) return false
