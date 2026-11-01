@@ -79,7 +79,7 @@ object BackupMangaHandler {
                         ChapterTable
                             .getWithUserData(userId)
                             .select(ChapterTable.manga)
-                            .where { ChapterUserTable.lastModifiedAt greaterEq it }
+                            .where { (ChapterUserTable.lastModifiedAt greaterEq it) or (ChapterTable.fetchedAt greaterEq it) }
                     (MangaUserTable.lastModifiedAt greaterEq it) or (MangaTable.id inSubQuery chapterChanged)
                 } ?: Op.TRUE
             val manga =
@@ -146,7 +146,7 @@ object BackupMangaHandler {
                                     dateUpload = it[ChapterTable.date_upload],
                                     chapterNumber = it[ChapterTable.chapter_number],
                                     sourceOrder = chapters.size - it[ChapterTable.sourceOrder],
-                                    lastModifiedAt = it.getOrNull(ChapterUserTable.lastModifiedAt) ?: 0,
+                                    lastModifiedAt = max(it.getOrNull(ChapterUserTable.lastModifiedAt) ?: 0, it[ChapterTable.fetchedAt]),
                                     version = it.getOrNull(ChapterUserTable.version) ?: 0,
                                     memo = Json.encodeToString(it[ChapterTable.memo]).encodeToByteArray(),
                                 ).apply {

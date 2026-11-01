@@ -5,6 +5,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
+import suwayomi.tachidesk.manga.impl.sync.KoreaderSyncService
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.opds.constants.OpdsConstants
 import suwayomi.tachidesk.opds.dto.OpdsMangaDetails
@@ -18,6 +19,7 @@ import suwayomi.tachidesk.opds.repository.ChapterRepository
 import suwayomi.tachidesk.opds.repository.MangaRepository
 import suwayomi.tachidesk.opds.repository.NavigationRepository
 import suwayomi.tachidesk.opds.util.OpdsDateUtil
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.encodeForOpdsURL
 import suwayomi.tachidesk.opds.util.OpdsXmlUtil
 import suwayomi.tachidesk.server.settings.userConfig
 import suwayomi.tachidesk.server.settings.value
@@ -99,6 +101,8 @@ object OpdsFeedBuilder {
             )
         builder.totalResults = total
         val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        val syncResults =
+            if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, historyItems.map { it.chapter.id }) else emptyMap()
         builder.entries.addAll(
             historyItems.map { item ->
                 val mangaDetails =
@@ -111,6 +115,7 @@ object OpdsFeedBuilder {
                     mangaDetails,
                     true,
                     skipMetadata,
+                    syncResults[item.chapter.id],
                 )
             },
         )
@@ -132,7 +137,7 @@ object OpdsFeedBuilder {
         criteria: OpdsSearchCriteria,
         pageNum: Int,
     ): String {
-        val (mangaEntries, total) = MangaRepository.findMangaByCriteria(userId, criteria)
+        val (mangaEntries, total) = MangaRepository.findMangaByCriteria(userId, criteria, pageNum)
         val builder =
             FeedBuilderInternal(
                 userId = userId,
@@ -142,9 +147,16 @@ object OpdsFeedBuilder {
                 title = MR.strings.opds_feeds_search_results_title.localized(locale),
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
                 pageNum = pageNum,
+                explicitQueryParams =
+                    listOfNotNull(
+                        criteria.query?.let { "query=${it.encodeForOpdsURL()}" },
+                        criteria.author?.let { "author=${it.encodeForOpdsURL()}" },
+                        criteria.title?.let { "title=${it.encodeForOpdsURL()}" },
+                    ).joinToString("&"),
                 isSearchFeed = true,
             )
         builder.totalResults = total
+        builder.searchTerms = criteria.query
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(baseUrl, locale, it) })
         return OpdsXmlUtil.serializeFeedToString(builder.build())
     }
@@ -219,7 +231,7 @@ object OpdsFeedBuilder {
             when (criteria.primaryFilter) {
                 PrimaryFilterType.SOURCE -> "source/${criteria.sourceId}"
                 PrimaryFilterType.CATEGORY -> "category/${criteria.categoryId}"
-                PrimaryFilterType.GENRE -> "genre/${criteria.genre}"
+                PrimaryFilterType.GENRE -> "genre/${criteria.genre?.encodeForOpdsURL()}"
                 PrimaryFilterType.STATUS -> "status/${criteria.statusId}"
                 PrimaryFilterType.LANGUAGE -> "language/${criteria.langCode}"
                 else -> "library/series"
@@ -270,7 +282,7 @@ object OpdsFeedBuilder {
                 userId = userId,
                 baseUrl = baseUrl,
                 locale = locale,
-                idPath = "sources",
+                idPath = "explore",
                 title = MR.strings.opds_feeds_sources_title.localized(locale),
                 feedType = OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
                 pageNum = pageNum,
@@ -390,8 +402,9 @@ object OpdsFeedBuilder {
             if (hasNextPage) {
                 (pageNum * itemsPerPage + 1).toLong()
             } else {
-                ((pageNum - 1) * itemsPerPage + mangaEntries.size).toLong()
+                (pageNum * itemsPerPage).toLong()
             }
+        builder.isLastPageKnown = !hasNextPage
         builder.icon = sourceInfo?.second
         OpdsEntryBuilder.addSourceSortFacets(builder, "$baseUrl/explore/source/$sourceId", locale, sort)
         builder.entries.addAll(mangaEntries.map { OpdsEntryBuilder.mangaAcqEntryToEntry(baseUrl, locale, it) })
@@ -612,6 +625,8 @@ object OpdsFeedBuilder {
             )
         builder.totalResults = total
         val skipMetadata = userConfig.opdsSkipChapterMetadataFeed.value(userId)
+        val syncResults =
+            if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, updateItems.map { it.chapter.id }) else emptyMap()
         builder.entries.addAll(
             updateItems.map { item ->
                 val mangaDetails =
@@ -624,6 +639,7 @@ object OpdsFeedBuilder {
                     mangaDetails,
                     true,
                     skipMetadata,
+                    syncResults[item.chapter.id],
                 )
             },
         )
@@ -748,6 +764,8 @@ object OpdsFeedBuilder {
             currentFilter,
             filterCounts,
         )
+        val syncResults =
+            if (skipMetadata) KoreaderSyncService.checkAndPullProgress(userId, chapterEntries.map { it.id }) else emptyMap()
         builder.entries.addAll(
             chapterEntries.map { chapter ->
                 OpdsEntryBuilder.createChapterListEntry(
@@ -758,6 +776,7 @@ object OpdsFeedBuilder {
                     mangaDetails,
                     false,
                     skipMetadata,
+                    syncResults[chapter.id],
                 )
             },
         )
