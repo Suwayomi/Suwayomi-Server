@@ -18,6 +18,7 @@ import org.jetbrains.exposed.v1.core.Slf4jSqlDebugLogger
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.count
+import org.jetbrains.exposed.v1.core.countDistinct
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
@@ -183,20 +184,26 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val duplicatedChapterCountByMangaId =
-                        ChapterTable
-                            .select(ChapterTable.manga, ChapterTable.chapter_number, ChapterTable.chapter_number.count())
-                            .where {
-                                (ChapterTable.manga inIds ids) and
-                                    (ChapterTable.chapter_number greaterEq 0f)
-                            }.groupBy(ChapterTable.manga, ChapterTable.chapter_number)
-                            .having { ChapterTable.chapter_number.count() greater 1 }
-                            .associate { it[ChapterTable.manga].value to it[ChapterTable.chapter_number.count()] }
-
-                    ids.map { duplicatedChapterCountByMangaId.contains(it) }
+                    val mangaIdsWithDuplicates = mangaIdsWithDuplicateChapters(ids)
+                    ids.map { it in mangaIdsWithDuplicates }
                 }
             }
         }
+}
+
+// One group per manga instead of one per (manga, chapter number): no index covers that pair,
+// and on H2 grouping a library's chapters by it cost about 3x as much
+internal fun mangaIdsWithDuplicateChapters(mangaIds: List<Int>): Set<Int> {
+    if (mangaIds.isEmpty()) return emptySet()
+
+    val chapterCount = ChapterTable.id.count()
+    val distinctNumberCount = ChapterTable.chapter_number.countDistinct()
+    return ChapterTable
+        .select(ChapterTable.manga)
+        .where { (ChapterTable.manga inIds mangaIds) and (ChapterTable.chapter_number greaterEq 0f) }
+        .groupBy(ChapterTable.manga)
+        .having { chapterCount greater distinctNumberCount }
+        .mapTo(mutableSetOf()) { it[ChapterTable.manga].value }
 }
 
 class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {
