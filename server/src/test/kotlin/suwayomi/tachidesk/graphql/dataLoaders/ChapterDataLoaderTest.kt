@@ -653,6 +653,37 @@ class ChapterDataLoaderTest : ApplicationTest() {
     }
 
     @Test
+    fun `duplicates - finds the manga with two chapters of the same number`() {
+        val duplicated = createLibraryManga("Duplicated")
+        insertChapter(duplicated, "Chapter 1", 1, chapterNumber = 1f)
+        insertChapter(duplicated, "Chapter 2", 2, chapterNumber = 2f)
+        insertChapter(duplicated, "Chapter 2 (other scanlator)", 3, chapterNumber = 2f)
+        val unique = createLibraryManga("Unique")
+        insertChapter(unique, "Chapter 1", 1, chapterNumber = 1f)
+        insertChapter(unique, "Chapter 1.5", 2, chapterNumber = 1.5f)
+        val unnumbered = createLibraryManga("Unnumbered")
+        insertChapter(unnumbered, "Extra", 1, chapterNumber = -1f)
+        insertChapter(unnumbered, "Extra 2", 2, chapterNumber = -1f)
+        val empty = createLibraryManga("Empty")
+
+        val result = transaction { mangaIdsWithDuplicateChapters(listOf(duplicated, unique, unnumbered, empty)) }
+
+        assertEquals(setOf(duplicated), result)
+    }
+
+    @Test
+    fun `duplicates - only looks at the requested manga`() {
+        val requested = createLibraryManga("Requested")
+        insertChapter(requested, "Chapter 1", 1, chapterNumber = 1f)
+        val other = createLibraryManga("Other")
+        insertChapter(other, "Chapter 1", 1, chapterNumber = 1f)
+        insertChapter(other, "Chapter 1 again", 2, chapterNumber = 1f)
+
+        assertEquals(emptySet<Int>(), transaction { mangaIdsWithDuplicateChapters(listOf(requested)) })
+        assertEquals(emptySet<Int>(), transaction { mangaIdsWithDuplicateChapters(emptyList()) })
+    }
+
+    @Test
     fun `stays fast on H2 with many chapters`() {
         val mangaIds = (1..SCALE_MANGAS).map { createLibraryManga("Scale $it") }
         transaction {
