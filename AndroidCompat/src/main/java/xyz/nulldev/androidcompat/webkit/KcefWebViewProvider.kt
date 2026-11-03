@@ -130,7 +130,7 @@ class KcefWebViewProvider(
 
     private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
         override fun onAfterCreated(browser: CefBrowser) {
-            val ua = settings.userAgentString
+            val ua = settings.userAgentString ?: return
             val args =
                 settings.getUserAgentMetadata()?.let {
                     Log.d(TAG, "Using user-agent $ua with metadata $it")

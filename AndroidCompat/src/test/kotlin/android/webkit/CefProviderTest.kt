@@ -124,7 +124,6 @@ class CefProviderTest {
 
             LooperThread.test { view, provider ->
                 val settings = provider.settings as KcefWebSettings
-                settings.setUserAgentString("hello")
                 CefCookieManager.getGlobalManager().apply {
                     setCookie(
                         "https://example.com",
