@@ -230,9 +230,9 @@ public final class Looper {
             if (observer != null) {
                 observer.messageDispatched(token, msg);
             }
-        } catch (Exception exception) {
+        } catch (Throwable exception) {
             if (observer != null) {
-                observer.dispatchingThrewException(token, msg, exception);
+                observer.dispatchingThrewException(token, msg, exception instanceof Exception ? (Exception)exception : null);
             }
             Log.e(TAG, "Loop handler threw", exception);
             // throw exception;
