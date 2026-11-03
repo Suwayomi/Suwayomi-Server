@@ -41,6 +41,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.SourceNodeList
@@ -175,6 +176,10 @@ class SourceQuery {
         offset: Int? = null,
     ): CompletableFuture<SourceNodeList> =
         future {
+            val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
+            val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: SourceOrderBy.ID
+            val cursorOrderType = requestedSort.cursorOrderType()
+
             val (queryResults, resultsAsType) =
                 suspendTransaction {
                     val res = SourceTable.selectAll()
@@ -186,14 +191,11 @@ class SourceQuery {
                     //     res.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.ordinal }
                     // }
 
-                    val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
-                    val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
-                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                    val actualSort = requestedSort + SourceOrder(SourceOrderBy.ID, cursorOrderType)
 
                     val (total, firstResult, lastResult) =
                         res.applySortAndGetPaginationInfo(
                             actualSort,
-                            before,
                             last,
                             SourceTable.id,
                             PaginationNeeds.of(dataFetchingEnvironment),
@@ -202,8 +204,8 @@ class SourceQuery {
                     res.applyBeforeAfter(
                         before = before,
                         after = after,
-                        orderBy = order?.firstOrNull()?.by ?: SourceOrderBy.ID,
-                        orderByType = order?.firstOrNull()?.byType,
+                        orderBy = effectiveOrderBy,
+                        orderByType = cursorOrderType,
                     )
 
                     if (first != null) {
@@ -212,12 +214,13 @@ class SourceQuery {
                         res.limit(last)
                     }
 
-                    QueryResults(total, firstResult, lastResult, res.toList()).let {
+                    val results = res.toList()
+                    QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results).let {
                         it to it.results.mapNotNull { SourceType(it) }
                     }
                 }
 
-            val getAsCursor: (SourceType) -> Cursor = (order?.firstOrNull()?.by ?: SourceOrderBy.ID)::asCursor
+            val getAsCursor: (SourceType) -> Cursor = effectiveOrderBy::asCursor
 
             SourceNodeList(
                 resultsAsType,

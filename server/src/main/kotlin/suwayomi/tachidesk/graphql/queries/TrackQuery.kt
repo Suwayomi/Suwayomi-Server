@@ -33,6 +33,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
@@ -60,22 +61,38 @@ class TrackQuery {
         IS_LOGGED_IN,
         ;
 
+        private fun cursorId(cursor: Cursor): Int =
+            cursor.value.substringBefore('-').toIntOrNull()
+                ?: throw IllegalArgumentException("Invalid cursor '${cursor.value}' for tracker ordering by $name")
+
+        private fun cursorBooleanValue(cursor: Cursor): Boolean =
+            cursor.value.substringAfter('-').toBooleanStrictOrNull()
+                ?: throw IllegalArgumentException("Invalid cursor '${cursor.value}' for tracker ordering by $name")
+
         fun greater(
             tracker: TrackerType,
             cursor: Cursor,
         ): Boolean =
             when (this) {
                 ID -> {
-                    tracker.id > cursor.value.toInt()
+                    val id =
+                        cursor.value.toIntOrNull()
+                            ?: throw IllegalArgumentException(
+                                "Invalid cursor '${cursor.value}' for tracker ordering by ID",
+                            )
+                    tracker.id > id
                 }
 
                 NAME -> {
-                    tracker.name > cursor.value
+                    val id = cursorId(cursor)
+                    val name = cursor.value.substringAfter('-')
+                    (tracker.name > name) || (tracker.name == name && tracker.id > id)
                 }
 
                 IS_LOGGED_IN -> {
-                    val value = cursor.value.substringAfter('-').toBooleanStrict()
-                    !value || tracker.isLoggedIn
+                    val id = cursorId(cursor)
+                    val value = cursorBooleanValue(cursor)
+                    (tracker.isLoggedIn > value) || (tracker.isLoggedIn == value && tracker.id > id)
                 }
             }
 
@@ -85,16 +102,24 @@ class TrackQuery {
         ): Boolean =
             when (this) {
                 ID -> {
-                    tracker.id < cursor.value.toInt()
+                    val id =
+                        cursor.value.toIntOrNull()
+                            ?: throw IllegalArgumentException(
+                                "Invalid cursor '${cursor.value}' for tracker ordering by ID",
+                            )
+                    tracker.id < id
                 }
 
                 NAME -> {
-                    tracker.name < cursor.value
+                    val id = cursorId(cursor)
+                    val name = cursor.value.substringAfter('-')
+                    (tracker.name < name) || (tracker.name == name && tracker.id < id)
                 }
 
                 IS_LOGGED_IN -> {
-                    val value = cursor.value.substringAfter('-').toBooleanStrict()
-                    value || !tracker.isLoggedIn
+                    val id = cursorId(cursor)
+                    val value = cursorBooleanValue(cursor)
+                    (tracker.isLoggedIn < value) || (tracker.isLoggedIn == value && tracker.id < id)
                 }
             }
 
@@ -102,7 +127,7 @@ class TrackQuery {
             val value =
                 when (this) {
                     ID -> type.id.toString()
-                    NAME -> type.name
+                    NAME -> type.id.toString() + "-" + type.name
                     IS_LOGGED_IN -> type.id.toString() + "-" + type.isLoggedIn
                 }
             return Cursor(value)
@@ -110,9 +135,9 @@ class TrackQuery {
     }
 
     data class TrackerOrder(
-        val by: TrackerOrderBy,
-        val byType: SortOrder? = null,
-    )
+        override val by: TrackerOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<TrackerOrderBy>
 
     data class TrackerCondition(
         val id: Int? = null,
@@ -154,6 +179,10 @@ class TrackQuery {
         last: Int? = null,
         offset: Int? = null,
     ): TrackerNodeList {
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: TrackerOrderBy.ID
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val (queryResults, resultsAsType) =
             run {
                 var res = TrackerManager.services.map { TrackerType(it, userId) }
@@ -168,65 +197,76 @@ class TrackQuery {
                         }
                 }
 
-                val baseSort = listOf(TrackerOrder(TrackerOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { TrackerOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
-                actualSort.forEach { (orderBy, orderByType) ->
-                    val orderType = orderByType.maybeSwap(last ?: before)
+                val actualSort = requestedSort + TrackerOrder(TrackerOrderBy.ID, cursorOrderType)
 
-                    res =
-                        when (orderType) {
-                            SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> {
-                                when (orderBy) {
-                                    TrackerOrderBy.ID -> res.sortedByDescending { it.id }
-                                    TrackerOrderBy.NAME -> res.sortedByDescending { it.name }
-                                    TrackerOrderBy.IS_LOGGED_IN -> res.sortedByDescending { it.isLoggedIn }
+                fun trackerComparator(swapped: Boolean): Comparator<TrackerType> =
+                    actualSort
+                        .map { trackerOrder ->
+                            val orderType = trackerOrder.byType.maybeSwap(if (swapped) last else null)
+                            val descending =
+                                when (orderType) {
+                                    SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> true
+                                    SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> false
                                 }
+                            Comparator<TrackerType> { a, b ->
+                                val cmp =
+                                    when (trackerOrder.by) {
+                                        TrackerOrderBy.ID -> a.id compareTo b.id
+                                        TrackerOrderBy.NAME -> a.name compareTo b.name
+                                        TrackerOrderBy.IS_LOGGED_IN -> a.isLoggedIn compareTo b.isLoggedIn
+                                    }
+                                if (descending) -cmp else cmp
                             }
+                        }.reduce { acc, comparator -> acc.thenComparing(comparator) }
 
-                            SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
-                                when (orderBy) {
-                                    TrackerOrderBy.ID -> res.sortedBy { it.id }
-                                    TrackerOrderBy.NAME -> res.sortedBy { it.name }
-                                    TrackerOrderBy.IS_LOGGED_IN -> res.sortedBy { it.isLoggedIn }
-                                }
-                            }
-                        }
-                }
+                val forward = res.sortedWith(trackerComparator(swapped = false))
+                val total = forward.size
+                val firstResult = forward.firstOrNull()
+                val lastResult = forward.lastOrNull()
 
-                val total = res.size
-                val firstResult = res.firstOrNull()
-                val lastResult = res.lastOrNull()
-
-                val realOrderBy = order?.firstOrNull()?.by ?: TrackerOrderBy.ID
+                var window = forward
                 if (after != null) {
-                    res =
-                        res.filter {
-                            when (order?.firstOrNull()?.byType) {
-                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> realOrderBy.less(it, after)
-                                null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> realOrderBy.greater(it, after)
+                    window =
+                        window.filter {
+                            when (cursorOrderType) {
+                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> {
+                                    effectiveOrderBy.less(it, after)
+                                }
+
+                                SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
+                                    effectiveOrderBy.greater(it, after)
+                                }
                             }
                         }
-                } else if (before != null) {
-                    res =
-                        res.filter {
-                            when (order?.firstOrNull()?.byType) {
-                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> realOrderBy.greater(it, before)
-                                null, SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> realOrderBy.less(it, before)
+                }
+                if (before != null) {
+                    window =
+                        window.filter {
+                            when (cursorOrderType) {
+                                SortOrder.DESC, SortOrder.DESC_NULLS_FIRST, SortOrder.DESC_NULLS_LAST -> {
+                                    effectiveOrderBy.greater(it, before)
+                                }
+
+                                SortOrder.ASC, SortOrder.ASC_NULLS_FIRST, SortOrder.ASC_NULLS_LAST -> {
+                                    effectiveOrderBy.less(it, before)
+                                }
                             }
                         }
                 }
 
-                if (first != null) {
-                    res = res.drop(offset ?: 0).take(first)
-                } else if (last != null) {
-                    res = res.take(last)
-                }
+                val page =
+                    if (first != null) {
+                        window.drop(offset ?: 0).take(first)
+                    } else if (last != null) {
+                        window.sortedWith(trackerComparator(swapped = true)).take(last).reversed()
+                    } else {
+                        window
+                    }
 
-                QueryResults(total.toLong(), firstResult, lastResult, emptyList()) to res
+                QueryResults(total.toLong(), firstResult, lastResult, emptyList()) to page
             }
 
-        val getAsCursor: (TrackerType) -> Cursor = (order?.firstOrNull()?.by ?: TrackerOrderBy.ID)::asCursor
+        val getAsCursor: (TrackerType) -> Cursor = effectiveOrderBy::asCursor
 
         return TrackerNodeList(
             resultsAsType,
@@ -435,20 +475,21 @@ class TrackQuery {
         last: Int? = null,
         offset: Int? = null,
     ): TrackRecordNodeList {
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: TrackRecordOrderBy.ID
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = TrackRecordTable.selectAll().where { TrackRecordTable.user eq userId }
 
                 res.applyOps(null, condition, filter)
 
-                val baseSort = listOf(TrackRecordOrder(TrackRecordOrderBy.ID, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { TrackRecordOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + TrackRecordOrder(TrackRecordOrderBy.ID, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
                     res.applySortAndGetPaginationInfo(
                         actualSort,
-                        before,
                         last,
                         TrackRecordTable.id,
                         PaginationNeeds.of(dataFetchingEnvironment),
@@ -457,8 +498,8 @@ class TrackQuery {
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: TrackRecordOrderBy.ID,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -467,10 +508,11 @@ class TrackQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (TrackRecordType) -> Cursor = (order?.firstOrNull()?.by ?: TrackRecordOrderBy.ID)::asCursor
+        val getAsCursor: (TrackRecordType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { TrackRecordType(it) }
 
