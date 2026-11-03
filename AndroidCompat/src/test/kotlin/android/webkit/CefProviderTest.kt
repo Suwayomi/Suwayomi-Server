@@ -9,8 +9,12 @@ import android.webkit.WebViewClient
 import ca.gosyer.appdirs.AppDirs
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.cef.CefSettings.LogSeverity
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
@@ -21,12 +25,11 @@ import xyz.nulldev.androidcompat.webkit.KcefWebSettings
 import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
 import java.nio.file.Path
 import java.util.Date
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.div
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration
@@ -39,42 +42,57 @@ class CefProviderTest {
 
     private class LooperThread : Thread() {
         lateinit var mHandler: Handler
-        val latch = CountDownLatch(1)
+        private val completion = CompletableDeferred<Unit>()
 
         override fun run() {
             Looper.prepare()
             mHandler = Handler(Looper.myLooper()!!)
-            latch.countDown()
+            completion.complete(Unit)
             Looper.loop()
         }
+
+        suspend fun await() = completion.await()
 
         companion object {
             private val logger = KotlinLogging.logger {}
 
             suspend fun test(
                 timeout: Duration = 10.seconds,
-                block: () -> Unit,
+                block: suspend CompletableDeferred<Unit>.(view: WebView, provider: KcefWebViewProvider) -> Unit,
             ) {
-                val latch = CountDownLatch(1)
                 val thread = LooperThread()
                 thread.start()
-                assertTrue(thread.latch.await(1, TimeUnit.SECONDS))
+                thread.await()
 
-                var exception: Throwable? = null
+                val viewCompletion = CompletableDeferred<WebView>()
                 thread.mHandler.post {
                     try {
-                        block()
+                        val ctx = mockk<Context>(relaxed = true)
+                        val view = WebView(ctx, null, 0, 0, null, false) { KcefWebViewProvider(it) }
+                        viewCompletion.complete(view)
                     } catch (e: Throwable) {
-                        logger.error(e) { "Block failed" }
-                        exception = e
-                    } finally {
-                        latch.countDown()
-                        Looper.myLooper()!!.quit()
+                        logger.error(e) { "WebView setup failed" }
+                        viewCompletion.completeExceptionally(e)
                     }
                 }
 
-                assertTrue(latch.await(timeout.inWholeMilliseconds, TimeUnit.MILLISECONDS))
-                exception?.let { throw it }
+                val view = viewCompletion.await()
+                val provider = view.webViewProvider as KcefWebViewProvider
+                val testCompletion = CompletableDeferred<Unit>()
+
+                try {
+                    withContext(thread.mHandler.asCoroutineDispatcher()) {
+                        testCompletion.block(view, provider)
+                        withTimeout(timeout) {
+                            testCompletion.await()
+                        }
+                    }
+                } finally {
+                    thread.mHandler.post {
+                        view.destroy()
+                        Looper.myLooper()!!.quit()
+                    }
+                }
             }
         }
     }
@@ -104,10 +122,7 @@ class CefProviderTest {
         runTest {
             CefHelper.waitForInit().first()
 
-            LooperThread.test {
-                val ctx = mockk<Context>(relaxed = true)
-                lateinit var provider: KcefWebViewProvider
-                val view = WebView(ctx, null, 0, 0, null, false) { KcefWebViewProvider(it).also { provider = it } }
+            LooperThread.test { view, provider ->
                 val settings = provider.settings as KcefWebSettings
                 settings.setUserAgentString("hello")
                 CefCookieManager.getGlobalManager().apply {
@@ -128,9 +143,9 @@ class CefProviderTest {
                     )
                 }
 
-                val latch1 = CountDownLatch(1)
+                val deferred1 = CompletableDeferred<Unit>()
                 settings.setIncludeCookiesOnIntercept(false)
-                provider.setWebViewClient(
+                view.setWebViewClient(
                     object : WebViewClient() {
                         override fun shouldInterceptRequest(
                             view: WebView,
@@ -138,15 +153,15 @@ class CefProviderTest {
                         ): WebResourceResponse? {
                             logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
                             assertFalse(request.requestHeaders.keys.any { it.equals("Cookie", true) })
-                            latch1.countDown()
+                            deferred1.complete(Unit)
                             return FailResponse()
                         }
                     },
                 )
                 provider.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
-                assertTrue(latch1.await(10, TimeUnit.SECONDS))
+                deferred1.await()
 
-                val latch2 = CountDownLatch(1)
+                val deferred2 = CompletableDeferred<Unit>()
                 settings.setIncludeCookiesOnIntercept(true)
                 provider.setWebViewClient(
                     object : WebViewClient() {
@@ -156,15 +171,15 @@ class CefProviderTest {
                         ): WebResourceResponse? {
                             logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
                             assertTrue(request.requestHeaders.keys.any { it.equals("Cookie", true) })
-                            latch2.countDown()
+                            deferred2.complete(Unit)
                             return FailResponse()
                         }
                     },
                 )
                 provider.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
-                assertTrue(latch2.await(10, TimeUnit.SECONDS))
+                deferred2.await()
 
-                view.destroy()
+                complete(Unit)
             }
         }
 }
