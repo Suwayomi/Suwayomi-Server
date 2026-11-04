@@ -55,7 +55,8 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
 
     @Override
     public /* WebViewProvider */ InvocationHandler createWebView(WebView webView) {
-        throw new RuntimeException("Not supported");
+        return BoundaryInterfaceReflectionUtil.createInvocationHandlerFor(
+                new SupportLibWebViewChromium(webView));
     }
 
     @Override
