@@ -268,7 +268,8 @@ class KcefWebViewProvider(
             httpStatusCode: Int,
         ) {
             val url = frame.url ?: ""
-            Log.v(TAG, "Load end $url")
+            val isMain = frame.isMain // preserve, since it may not be valid in handler anymore
+            Log.d(TAG, "Load end $url (is main frame? ${isMain})")
             handler.post {
                 if (httpStatusCode == 404) {
                     viewClient.onReceivedError(
@@ -290,7 +291,7 @@ class KcefWebViewProvider(
                     // TODO: create request and response
                     // viewClient.onReceivedHttpError(_view, ...);
                 }
-                if (frame.isMain) {
+                if (isMain) {
                     viewClient.onPageFinished(view, url)
                 }
                 chromeClient.onProgressChanged(view, 100)
