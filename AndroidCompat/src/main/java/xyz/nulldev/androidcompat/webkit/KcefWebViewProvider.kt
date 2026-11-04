@@ -636,7 +636,7 @@ class KcefWebViewProvider(
         browser?.close(true)
         browser?.dispose()
         browser = null
-        kcefClient?.disposeWithJsHandler()
+        kcefClient?.dispose()
         kcefClient = null
     }
 
@@ -740,7 +740,7 @@ class KcefWebViewProvider(
         script: String,
         resultCallback: ValueCallback<String>?,
     ) {
-        browser!!.evaluateJavaScriptLikeAndroid(script.removePrefix("javascript:")) {
+        browser!!.evaluateJavaScript(script.removePrefix("javascript:")) {
             Log.v(TAG, "JS returned: $it")
             handler.post { resultCallback?.onReceiveValue(it) }
         }

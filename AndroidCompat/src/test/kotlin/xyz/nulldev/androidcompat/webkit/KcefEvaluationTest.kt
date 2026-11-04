@@ -21,4 +21,12 @@ class KcefEvaluationTest {
         )
         assertEquals("null", androidEvaluationResult(null))
     }
+
+    @Test
+    fun plainValueDecodesStringsAndNullAndKeepsOtherJsonAsText() {
+        assertEquals("Hello World", plainValue("\"Hello World\""))
+        assertEquals(null, plainValue("null"))
+        assertEquals("42", plainValue("42"))
+        assertEquals("{\"id\":101}", plainValue("{\"id\":101}"))
+    }
 }

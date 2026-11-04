@@ -24,7 +24,6 @@ import org.cef.network.CefCookieManager
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import xyz.nulldev.androidcompat.webkit.dispose
-import xyz.nulldev.androidcompat.webkit.disposeWithJsHandler
 import xyz.nulldev.androidcompat.webkit.evaluateJavaScriptDecoded
 import java.awt.Component
 import java.awt.HeadlessException
@@ -165,7 +164,7 @@ class KcefWebView {
             url: String,
         ) {
             if (!frame.isMain) return
-            this@KcefWebView.browser!!.evaluateJavaScriptDecoded("return document.title") {
+            this@KcefWebView.browser!!.evaluateJavaScriptDecoded("document.title") {
                 WebView.notifyAllClients(
                     Json.encodeToString<Event>(
                         AddressEvent(url, it ?: ""),
@@ -284,7 +283,7 @@ class KcefWebView {
         browser?.close(true)
         browser?.dispose()
         browser = null
-        kcefClient?.disposeWithJsHandler()
+        kcefClient?.dispose()
         kcefClient = null
     }
 
@@ -729,7 +728,7 @@ class KcefWebView {
         status: Int = 0,
         error: String? = null,
     ) {
-        browser!!.evaluateJavaScriptDecoded("return document.title") {
+        browser!!.evaluateJavaScriptDecoded("document.title") {
             logger.trace { "Load finished with title $it" }
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
