@@ -290,7 +290,9 @@ class KcefWebViewProvider(
                     // TODO: create request and response
                     // viewClient.onReceivedHttpError(_view, ...);
                 }
-                viewClient.onPageFinished(view, url)
+                if (frame.isMain) {
+                    viewClient.onPageFinished(view, url)
+                }
                 chromeClient.onProgressChanged(view, 100)
             }
         }
