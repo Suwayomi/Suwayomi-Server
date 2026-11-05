@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Message
 import android.print.PrintDocumentAdapter
+import android.text.TextUtils
 import android.util.Log
 import android.util.SparseArray
 import android.view.DragEvent
@@ -83,11 +84,13 @@ import org.cef.network.CefPostData
 import org.cef.network.CefPostDataElement
 import org.cef.network.CefRequest
 import org.cef.network.CefResponse
+import org.chromium.android_webview.ScriptHandler
 import org.koin.mp.KoinPlatformTools
 import java.awt.Rectangle
 import java.io.BufferedWriter
 import java.io.File
 import java.io.IOException
+import java.net.URI
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import javax.swing.JPanel
@@ -106,7 +109,9 @@ class KcefWebViewProvider(
     private val renderHandler = RenderHandler()
     private val mappings: MutableList<FunctionMapping> = mutableListOf()
     private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
+    private val documentScripts: MutableMap<Int, InjectedScript> = mutableMapOf()
     private var initialRequestData: InitialRequestData? = null
+    private var documentScriptIdCounter = 1
 
     private var kcefClient: CefClient? = null
     private var browser: CefBrowser? = null
@@ -118,6 +123,8 @@ class KcefWebViewProvider(
         const val QUERY_FN = "__\$_suwayomiQuery"
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
 
+        const val PAGE_WORLD_NAME = ""
+
         private fun findHandler(): Lazy<InitBrowserHandler?> =
             runCatching { KoinPlatformTools.defaultContext().get() }.getOrNull()?.let { it.inject<InitBrowserHandler>() } ?: lazy { null }
 
@@ -126,6 +133,11 @@ class KcefWebViewProvider(
 
     interface InitBrowserHandler {
         fun init(provider: KcefWebViewProvider): Unit
+    }
+
+    enum class ScriptType {
+        DOCUMENT_START,
+        DOCUMENT_END,
     }
 
     private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
@@ -269,7 +281,12 @@ class KcefWebViewProvider(
         ) {
             val url = frame.url ?: ""
             val isMain = frame.isMain // preserve, since it may not be valid in handler anymore
-            Log.d(TAG, "Load end $url (is main frame? ${isMain})")
+            Log.d(TAG, "Load end $url (is main frame? $isMain)")
+
+            documentScripts.values.filter { it.type == ScriptType.DOCUMENT_END && it.matchesUrl(frame.url) }.forEach {
+                frame.executeJavaScript(it.script, "SUWAYOMI DocumentEnd Script", 0)
+            }
+
             handler.post {
                 if (httpStatusCode == 404) {
                     viewClient.onReceivedError(
@@ -339,6 +356,10 @@ class KcefWebViewProvider(
                         }
                         """
                 browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
+            }
+
+            documentScripts.values.filter { it.type == ScriptType.DOCUMENT_START && it.matchesUrl(frame.url) }.forEach {
+                frame.executeJavaScript(it.script, "SUWAYOMI DocumentStart Script", 0)
             }
 
             // "This method is called once for each main frame load so a page with iframes or framesets will call onPageStarted one time for the main frame"
@@ -1220,4 +1241,48 @@ class KcefWebViewProvider(
 
         override fun computeScroll(): Unit = throw RuntimeException("Stub!")
     }
+
+    // -------------------------------------------------------------------------
+    // Chromium / Glue methods
+    // -------------------------------------------------------------------------
+
+    private data class InjectedScript(
+        val script: String,
+        val type: ScriptType,
+        val origins: Array<String>,
+        val world: Int,
+    ) {
+        fun matchesUrl(url: String): Boolean =
+            (origins.size == 1 && origins[0] == "*") ||
+                URI(url.removePrefix("blob:")).toURL().let {
+                    arrayOf("http", "https", "ws", "wss").contains(it.protocol) &&
+                        origins.contains(
+                            if (it.port == it.defaultPort || it.port == -1) {
+                                "${it.protocol}://${it.host}"
+                            } else {
+                                "${it.protocol}://${it.host}:${it.port}"
+                            },
+                        )
+                }
+    }
+
+    fun addJavaScriptOnEvent(
+        script: String,
+        type: ScriptType,
+        allowedOrigin: Array<String>,
+        worldName: String,
+    ): ScriptHandler {
+        if (allowedOrigin.any { TextUtils.isEmpty(it) }) throw Exception("allowedOriginRules can't be null or empty")
+
+        val worldId = getJavaScriptWorld(worldName)
+        val scriptId = documentScriptIdCounter++
+        documentScripts[scriptId] = InjectedScript(script, type, if (allowedOrigin.contains("*")) arrayOf("*") else allowedOrigin, worldId)
+        return ScriptHandler(this, scriptId)
+    }
+
+    fun removeDocumentStartJavaScript(scriptId: Int) {
+        documentScripts.remove(scriptId)
+    }
+
+    fun getJavaScriptWorld(name: String): Int = if (name == PAGE_WORLD_NAME) 0 else throw Exception("Isolated worlds are not supported")
 }

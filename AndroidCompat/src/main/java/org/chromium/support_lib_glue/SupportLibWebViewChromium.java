@@ -119,30 +119,40 @@ class SupportLibWebViewChromium implements WebViewProviderBoundaryInterface {
             final String[] allowedOriginRules,
             @JavaScriptInjectionTime int injectionEvent,
             String worldName) {
-        // KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
-        // if (sharedWebViewChromium == null) {
-        //     throw new IllegalStateException(
-        //             "Support lib method called on WebView that no longer exists.");
-        // }
-        // return BoundaryInterfaceReflectionUtil.createInvocationHandlerFor(
-        //         SupportLibScriptHandlerAdapter.persistentJavascriptHandler(
-        //                 sharedWebViewChromium.addJavaScriptOnEvent(
-        //                         script,
-        //                         getDocumentInjectionEvent(injectionEvent),
-        //                         allowedOriginRules,
-        //                         worldName)));
-        throw new RuntimeException("Not supported");
+        KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
+        if (sharedWebViewChromium == null) {
+            throw new IllegalStateException(
+                    "Support lib method called on WebView that no longer exists.");
+        }
+        return BoundaryInterfaceReflectionUtil.createInvocationHandlerFor(
+                SupportLibScriptHandlerAdapter.persistentJavascriptHandler(
+                        sharedWebViewChromium.addJavaScriptOnEvent(
+                                script,
+                                getDocumentInjectionEvent(injectionEvent),
+                                allowedOriginRules,
+                                worldName)));
     }
 
     @Override
     public int getJavaScriptWorld(String worldName) {
-        // KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
-        // if (sharedWebViewChromium == null) {
-        //     throw new IllegalStateException(
-        //             "Support lib method called on WebView that no longer exists.");
-        // }
-        // return sharedWebViewChromium.getJavaScriptWorld(worldName);
-        throw new RuntimeException("Not supported");
+        KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
+        if (sharedWebViewChromium == null) {
+            throw new IllegalStateException(
+                    "Support lib method called on WebView that no longer exists.");
+        }
+        return sharedWebViewChromium.getJavaScriptWorld(worldName);
+    }
+
+    private KcefWebViewProvider.ScriptType getDocumentInjectionEvent(
+            @JavaScriptInjectionTime int event) {
+        switch (event) {
+            case JavaScriptInjectionTime.DOCUMENT_START:
+                return KcefWebViewProvider.ScriptType.DOCUMENT_START;
+            case JavaScriptInjectionTime.DOCUMENT_END:
+                return KcefWebViewProvider.ScriptType.DOCUMENT_END;
+            default:
+                throw new IllegalArgumentException("Unknown event: " + event);
+        }
     }
 
     @Override
