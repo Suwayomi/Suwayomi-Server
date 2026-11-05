@@ -91,6 +91,7 @@ import java.io.BufferedWriter
 import java.io.File
 import java.io.IOException
 import java.net.URI
+import java.net.URL
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import javax.swing.JPanel
@@ -127,6 +128,42 @@ class KcefWebViewProvider(
 
         private fun findHandler(): Lazy<InitBrowserHandler?> =
             runCatching { KoinPlatformTools.defaultContext().get() }.getOrNull()?.let { it.inject<InitBrowserHandler>() } ?: lazy { null }
+
+        // match rules: https://developer.android.com/reference/androidx/webkit/WebViewCompat#addWebMessageListener(android.webkit.WebView,java.lang.String,java.util.Set%3Cjava.lang.String%3E,androidx.webkit.WebViewCompat.WebMessageListener)
+        private fun URL.matchesSchemeOnly(pattern: String) = "${this.protocol}://" == pattern
+
+        private fun URL.matchesFullHost(pattern: String) =
+            if (this.port == -1 ||
+                this.port == this.defaultPort
+            ) {
+                "${this.protocol}://${this.host}" == pattern ||
+                    "${this.protocol}://${this.host}:${this.defaultPort}" == pattern
+            } else {
+                "${this.protocol}://${this.host}:${this.port}" ==
+                    pattern
+            }
+
+        private fun URL.matchesFullPattern(pattern: String) =
+            pattern.startsWith("${this.protocol}://*.") &&
+                pattern.removePrefix("${this.protocol}://*").let { s ->
+                    if (this.port == -1 ||
+                        this.port == this.defaultPort
+                    ) {
+                        this.host.endsWith(s) || "${this.host}:${this.defaultPort}".endsWith(s)
+                    } else {
+                        "${this.host}:${this.port}".endsWith(s)
+                    }
+                }
+
+        private fun matchesUrl(
+            origins: Array<String>,
+            url: String,
+        ): Boolean =
+            (origins.size == 1 && origins[0] == "*") ||
+                URI(url.removePrefix("blob:")).toURL().let {
+                    arrayOf("http", "https", "ws", "wss").contains(it.protocol) &&
+                        origins.any { p -> it.matchesSchemeOnly(p) || it.matchesFullHost(p) || it.matchesFullPattern(p) }
+                }
 
         private val initHandler by findHandler()
     }
@@ -1252,18 +1289,7 @@ class KcefWebViewProvider(
         val origins: Array<String>,
         val world: Int,
     ) {
-        fun matchesUrl(url: String): Boolean =
-            (origins.size == 1 && origins[0] == "*") ||
-                URI(url.removePrefix("blob:")).toURL().let {
-                    arrayOf("http", "https", "ws", "wss").contains(it.protocol) &&
-                        origins.contains(
-                            if (it.port == it.defaultPort || it.port == -1) {
-                                "${it.protocol}://${it.host}"
-                            } else {
-                                "${it.protocol}://${it.host}:${it.port}"
-                            },
-                        )
-                }
+        fun matchesUrl(url: String): Boolean = matchesUrl(origins, url)
     }
 
     fun addJavaScriptOnEvent(

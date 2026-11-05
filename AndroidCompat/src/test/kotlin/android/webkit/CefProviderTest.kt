@@ -352,6 +352,27 @@ class CefProviderTest {
                                 logger.info { "Page finished $url" }
                                 view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
                                     assertEquals(
+                                        setOf("DOCUMENT_START example"),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL("https://example.com:443", "<p>Example</p>", "text/html", null, null)
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    assertEquals(
                                         setOf("DOCUMENT_START example host mismatch", "DOCUMENT_START example:1234"),
                                         Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
                                     )
@@ -385,6 +406,118 @@ class CefProviderTest {
                         },
                     )
                     view.loadDataWithBaseURL("https://example.com:1234", "<p>Example</p>", "text/html", null, null)
+                }
+            }
+        }
+
+    @Test
+    fun cefDocumentInjectionIsCalledOnlyForMatchingOriginsWithWildcards() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START https');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START https')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("https://"),
+                    "",
+                )
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START example https.*');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START example https.*')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("https://*.example.com"),
+                    "",
+                )
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START example https:443.*');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START example https:443.*')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("https://*.example.com:443"),
+                    "",
+                )
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START example https:1234.*');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START example https:1234.*')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("https://*.example.com:1234"),
+                    "",
+                )
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    assertEquals(
+                                        setOf("DOCUMENT_START https"),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    assertEquals(
+                                        setOf(
+                                            "DOCUMENT_START https",
+                                            "DOCUMENT_START example https.*",
+                                            "DOCUMENT_START example https:443.*",
+                                        ),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL("https://www.example.com", "<p>Example</p>", "text/html", null, null)
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    assertEquals(
+                                        setOf("DOCUMENT_START https", "DOCUMENT_START example https:1234.*"),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL("https://www.example.com:1234", "<p>Example</p>", "text/html", null, null)
                 }
             }
         }
