@@ -86,10 +86,15 @@ Remove-Files-Zip $android_jar 'android/text/Html.class'
 function Dedupe($path)
 {
     Push-Location $path
+    $root = (Get-Location).Path
     $classes = Get-ChildItem . *.* -Recurse | Where-Object { !$_.PSIsContainer }
     $classes | ForEach-Object {
-        "Processing class: $($_.FullName)"
-        Remove-Files-Zip $android_jar ("$($_.Name).class","$($_.Name)$*.class","$($_.Name)Kt.class","$($_.Name)Kt$*.class") | Out-Null
+        $rel  = $_.FullName.Substring($root.Length).TrimStart('\', '/')
+        $rel  = $rel -replace '\\', '/'
+        $name = $rel -replace '\.[^.]+$', ''
+
+        "Processing class: $name"
+        Remove-Files-Zip $android_jar ("$name.class","$name`$*.class","${name}Kt.class","${name}Kt`$*.class") | Out-Null
     }
     Pop-Location
 }
@@ -98,6 +103,7 @@ Dedupe "AndroidCompat/src/main/java"
 Dedupe "server/src/main/kotlin"
 
 Write-Output "Copying Android.jar to library folder..."
+New-Item -ItemType Directory -Force -Path "AndroidCompat/lib" | Out-Null
 Move-Item -Force $android_jar "AndroidCompat/lib/android.jar"
 
 Write-Output "Cleaning up..."
