@@ -15,11 +15,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
 import org.cef.CefSettings.LogSeverity
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.parallel.Execution
+import org.junit.jupiter.api.parallel.ExecutionMode
 import xyz.nulldev.androidcompat.webkit.CefHelper
 import xyz.nulldev.androidcompat.webkit.KcefWebSettings
 import xyz.nulldev.androidcompat.webkit.KcefWebViewProvider
@@ -35,18 +38,36 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+suspend fun runComplete(block: suspend CompletableDeferred<Unit>.() -> Unit) {
+    val testCompletion = CompletableDeferred<Unit>()
+    val looper = Looper.myLooper()!!
+    val originalObserver =
+        looper.setThrowableObserver {
+            testCompletion.completeExceptionally(it)
+        }
+    try {
+        testCompletion.block()
+        testCompletion.await()
+    } finally {
+        looper.setThrowableObserver(originalObserver)
+    }
+}
+
 @OptIn(ExperimentalPathApi::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.SAME_THREAD)
 class CefProviderTest {
     private val logger = KotlinLogging.logger {}
 
     private class LooperThread : Thread() {
         lateinit var mHandler: Handler
+        lateinit var mLooper: Looper
         private val completion = CompletableDeferred<Unit>()
 
         override fun run() {
             Looper.prepare()
-            mHandler = Handler(Looper.myLooper()!!)
+            mLooper = Looper.myLooper()!!
+            mHandler = Handler(mLooper)
             completion.complete(Unit)
             Looper.loop()
         }
@@ -58,7 +79,7 @@ class CefProviderTest {
 
             suspend fun test(
                 timeout: Duration = 10.seconds,
-                block: suspend CompletableDeferred<Unit>.(view: WebView, provider: KcefWebViewProvider) -> Unit,
+                block: suspend (view: WebView, provider: KcefWebViewProvider) -> Unit,
             ) {
                 val thread = LooperThread()
                 thread.start()
@@ -78,13 +99,11 @@ class CefProviderTest {
 
                 val view = viewCompletion.await()
                 val provider = view.webViewProvider as KcefWebViewProvider
-                val testCompletion = CompletableDeferred<Unit>()
 
                 try {
                     withContext(thread.mHandler.asCoroutineDispatcher()) {
-                        testCompletion.block(view, provider)
                         withTimeout(timeout) {
-                            testCompletion.await()
+                            block(view, provider)
                         }
                     }
                 } finally {
@@ -92,6 +111,7 @@ class CefProviderTest {
                         view.destroy()
                         Looper.myLooper()!!.quit()
                     }
+                    thread.join()
                 }
             }
         }
@@ -142,43 +162,230 @@ class CefProviderTest {
                     )
                 }
 
-                val deferred1 = CompletableDeferred<Unit>()
-                settings.setIncludeCookiesOnIntercept(false)
-                view.setWebViewClient(
-                    object : WebViewClient() {
-                        override fun shouldInterceptRequest(
-                            view: WebView,
-                            request: WebResourceRequest,
-                        ): WebResourceResponse? {
-                            logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
-                            assertFalse(request.requestHeaders.keys.any { it.equals("Cookie", true) })
-                            deferred1.complete(Unit)
-                            return FailResponse()
-                        }
-                    },
-                )
-                provider.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
-                deferred1.await()
+                runComplete {
+                    settings.setIncludeCookiesOnIntercept(false)
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): WebResourceResponse? {
+                                logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                                assertFalse(request.requestHeaders.keys.any { it.equals("Cookie", true) })
+                                complete(Unit)
+                                return FailResponse()
+                            }
+                        },
+                    )
+                    provider.loadDataWithBaseURL(
+                        "https://example.com",
+                        """<img src="test.jpg?v=1"/><p>Example</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
 
-                val deferred2 = CompletableDeferred<Unit>()
-                settings.setIncludeCookiesOnIntercept(true)
-                provider.setWebViewClient(
-                    object : WebViewClient() {
-                        override fun shouldInterceptRequest(
-                            view: WebView,
-                            request: WebResourceRequest,
-                        ): WebResourceResponse? {
-                            logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
-                            assertTrue(request.requestHeaders.keys.any { it.equals("Cookie", true) })
-                            deferred2.complete(Unit)
-                            return FailResponse()
-                        }
-                    },
-                )
-                provider.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
-                deferred2.await()
+                runComplete {
+                    settings.setIncludeCookiesOnIntercept(true)
+                    provider.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): WebResourceResponse? {
+                                logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                                assertTrue(request.requestHeaders.keys.any { it.equals("Cookie", true) })
+                                complete(Unit)
+                                return FailResponse()
+                            }
+                        },
+                    )
+                    provider.loadDataWithBaseURL(
+                        "https://example.com",
+                        """<img src="test.jpg?v=2"/><p>Example</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+            }
+        }
 
-                complete(Unit)
+    @Test
+    fun cefDocumentInjectionIsCalledInOrder() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("*"),
+                    "",
+                )
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN END');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_END')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_END,
+                    arrayOf("*"),
+                    "",
+                )
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    val v = Json.decodeFromString<String>(it)
+                                    logger.info { "Trace: $v" }
+                                    val list = Json.decodeFromString<List<String>>(v)
+                                    // NOTE: We currently can not guarantee that DOCUMENT_START happens before SCRIPT :(
+                                    assertEquals(setOf("DOCUMENT_START", "SCRIPT", "DOCUMENT_END"), Json.decodeFromString<Set<String>>(v))
+                                    assertTrue(list.indexOf("DOCUMENT_END") > list.indexOf("SCRIPT"))
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL(
+                        "https://example.com",
+                        """
+                        <head>
+                        <script>
+                            console.log('RUN SCRIPT');
+                            (window._suwa_trace = window._suwa_trace || []).push('SCRIPT')
+                        </script>
+                        </head>
+                        <p>Example</p>
+                        """,
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+            }
+        }
+
+    @Test
+    fun cefDocumentInjectionIsCalledOnlyForMatchingOrigins() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                val handle1 =
+                    provider.addJavaScriptOnEvent(
+                        """
+                    console.log('RUN START example');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START example')
+                    """,
+                        KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                        arrayOf("https://example.com"),
+                        "",
+                    )
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START example http');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START example http')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("http://example.com"),
+                    "",
+                )
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START example host mismatch');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START example host mismatch')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("https://www.example.com", "https://example1.com", "https://example.com:1234"),
+                    "",
+                )
+                val handle4 =
+                    provider.addJavaScriptOnEvent(
+                        """
+                    console.log('RUN START example:1234');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START example:1234')
+                    """,
+                        KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                        arrayOf("https://example.com:1234"),
+                        "",
+                    )
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    assertEquals(
+                                        setOf("DOCUMENT_START example"),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    assertEquals(
+                                        setOf("DOCUMENT_START example host mismatch", "DOCUMENT_START example:1234"),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL("https://example.com:1234", "<p>Example</p>", "text/html", null, null)
+                }
+
+                handle1.remove()
+                handle4.remove()
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    assertEquals(
+                                        setOf("DOCUMENT_START example host mismatch"),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.loadDataWithBaseURL("https://example.com:1234", "<p>Example</p>", "text/html", null, null)
+                }
             }
         }
 }
