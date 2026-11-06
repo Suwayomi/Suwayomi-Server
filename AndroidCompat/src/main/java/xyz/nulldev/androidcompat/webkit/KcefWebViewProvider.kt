@@ -668,6 +668,10 @@ class KcefWebViewProvider(
         initHandler?.init(this)
     }
 
+    fun getSource(getter: (String) -> Unit): Unit {
+        browser!!.getSource(getter)
+    }
+
     // Deprecated - should never be called
     override fun setHorizontalScrollbarOverlay(overlay: Boolean): Unit = throw RuntimeException("Stub!")
 
@@ -731,43 +735,25 @@ class KcefWebViewProvider(
         loadUrl: String,
         additionalHttpHeaders: Map<String, String>,
     ) {
-        browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         initialRequestData = InitialRequestData(additionalHttpHeaders = additionalHttpHeaders)
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    loadUrl,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        load(loadUrl)
         Log.d(TAG, "Page loaded at URL $loadUrl")
     }
 
     override fun loadUrl(url: String) {
-        loadUrl(url, mapOf())
+        chromeClient.onProgressChanged(view, 0)
+        load(url)
+        Log.d(TAG, "Page loaded at URL $url")
     }
 
     override fun postUrl(
         url: String,
         postData: ByteArray,
     ) {
-        browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         initialRequestData = InitialRequestData(myPostData = postData)
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    url,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        load(url)
         Log.d(TAG, "Page posted at URL $url")
     }
 
@@ -786,22 +772,28 @@ class KcefWebViewProvider(
         encoding: String?,
         historyUrl: String?,
     ) {
-        browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         val url = baseUrl ?: "about:blank"
         urlHttpMapping[url.trimEnd('/')] = data
 
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    url,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        load(url)
         Log.d(TAG, "Page loaded from data at base URL $baseUrl")
+    }
+
+    private fun load(url: String): Unit {
+        val b = browser
+        if (b == null)
+            browser = kcefClient!!
+                    .createBrowser(
+                        url,
+                        CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                        false,
+                    ).apply {
+                        // NOTE: Without this, we don't seem to be receiving any events
+                        createImmediately()
+                    }
+        else
+            b.loadURL(url)
     }
 
     override fun evaluateJavaScript(
@@ -823,7 +815,7 @@ class KcefWebViewProvider(
     ): Unit = throw RuntimeException("Stub!")
 
     override fun stopLoading() {
-        browser!!.stopLoad()
+        browser?.stopLoad()
     }
 
     override fun reload() {

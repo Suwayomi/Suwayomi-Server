@@ -138,6 +138,62 @@ class CefProviderTest {
     }
 
     @Test
+    fun cefNavigationWorks() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                provider.getSource {
+                                    assertEquals("""<html><head></head><body><p>Example 1</p></body></html>""", it)
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    provider.loadDataWithBaseURL(
+                        "https://example.com",
+                        """<p>Example 1</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                provider.getSource {
+                                    assertEquals("""<html><head></head><body><p>Example 2</p></body></html>""", it)
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    provider.loadDataWithBaseURL(
+                        "https://example.com",
+                        """<p>Example 2</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+            }
+        }
+
+    @Test
     fun cefCookiesArePassedOnlyWithSettingEnabled() =
         runTest {
             CefHelper.waitForInit().first()
@@ -177,6 +233,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     provider.loadDataWithBaseURL(
                         "https://example.com",
                         """<img src="test.jpg?v=1"/><p>Example</p>""",
@@ -201,6 +258,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     provider.loadDataWithBaseURL(
                         "https://example.com",
                         """<img src="test.jpg?v=2"/><p>Example</p>""",
@@ -257,6 +315,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL(
                         "https://example.com",
                         """
@@ -339,6 +398,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
                 }
 
@@ -360,6 +420,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL("https://example.com:443", "<p>Example</p>", "text/html", null, null)
                 }
 
@@ -381,6 +442,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL("https://example.com:1234", "<p>Example</p>", "text/html", null, null)
                 }
 
@@ -405,6 +467,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL("https://example.com:1234", "<p>Example</p>", "text/html", null, null)
                 }
             }
@@ -471,6 +534,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
                 }
 
@@ -496,6 +560,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL("https://www.example.com", "<p>Example</p>", "text/html", null, null)
                 }
 
@@ -517,6 +582,7 @@ class CefProviderTest {
                             }
                         },
                     )
+                    provider.stopLoading()
                     view.loadDataWithBaseURL("https://www.example.com:1234", "<p>Example</p>", "text/html", null, null)
                 }
             }
