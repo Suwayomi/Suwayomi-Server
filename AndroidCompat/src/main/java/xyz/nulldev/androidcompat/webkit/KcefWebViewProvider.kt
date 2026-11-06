@@ -55,6 +55,8 @@ import android.webkit.WebViewRenderProcessClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.cef.CefClient
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
@@ -179,6 +181,8 @@ class KcefWebViewProvider(
 
     private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
         override fun onAfterCreated(browser: CefBrowser) {
+            injectDocumentStartScripts(true)
+
             val ua = settings.userAgentString ?: return
             val args =
                 settings.getUserAgentMetadata()?.let {
@@ -393,10 +397,6 @@ class KcefWebViewProvider(
                         }
                         """
                 browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
-            }
-
-            documentScripts.values.filter { it.type == ScriptType.DOCUMENT_START && it.matchesUrl(frame.url) }.forEach {
-                frame.executeJavaScript(it.script, "SUWAYOMI DocumentStart Script", 0)
             }
 
             // "This method is called once for each main frame load so a page with iframes or framesets will call onPageStarted one time for the main frame"
@@ -668,7 +668,7 @@ class KcefWebViewProvider(
         initHandler?.init(this)
     }
 
-    fun getSource(getter: (String) -> Unit): Unit {
+    fun getSource(getter: (String) -> Unit) {
         browser!!.getSource(getter)
     }
 
@@ -780,10 +780,11 @@ class KcefWebViewProvider(
         Log.d(TAG, "Page loaded from data at base URL $baseUrl")
     }
 
-    private fun load(url: String): Unit {
+    private fun load(url: String) {
         val b = browser
-        if (b == null)
-            browser = kcefClient!!
+        if (b == null) {
+            browser =
+                kcefClient!!
                     .createBrowser(
                         url,
                         CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
@@ -792,8 +793,10 @@ class KcefWebViewProvider(
                         // NOTE: Without this, we don't seem to be receiving any events
                         createImmediately()
                     }
-        else
+        } else {
             b.loadURL(url)
+        }
+        injectDocumentStartScripts(true)
     }
 
     override fun evaluateJavaScript(
@@ -1279,8 +1282,10 @@ class KcefWebViewProvider(
         val script: String,
         val type: ScriptType,
         val origins: Array<String>,
-        val world: Int,
+        val world: String,
     ) {
+        var injectedScriptIdentifier: String? = null
+
         fun matchesUrl(url: String): Boolean = matchesUrl(origins, url)
     }
 
@@ -1292,15 +1297,77 @@ class KcefWebViewProvider(
     ): ScriptHandler {
         if (allowedOrigin.any { TextUtils.isEmpty(it) }) throw Exception("allowedOriginRules can't be null or empty")
 
-        val worldId = getJavaScriptWorld(worldName)
         val scriptId = documentScriptIdCounter++
-        documentScripts[scriptId] = InjectedScript(script, type, if (allowedOrigin.contains("*")) arrayOf("*") else allowedOrigin, worldId)
+        documentScripts[scriptId] =
+            InjectedScript(script, type, if (allowedOrigin.contains("*")) arrayOf("*") else allowedOrigin, worldName)
+        injectDocumentStartScripts()
         return ScriptHandler(this, scriptId)
     }
 
+    fun addDocumentStartJavaScript(
+        script: String,
+        allowedOrigin: Array<String>,
+    ) = addJavaScriptOnEvent(script, ScriptType.DOCUMENT_START, allowedOrigin, PAGE_WORLD_NAME)
+
     fun removeDocumentStartJavaScript(scriptId: Int) {
-        documentScripts.remove(scriptId)
+        documentScripts.remove(scriptId)?.let {
+            val args = """
+                {
+                    "identifier": ${Json.encodeToString(it.injectedScriptIdentifier)}
+                }
+                """
+            browser?.devToolsClient?.executeDevToolsMethod("Page.removeScriptToEvaluateOnNewDocument", args)?.whenComplete { res, ex ->
+                if (ex != null) {
+                    Log.e(TAG, "Failed to remove script", ex)
+                } else {
+                    Log.v(TAG, "Successfully removed script: $res")
+                }
+            }
+        }
     }
 
     fun getJavaScriptWorld(name: String): Int = if (name == PAGE_WORLD_NAME) 0 else throw Exception("Isolated worlds are not supported")
+
+    private fun injectDocumentStartScripts(now: Boolean = false) {
+        Log.v(TAG, "Injecting document start scripts")
+        var devTools = browser?.devToolsClient ?: return
+        documentScripts.values.filter { it.type == ScriptType.DOCUMENT_START && (it.injectedScriptIdentifier == null || now) }.forEach {
+            val script =
+                if (it.origins.size == 1 && it.origins[0] == "*") {
+                    it.script
+                } else {
+                    """
+                if (${Json.encodeToString(
+                        it.origins,
+                    )}.map(m => m.replace(/(?<origin>(?:https|wss):\/\/.*):443|(?<origin2>(?:http|ws):\/\/.*):80/, "$<origin>$<origin2>"))
+                        .some(m => m === location.origin || m === location.protocol + "//" ||
+                            (/(https?|wss?):\/\/\*\./.test(m) && m.startsWith(location.protocol + '//') && location.origin.endsWith(m.substring(location.protocol.length + 3))))) {
+                    ${it.script}
+                }
+                """
+                }
+            val args = """
+                {
+                    "source": ${Json.encodeToString(script)},
+                    "runImmediately": $now,
+                    "worldName": ${Json.encodeToString(it.world)}
+                }
+                """
+            devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args).whenComplete { res, ex ->
+                if (ex != null) {
+                    Log.e(TAG, "Failed to add script", ex)
+                } else {
+                    Log.v(TAG, "Successfully added script: $res")
+                    it.injectedScriptIdentifier =
+                        Json
+                            .parseToJsonElement(res)
+                            .jsonObject
+                            .get("identifier")
+                            ?.jsonPrimitive
+                            ?.content
+                    Log.v(TAG, "Successfully added script: $res -> ${it.injectedScriptIdentifier}")
+                }
+            }
+        }
+    }
 }

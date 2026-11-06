@@ -158,16 +158,15 @@ class SupportLibWebViewChromium implements WebViewProviderBoundaryInterface {
     @Override
     public /* ScriptHandler */ InvocationHandler addDocumentStartJavaScript(
             final String script, final String[] allowedOriginRules) {
-        // KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
-        // if (sharedWebViewChromium == null) {
-        //     throw new IllegalStateException(
-        //             "Support lib method called on WebView that no longer exists.");
-        // }
-        // return BoundaryInterfaceReflectionUtil.createInvocationHandlerFor(
-        //         SupportLibScriptHandlerAdapter.documentStartHandler(
-        //                 sharedWebViewChromium.addDocumentStartJavaScript(
-        //                         script, allowedOriginRules)));
-        throw new RuntimeException("Not supported");
+        KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
+        if (sharedWebViewChromium == null) {
+            throw new IllegalStateException(
+                    "Support lib method called on WebView that no longer exists.");
+        }
+        return BoundaryInterfaceReflectionUtil.createInvocationHandlerFor(
+                SupportLibScriptHandlerAdapter.documentStartHandler(
+                        sharedWebViewChromium.addDocumentStartJavaScript(
+                                script, allowedOriginRules)));
     }
 
     @Override

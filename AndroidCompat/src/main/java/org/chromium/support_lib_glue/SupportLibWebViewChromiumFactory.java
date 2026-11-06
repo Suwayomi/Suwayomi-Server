@@ -35,6 +35,7 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                 "USER_AGENT_METADATA",
                 "COOKIE_INTERCEPT",
                 "JS_INJECTION_IN_FRAME_AND_WORLD",
+                "DOCUMENT_START_SCRIPT:1",
             };
 
     public SupportLibWebViewChromiumFactory() {
