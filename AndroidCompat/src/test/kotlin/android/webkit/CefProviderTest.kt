@@ -16,6 +16,9 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.cef.CefSettings.LogSeverity
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
@@ -185,6 +188,45 @@ class CefProviderTest {
                     provider.loadDataWithBaseURL(
                         "https://example.com",
                         """<p>Example 2</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+            }
+        }
+
+    @Test
+    fun cefUserAgentMetadataIsSet() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                val settings = provider.settings as KcefWebSettings
+                settings.setUserAgentString("Test")
+                settings.setUserAgentMetadataFromMap(KcefWebSettings.defaultUserAgentMetadata().toMap())
+                val meta = settings.getUserAgentMetadata()!!
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(navigator.userAgentData)") {
+                                    val data = Json.parseToJsonElement(Json.decodeFromString<String>(it)).jsonObject
+                                    assertEquals(meta.platform, data.get("platform")!!.jsonPrimitive.content)
+                                    assertEquals(meta.brands!!.size, data.get("brands")!!.jsonArray.size)
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    provider.loadDataWithBaseURL(
+                        "https://example.com",
+                        """<script>console.log(JSON.stringify(navigator.userAgentData))</script>""",
                         "text/html",
                         null,
                         null,

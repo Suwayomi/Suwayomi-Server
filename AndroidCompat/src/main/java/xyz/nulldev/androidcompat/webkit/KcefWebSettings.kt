@@ -383,7 +383,7 @@ class KcefWebSettings : WebSettings() {
 
     override fun getUserAgentString() = userAgentString ?: defaultUserAgent()
 
-    fun setUserAgentMetadataFromMap(uaMetadata: Map<String, Any>?) {
+    fun setUserAgentMetadataFromMap(uaMetadata: Map<String, Any?>?) {
         userAgentMetadata =
             uaMetadata?.let {
                 UserAgentMetadata.fromMap(it)
