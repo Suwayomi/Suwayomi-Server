@@ -58,9 +58,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.cef.CefClient
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
@@ -191,23 +194,14 @@ class KcefWebViewProvider(
 
             val ua = settings.userAgentString ?: return
             val args =
-                settings.getUserAgentMetadata()?.let {
-                    Log.d(TAG, "Using user-agent $ua with metadata $it")
-                    """
-                {
-                    "userAgent": ${Json.encodeToString(ua)},
-                    "userAgentMetadata": ${Json.encodeToString(it)}
+                buildJsonObject {
+                    put("userAgent", ua)
+                    settings.getUserAgentMetadata()?.let {
+                        Log.d(TAG, "Using user-agent $ua with metadata $it")
+                        put("userAgentMetadata", Json.encodeToJsonElement(it))
+                    }
                 }
-                """
-                } ?: run {
-                    Log.d(TAG, "Using user-agent $ua without metadata")
-                    """
-                {
-                    "userAgent": ${Json.encodeToString(ua)}
-                }
-                """
-                }
-            browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args).whenComplete { res, ex ->
+            browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args.toString()).whenComplete { res, ex ->
                 if (ex != null) {
                     Log.e(TAG, "Failed to set user agent", ex)
                 } else {
@@ -821,17 +815,16 @@ class KcefWebViewProvider(
         resultCallback: ValueCallback<String>? = null,
     ) {
         val worldId = getJavaScriptWorld(worldName)
-        val args = """
-            {
-                "expression": ${Json.encodeToString(script)},
-                "awaitPromise": true,
-                "contextId": $worldId,
-                "returnByValue": true
+        val args =
+            buildJsonObject {
+                put("expression", script)
+                put("awaitPromise", true)
+                put("contextId", worldId)
+                put("returnByValue", true)
             }
-            """
         browser!!
             .devToolsClient
-            .executeDevToolsMethod("Runtime.evaluate", args)
+            .executeDevToolsMethod("Runtime.evaluate", args.toString())
             .handle { response, error ->
                 if (error != null) Log.e(TAG, "JavaScript evaluation failed", error)
                 Json
@@ -1347,12 +1340,14 @@ class KcefWebViewProvider(
 
     fun removeDocumentStartJavaScript(scriptId: Int) {
         documentScripts.remove(scriptId)?.let {
-            val args = """
-                {
-                    "identifier": ${Json.encodeToString(it.injectedScriptIdentifier)}
+            val args =
+                buildJsonObject {
+                    put("identifier", it.injectedScriptIdentifier)
                 }
-                """
-            browser?.devToolsClient?.executeDevToolsMethod("Page.removeScriptToEvaluateOnNewDocument", args)?.whenComplete { res, ex ->
+            browser?.devToolsClient?.executeDevToolsMethod("Page.removeScriptToEvaluateOnNewDocument", args.toString())?.whenComplete {
+                res,
+                ex,
+                ->
                 if (ex != null) {
                     Log.e(TAG, "Failed to remove script", ex)
                 } else {
@@ -1403,13 +1398,12 @@ class KcefWebViewProvider(
         return worldMapping.getOrPutIfMissing(Pair(frameId, name)) {
             runBlocking {
                 callbackFlow<Int> {
-                    val args = """
-                        {
-                            "frameId": ${Json.encodeToString(frameId)},
-                            "worldName": ${Json.encodeToString(name)}
+                    val args =
+                        buildJsonObject {
+                            put("frameId", frameId)
+                            put("worldName", name)
                         }
-                        """
-                    browser!!.devToolsClient.executeDevToolsMethod("Page.createIsolatedWorld", args)?.whenComplete { res, ex ->
+                    browser!!.devToolsClient.executeDevToolsMethod("Page.createIsolatedWorld", args.toString())?.whenComplete { res, ex ->
                         try {
                             if (ex != null) {
                                 Log.e(TAG, "Failed to create world", ex)
@@ -1445,23 +1439,23 @@ class KcefWebViewProvider(
                     it.script
                 } else {
                     """
-                if (${Json.encodeToString(
+                    if (${Json.encodeToString(
                         it.origins,
                     )}.map(m => m.replace(/(?<origin>(?:https|wss):\/\/.*):443|(?<origin2>(?:http|ws):\/\/.*):80/, "$<origin>$<origin2>"))
-                        .some(m => m === location.origin || m === location.protocol + "//" ||
-                            (/(https?|wss?):\/\/\*\./.test(m) && m.startsWith(location.protocol + '//') && location.origin.endsWith(m.substring(location.protocol.length + 3))))) {
-                    ${it.script}
+                            .some(m => m === location.origin || m === location.protocol + "//" ||
+                                (/(https?|wss?):\/\/\*\./.test(m) && m.startsWith(location.protocol + '//') && location.origin.endsWith(m.substring(location.protocol.length + 3))))) {
+                        ${it.script}
+                    }
+                    """
                 }
-                """
+            val args =
+                buildJsonObject {
+                    put("source", script)
+                    put("runImmediately", now)
+                    put("worldName", it.world)
                 }
-            val args = """
-                {
-                    "source": ${Json.encodeToString(script)},
-                    "runImmediately": $now,
-                    "worldName": ${Json.encodeToString(it.world)}
-                }
-                """
-            devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args).whenComplete { res, ex ->
+            Log.i(TAG, "I ${args}")
+            devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).whenComplete { res, ex ->
                 if (ex != null) {
                     Log.e(TAG, "Failed to add script", ex)
                 } else {
