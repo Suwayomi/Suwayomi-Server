@@ -52,9 +52,13 @@ import android.webkit.WebViewProvider.ScrollDelegate
 import android.webkit.WebViewProvider.ViewDelegate
 import android.webkit.WebViewRenderProcess
 import android.webkit.WebViewRenderProcessClient
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.cef.CefClient
@@ -113,6 +117,8 @@ class KcefWebViewProvider(
     private val mappings: MutableList<FunctionMapping> = mutableListOf()
     private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
     private val documentScripts: MutableMap<Int, InjectedScript> = mutableMapOf()
+    private val frameIdentifierMapping: MutableMap<String, String> = mutableMapOf()
+    private val worldMapping: MutableMap<Pair<String, String>, Int> = mutableMapOf()
     private var initialRequestData: InitialRequestData? = null
     private var documentScriptIdCounter = 1
 
@@ -293,7 +299,7 @@ class KcefWebViewProvider(
             source: String,
             line: Int,
         ): Boolean {
-            Log.v(TAG, "$source:$line[$level]: $message")
+            Log.i(TAG, "$source:$line[$level]: $message")
             return true
         }
 
@@ -325,7 +331,7 @@ class KcefWebViewProvider(
             Log.d(TAG, "Load end $url (is main frame? $isMain)")
 
             documentScripts.values.filter { it.type == ScriptType.DOCUMENT_END && it.matchesUrl(frame.url) }.forEach {
-                frame.executeJavaScript(it.script, "SUWAYOMI DocumentEnd Script", 0)
+                evaluateJavaScript(it.script, it.world)
             }
 
             handler.post {
@@ -807,6 +813,36 @@ class KcefWebViewProvider(
             Log.v(TAG, "JS returned: $it")
             handler.post { resultCallback?.onReceiveValue(it) }
         }
+    }
+
+    fun evaluateJavaScript(
+        script: String,
+        worldName: String,
+        resultCallback: ValueCallback<String>? = null,
+    ) {
+        val worldId = getJavaScriptWorld(worldName)
+        val args = """
+            {
+                "expression": ${Json.encodeToString(script)},
+                "awaitPromise": true,
+                "contextId": $worldId,
+                "returnByValue": true
+            }
+            """
+        browser!!
+            .devToolsClient
+            .executeDevToolsMethod("Runtime.evaluate", args)
+            .handle { response, error ->
+                if (error != null) Log.e(TAG, "JavaScript evaluation failed", error)
+                Json
+                    .parseToJsonElement(response!!)
+                    .jsonObject
+                    .get("result")
+                    ?.jsonObject
+                    ?.get("value")
+                    ?.jsonPrimitive
+                    ?.toString() ?: "null"
+            }.thenAccept { handler.post { resultCallback?.onReceiveValue(it) } }
     }
 
     override fun saveWebArchive(filename: String): Unit = throw RuntimeException("Stub!")
@@ -1326,7 +1362,79 @@ class KcefWebViewProvider(
         }
     }
 
-    fun getJavaScriptWorld(name: String): Int = if (name == PAGE_WORLD_NAME) 0 else throw Exception("Isolated worlds are not supported")
+    @OptIn(kotlin.ExperimentalStdlibApi::class)
+    private fun getFrameId(): String =
+        frameIdentifierMapping.getOrPutIfMissing(browser!!.mainFrame.identifier) {
+            runBlocking {
+                callbackFlow<String> {
+                    browser!!.devToolsClient.executeDevToolsMethod("Page.getFrameTree")?.whenComplete { res, ex ->
+                        try {
+                            if (ex != null) {
+                                Log.e(TAG, "Failed to get tree", ex)
+                                close(ex)
+                            } else {
+                                val id =
+                                    Json
+                                        .parseToJsonElement(res)
+                                        .jsonObject
+                                        .get("frameTree")!!
+                                        .jsonObject
+                                        .get("frame")!!
+                                        .jsonObject
+                                        .get("id")!!
+                                        .jsonPrimitive
+                                        .content
+                                trySend(id)
+                                close()
+                            }
+                        } catch (e: Throwable) {
+                            close(e)
+                        }
+                    }
+                    awaitClose { }
+                }.first()
+            }
+        }
+
+    @OptIn(kotlin.ExperimentalStdlibApi::class)
+    fun getJavaScriptWorld(name: String): Int {
+        if (TextUtils.isEmpty(name)) return 0
+        val frameId = getFrameId()
+        return worldMapping.getOrPutIfMissing(Pair(frameId, name)) {
+            runBlocking {
+                callbackFlow<Int> {
+                    val args = """
+                        {
+                            "frameId": ${Json.encodeToString(frameId)},
+                            "worldName": ${Json.encodeToString(name)}
+                        }
+                        """
+                    browser!!.devToolsClient.executeDevToolsMethod("Page.createIsolatedWorld", args)?.whenComplete { res, ex ->
+                        try {
+                            if (ex != null) {
+                                Log.e(TAG, "Failed to create world", ex)
+                                close(ex)
+                            } else {
+                                Log.v(TAG, "Successfully created world: $res")
+                                val id =
+                                    Json
+                                        .parseToJsonElement(res)
+                                        .jsonObject
+                                        .get("executionContextId")!!
+                                        .jsonPrimitive
+                                        .int
+                                trySend(id)
+                                close()
+                            }
+                        } catch (e: Throwable) {
+                            close(e)
+                        }
+                    }
+                    awaitClose { }
+                }.first()
+            }
+        }
+    }
 
     private fun injectDocumentStartScripts(now: Boolean = false) {
         Log.v(TAG, "Injecting document start scripts")
@@ -1357,7 +1465,6 @@ class KcefWebViewProvider(
                 if (ex != null) {
                     Log.e(TAG, "Failed to add script", ex)
                 } else {
-                    Log.v(TAG, "Successfully added script: $res")
                     it.injectedScriptIdentifier =
                         Json
                             .parseToJsonElement(res)

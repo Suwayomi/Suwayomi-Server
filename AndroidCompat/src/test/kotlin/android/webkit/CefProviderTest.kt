@@ -588,4 +588,60 @@ class CefProviderTest {
                 }
             }
         }
+
+    @Test
+    fun cefDocumentInjectionWithWorlds() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("*"),
+                    "test-world",
+                )
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN END');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_END')
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("*"),
+                    "test-world",
+                )
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace || [])") {
+                                    assertEquals(
+                                        setOf(),
+                                        Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                    )
+
+                                    provider.evaluateJavaScript("JSON.stringify(window._suwa_trace || [])", "test-world") {
+                                        assertEquals(
+                                            setOf("DOCUMENT_START", "DOCUMENT_END"),
+                                            Json.decodeFromString<Set<String>>(Json.decodeFromString<String>(it)),
+                                        )
+                                        complete(Unit)
+                                    }
+                                }
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    view.loadDataWithBaseURL("https://example.com", "<p>Example</p>", "text/html", null, null)
+                }
+            }
+        }
 }
