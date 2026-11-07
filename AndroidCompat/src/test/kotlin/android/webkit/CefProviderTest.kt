@@ -791,7 +791,6 @@ class CefProviderTest {
                         complete(Unit)
                     }
 
-                    view.loadDataWithBaseURL("https://example.com", """""", "text/html", null, null)
                     provider.stopLoading()
                     view.loadDataWithBaseURL(
                         "https://example.com",
@@ -828,6 +827,110 @@ class CefProviderTest {
                         logger.info { "Sending reply" }
                         replyProxy.postMessage(MessagePayload(byteArrayOf(1, 2, 3)))
                     }
+                }
+            }
+        }
+
+    @Test
+    fun cefWebMessagesAreInjectedInOrder() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                lateinit var expectedPayload: MessagePayload
+                lateinit var handler: (MessagePayload, Uri, Uri, Boolean, JsReplyProxy) -> Unit
+
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START ' + (!!window.testObject))
+                    window.testObject?.postMessage("hello")
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("*"),
+                    "",
+                )
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    val v = Json.decodeFromString<String>(it)
+                                    logger.info { "Trace: $v" }
+                                    assertEquals(listOf("DOCUMENT_START false"), Json.decodeFromString<List<String>>(v))
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    view.loadDataWithBaseURL("https://example.com", """<p>Example</p>""", "text/html", null, null)
+                }
+
+                provider.addWebMessageListener(
+                    "testObject",
+                    arrayOf("*"),
+                    object : WebMessageListener {
+                        override fun onPostMessage(
+                            payload: MessagePayload,
+                            bOrigin: Uri,
+                            fOrigin: Uri,
+                            isMain: Boolean,
+                            reply: JsReplyProxy,
+                            ports: Array<MessagePort>,
+                        ) {
+                            assertEquals(expectedPayload.type, payload.type)
+                            if (payload.type == MessagePayloadType.ARRAY_BUFFER) {
+                                assertContentEquals(expectedPayload.getAsArrayBuffer(), payload.getAsArrayBuffer())
+                            } else {
+                                assertEquals(expectedPayload.getAsString(), payload.getAsString())
+                            }
+                            assertEquals(ports.size, 0)
+                            handler(payload, bOrigin, fOrigin, isMain, reply)
+                        }
+                    },
+                    "",
+                )
+
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START 2');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START 2 ' + (!!window.testObject))
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("*"),
+                    "",
+                )
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    val v = Json.decodeFromString<String>(it)
+                                    logger.info { "Trace: $v" }
+                                    assertEquals(listOf("DOCUMENT_START true", "DOCUMENT_START 2 true"), Json.decodeFromString<List<String>>(v))
+                                }
+                            }
+                        },
+                    )
+
+                    expectedPayload = MessagePayload("hello")
+                    handler = { payload, bOrigin, fOrigin, isMain, reply ->
+                        complete(Unit)
+                    }
+
+                    provider.stopLoading()
+                    view.loadDataWithBaseURL("https://www.example.com", """<p>Example</p>""", "text/html", null, null)
                 }
             }
         }

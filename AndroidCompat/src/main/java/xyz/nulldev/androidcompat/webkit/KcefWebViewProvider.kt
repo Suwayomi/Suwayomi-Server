@@ -1537,8 +1537,10 @@ class KcefWebViewProvider(
                 },
                 worldName,
             )
-        backgroundScope.launch(Dispatchers.IO) {
-            injectDocumentStartScripts()
+        runBlocking {
+            backgroundScope.launch(Dispatchers.IO) {
+                injectDocumentStartScripts()
+            }.join()
         }
         return ScriptHandler(this, scriptId)
     }
@@ -1550,20 +1552,20 @@ class KcefWebViewProvider(
 
     fun removeDocumentStartJavaScript(scriptId: Int) {
         documentScripts.remove(scriptId)?.let {
-            val args =
-                buildJsonObject {
-                    put("identifier", it.injectedScriptIdentifier)
-                }
-            browser?.devToolsClient?.executeDevToolsMethod("Page.removeScriptToEvaluateOnNewDocument", args.toString())?.whenComplete {
-                res,
-                ex,
-                ->
-                if (ex != null) {
-                    Log.e(TAG, "Failed to remove script", ex)
-                } else {
-                    Log.v(TAG, "Successfully removed script: $res")
-                }
+            it.injectedScriptIdentifier?.let { backgroundScope.launch { removeDocumentStartJavaScript(it) } }
+        }
+    }
+
+    private suspend fun removeDocumentStartJavaScript(id: String) {
+        val args =
+            buildJsonObject {
+                put("identifier", id)
             }
+        runCatching {
+            val res = browser?.devToolsClient?.executeDevToolsMethod("Page.removeScriptToEvaluateOnNewDocument", args.toString())?.await()
+            Log.v(TAG, "Successfully removed script: $res")
+        }.exceptionOrNull()?.let {
+            Log.e(TAG, "Failed to remove script", it)
         }
     }
 
@@ -1613,7 +1615,6 @@ class KcefWebViewProvider(
         listener: WebMessageListener,
         worldName: String,
     ) {
-        // TODO: The injected object from addWebMessageListener API will be injected first and the script can rely on the injected object to send messages to the app.
         if (allowedOriginRules.any { TextUtils.isEmpty(it) }) throw Exception("allowedOriginRules can't be null or empty")
         if (webMessageMappings.containsKey(Pair(worldName, jsObjectName))) throw Exception("duplicate jsObjectName")
         webMessageMappings[Pair(worldName, jsObjectName)] =
@@ -1627,8 +1628,25 @@ class KcefWebViewProvider(
                     allowedOriginRules
                 },
             )
-        backgroundScope.launch(Dispatchers.IO) {
-            injectDocumentStartScripts()
+
+        // NOTE: "The injected object from addWebMessageListener API will be injected first and the script can rely on the injected object to send messages to the app."
+        // So we unregister all documentStart scripts, then re-register them after the web message has been registered
+        runBlocking {
+            backgroundScope.launch(Dispatchers.IO) {
+                coroutineScope {
+                    documentScripts.values
+                        .filter { it.type == ScriptType.DOCUMENT_START && it.injectedScriptIdentifier != null }
+                        .map {
+                            async {
+                                val id = it.injectedScriptIdentifier!!
+                                it.injectedScriptIdentifier = null
+                                removeDocumentStartJavaScript(id)
+                            }
+                        }.awaitAll()
+
+                }
+                injectDocumentStartScripts()
+            }.join()
         }
     }
 
