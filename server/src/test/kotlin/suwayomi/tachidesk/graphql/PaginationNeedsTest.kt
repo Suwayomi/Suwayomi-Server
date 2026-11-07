@@ -57,7 +57,7 @@ class PaginationNeedsTest : ApplicationTest() {
                 )
                 ChapterTable
                     .selectAll()
-                    .applySortAndGetPaginationInfo(sort, null, null, ChapterTable.id, needs)
+                    .applySortAndGetPaginationInfo(sort, null, ChapterTable.id, needs)
             }
         return info to statements
     }
