@@ -52,9 +52,7 @@ import android.webkit.WebViewProvider.ScrollDelegate
 import android.webkit.WebViewProvider.ViewDelegate
 import android.webkit.WebViewRenderProcess
 import android.webkit.WebViewRenderProcessClient
-import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -588,8 +586,7 @@ class KcefWebViewProvider(
                     return HtmlResponseResourceHandler(it)
                 }
             }
-            response ?: return null
-            return WebResponseResourceHandler(response, settings.getIncludeCookiesOnIntercept())
+            return response?.let { WebResponseResourceHandler(it, settings.getIncludeCookiesOnIntercept()) }
         }
     }
 
@@ -1384,33 +1381,17 @@ class KcefWebViewProvider(
     private fun getFrameId(): String =
         frameIdentifierMapping.getOrPutIfMissing(browser!!.mainFrame.identifier) {
             runBlocking {
-                callbackFlow<String> {
-                    browser!!.devToolsClient.executeDevToolsMethod("Page.getFrameTree")?.whenComplete { res, ex ->
-                        try {
-                            if (ex != null) {
-                                Log.e(TAG, "Failed to get tree", ex)
-                                close(ex)
-                            } else {
-                                val id =
-                                    Json
-                                        .parseToJsonElement(res)
-                                        .jsonObject
-                                        .get("frameTree")!!
-                                        .jsonObject
-                                        .get("frame")!!
-                                        .jsonObject
-                                        .get("id")!!
-                                        .jsonPrimitive
-                                        .content
-                                trySend(id)
-                                close()
-                            }
-                        } catch (e: Throwable) {
-                            close(e)
-                        }
-                    }
-                    awaitClose { }
-                }.first()
+                val res = browser!!.devToolsClient.executeDevToolsMethod("Page.getFrameTree").await()
+                Json
+                    .parseToJsonElement(res)
+                    .jsonObject
+                    .get("frameTree")!!
+                    .jsonObject
+                    .get("frame")!!
+                    .jsonObject
+                    .get("id")!!
+                    .jsonPrimitive
+                    .content
             }
         }
 
@@ -1420,42 +1401,25 @@ class KcefWebViewProvider(
         val frameId = getFrameId()
         return worldMapping.getOrPutIfMissing(Pair(frameId, name)) {
             runBlocking {
-                callbackFlow<Int> {
-                    val args =
-                        buildJsonObject {
-                            put("frameId", frameId)
-                            put("worldName", name)
-                        }
-                    browser!!.devToolsClient.executeDevToolsMethod("Page.createIsolatedWorld", args.toString())?.whenComplete { res, ex ->
-                        try {
-                            if (ex != null) {
-                                Log.e(TAG, "Failed to create world", ex)
-                                close(ex)
-                            } else {
-                                Log.v(TAG, "Successfully created world: $res")
-                                val id =
-                                    Json
-                                        .parseToJsonElement(res)
-                                        .jsonObject
-                                        .get("executionContextId")!!
-                                        .jsonPrimitive
-                                        .int
-                                trySend(id)
-                                close()
-                            }
-                        } catch (e: Throwable) {
-                            close(e)
-                        }
+                val args =
+                    buildJsonObject {
+                        put("frameId", frameId)
+                        put("worldName", name)
                     }
-                    awaitClose { }
-                }.first()
+                val res = browser!!.devToolsClient.executeDevToolsMethod("Page.createIsolatedWorld", args.toString()).await()
+                Json
+                    .parseToJsonElement(res)
+                    .jsonObject
+                    .get("executionContextId")!!
+                    .jsonPrimitive
+                    .int
             }
         }
     }
 
     private fun injectDocumentStartScripts(now: Boolean = false) {
         Log.v(TAG, "Injecting document start scripts")
-        var devTools = browser?.devToolsClient ?: return
+        val devTools = browser?.devToolsClient ?: return
         documentScripts.values.filter { it.type == ScriptType.DOCUMENT_START && (it.injectedScriptIdentifier == null || now) }.forEach {
             val script =
                 if (it.origins.size == 1 && it.origins[0] == "*") {
