@@ -636,7 +636,7 @@ class KcefWebViewProvider(
         browser?.close(true)
         browser?.dispose()
         browser = null
-        kcefClient?.disposeWithJsHandler()
+        kcefClient?.dispose()
         kcefClient = null
     }
 
@@ -740,13 +740,10 @@ class KcefWebViewProvider(
         script: String,
         resultCallback: ValueCallback<String>?,
     ) {
-        browser!!.evaluateJavaScript(
-            script.removePrefix("javascript:"),
-        )
-            {
-                Log.v(TAG, "JS returned: $it")
-                handler.post { resultCallback?.onReceiveValue(it) }
-            }
+        browser!!.evaluateJavaScript(script.removePrefix("javascript:")) {
+            Log.v(TAG, "JS returned: $it")
+            handler.post { resultCallback?.onReceiveValue(it) }
+        }
     }
 
     override fun saveWebArchive(filename: String): Unit = throw RuntimeException("Stub!")

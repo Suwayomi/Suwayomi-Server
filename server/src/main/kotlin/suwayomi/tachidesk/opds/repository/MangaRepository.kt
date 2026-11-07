@@ -2,10 +2,10 @@ package suwayomi.tachidesk.opds.repository
 
 import eu.kanade.tachiyomi.source.model.MangasPage
 import org.jetbrains.exposed.v1.core.Case
+import org.jetbrains.exposed.v1.core.Count
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
-import org.jetbrains.exposed.v1.core.alias
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -119,6 +119,8 @@ fun Query.applyOpdsMangaFilter(
 object MangaRepository {
     private fun opdsItemsPerPage(userId: Int): Int = userConfig.opdsItemsPerPage.value(userId)
 
+    private val chapterAggregateSorts = setOf("last_read_desc", "latest_chapter_desc", "unread_desc")
+
     /**
      * Maps a database [ResultRow] to an [OpdsMangaAcqEntry] data transfer object.
      * @return The mapped [OpdsMangaAcqEntry].
@@ -132,7 +134,6 @@ object MangaRepository {
             description = this[MangaTable.description],
             thumbnailUrl = this[MangaTable.thumbnail_url],
             sourceLang = this[SourceTable.lang],
-            inLibrary = this[MangaUserTable.inLibrary],
             status = this[MangaTable.status],
             sourceName = formatSourceName(this[SourceTable.name], this[SourceTable.lang]),
             lastFetchedAt = this[MangaTable.lastFetchedAt],
@@ -155,14 +156,7 @@ object MangaRepository {
         filter: String?,
     ): OpdsLibraryFeedResult =
         transaction {
-            val unreadCountExpr =
-                Case()
-                    .When(ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull()), intLiteral(1))
-                    .Else(intLiteral(0))
-                    .sum()
-            val unreadCount = unreadCountExpr.alias("unread_count")
-
-            // Base query with necessary joins for filtering and sorting
+            // Base query with necessary joins for filtering
             var baseJoin =
                 MangaTable
                     .getWithUserData(userId)
@@ -170,10 +164,6 @@ object MangaRepository {
                         SourceTable,
                         { MangaTable.sourceReference },
                         { SourceTable.id },
-                    ).leftJoin(
-                        ChapterTable.getWithUserData(userId),
-                        { MangaTable.id },
-                        { ChapterTable.manga },
                     )
 
             if (criteria.categoryId != null) {
@@ -188,15 +178,30 @@ object MangaRepository {
                     )
             }
 
+            // The chapter join yields a row per chapter that must be grouped,
+            // so it is only added for sorts aggregating over chapters
+            val sortByChapters = sort in chapterAggregateSorts
             val query =
-                baseJoin
-                    .select(MangaTable.columns + MangaUserTable.columns + SourceTable.lang + SourceTable.name + unreadCount)
+                (
+                    if (sortByChapters) {
+                        baseJoin.leftJoin(
+                            ChapterTable.getWithUserData(userId),
+                            { MangaTable.id },
+                            { ChapterTable.manga },
+                        )
+                    } else {
+                        baseJoin
+                    }
+                ).select(MangaTable.columns + MangaUserTable.columns + SourceTable.lang + SourceTable.name)
                     .where { MangaUserTable.inLibrary eq true }
 
             query.applyOpdsMangaFilter(userId, criteria)
             applyMangaLibrarySort(query, sort)
 
-            query.groupBy(MangaTable.id, SourceTable.lang, SourceTable.name)
+            if (sortByChapters) {
+                // PostgreSQL derives the selected columns from their table keys
+                query.groupBy(MangaTable.id, MangaUserTable.id, SourceTable.lang, SourceTable.name)
+            }
 
             // Efficiently get the name of the primary filter item
             val specificFilterName =
@@ -240,11 +245,19 @@ object MangaRepository {
                     }
                 }
 
-            val totalCount = query.count()
+            // Counting the page query would wrap its joins, grouping and
+            // ordering in a subquery, while the base join has a row per manga
+            val totalCount =
+                baseJoin
+                    .select(MangaTable.id)
+                    .where { MangaUserTable.inLibrary eq true }
+                    .apply { applyOpdsMangaFilter(userId, criteria) }
+                    .count()
+            val itemsPerPage = opdsItemsPerPage(userId)
             val mangas =
                 query
-                    .limit(opdsItemsPerPage(userId))
-                    .offset(((pageNum - 1) * opdsItemsPerPage(userId)).toLong())
+                    .limit(itemsPerPage)
+                    .offset(((pageNum - 1) * itemsPerPage).toLong())
                     .map { it.toOpdsMangaAcqEntry() }
 
             OpdsLibraryFeedResult(mangas, totalCount, specificFilterName)
@@ -291,6 +304,7 @@ object MangaRepository {
             }
 
         val mangaIds = mangasPage.insertOrUpdate(sourceId)
+        val mangaPositions = mangaIds.withIndex().associate { (index, id) -> id to index }
         val mangaEntries =
             transaction {
                 MangaTable
@@ -302,7 +316,7 @@ object MangaRepository {
                     ).select(MangaTable.columns + MangaUserTable.columns + SourceTable.name + SourceTable.lang)
                     .where { MangaTable.id inList mangaIds }
                     .map { it.toOpdsMangaAcqEntry() }
-            }.sortedBy { manga -> mangaIds.indexOf(manga.id) }
+            }.sortedBy { manga -> mangaPositions[manga.id] }
 
         return Pair(mangaEntries, mangasPage.hasNextPage)
     }
@@ -440,38 +454,36 @@ object MangaRepository {
                     )
             }
 
-            val baseQuery =
-                baseJoin
-                    .select(MangaTable.id)
-                    .where { MangaUserTable.inLibrary eq true }
-                    .withDistinct()
-
-            baseQuery.applyOpdsMangaFilter(userId, activeFilters, excludeField = "filter")
+            // All the facets are counted in a single query
+            fun countMatching(condition: Op<Boolean>) = Count(Case().When(condition, MangaTable.id), distinct = true)
 
             val unreadCount =
-                baseQuery
-                    .copy()
-                    .andWhere {
-                        MangaTable.id inSubQuery
-                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where {
-                                ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())
-                            }
-                    }.count()
+                countMatching(
+                    MangaTable.id inSubQuery
+                        ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where {
+                            ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())
+                        },
+                )
             val downloadedCount =
-                baseQuery
-                    .copy()
-                    .andWhere {
-                        MangaTable.id inSubQuery
-                            ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isDownloaded eq true }
-                    }.count()
-            val ongoingCount = baseQuery.copy().andWhere { MangaTable.status eq MangaStatus.ONGOING.value }.count()
-            val completedCount = baseQuery.copy().andWhere { MangaTable.status eq MangaStatus.COMPLETED.value }.count()
+                countMatching(
+                    MangaTable.id inSubQuery
+                        ChapterTable.getWithUserData(userId).select(ChapterTable.manga).where { ChapterUserTable.isDownloaded eq true },
+                )
+            val ongoingCount = countMatching(MangaTable.status eq MangaStatus.ONGOING.value)
+            val completedCount = countMatching(MangaTable.status eq MangaStatus.COMPLETED.value)
+
+            val counts =
+                baseJoin
+                    .select(unreadCount, downloadedCount, ongoingCount, completedCount)
+                    .where { MangaUserTable.inLibrary eq true }
+                    .apply { applyOpdsMangaFilter(userId, activeFilters, excludeField = "filter") }
+                    .first()
 
             mapOf(
-                "unread" to unreadCount,
-                "downloaded" to downloadedCount,
-                "ongoing" to ongoingCount,
-                "completed" to completedCount,
+                "unread" to counts[unreadCount],
+                "downloaded" to counts[downloadedCount],
+                "ongoing" to counts[ongoingCount],
+                "completed" to counts[completedCount],
             )
         }
 }
