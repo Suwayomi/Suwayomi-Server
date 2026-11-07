@@ -918,7 +918,10 @@ class CefProviderTest {
                                 view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
                                     val v = Json.decodeFromString<String>(it)
                                     logger.info { "Trace: $v" }
-                                    assertEquals(listOf("DOCUMENT_START true", "DOCUMENT_START 2 true"), Json.decodeFromString<List<String>>(v))
+                                    assertEquals(
+                                        listOf("DOCUMENT_START true", "DOCUMENT_START 2 true"),
+                                        Json.decodeFromString<List<String>>(v),
+                                    )
                                 }
                             }
                         },

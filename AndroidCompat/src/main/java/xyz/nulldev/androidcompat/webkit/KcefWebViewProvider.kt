@@ -956,35 +956,19 @@ class KcefWebViewProvider(
         resultCallback: JavaScriptExecutionCallback,
     ) {
         val worldId = getJavaScriptWorld(worldName)
-        val args =
-            buildJsonObject {
-                put("expression", script)
-                put("awaitPromise", true)
-                if (worldId != 0) {
-                    put("contextId", worldId)
+        browser!!.evaluateJavaScript(
+            script,
+            worldId,
+            object : JavaScriptExecutionCallback {
+                override fun onError(errorCode: Int) {
+                    handler.post { resultCallback.onError(errorCode) }
                 }
-                put("returnByValue", true)
-            }
-        browser!!
-            .devToolsClient
-            .executeDevToolsMethod("Runtime.evaluate", args.toString())
-            .handle { response, error ->
-                if (error != null || Json.parseToJsonElement(response!!).jsonObject.get("exceptionDetails") != null) {
-                    Log.e(TAG, "JavaScript evaluation failed $response", error)
-                    handler.post { resultCallback.onError(0) }
-                } else {
-                    val result =
-                        Json
-                            .parseToJsonElement(response)
-                            .jsonObject
-                            .get("result")
-                            ?.jsonObject
-                            ?.get("value")
-                            ?.jsonPrimitive
-                            ?.toString() ?: "null"
+
+                override fun onSuccess(result: String) {
                     handler.post { resultCallback.onSuccess(result) }
                 }
-            }
+            },
+        )
     }
 
     fun evaluateJavaScript(
@@ -993,29 +977,10 @@ class KcefWebViewProvider(
         resultCallback: ValueCallback<String>? = null,
     ) {
         val worldId = getJavaScriptWorld(worldName)
-        val args =
-            buildJsonObject {
-                put("expression", script)
-                put("awaitPromise", true)
-                if (worldId != 0) {
-                    put("contextId", worldId)
-                }
-                put("returnByValue", true)
-            }
-        browser!!
-            .devToolsClient
-            .executeDevToolsMethod("Runtime.evaluate", args.toString())
-            .handle { response, error ->
-                if (error != null) Log.e(TAG, "JavaScript evaluation failed", error)
-                Json
-                    .parseToJsonElement(response!!)
-                    .jsonObject
-                    .get("result")
-                    ?.jsonObject
-                    ?.get("value")
-                    ?.jsonPrimitive
-                    ?.toString() ?: "null"
-            }.thenAccept { handler.post { resultCallback?.onReceiveValue(it) } }
+        browser!!.evaluateJavaScript(script, worldId) {
+            Log.v(TAG, "JS returned: $it")
+            handler.post { resultCallback?.onReceiveValue(it) }
+        }
     }
 
     override fun saveWebArchive(filename: String): Unit = throw RuntimeException("Stub!")
@@ -1538,9 +1503,10 @@ class KcefWebViewProvider(
                 worldName,
             )
         runBlocking {
-            backgroundScope.launch(Dispatchers.IO) {
-                injectDocumentStartScripts()
-            }.join()
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    injectDocumentStartScripts()
+                }.join()
         }
         return ScriptHandler(this, scriptId)
     }
@@ -1632,21 +1598,21 @@ class KcefWebViewProvider(
         // NOTE: "The injected object from addWebMessageListener API will be injected first and the script can rely on the injected object to send messages to the app."
         // So we unregister all documentStart scripts, then re-register them after the web message has been registered
         runBlocking {
-            backgroundScope.launch(Dispatchers.IO) {
-                coroutineScope {
-                    documentScripts.values
-                        .filter { it.type == ScriptType.DOCUMENT_START && it.injectedScriptIdentifier != null }
-                        .map {
-                            async {
-                                val id = it.injectedScriptIdentifier!!
-                                it.injectedScriptIdentifier = null
-                                removeDocumentStartJavaScript(id)
-                            }
-                        }.awaitAll()
-
-                }
-                injectDocumentStartScripts()
-            }.join()
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    coroutineScope {
+                        documentScripts.values
+                            .filter { it.type == ScriptType.DOCUMENT_START && it.injectedScriptIdentifier != null }
+                            .map {
+                                async {
+                                    val id = it.injectedScriptIdentifier!!
+                                    it.injectedScriptIdentifier = null
+                                    removeDocumentStartJavaScript(id)
+                                }
+                            }.awaitAll()
+                    }
+                    injectDocumentStartScripts()
+                }.join()
         }
     }
 
