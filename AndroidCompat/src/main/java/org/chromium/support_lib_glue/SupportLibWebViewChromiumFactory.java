@@ -16,6 +16,7 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.support_lib_boundary.WebViewProviderFactoryBoundaryInterface;
 import org.chromium.support_lib_boundary.util.BoundaryInterfaceReflectionUtil;
+import org.chromium.support_lib_boundary.util.Features;
 
 import java.lang.reflect.InvocationHandler;
 import java.util.ArrayList;
@@ -32,10 +33,12 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
     private final InvocationHandler mCompatConverterAdapter;
     private static final String[] sWebViewSupportedFeatures =
             new String[] {
-                "USER_AGENT_METADATA",
-                "COOKIE_INTERCEPT",
-                "JS_INJECTION_IN_FRAME_AND_WORLD",
-                "DOCUMENT_START_SCRIPT:1",
+                Features.USER_AGENT_METADATA,
+                Features.COOKIE_INTERCEPT,
+                Features.JS_INJECTION_IN_FRAME_AND_WORLD,
+                Features.DOCUMENT_START_SCRIPT,
+                Features.WEB_MESSAGE_LISTENER,
+                Features.WEB_MESSAGE_ARRAY_BUFFER,
             };
 
     public SupportLibWebViewChromiumFactory() {

@@ -1,6 +1,7 @@
 package android.webkit
 
 import android.content.Context
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.webkit.WebResourceResponse
@@ -22,6 +23,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.cef.CefSettings.LogSeverity
 import org.cef.network.CefCookie
 import org.cef.network.CefCookieManager
+import org.chromium.android_webview.JsReplyProxy
+import org.chromium.android_webview.WebMessageListener
+import org.chromium.content_public.browser.MessagePayload
+import org.chromium.content_public.browser.MessagePayloadType
+import org.chromium.content_public.browser.MessagePort
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.parallel.Execution
@@ -35,6 +41,7 @@ import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.div
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -742,6 +749,89 @@ class CefProviderTest {
                         },
                     )
                     view.evaluateJavascript("window.location.href = 'https://www.example.com'") {}
+                }
+            }
+        }
+
+    @Test
+    fun cefWebMessagesCanCommunicate() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                lateinit var expectedPayload: MessagePayload
+                lateinit var handler: (MessagePayload, Uri, Uri, Boolean, JsReplyProxy) -> Unit
+                lateinit var replyProxy: JsReplyProxy
+
+                provider.addWebMessageListener(
+                    "testObject",
+                    arrayOf("*"),
+                    object : WebMessageListener {
+                        override fun onPostMessage(
+                            payload: MessagePayload,
+                            bOrigin: Uri,
+                            fOrigin: Uri,
+                            isMain: Boolean,
+                            reply: JsReplyProxy,
+                            ports: Array<MessagePort>,
+                        ) {
+                            assertEquals(expectedPayload.type, payload.type)
+                            if (payload.type == MessagePayloadType.ARRAY_BUFFER) {
+                                assertContentEquals(expectedPayload.getAsArrayBuffer(), payload.getAsArrayBuffer())
+                            } else {
+                                assertEquals(expectedPayload.getAsString(), payload.getAsString())
+                            }
+                            assertEquals(ports.size, 0)
+                            handler(payload, bOrigin, fOrigin, isMain, reply)
+                        }
+                    },
+                    "",
+                )
+
+                runComplete {
+                    expectedPayload = MessagePayload("hello")
+                    handler = { payload, bOrigin, fOrigin, isMain, reply ->
+                        replyProxy = reply
+                        complete(Unit)
+                    }
+
+                    view.loadDataWithBaseURL("https://example.com", """""", "text/html", null, null)
+                    provider.stopLoading()
+                    view.loadDataWithBaseURL(
+                        "https://example.com",
+                        """<script>window.onload = () => testObject.postMessage("hello")</script>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+
+                runComplete {
+                    expectedPayload = MessagePayload(byteArrayOf(-1, -1, -1, -1))
+                    handler = { payload, bOrigin, fOrigin, isMain, reply ->
+                        complete(Unit)
+                    }
+
+                    view.evaluateJavascript(
+                        """
+                        testObject.onmessage = (evt) => {
+                            console.log("GOT REPLY")
+                            if (evt.data instanceof ArrayBuffer) {
+                                const arr = new Uint8Array(evt.data);
+                                if (arr.length != 3 || arr[0] != 1 || arr[1] != 2 || arr[2] != 3) throw "Data mismatch " + arr;
+
+                                const r = new ArrayBuffer(4);
+                                const a = new Uint8Array(r);
+                                a[0] = a[1] = a[2] = a[3] = 255;
+                                testObject.postMessage(r);
+                            } else {
+                                throw "Invalid data " + evt.data;
+                            }
+                        }""",
+                    ) {
+                        logger.info { "Sending reply" }
+                        replyProxy.postMessage(MessagePayload(byteArrayOf(1, 2, 3)))
+                    }
                 }
             }
         }

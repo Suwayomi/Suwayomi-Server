@@ -91,7 +91,12 @@ import org.cef.network.CefPostData
 import org.cef.network.CefPostDataElement
 import org.cef.network.CefRequest
 import org.cef.network.CefResponse
+import org.chromium.android_webview.JavaScriptExecutionCallback
+import org.chromium.android_webview.JsReplyProxy
 import org.chromium.android_webview.ScriptHandler
+import org.chromium.android_webview.WebMessageListener
+import org.chromium.content_public.browser.MessagePayload
+import org.chromium.content_public.browser.MessagePayloadType
 import org.koin.mp.KoinPlatformTools
 import java.awt.Rectangle
 import java.io.BufferedWriter
@@ -102,6 +107,7 @@ import java.net.URL
 import java.nio.ByteBuffer
 import java.util.concurrent.Executor
 import javax.swing.JPanel
+import kotlin.io.encoding.Base64
 import kotlin.math.min
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
@@ -115,8 +121,9 @@ class KcefWebViewProvider(
     private var viewClient = WebViewClient()
     private var chromeClient = WebChromeClient()
     private val renderHandler = RenderHandler()
-    private val mappings: MutableList<FunctionMapping> = mutableListOf()
     private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
+    private val mappings: MutableList<FunctionMapping> = mutableListOf()
+    private val webMessageMappings: MutableMap<Pair<String, String>, WebMessageMapping> = mutableMapOf()
     private val documentScripts: MutableMap<Int, InjectedScript> = mutableMapOf()
     private val frameIdentifierMapping: MutableMap<String, String> = mutableMapOf()
     private val worldMapping: MutableMap<Pair<String, String>, Int> = mutableMapOf()
@@ -132,6 +139,9 @@ class KcefWebViewProvider(
         const val TAG = "KcefWebViewProvider"
         const val QUERY_FN = "__\$_suwayomiQuery"
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
+
+        const val WEBMESSAGE_FN = "__\$_suwayomiWebmessage"
+        const val WEBMESSAGE_CANCEL_FN = "__\$_suwayomiWebmessageCancel"
 
         const val PAGE_WORLD_NAME = ""
 
@@ -174,6 +184,19 @@ class KcefWebViewProvider(
                         origins.any { p -> it.matchesSchemeOnly(p) || it.matchesFullHost(p) || it.matchesFullPattern(p) }
                 }
 
+        private fun jsMatchCondition(origins: Array<String>): String =
+            if (origins.size == 1 && origins[0] == "*") {
+                "true"
+            } else {
+                """
+            ${Json.encodeToString(
+                    origins,
+                )}.map(m => m.replace(/(?<origin>(?:https|wss):\/\/.*):443|(?<origin2>(?:http|ws):\/\/.*):80/, "$<origin>$<origin2>"))
+                    .some(m => m === location.origin || m === location.protocol + "//" ||
+                        (/(https?|wss?):\/\/\*\./.test(m) && m.startsWith(location.protocol + '//') && location.origin.endsWith(m.substring(location.protocol.length + 3))))
+            """
+            }
+
         private val initHandler by findHandler()
     }
 
@@ -194,8 +217,10 @@ class KcefWebViewProvider(
                 } else {
                     Log.v(TAG, "Successfully set user agent: $res")
                 }
-                injectDocumentStartScripts(true)
             }
+            injectDocumentStartScripts(true)
+            // TODO: Remove this, but for now it is needed to ensure the document start scripts are run before the document is loaded
+            Thread.sleep(2000)
 
             val ua = settings.userAgentString ?: return
             val args =
@@ -302,7 +327,7 @@ class KcefWebViewProvider(
             source: String,
             line: Int,
         ): Boolean {
-            Log.i(TAG, "$source:$line[$level]: $message")
+            Log.d(TAG, "$source:$line[$level]: $message")
             return true
         }
 
@@ -454,6 +479,91 @@ class KcefWebViewProvider(
                     }
                     return true
                 }
+            return false
+        }
+    }
+
+    private inner class KcefWebMessageReplyProxy(
+        val jsObject: String,
+        val world: String,
+    ) : JsReplyProxy.NativeJsReplyProxy {
+        override fun postMessage(payload: MessagePayload) {
+            val stringData =
+                if (payload.type ==
+                    MessagePayloadType.ARRAY_BUFFER
+                ) {
+                    Base64.Default.encode(payload.getAsArrayBuffer())
+                } else {
+                    payload.getAsString()
+                }
+            evaluateJavaScript(
+                """window.$jsObject.__receiveMessage({
+                    type: ${payload.type},
+                    data: ${Json.encodeToString(stringData)}
+                })""",
+                world,
+            ) {}
+        }
+
+        override fun executeJavaScript(
+            script: String,
+            callback: JavaScriptExecutionCallback,
+        ) {
+            evaluateJavaScript(script, world, callback)
+        }
+
+        override fun release() {
+        }
+    }
+
+    private inner class WebMessageRouterHandler : CefMessageRouterHandlerAdapter() {
+        override fun onQuery(
+            browser: CefBrowser,
+            frame: CefFrame,
+            queryId: Long,
+            request: String,
+            persistent: Boolean,
+            callback: CefQueryCallback,
+        ): Boolean {
+            val invoke =
+                try {
+                    Json.decodeFromString<WebMessageCall>(request)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Invalid request received $e")
+                    return false
+                }
+            webMessageMappings[Pair(invoke.world, invoke.jsObject)]?.let {
+                handler.post {
+                    try {
+                        Log.v(
+                            TAG,
+                            "Received request to invoke ${invoke.jsObject} on world ${invoke.world} with ${if (invoke.type == 1) "buffer" else "string"} arg",
+                        )
+                        val message =
+                            if (invoke.type ==
+                                1
+                            ) {
+                                MessagePayload(Base64.Default.decode(invoke.data))
+                            } else {
+                                MessagePayload(invoke.data)
+                            }
+                        val replyProxy = JsReplyProxy.create(KcefWebMessageReplyProxy(invoke.jsObject, invoke.world))
+                        it.listener.onPostMessage(
+                            message,
+                            Uri.parse(browser.url ?: ""),
+                            Uri.parse(frame.url ?: ""),
+                            frame.isMain,
+                            replyProxy,
+                            arrayOf(),
+                        )
+                        callback.success("")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "JS-invoke ${invoke.jsObject} on world ${invoke.world} failed:", e)
+                        callback.failure(0, e.message)
+                    }
+                }
+                return true
+            }
             return false
         }
     }
@@ -671,6 +781,10 @@ class KcefWebViewProvider(
                     config.jsQueryFunction = QUERY_FN
                     config.jsCancelFunction = QUERY_CANCEL_FN
                     addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
+                    val messageConfig = CefMessageRouter.CefMessageRouterConfig()
+                    messageConfig.jsQueryFunction = WEBMESSAGE_FN
+                    messageConfig.jsCancelFunction = WEBMESSAGE_CANCEL_FN
+                    addMessageRouter(CefMessageRouter.create(messageConfig, WebMessageRouterHandler()))
                 }
             }
         initHandler?.init(this)
@@ -814,6 +928,43 @@ class KcefWebViewProvider(
             Log.v(TAG, "JS returned: $it")
             handler.post { resultCallback?.onReceiveValue(it) }
         }
+    }
+
+    fun evaluateJavaScript(
+        script: String,
+        worldName: String,
+        resultCallback: JavaScriptExecutionCallback,
+    ) {
+        val worldId = getJavaScriptWorld(worldName)
+        val args =
+            buildJsonObject {
+                put("expression", script)
+                put("awaitPromise", true)
+                if (worldId != 0) {
+                    put("contextId", worldId)
+                }
+                put("returnByValue", true)
+            }
+        browser!!
+            .devToolsClient
+            .executeDevToolsMethod("Runtime.evaluate", args.toString())
+            .handle { response, error ->
+                if (error != null || Json.parseToJsonElement(response!!).jsonObject.get("exceptionDetails") != null) {
+                    Log.e(TAG, "JavaScript evaluation failed $response", error)
+                    handler.post { resultCallback.onError(0) }
+                } else {
+                    val result =
+                        Json
+                            .parseToJsonElement(response)
+                            .jsonObject
+                            .get("result")
+                            ?.jsonObject
+                            ?.get("value")
+                            ?.jsonPrimitive
+                            ?.toString() ?: "null"
+                    handler.post { resultCallback.onSuccess(result) }
+                }
+            }
     }
 
     fun evaluateJavaScript(
@@ -1002,6 +1153,14 @@ class KcefWebViewProvider(
         val interfaceName: String,
         val functionName: String,
         val args: Array<String>,
+    )
+
+    @Serializable
+    private data class WebMessageCall(
+        val jsObject: String,
+        val world: String,
+        val type: Int,
+        val data: String,
     )
 
     private data class FunctionMapping(
@@ -1327,6 +1486,15 @@ class KcefWebViewProvider(
         fun matchesUrl(url: String): Boolean = matchesUrl(origins, url)
     }
 
+    private data class WebMessageMapping(
+        val listener: WebMessageListener,
+        val origins: Array<String>,
+    ) {
+        var injectedScriptIdentifier: String? = null
+    }
+
+    fun getPrimaryContainerView(): WebView = view
+
     fun addJavaScriptOnEvent(
         script: String,
         type: ScriptType,
@@ -1417,20 +1585,119 @@ class KcefWebViewProvider(
         }
     }
 
+    fun addWebMessageListener(
+        jsObjectName: String,
+        allowedOriginRules: Array<String>,
+        listener: WebMessageListener,
+        worldName: String,
+    ) {
+        // TODO: The injected object from addWebMessageListener API will be injected first and the script can rely on the injected object to send messages to the app.
+        if (allowedOriginRules.any { TextUtils.isEmpty(it) }) throw Exception("allowedOriginRules can't be null or empty")
+        if (webMessageMappings.containsKey(Pair(worldName, jsObjectName))) throw Exception("duplicate jsObjectName")
+        webMessageMappings[Pair(worldName, jsObjectName)] =
+            WebMessageMapping(
+                listener,
+                if (allowedOriginRules.size == 0 ||
+                    allowedOriginRules.contains("*")
+                ) {
+                    arrayOf("*")
+                } else {
+                    allowedOriginRules
+                },
+            )
+        injectDocumentStartScripts()
+    }
+
     private fun injectDocumentStartScripts(now: Boolean = false) {
         Log.v(TAG, "Injecting document start scripts")
         val devTools = browser?.devToolsClient ?: return
+
+        webMessageMappings.entries.filter { it.value.injectedScriptIdentifier == null || now }.forEach {
+            val (world, obj) = it.key
+            val script = """
+                if (${jsMatchCondition(it.value.origins)}) {
+                    window.$obj = (() => {
+                        const listeners = [];
+                        return {
+                            postMessage(message, ports) {
+                                if (ports) throw "Ports are not supported";
+                                window.${WEBMESSAGE_FN}({
+                                    request: JSON.stringify({
+                                        jsObject: ${Json.encodeToString(obj)},
+                                        world: ${Json.encodeToString(world)},
+                                        ...(message instanceof window.ArrayBuffer ? {
+                                            type: 1,
+                                            data: (new window.Uint8Array(message)).toBase64(),
+                                        } : {
+                                            type: 0,
+                                            data: message?.toString() ?? "",
+                                        }),
+                                    }),
+                                    persistent: false,
+                                    onFailure: console.error,
+                                })
+                            },
+
+                            onmessage: null,
+                            addEventListener(type, listener) {
+                                if (type != "message") throw "Invalid message type";
+                                listeners.push(listener);
+                            },
+                            removeEventListener(type, listener) {
+                                if (type != "message") throw "Invalid message type";
+                                const index = listeners.indexOf(listener);
+                                if (index > -1) {
+                                  listeners.splice(index, 1);
+                                }
+                            },
+
+                            __receiveMessage(encoded) {
+                                var data = encoded.type === 1 ? window.Uint8Array.fromBase64(encoded.data).buffer : encoded.data;
+                                var evt = new window.MessageEvent("message", { data });
+                                for (let v of listeners) {
+                                    try { v(evt); }
+                                    catch (e) { console.error(e); }
+                                }
+                                if (this.onmessage) {
+                                    try { this.onmessage(evt); }
+                                    catch (e) { console.error(e); }
+                                }
+                            }
+                        };
+                    })();
+                }
+                """
+            val args =
+                buildJsonObject {
+                    put("source", script)
+                    put("runImmediately", now)
+                    if (world != PAGE_WORLD_NAME) {
+                        put("worldName", world)
+                    }
+                }
+            devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).whenComplete { res, ex ->
+                if (ex != null) {
+                    Log.e(TAG, "Failed to add web message listener script", ex)
+                } else {
+                    it.value.injectedScriptIdentifier =
+                        Json
+                            .parseToJsonElement(res)
+                            .jsonObject
+                            .get("identifier")
+                            ?.jsonPrimitive
+                            ?.content
+                    Log.v(TAG, "Successfully added script: $res -> ${it.value.injectedScriptIdentifier}")
+                }
+            }
+        }
+
         documentScripts.values.filter { it.type == ScriptType.DOCUMENT_START && (it.injectedScriptIdentifier == null || now) }.forEach {
             val script =
                 if (it.origins.size == 1 && it.origins[0] == "*") {
                     it.script
                 } else {
                     """
-                    if (${Json.encodeToString(
-                        it.origins,
-                    )}.map(m => m.replace(/(?<origin>(?:https|wss):\/\/.*):443|(?<origin2>(?:http|ws):\/\/.*):80/, "$<origin>$<origin2>"))
-                            .some(m => m === location.origin || m === location.protocol + "//" ||
-                                (/(https?|wss?):\/\/\*\./.test(m) && m.startsWith(location.protocol + '//') && location.origin.endsWith(m.substring(location.protocol.length + 3))))) {
+                    if (${jsMatchCondition(it.origins)}) {
                         ${it.script}
                     }
                     """

@@ -81,17 +81,7 @@ class SupportLibWebViewChromium implements WebViewProviderBoundaryInterface {
             String jsObjectName,
             String[] allowedOriginRules,
             /* WebMessageListener */ InvocationHandler listener) {
-        // KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
-        // if (sharedWebViewChromium == null) {
-        //     throw new IllegalStateException(
-        //             "Support lib method called on WebView that no longer exists.");
-        // }
-        // sharedWebViewChromium.addWebMessageListener(
-        //         jsObjectName,
-        //         allowedOriginRules,
-        //         new SupportLibWebMessageListenerAdapter(
-        //                 sharedWebViewChromium.getAwContents(), listener));
-        throw new RuntimeException("Not supported");
+        addWebMessageListener(jsObjectName, allowedOriginRules, listener, KcefWebViewProvider.PAGE_WORLD_NAME);
     }
 
     @Override
@@ -105,7 +95,17 @@ class SupportLibWebViewChromium implements WebViewProviderBoundaryInterface {
             String[] allowedOriginRules,
             /* WebMessageListener */ InvocationHandler listener,
             String worldName) {
-        throw new RuntimeException("Not supported");
+        KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
+        if (sharedWebViewChromium == null) {
+            throw new IllegalStateException(
+                    "Support lib method called on WebView that no longer exists.");
+        }
+        sharedWebViewChromium.addWebMessageListener(
+                jsObjectName,
+                allowedOriginRules,
+                new SupportLibWebMessageListenerAdapter(
+                        sharedWebViewChromium, listener),
+                worldName);
     }
 
     @Override
