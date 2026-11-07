@@ -17,12 +17,7 @@ object CefHelper {
     @Volatile
     var requestStart: () -> Unit = {}
 
-    suspend fun createClient(): CefClient {
-        val app = waitForInit().first()
-        val client = app.createClient()
-        JsHandler(client) // This adds itself to a global map
-        return client
-    }
+    suspend fun createClient(): CefClient = waitForInit().first().createClient()
 
     fun waitForInit() =
         callbackFlow {

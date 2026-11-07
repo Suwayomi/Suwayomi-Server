@@ -51,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebUI/API**) Fix server info queries failing when WebUI serving is disabled and no local WebUI version is installed
 - (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
 - (**WebView**) Pass `evaluateJavascript` results to extensions serialized as JSON, like Android
+- (**WebView**) Fix `evaluateJavascript` not returning the result of multi-line scripts
 
 ### Deprecated
 - (**Authentication**) `BASIC_AUTH` is now deprecated
