@@ -1,0 +1,76 @@
+// Copyright 2016 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+package org.chromium.content_public.browser;
+
+import android.os.Handler;
+
+import androidx.annotation.Nullable;
+
+/** Interface for message ports that handle postMessage requests. */
+public interface MessagePort {
+    /** The message callback for receiving messages. */
+    interface MessageCallback {
+        /**
+         * Sent when the associated {@link MessagePort} gets a postMessage.
+         *
+         * @param messagePayload The message payload that was received.
+         * @param sentPorts The {@link MessagePort}s that were sent if any.
+         * @param senderOrigin The ASCII-serialized origin of the message sender per RFC 6454 /
+         *     WHATWG URL (e.g., standard {@code scheme://host[:port]} without a trailing slash, or
+         *     {@code "null"} for opaque origins), or {@code null} if unknown. Represented as a
+         *     {@link String} rather than {@code org.chromium.url.Origin} to avoid object allocation
+         *     churn on high-frequency {@code postMessage} streams and to align directly with Web
+         *     IDL's {@code DOMString origin} and Custom Tabs bundle extras.
+         */
+        void onMessage(
+                MessagePayload messagePayload,
+                MessagePort[] sentPorts,
+                @Nullable String senderOrigin);
+    }
+
+    /**
+     * Called to create an entangled pair of ports.
+     *
+     * @return An array of a pair of{@link MessagePort} instances.
+     */
+    static MessagePort[] createPair() {
+        throw new RuntimeException("Stub!");
+    }
+
+    /** Close the port for use. */
+    void close();
+
+    /**
+     * @return Whether the port has been closed before.
+     */
+    boolean isClosed();
+
+    /**
+     * @return Whether the port has been transferred using
+     *         {@link MessagePort#postMessage(MessagePayload, MessagePort[])} before.
+     */
+    boolean isTransferred();
+
+    /**
+     * @return Whether the port has been started.
+     */
+    boolean isStarted();
+
+    /**
+     * Sets the handler and message callback to be used for the messages received. If the given
+     * {@link Handler} is not null, then the callback is received on the handler thread, if not
+     * it is on UI thread.
+     *
+     * See {@link MessagePort.MessageCallback}
+     */
+    void setMessageCallback(MessageCallback messageCallback, @Nullable Handler handler);
+
+    /**
+     * Send a postMessage request through this port to its designated receiving end.
+     * @param messagePayload   The message payload to be sent.
+     * @param sentPorts The ports to be transferred.
+     */
+    void postMessage(MessagePayload messagePayload, MessagePort[] sentPorts);
+}

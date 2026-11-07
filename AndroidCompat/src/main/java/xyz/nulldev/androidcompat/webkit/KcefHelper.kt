@@ -8,6 +8,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import org.cef.browser.CefBrowser
+import org.chromium.android_webview.JavaScriptExecutionCallback
 
 private val logger = KotlinLogging.logger {}
 
@@ -19,24 +20,62 @@ private val logger = KotlinLogging.logger {}
  */
 fun CefBrowser.evaluateJavaScript(
     script: String,
+    world: Int = 0,
     cb: (String) -> Unit,
+) {
+    evaluateJavaScript(
+        script,
+        world,
+        object : JavaScriptExecutionCallback {
+            override fun onError(errorCode: Int) {
+                cb("null")
+            }
+
+            override fun onSuccess(result: String) {
+                cb(result)
+            }
+        },
+    )
+}
+
+fun CefBrowser.evaluateJavaScript(
+    script: String,
+    worldId: Int,
+    resultCallback: JavaScriptExecutionCallback,
 ) {
     val params =
         buildJsonObject {
             put("expression", script)
+            if (worldId != 0) {
+                put("contextId", worldId)
+            }
             put("returnByValue", true)
         }
     // There is no client until the browser has been created, or once it is closing
     val evaluation = devToolsClient?.executeDevToolsMethod("Runtime.evaluate", params.toString())
     if (evaluation == null) {
-        cb("null")
+        resultCallback.onError(0)
         return
     }
     evaluation
+        .thenApply { androidEvaluationResult(it) }
         .handle { response, error ->
-            if (error != null) logger.debug(error) { "JavaScript evaluation failed" }
-            androidEvaluationResult(response)
-        }.thenAccept { cb(it) }
+            if (error != null) {
+                logger.debug(error) { "JavaScript evaluation failed" }
+                resultCallback.onError(0)
+            } else {
+                resultCallback.onSuccess(response ?: "null")
+            }
+        }
+}
+
+internal fun androidEvaluationResult(result: String?): String {
+    val evaluation = Json.parseToJsonElement(result ?: return "null").jsonObject
+    if ("exceptionDetails" in evaluation) throw Exception("JS exception: ${evaluation["exceptionDetails"]}")
+    return evaluation["result"]
+        ?.jsonObject
+        ?.get("value")
+        ?.toString() ?: "null"
 }
 
 // Passes the result decoded from JSON: a string arrives unquoted and null as null
@@ -44,17 +83,6 @@ fun CefBrowser.evaluateJavaScriptDecoded(
     script: String,
     cb: (String?) -> Unit,
 ) = evaluateJavaScript(script) { cb(plainValue(it)) }
-
-/** Converts a DevTools `Runtime.evaluate` response to the value Android passes to its callback. */
-internal fun androidEvaluationResult(response: String?): String =
-    runCatching {
-        val evaluation = Json.parseToJsonElement(response!!).jsonObject
-        evaluation["result"]
-            ?.jsonObject
-            ?.get("value")
-            ?.takeUnless { "exceptionDetails" in evaluation }
-            ?.toString()
-    }.getOrNull() ?: "null"
 
 // A string's content, null, or the JSON text for any other value
 internal fun plainValue(json: String): String? =
