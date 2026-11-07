@@ -355,11 +355,7 @@ class CefProviderTest {
                                 view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
                                     val v = Json.decodeFromString<String>(it)
                                     logger.info { "Trace: $v" }
-                                    val list = Json.decodeFromString<List<String>>(v)
-                                    // NOTE: We currently can not guarantee that DOCUMENT_START happens before SCRIPT :(
-                                    // it does in many cases, but not guaranteed
-                                    assertEquals(setOf("DOCUMENT_START", "SCRIPT", "DOCUMENT_END"), Json.decodeFromString<Set<String>>(v))
-                                    assertTrue(list.indexOf("DOCUMENT_END") > list.indexOf("SCRIPT"))
+                                    assertEquals(listOf("DOCUMENT_START", "SCRIPT", "DOCUMENT_END"), Json.decodeFromString<List<String>>(v))
                                     complete(Unit)
                                 }
                             }

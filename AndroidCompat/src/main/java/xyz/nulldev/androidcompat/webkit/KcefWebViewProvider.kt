@@ -52,7 +52,14 @@ import android.webkit.WebViewProvider.ScrollDelegate
 import android.webkit.WebViewProvider.ViewDelegate
 import android.webkit.WebViewRenderProcess
 import android.webkit.WebViewRenderProcessClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -128,6 +135,7 @@ class KcefWebViewProvider(
     private val frameIdentifierMapping: MutableMap<String, String> = mutableMapOf()
     private val worldMapping: MutableMap<Pair<String, String>, Int> = mutableMapOf()
     private var initialRequestData: InitialRequestData? = null
+    private var initialUrl: String? = null
     private var documentScriptIdCounter = 1
 
     private var kcefClient: CefClient? = null
@@ -144,6 +152,8 @@ class KcefWebViewProvider(
         const val WEBMESSAGE_CANCEL_FN = "__\$_suwayomiWebmessageCancel"
 
         const val PAGE_WORLD_NAME = ""
+
+        private const val PRELOAD_PAGE = "about:blank#suwayomipreloadingpage"
 
         private fun findHandler(): Lazy<InitBrowserHandler?> =
             runCatching { KoinPlatformTools.defaultContext().get() }.getOrNull()?.let { it.inject<InitBrowserHandler>() } ?: lazy { null }
@@ -198,6 +208,7 @@ class KcefWebViewProvider(
             }
 
         private val initHandler by findHandler()
+        private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }
 
     interface InitBrowserHandler {
@@ -211,33 +222,39 @@ class KcefWebViewProvider(
 
     private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
         override fun onAfterCreated(browser: CefBrowser) {
-            browser.devToolsClient.executeDevToolsMethod("Page.enable").whenComplete { res, ex ->
-                if (ex != null) {
-                    Log.e(TAG, "Failed to set user agent", ex)
-                } else {
-                    Log.v(TAG, "Successfully set user agent: $res")
-                }
-            }
-            injectDocumentStartScripts(true)
-            // TODO: Remove this, but for now it is needed to ensure the document start scripts are run before the document is loaded
-            Thread.sleep(2000)
-
-            val ua = settings.userAgentString ?: return
-            val args =
-                buildJsonObject {
-                    put("userAgent", ua)
-                    settings.getUserAgentMetadata()?.let {
-                        Log.d(TAG, "Using user-agent $ua with metadata $it")
-                        put("userAgentMetadata", Json.encodeToJsonElement(it))
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    runCatching {
+                        val res = browser.devToolsClient.executeDevToolsMethod("Page.enable").await()
+                        Log.v(TAG, "Successfully enabled page notifications: $res")
+                    }.exceptionOrNull()?.let {
+                        Log.e(TAG, "Failed to enable page notifications", it)
                     }
+                    injectDocumentStartScripts()
+
+                    val ua =
+                        settings.userAgentString ?: run {
+                            browser.loadURL(initialUrl)
+                            initialUrl = null
+                            return@launch
+                        }
+                    val args =
+                        buildJsonObject {
+                            put("userAgent", ua)
+                            settings.getUserAgentMetadata()?.let {
+                                Log.d(TAG, "Using user-agent $ua with metadata $it")
+                                put("userAgentMetadata", Json.encodeToJsonElement(it))
+                            }
+                        }
+                    runCatching {
+                        val res = browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args.toString()).await()
+                        Log.v(TAG, "Successfully set user agent: $res")
+                    }.exceptionOrNull()?.let {
+                        Log.e(TAG, "Failed to set user agent", it)
+                    }
+                    browser.loadURL(initialUrl)
+                    initialUrl = null
                 }
-            browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args.toString()).whenComplete { res, ex ->
-                if (ex != null) {
-                    Log.e(TAG, "Failed to set user agent", ex)
-                } else {
-                    Log.v(TAG, "Successfully set user agent: $res")
-                }
-            }
         }
 
         override fun onBeforeClose(browser: CefBrowser) {
@@ -357,6 +374,7 @@ class KcefWebViewProvider(
             val url = frame.url ?: ""
             val isMain = frame.isMain // preserve, since it may not be valid in handler anymore
             Log.d(TAG, "Load end $url (is main frame? $isMain)")
+            if (url == PRELOAD_PAGE) return
 
             documentScripts.values.filter { it.type == ScriptType.DOCUMENT_END && it.matchesUrl(frame.url) }.forEach {
                 evaluateJavaScript(it.script, it.world)
@@ -409,6 +427,7 @@ class KcefWebViewProvider(
             frame: CefFrame,
             transitionType: CefRequest.TransitionType,
         ) {
+            if (frame.url == PRELOAD_PAGE) return
             Log.v(TAG, "Load start, pushing mappings")
             mappings.forEach {
                 val js =
@@ -905,10 +924,11 @@ class KcefWebViewProvider(
     private fun load(url: String) {
         val b = browser
         if (b == null) {
+            initialUrl = url
             browser =
                 kcefClient!!
                     .createBrowser(
-                        url,
+                        PRELOAD_PAGE,
                         CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
                         false,
                     ).apply {
@@ -1517,7 +1537,9 @@ class KcefWebViewProvider(
                 },
                 worldName,
             )
-        injectDocumentStartScripts()
+        backgroundScope.launch(Dispatchers.IO) {
+            injectDocumentStartScripts()
+        }
         return ScriptHandler(this, scriptId)
     }
 
@@ -1605,125 +1627,128 @@ class KcefWebViewProvider(
                     allowedOriginRules
                 },
             )
-        injectDocumentStartScripts()
+        backgroundScope.launch(Dispatchers.IO) {
+            injectDocumentStartScripts()
+        }
     }
 
-    private fun injectDocumentStartScripts(now: Boolean = false) {
+    private suspend fun injectDocumentStartScripts() {
         Log.v(TAG, "Injecting document start scripts")
         val devTools = browser?.devToolsClient ?: return
 
-        webMessageMappings.entries.filter { it.value.injectedScriptIdentifier == null || now }.forEach {
-            val (world, obj) = it.key
-            val script = """
-                if (${jsMatchCondition(it.value.origins)}) {
-                    window.$obj = (() => {
-                        const listeners = [];
-                        return {
-                            postMessage(message, ports) {
-                                if (ports) throw "Ports are not supported";
-                                window.${WEBMESSAGE_FN}({
-                                    request: JSON.stringify({
-                                        jsObject: ${Json.encodeToString(obj)},
-                                        world: ${Json.encodeToString(world)},
-                                        ...(message instanceof window.ArrayBuffer ? {
-                                            type: 1,
-                                            data: (new window.Uint8Array(message)).toBase64(),
-                                        } : {
-                                            type: 0,
-                                            data: message?.toString() ?? "",
-                                        }),
-                                    }),
-                                    persistent: false,
-                                    onFailure: console.error,
-                                })
-                            },
+        coroutineScope {
+            webMessageMappings.entries
+                .filter { it.value.injectedScriptIdentifier == null }
+                .map {
+                    async {
+                        val (world, obj) = it.key
+                        val script = """
+                            if (${jsMatchCondition(it.value.origins)}) {
+                                window.$obj = (() => {
+                                    const listeners = [];
+                                    return {
+                                        postMessage(message, ports) {
+                                            if (ports) throw "Ports are not supported";
+                                            window.${WEBMESSAGE_FN}({
+                                                request: JSON.stringify({
+                                                    jsObject: ${Json.encodeToString(obj)},
+                                                    world: ${Json.encodeToString(world)},
+                                                    ...(message instanceof window.ArrayBuffer ? {
+                                                        type: 1,
+                                                        data: (new window.Uint8Array(message)).toBase64(),
+                                                    } : {
+                                                        type: 0,
+                                                        data: message?.toString() ?? "",
+                                                    }),
+                                                }),
+                                                persistent: false,
+                                                onFailure: console.error,
+                                            })
+                                        },
 
-                            onmessage: null,
-                            addEventListener(type, listener) {
-                                if (type != "message") throw "Invalid message type";
-                                listeners.push(listener);
-                            },
-                            removeEventListener(type, listener) {
-                                if (type != "message") throw "Invalid message type";
-                                const index = listeners.indexOf(listener);
-                                if (index > -1) {
-                                  listeners.splice(index, 1);
-                                }
-                            },
+                                        onmessage: null,
+                                        addEventListener(type, listener) {
+                                            if (type != "message") throw "Invalid message type";
+                                            listeners.push(listener);
+                                        },
+                                        removeEventListener(type, listener) {
+                                            if (type != "message") throw "Invalid message type";
+                                            const index = listeners.indexOf(listener);
+                                            if (index > -1) {
+                                              listeners.splice(index, 1);
+                                            }
+                                        },
 
-                            __receiveMessage(encoded) {
-                                var data = encoded.type === 1 ? window.Uint8Array.fromBase64(encoded.data).buffer : encoded.data;
-                                var evt = new window.MessageEvent("message", { data });
-                                for (let v of listeners) {
-                                    try { v(evt); }
-                                    catch (e) { console.error(e); }
-                                }
-                                if (this.onmessage) {
-                                    try { this.onmessage(evt); }
-                                    catch (e) { console.error(e); }
+                                        __receiveMessage(encoded) {
+                                            var data = encoded.type === 1 ? window.Uint8Array.fromBase64(encoded.data).buffer : encoded.data;
+                                            var evt = new window.MessageEvent("message", { data });
+                                            for (let v of listeners) {
+                                                try { v(evt); }
+                                                catch (e) { console.error(e); }
+                                            }
+                                            if (this.onmessage) {
+                                                try { this.onmessage(evt); }
+                                                catch (e) { console.error(e); }
+                                            }
+                                        }
+                                    };
+                                })();
+                            }
+                            """
+                        val args =
+                            buildJsonObject {
+                                put("source", script)
+                                if (world != PAGE_WORLD_NAME) {
+                                    put("worldName", world)
                                 }
                             }
-                        };
-                    })();
-                }
-                """
-            val args =
-                buildJsonObject {
-                    put("source", script)
-                    put("runImmediately", now)
-                    if (world != PAGE_WORLD_NAME) {
-                        put("worldName", world)
+                        runCatching {
+                            val res = devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).await()
+                            it.value.injectedScriptIdentifier =
+                                Json
+                                    .parseToJsonElement(res)
+                                    .jsonObject
+                                    .get("identifier")
+                                    ?.jsonPrimitive
+                                    ?.content
+                            Log.v(TAG, "Successfully added script: $res -> ${it.value.injectedScriptIdentifier}")
+                        }.exceptionOrNull()?.let {
+                            Log.e(TAG, "Failed to add web message listener script", it)
+                        }
                     }
-                }
-            devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).whenComplete { res, ex ->
-                if (ex != null) {
-                    Log.e(TAG, "Failed to add web message listener script", ex)
-                } else {
-                    it.value.injectedScriptIdentifier =
-                        Json
-                            .parseToJsonElement(res)
-                            .jsonObject
-                            .get("identifier")
-                            ?.jsonPrimitive
-                            ?.content
-                    Log.v(TAG, "Successfully added script: $res -> ${it.value.injectedScriptIdentifier}")
-                }
-            }
-        }
+                }.awaitAll()
 
-        documentScripts.values.filter { it.type == ScriptType.DOCUMENT_START && (it.injectedScriptIdentifier == null || now) }.forEach {
-            val script =
-                if (it.origins.size == 1 && it.origins[0] == "*") {
-                    it.script
-                } else {
-                    """
-                    if (${jsMatchCondition(it.origins)}) {
-                        ${it.script}
+            documentScripts.values
+                .filter { it.type == ScriptType.DOCUMENT_START && it.injectedScriptIdentifier == null }
+                .map {
+                    async {
+                        val script = """
+                            if (${jsMatchCondition(it.origins)}) {
+                                ${it.script}
+                            }
+                            """
+                        val args =
+                            buildJsonObject {
+                                put("source", script)
+                                if (it.world != PAGE_WORLD_NAME) {
+                                    put("worldName", it.world)
+                                }
+                            }
+                        runCatching {
+                            val res = devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).await()
+                            it.injectedScriptIdentifier =
+                                Json
+                                    .parseToJsonElement(res)
+                                    .jsonObject
+                                    .get("identifier")
+                                    ?.jsonPrimitive
+                                    ?.content
+                            Log.v(TAG, "Successfully added script: $res -> ${it.injectedScriptIdentifier}")
+                        }.exceptionOrNull()?.let {
+                            Log.e(TAG, "Failed to add script", it)
+                        }
                     }
-                    """
-                }
-            val args =
-                buildJsonObject {
-                    put("source", script)
-                    put("runImmediately", now)
-                    if (it.world != PAGE_WORLD_NAME) {
-                        put("worldName", it.world)
-                    }
-                }
-            devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).whenComplete { res, ex ->
-                if (ex != null) {
-                    Log.e(TAG, "Failed to add script", ex)
-                } else {
-                    it.injectedScriptIdentifier =
-                        Json
-                            .parseToJsonElement(res)
-                            .jsonObject
-                            .get("identifier")
-                            ?.jsonPrimitive
-                            ?.content
-                    Log.v(TAG, "Successfully added script: $res -> ${it.injectedScriptIdentifier}")
-                }
-            }
+                }.awaitAll()
         }
     }
 }
