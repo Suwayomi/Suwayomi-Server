@@ -158,6 +158,8 @@ jobs:
           name: scripts
 
       - name: Make ${{ matrix.name }} release
+        env:
+          APPIMAGE_UPDATE_REPO: Suwayomi-Server-preview
         run: |
           mkdir upload
           tar -xvpf scripts.tar.gz
