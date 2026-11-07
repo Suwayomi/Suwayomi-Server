@@ -190,7 +190,14 @@ class KcefWebViewProvider(
 
     private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
         override fun onAfterCreated(browser: CefBrowser) {
-            injectDocumentStartScripts(true)
+            browser.devToolsClient.executeDevToolsMethod("Page.enable").whenComplete { res, ex ->
+                if (ex != null) {
+                    Log.e(TAG, "Failed to set user agent", ex)
+                } else {
+                    Log.v(TAG, "Successfully set user agent: $res")
+                }
+                injectDocumentStartScripts(true)
+            }
 
             val ua = settings.userAgentString ?: return
             val args =
@@ -208,6 +215,10 @@ class KcefWebViewProvider(
                     Log.v(TAG, "Successfully set user agent: $res")
                 }
             }
+        }
+
+        override fun onBeforeClose(browser: CefBrowser) {
+            Log.d(TAG, "Close browser")
         }
     }
 
@@ -796,7 +807,6 @@ class KcefWebViewProvider(
         } else {
             b.loadURL(url)
         }
-        injectDocumentStartScripts(true)
     }
 
     override fun evaluateJavaScript(
@@ -819,7 +829,9 @@ class KcefWebViewProvider(
             buildJsonObject {
                 put("expression", script)
                 put("awaitPromise", true)
-                put("contextId", worldId)
+                if (worldId != 0) {
+                    put("contextId", worldId)
+                }
                 put("returnByValue", true)
             }
         browser!!
@@ -1328,7 +1340,18 @@ class KcefWebViewProvider(
 
         val scriptId = documentScriptIdCounter++
         documentScripts[scriptId] =
-            InjectedScript(script, type, if (allowedOrigin.contains("*")) arrayOf("*") else allowedOrigin, worldName)
+            InjectedScript(
+                script,
+                type,
+                if (allowedOrigin.size == 0 ||
+                    allowedOrigin.contains("*")
+                ) {
+                    arrayOf("*")
+                } else {
+                    allowedOrigin
+                },
+                worldName,
+            )
         injectDocumentStartScripts()
         return ScriptHandler(this, scriptId)
     }
@@ -1452,9 +1475,10 @@ class KcefWebViewProvider(
                 buildJsonObject {
                     put("source", script)
                     put("runImmediately", now)
-                    put("worldName", it.world)
+                    if (it.world != PAGE_WORLD_NAME) {
+                        put("worldName", it.world)
+                    }
                 }
-            Log.i(TAG, "I ${args}")
             devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).whenComplete { res, ex ->
                 if (ex != null) {
                     Log.e(TAG, "Failed to add script", ex)

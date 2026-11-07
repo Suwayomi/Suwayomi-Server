@@ -686,4 +686,63 @@ class CefProviderTest {
                 }
             }
         }
+
+    @Test
+    fun cefDocumentInjectionIsCalledAfterNavigation() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                provider.addJavaScriptOnEvent(
+                    """
+                    console.log('RUN START');
+                    (window._suwa_trace = window._suwa_trace || []).push('DOCUMENT_START ' + window.location.href)
+                    """,
+                    KcefWebViewProvider.ScriptType.DOCUMENT_START,
+                    arrayOf("*"),
+                    "",
+                )
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    val v = Json.decodeFromString<String>(it)
+                                    logger.info { "Trace: $v" }
+                                    assertEquals(setOf("DOCUMENT_START https://example.com/"), Json.decodeFromString<Set<String>>(v))
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    view.loadDataWithBaseURL("https://example.com", """<p>Example</p>""", "text/html", null, null)
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                logger.info { "Page finished $url" }
+                                view.evaluateJavascript("JSON.stringify(window._suwa_trace)") {
+                                    val v = Json.decodeFromString<String>(it)
+                                    logger.info { "Trace: $v" }
+                                    assertEquals(setOf("DOCUMENT_START https://www.example.com/"), Json.decodeFromString<Set<String>>(v))
+                                    complete(Unit)
+                                }
+                            }
+                        },
+                    )
+                    view.evaluateJavascript("window.location.href = 'https://www.example.com'") {}
+                }
+            }
+        }
 }
