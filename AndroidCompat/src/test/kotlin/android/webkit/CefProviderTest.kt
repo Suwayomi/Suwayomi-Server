@@ -30,6 +30,7 @@ import org.chromium.content_public.browser.MessagePayloadType
 import org.chromium.content_public.browser.MessagePort
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.condition.EnabledIf
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
 import xyz.nulldev.androidcompat.webkit.CefHelper
@@ -40,6 +41,7 @@ import java.util.Date
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.Path
 import kotlin.io.path.div
+import kotlin.io.path.exists
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -66,8 +68,17 @@ suspend fun runComplete(block: suspend CompletableDeferred<Unit>.() -> Unit) {
 @OptIn(ExperimentalPathApi::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.SAME_THREAD)
+@EnabledIf("condition")
 class CefProviderTest {
     private val logger = KotlinLogging.logger {}
+
+    companion object {
+        val root = AppDirs { appName = "Tachidesk" }.getUserDataDir()
+        val cefDir = Path(root) / "bin/kcef"
+
+        @JvmStatic
+        fun condition() = cefDir.exists()
+    }
 
     private class LooperThread : Thread() {
         lateinit var mHandler: Handler
@@ -134,9 +145,6 @@ class CefProviderTest {
     @BeforeAll
     fun init() {
         System.loadLibrary("jawt")
-
-        val root = AppDirs { appName = "Tachidesk" }.getUserDataDir()
-        val cefDir = Path(root) / "bin/kcef"
         CefHelper.doCreateApp(
             cefDir,
             null,
