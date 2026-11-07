@@ -7,7 +7,7 @@
 # This is a windows only PowerShell script to create android.jar stubs
 
 # foolproof against running from AndroidCompat dir instead of running from project root
-if ($(Split-Path -Path (Get-Location) -Leaf) -eq "AndroidCompat" ) {
+if ((Split-Path -Path (Get-Location) -Leaf) -eq "AndroidCompat") {
     Set-Location ..
 }
 
@@ -17,36 +17,39 @@ New-Item -ItemType Directory -Force -Path "tmp" | Out-Null
 
 $androidEncoded = (Invoke-WebRequest -Uri "https://android.googlesource.com/platform/prebuilts/sdk/+/6cd31be5e4e25901aadf838120d71a79b46d9add/30/public/android.jar?format=TEXT" -UseBasicParsing).content
 
-$android_jar = (Get-Location).Path + "\tmp\android.jar"
+$android_jar = Join-Path (Get-Location) "tmp\android.jar"
 
 [IO.File]::WriteAllBytes($android_jar, [Convert]::FromBase64String($androidEncoded))
 
 # We need to remove any stub classes that we have implementations for
 Write-Output "Patching JAR..."
 
+[Reflection.Assembly]::LoadWithPartialName('System.IO.Compression') | Out-Null
+
 function Remove-Files-Zip($zipfile, $paths)
 {
-    [Reflection.Assembly]::LoadWithPartialName('System.IO.Compression') | Out-Null
-
-    $stream = New-Object IO.FileStream($zipfile, [IO.FileMode]::Open)
+    $stream = [IO.FileStream]::new($zipfile, [IO.FileMode]::Open)
     $mode   = [IO.Compression.ZipArchiveMode]::Update
-    $zip    = New-Object IO.Compression.ZipArchive($stream, $mode)
+    $zip    = [IO.Compression.ZipArchive]::new($stream, $mode)
 
-    if ($paths.getType().Name -eq "Object[]")
-    {
-        $paths | ForEach-Object {
-            $path = $_
-            ($zip.Entries | Where-Object { $_.FullName -like $path }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+    $pathArray = @($paths)
+    $entriesToDelete = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($entry in $zip.Entries) {
+        foreach ($p in $pathArray) {
+            if ($entry.FullName -like $p) {
+                $entriesToDelete.Add($entry)
+                break
+            }
         }
     }
-    else
-    {
-        ($zip.Entries | Where-Object { $_.FullName -like $paths }) | ForEach-Object { Write-Output "Deleting: $($_.FullName)"; $_.Delete() }
+
+    foreach ($entry in $entriesToDelete) {
+        Write-Output "Deleting: $($entry.FullName)"
+        $entry.Delete()
     }
 
-
     $zip.Dispose()
-    $stream.Close()
     $stream.Dispose()
 }
 
@@ -75,29 +78,73 @@ Write-Output "Removing java..."
 Remove-Files-Zip $android_jar 'java/*'
 
 Write-Output "Removing overriden classes..."
-Remove-Files-Zip $android_jar 'android/app/Application.class'
-Remove-Files-Zip $android_jar 'android/app/Service.class'
-Remove-Files-Zip $android_jar 'android/net/Uri.class'
-Remove-Files-Zip $android_jar 'android/net/Uri$Builder.class'
-Remove-Files-Zip $android_jar 'android/os/Environment.class'
-Remove-Files-Zip $android_jar 'android/text/format/Formatter.class'
-Remove-Files-Zip $android_jar 'android/text/Html.class'
+Remove-Files-Zip $android_jar @(
+    'android/app/Application.class',
+    'android/app/Service.class',
+    'android/net/Uri.class',
+    'android/net/Uri$Builder.class',
+    'android/os/Environment.class',
+    'android/text/format/Formatter.class',
+    'android/text/Html.class'
+)
 
 function Dedupe($path)
 {
     Push-Location $path
-    $classes = Get-ChildItem . *.* -Recurse | Where-Object { !$_.PSIsContainer }
-    $classes | ForEach-Object {
-        "Processing class: $($_.FullName)"
-        Remove-Files-Zip $android_jar ("$($_.Name).class","$($_.Name)$*.class","$($_.Name)Kt.class","$($_.Name)Kt$*.class") | Out-Null
+    $root = (Get-Location).Path
+    $classLookup = @{}
+
+    Get-ChildItem . -File -Recurse | ForEach-Object {
+        $rel  = $_.FullName.Substring($root.Length).TrimStart('\', '/')
+        $rel  = $rel -replace '\\', '/'
+        $name = $rel -replace '\.[^.]+$', ''
+
+        "Processing class: $name"
+        $classLookup[$name] = $true
     }
-    Pop-Location
+
+    $stream = [IO.FileStream]::new($android_jar, [IO.FileMode]::Open)
+    $mode   = [IO.Compression.ZipArchiveMode]::Update
+    $zip    = [IO.Compression.ZipArchive]::new($stream, $mode)
+
+    try {
+        $entriesToDelete = [System.Collections.Generic.List[object]]::new()
+
+        foreach ($entry in $zip.Entries) {
+            if ($entry.FullName -notlike '*.class') { continue }
+
+            # Matching patterns:
+            # "$name.class"
+            # "$name`$*.class"
+            # "${name}Kt.class"
+            # "${name}Kt`$*.class"
+
+            $name       = $entry.FullName -replace '\.class$', ''
+            $name       = $name -replace '\$.*$', ''
+            $kotlinName = $name -replace 'Kt$', ''
+
+            if ($classLookup.ContainsKey($name) -or
+                ($name -ne $kotlinName -and $classLookup.ContainsKey($kotlinName))) {
+                $entriesToDelete.Add($entry)
+            }
+        }
+
+        foreach ($entry in $entriesToDelete) {
+            $entry.Delete()
+        }
+    }
+    finally {
+        $zip.Dispose()
+        $stream.Dispose()
+        Pop-Location
+    }
 }
 
 Dedupe "AndroidCompat/src/main/java"
 Dedupe "server/src/main/kotlin"
 
 Write-Output "Copying Android.jar to library folder..."
+New-Item -ItemType Directory -Force -Path "AndroidCompat/lib" | Out-Null
 Move-Item -Force $android_jar "AndroidCompat/lib/android.jar"
 
 Write-Output "Cleaning up..."
