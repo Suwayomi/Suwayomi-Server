@@ -17,6 +17,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.manga.impl.util.PackageTools.loadExtensionSources
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.StubSourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
 import java.util.concurrent.ConcurrentHashMap
@@ -71,7 +72,14 @@ object GetSource {
             null
         }
 
-    suspend fun getSourceOrStub(sourceId: Long): Source = getSourceOrNull(sourceId) ?: StubSource(sourceId)
+    suspend fun getSourceOrStub(sourceId: Long): Source {
+        getSourceOrNull(sourceId)?.let { return it }
+        val stubRecord =
+            transaction {
+                StubSourceTable.selectAll().where { StubSourceTable.id eq sourceId }.firstOrNull()
+            } ?: return StubSource(sourceId)
+        return StubSource(sourceId, stubRecord[StubSourceTable.name], stubRecord[StubSourceTable.lang])
+    }
 
     fun registerSource(sourcePair: Pair<Long, Source>) {
         sourceCache += sourcePair

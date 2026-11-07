@@ -18,11 +18,13 @@ import rx.Observable
 
 open class StubSource(
     override val id: Long,
+    private val stubName: String? = null,
+    private val stubLang: String? = null,
 ) : CatalogueSource {
-    override val lang: String = "other"
+    override val lang: String = stubLang ?: "other"
     override val supportsLatest: Boolean = false
     override val name: String
-        get() = id.toString()
+        get() = stubName ?: id.toString()
 
     override suspend fun getPopularManga(page: Int): MangasPage = throw getSourceNotInstalledException()
 
@@ -67,7 +69,7 @@ open class StubSource(
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getPageList"))
     override fun fetchPageList(chapter: SChapter): Observable<List<Page>> = Observable.error(getSourceNotInstalledException())
 
-    override fun toString(): String = name
+    override fun toString(): String = if (stubLang != null) "$name (${stubLang.uppercase()})" else name
 
     private fun getSourceNotInstalledException(): SourceNotInstalledException = SourceNotInstalledException(id)
 
