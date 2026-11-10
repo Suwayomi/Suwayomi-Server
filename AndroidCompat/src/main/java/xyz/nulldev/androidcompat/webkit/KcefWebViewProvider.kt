@@ -117,6 +117,9 @@ class KcefWebViewProvider(
         const val QUERY_FN = "__\$_suwayomiQuery"
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
 
+        private val WIDTH = 1280
+        private val HEIGHT = 2856
+
         private val initHandler: InitBrowserHandler by KoinPlatformTools.defaultContext().get().inject()
     }
 
@@ -558,7 +561,7 @@ class KcefWebViewProvider(
     }
 
     private class RenderHandler : CefRenderHandlerAdapter() {
-        override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, 1280, 2856)
+        override fun getViewRect(browser: CefBrowser): Rectangle = Rectangle(0, 0, WIDTH, HEIGHT)
 
         override fun onPaint(
             browser: CefBrowser,
@@ -815,9 +818,9 @@ class KcefWebViewProvider(
 
     override fun getProgress(): Int = throw RuntimeException("Stub!")
 
-    override fun getContentHeight(): Int = throw RuntimeException("Stub!")
+    override fun getContentHeight(): Int = HEIGHT
 
-    override fun getContentWidth(): Int = throw RuntimeException("Stub!")
+    override fun getContentWidth(): Int = WIDTH
 
     override fun pauseTimers() {
         Log.v(TAG, "pauseTimers: doing nothing")
