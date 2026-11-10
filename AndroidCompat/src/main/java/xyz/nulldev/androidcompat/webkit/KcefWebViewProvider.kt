@@ -52,6 +52,7 @@ import android.webkit.WebViewProvider.ScrollDelegate
 import android.webkit.WebViewProvider.ViewDelegate
 import android.webkit.WebViewRenderProcess
 import android.webkit.WebViewRenderProcessClient
+import com.android.webview.chromium.Profile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -128,12 +129,14 @@ class KcefWebViewProvider(
     private var viewClient = WebViewClient()
     private var chromeClient = WebChromeClient()
     private val renderHandler = RenderHandler()
+    private val profile = Profile("default", this)
     private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
     private val mappings: MutableList<FunctionMapping> = mutableListOf()
     private val webMessageMappings: MutableMap<Pair<String, String>, WebMessageMapping> = mutableMapOf()
     private val documentScripts: MutableMap<Int, InjectedScript> = mutableMapOf()
     private val frameIdentifierMapping: MutableMap<String, String> = mutableMapOf()
     private val worldMapping: MutableMap<Pair<String, String>, Int> = mutableMapOf()
+    private val originMatchedHeaders: MutableMap<HeaderValuePair, LinkedHashSet<String>> = mutableMapOf()
     private var initialRequestData: InitialRequestData? = null
     private var initialUrl: String? = null
     private var documentScriptIdCounter = 1
@@ -187,12 +190,21 @@ class KcefWebViewProvider(
         private fun matchesUrl(
             origins: Array<String>,
             url: String,
+        ): Boolean = (origins.size == 1 && origins.first() == "*") || matchesUrl1(origins.asIterable(), url)
+
+        private fun matchesUrl(
+            origins: Collection<String>,
+            url: String,
+        ): Boolean = (origins.size == 1 && origins.first() == "*") || matchesUrl1(origins.asIterable(), url)
+
+        private fun matchesUrl1(
+            origins: Iterable<String>,
+            url: String,
         ): Boolean =
-            (origins.size == 1 && origins[0] == "*") ||
-                URI(url.removePrefix("blob:")).toURL().let {
-                    arrayOf("http", "https", "ws", "wss").contains(it.protocol) &&
-                        origins.any { p -> it.matchesSchemeOnly(p) || it.matchesFullHost(p) || it.matchesFullPattern(p) }
-                }
+            URI(url.removePrefix("blob:")).toURL().let {
+                arrayOf("http", "https", "ws", "wss").contains(it.protocol) &&
+                    origins.any { p -> it.matchesSchemeOnly(p) || it.matchesFullHost(p) || it.matchesFullPattern(p) }
+            }
 
         private fun jsMatchCondition(origins: Array<String>): String =
             if (origins.size == 1 && origins[0] == "*") {
@@ -271,6 +283,8 @@ class KcefWebViewProvider(
                 Log.v(TAG, "Initial request: applying headers and post data")
                 if (!additionalHttpHeaders.isNullOrEmpty()) {
                     additionalHttpHeaders.forEach {
+                        // TODO: Decide if this should really overwrite
+                        // "Note that if this map contains any of the headers that are set by default by this WebView, such as those controlling caching, accept types or the User-Agent, their values may be overridden by this WebView's defaults."
                         setHeaderByName(it.key, it.value, true)
                     }
                 }
@@ -680,6 +694,11 @@ class KcefWebViewProvider(
             initialRequestData?.apply(request)
             initialRequestData = null
 
+            originMatchedHeaders.filter { matchesUrl(it.value, request.url) }.map { it.key }.groupBy { it.name.lowercase() }.forEach {
+                // "If multiple headers with the same name but different values match a request, then all the values will be sent in a comma-separated list of values following the guidance for repeated header fields. This does not take into account whether such merging is safe."
+                request.setHeaderByName(it.value.first().name, it.value.joinToString(", ") { it.value }, true)
+            }
+
             // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
             // thus if a client tried to use WebView#loadUrl as the docs suggest, this fails
             val cancel =
@@ -940,6 +959,9 @@ class KcefWebViewProvider(
                         createImmediately()
                     }
         } else {
+            // we load the preload page here briefly to ensure isInitialLoad can properly detect this Load* call
+            b.loadURL(PRELOAD_PAGE)
+            b.stopLoad()
             b.loadURL(url)
         }
     }
@@ -1488,6 +1510,19 @@ class KcefWebViewProvider(
         var injectedScriptIdentifier: String? = null
     }
 
+    private data class HeaderValuePair(
+        val name: String,
+        val value: String,
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is HeaderValuePair) return false
+            return name.equals(other.name, ignoreCase = true) && value.equals(other.value)
+        }
+
+        override fun hashCode(): Int = 31 * name.lowercase().hashCode() + value.hashCode()
+    }
+
     fun getPrimaryContainerView(): WebView = view
 
     fun addJavaScriptOnEvent(
@@ -1624,6 +1659,38 @@ class KcefWebViewProvider(
                     injectDocumentStartScripts()
                 }.join()
         }
+    }
+
+    fun getProfile() = profile
+
+    fun setOriginMatchedHeader(
+        name: String,
+        value: String,
+        originRules: Set<String>,
+    ) {
+        originMatchedHeaders[HeaderValuePair(name, value)] = LinkedHashSet(originRules)
+    }
+
+    fun addOriginMatchedHeader(
+        name: String,
+        value: String,
+        originRules: Set<String>,
+    ) {
+        val origins = originMatchedHeaders.getOrPut(HeaderValuePair(name, value)) { linkedSetOf() }
+        origins.addAll(originRules)
+    }
+
+    fun hasOriginMatchedHeader(name: String): Boolean = originMatchedHeaders.keys.any { it.name.equals(name, ignoreCase = true) }
+
+    fun clearOriginMatchedHeader(
+        name: String,
+        value: String,
+    ) {
+        originMatchedHeaders.remove(HeaderValuePair(name, value))
+    }
+
+    fun clearAllOriginMatchedHeaders() {
+        originMatchedHeaders.clear()
     }
 
     private suspend fun injectDocumentStartScripts() {

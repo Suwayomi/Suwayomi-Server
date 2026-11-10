@@ -945,4 +945,145 @@ class CefProviderTest {
                 }
             }
         }
+
+    @Test
+    fun cefProfileHeadersCanBeSet() =
+        runTest {
+            CefHelper.waitForInit().first()
+
+            LooperThread.test { view, provider ->
+                provider.addOriginMatchedHeader("X-TEST", "v1", setOf("https://example.com"))
+                provider.addOriginMatchedHeader("X-test", "v1", setOf("https://www.example.com", "https://www1.example.com"))
+                provider.addOriginMatchedHeader("X-TEST", "V1", setOf("https://www1.example.com"))
+                provider.addOriginMatchedHeader("X-test", "v2", setOf("https://www1.example.com"))
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): WebResourceResponse? {
+                                logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                                assertTrue(request.requestHeaders.keys.any { it.equals("X-TEST") })
+                                assertEquals("v1", request.requestHeaders["X-TEST"]!!)
+                                complete(Unit)
+                                return FailResponse()
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    provider.loadDataWithBaseURL(
+                        "https://example.com",
+                        """<img src="test.jpg?v=1"/><p>Example</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): WebResourceResponse? {
+                                logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                                assertTrue(request.requestHeaders.keys.any { it.equals("X-TEST") })
+                                assertEquals("v1", request.requestHeaders["X-TEST"]!!)
+                                complete(Unit)
+                                return FailResponse()
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    provider.loadDataWithBaseURL(
+                        "https://www.example.com",
+                        """<img src="test.jpg?v=1"/><p>Example</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): WebResourceResponse? {
+                                logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                                assertTrue(request.requestHeaders.keys.any { it.equals("X-TEST") })
+                                assertEquals("v1, V1, v2", request.requestHeaders["X-TEST"]!!)
+                                complete(Unit)
+                                return FailResponse()
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    provider.loadDataWithBaseURL(
+                        "https://www1.example.com",
+                        """<img src="test.jpg?v=1"/><p>Example</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+
+                provider.clearOriginMatchedHeader("x-test", "v1")
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): WebResourceResponse? {
+                                logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                                assertTrue(request.requestHeaders.keys.any { it.equals("X-TEST") })
+                                assertEquals("V1, v2", request.requestHeaders["X-TEST"]!!)
+                                complete(Unit)
+                                return FailResponse()
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    provider.loadDataWithBaseURL(
+                        "https://www1.example.com",
+                        """<img src="test.jpg?v=1"/><p>Example</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+
+                provider.clearAllOriginMatchedHeaders()
+
+                runComplete {
+                    view.setWebViewClient(
+                        object : WebViewClient() {
+                            override fun shouldInterceptRequest(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): WebResourceResponse? {
+                                logger.info { "Received request for ${request.url}: ${request.requestHeaders}" }
+                                assertFalse(request.requestHeaders.keys.any { it.equals("X-TEST", true) })
+                                complete(Unit)
+                                return FailResponse()
+                            }
+                        },
+                    )
+                    provider.stopLoading()
+                    provider.loadDataWithBaseURL(
+                        "https://www1.example.com",
+                        """<img src="test.jpg?v=1"/><p>Example</p>""",
+                        "text/html",
+                        null,
+                        null,
+                    )
+                }
+            }
+        }
 }

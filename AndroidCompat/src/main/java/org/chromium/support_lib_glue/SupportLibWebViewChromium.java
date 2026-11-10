@@ -216,7 +216,13 @@ class SupportLibWebViewChromium implements WebViewProviderBoundaryInterface {
 
     @Override
     public /* Profile */ InvocationHandler getProfile() {
-        throw new RuntimeException("Not supported");
+        KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
+        if (sharedWebViewChromium == null) {
+            throw new IllegalStateException(
+                    "Support lib method called on WebView that no longer exists.");
+        }
+        return BoundaryInterfaceReflectionUtil.createInvocationHandlerFor(
+                new SupportLibProfile(sharedWebViewChromium.getProfile()));
     }
 
     @Override
