@@ -109,6 +109,16 @@ jobs:
             ./gradlew test --stacktrace
           fi
 
+      - name: Upload test results
+        working-directory: master
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: results-${{ matrix.database }}
+          path: |
+            AndroidCompat/build/reports/tests
+            server/build/reports/tests
+
   check_docs:
     name: Validate that all options are documented
     runs-on: ubuntu-latest
