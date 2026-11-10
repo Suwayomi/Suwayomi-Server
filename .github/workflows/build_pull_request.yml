@@ -111,13 +111,12 @@ jobs:
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
-        working-directory: master
         if: failure()
         with:
           name: results-${{ matrix.database }}
           path: |
-            AndroidCompat/build/reports/tests
-            server/build/reports/tests
+            master/AndroidCompat/build/reports/tests
+            master/server/build/reports/tests
 
   check_docs:
     name: Validate that all options are documented
