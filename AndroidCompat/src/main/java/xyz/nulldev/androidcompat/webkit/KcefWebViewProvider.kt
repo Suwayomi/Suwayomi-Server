@@ -674,7 +674,7 @@ class KcefWebViewProvider(
             frame: CefFrame?,
             request: CefRequest,
         ): Boolean {
-            val isInitialLoad = frame?.url ?: "" == "" && request.method == "GET"
+            val isInitialLoad = frame?.url ?: "" == PRELOAD_PAGE && request.method == "GET"
             Log.v(TAG, "Resource request ${request.method} ${request.url} is initial? $isInitialLoad")
 
             initialRequestData?.apply(request)
@@ -700,7 +700,7 @@ class KcefWebViewProvider(
             frame: CefFrame,
             request: CefRequest,
         ): CefResourceHandler? {
-            val isInitialLoad = frame.url == "" && request.method == "GET"
+            val isInitialLoad = frame.url == PRELOAD_PAGE && request.method == "GET"
             Log.v(TAG, "Request ${request.method} ${request.url} is initial? $isInitialLoad")
             // NOTE: we should be calling this on the handler, since CEF calls us on its IO thread
             // but docs say "This method is called on a thread other than the UI thread" so should be fine
