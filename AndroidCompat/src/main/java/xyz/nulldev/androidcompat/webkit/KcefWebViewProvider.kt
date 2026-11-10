@@ -674,16 +674,20 @@ class KcefWebViewProvider(
             frame: CefFrame?,
             request: CefRequest,
         ): Boolean {
+            val isInitialLoad = frame?.url ?: "" == "" && request.method == "GET"
+            Log.v(TAG, "Resource request ${request.method} ${request.url} is initial? $isInitialLoad")
+
             initialRequestData?.apply(request)
             initialRequestData = null
 
             // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
             // thus if a client tried to use WebView#loadUrl as the docs suggest, this fails
             val cancel =
-                viewClient.shouldOverrideUrlLoading(
-                    view,
-                    CefWebResourceRequest(request, frame, false, settings.getIncludeCookiesOnIntercept()),
-                )
+                !isInitialLoad &&
+                    viewClient.shouldOverrideUrlLoading(
+                        view,
+                        CefWebResourceRequest(request, frame, false, settings.getIncludeCookiesOnIntercept()),
+                    )
             Log.v(TAG, "Resource ${request.url}, result is cancel? $cancel")
 
             handler.post { viewClient.onLoadResource(view, frame?.url) }
@@ -1024,7 +1028,7 @@ class KcefWebViewProvider(
     override fun insertVisualStateCallback(
         requestId: Long,
         callback: VisualStateCallback,
-    ): Unit {
+    ) {
         // TODO: Implement this properly
         // for now, we cannot implement this, since CEF does not expose RenderHost::InsertVisualStateCallback
         // https://source.chromium.org/chromium/chromium/src/+/main:android_webview/browser/aw_contents.cc;l=1463-1470;drc=596efb9363f44340caa548d3fcfbfb8242abfec2
