@@ -16,6 +16,7 @@ import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import org.chromium.support_lib_boundary.VisualStateCallbackBoundaryInterface;
 import org.chromium.support_lib_boundary.WebViewProviderBoundaryInterface;
 import org.chromium.support_lib_boundary.util.BoundaryInterfaceReflectionUtil;
 
@@ -49,20 +50,23 @@ class SupportLibWebViewChromium implements WebViewProviderBoundaryInterface {
 
     @Override
     public void insertVisualStateCallback(long requestId, InvocationHandler callbackInvoHandler) {
-        // KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
-        // if (sharedWebViewChromium == null) {
-        //     throw new IllegalStateException(
-        //             "Support lib method called on WebView that no longer exists.");
-        // }
-        // sharedWebViewChromium.insertVisualStateCallback(
-        //         requestId,
-        //         new AwContents.VisualStateCallback() {
-        //             @Override
-        //             public void onComplete(long requestId) {
-        //                 visualStateCallback.onComplete(requestId);
-        //             }
-        //         });
-        throw new RuntimeException("Not supported");
+        final VisualStateCallbackBoundaryInterface visualStateCallback =
+                BoundaryInterfaceReflectionUtil.castToSuppLibClass(
+                        VisualStateCallbackBoundaryInterface.class, callbackInvoHandler);
+
+        KcefWebViewProvider sharedWebViewChromium = mSharedWebViewChromium.get();
+        if (sharedWebViewChromium == null) {
+            throw new IllegalStateException(
+                    "Support lib method called on WebView that no longer exists.");
+        }
+        sharedWebViewChromium.insertVisualStateCallback(
+                requestId,
+                new WebView.VisualStateCallback() {
+                    @Override
+                    public void onComplete(long requestId) {
+                        visualStateCallback.onComplete(requestId);
+                    }
+                });
     }
 
     @Override

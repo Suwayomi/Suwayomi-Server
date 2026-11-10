@@ -1024,7 +1024,13 @@ class KcefWebViewProvider(
     override fun insertVisualStateCallback(
         requestId: Long,
         callback: VisualStateCallback,
-    ): Unit = throw RuntimeException("Stub!")
+    ): Unit {
+        // TODO: Implement this properly
+        // for now, we cannot implement this, since CEF does not expose RenderHost::InsertVisualStateCallback
+        // https://source.chromium.org/chromium/chromium/src/+/main:android_webview/browser/aw_contents.cc;l=1463-1470;drc=596efb9363f44340caa548d3fcfbfb8242abfec2
+        // At the moment, it is only used as a fast-path for turnstile resolution, with a timeout,
+        // so we can just not call the callback and be fine
+    }
 
     override fun clearView(): Unit = throw RuntimeException("Stub!")
 
