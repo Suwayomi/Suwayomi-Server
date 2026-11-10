@@ -74,7 +74,7 @@ class CefProviderTest {
 
     companion object {
         val root = AppDirs { appName = "Tachidesk" }.getUserDataDir()
-        val cefDir = Path(root) / "bin/kcef"
+        val cefDir = Path(root) / "bin/kcef_test"
 
         @JvmStatic
         fun condition() = cefDir.exists()
