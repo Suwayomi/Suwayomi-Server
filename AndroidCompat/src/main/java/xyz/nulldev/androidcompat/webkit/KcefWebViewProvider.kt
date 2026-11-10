@@ -441,7 +441,8 @@ class KcefWebViewProvider(
             frame: CefFrame,
             transitionType: CefRequest.TransitionType,
         ) {
-            if (frame.url == PRELOAD_PAGE) return
+            val url = frame.url ?: ""
+            if (url == PRELOAD_PAGE) return
             Log.v(TAG, "Load start, pushing mappings")
             mappings.forEach {
                 val js =
@@ -468,7 +469,7 @@ class KcefWebViewProvider(
 
             // "This method is called once for each main frame load so a page with iframes or framesets will call onPageStarted one time for the main frame"
             if (frame.isMain) {
-                handler.post { viewClient.onPageStarted(view, frame.url, null) }
+                handler.post { viewClient.onPageStarted(view, url, null) }
             }
         }
     }
