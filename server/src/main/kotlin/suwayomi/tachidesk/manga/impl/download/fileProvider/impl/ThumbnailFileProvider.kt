@@ -60,7 +60,12 @@ class ThumbnailFileProvider(
         }
 
         ImageResponse
-            .getImageResponse(applicationDirs.thumbnailDownloadsRoot, mangaId.toString(), staleBefore) {
+            .getImageResponse(
+                applicationDirs.thumbnailDownloadsRoot,
+                mangaId.toString(),
+                staleBefore,
+                { Manga.markThumbnailChanged(mangaId) },
+            ) {
                 Manga.fetchMangaThumbnailResponse(mangaId)
             }.first
             .close()

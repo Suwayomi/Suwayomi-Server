@@ -75,7 +75,7 @@ class MangaTest : ApplicationTest() {
     }
 
     @Test
-    fun updateMangaDatabaseKeepsCoversAndRegistersTheFetchWhenThumbnailUrlIsUnchanged() {
+    fun updateMangaDatabaseKeepsCoversAndTheirVersionWhenThumbnailUrlIsUnchanged() {
         val (mangaId, coverFiles) = createMangaWithCachedCovers()
 
         updateMangaDatabaseWith(mangaId, originalThumbnailUrl)
@@ -83,7 +83,8 @@ class MangaTest : ApplicationTest() {
         assertCoversKept(coverFiles)
         val storedManga = getStoredManga(mangaId)
         assertEquals(originalThumbnailUrl, storedManga[MangaTable.thumbnail_url])
-        assertTrue(storedManga[MangaTable.thumbnailUrlLastFetched] > 100L)
+        assertEquals(100L, storedManga[MangaTable.thumbnailUrlLastFetched])
+        assertTrue(storedManga[MangaTable.lastFetchedAt] > 100L)
     }
 
     @Test

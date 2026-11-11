@@ -7,10 +7,14 @@ package suwayomi.tachidesk.manga.impl.download.fileProvider.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
+import io.mockk.just
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol
@@ -62,11 +66,13 @@ class ThumbnailFileProviderTest : ApplicationTest() {
             val cover = downloadedCover(lastModified = 1_000L)
             mockkObject(Manga)
             coEvery { Manga.fetchMangaThumbnailResponse(mangaId) } returns sourceResponse(newCover)
+            every { Manga.markThumbnailChanged(mangaId) } just Runs
 
             ThumbnailFileProvider(mangaId).refreshIfStale(staleBefore = 5_000L)
 
             coVerify(exactly = 1) { Manga.fetchMangaThumbnailResponse(mangaId) }
             assertTrue(cover.readBytes().contentEquals(newCover))
+            verify(exactly = 1) { Manga.markThumbnailChanged(mangaId) }
         }
 
     @Test
@@ -75,12 +81,14 @@ class ThumbnailFileProviderTest : ApplicationTest() {
             val cover = downloadedCover(lastModified = 1_000L)
             mockkObject(Manga)
             coEvery { Manga.fetchMangaThumbnailResponse(mangaId) } throws IOException("source unavailable")
+            every { Manga.markThumbnailChanged(mangaId) } just Runs
 
             ThumbnailFileProvider(mangaId).refreshIfStale(staleBefore = 5_000L)
 
             coVerify(exactly = 1) { Manga.fetchMangaThumbnailResponse(mangaId) }
             assertTrue(cover.readBytes().contentEquals(oldCover))
             assertEquals(1_000L, cover.lastModified())
+            verify(exactly = 0) { Manga.markThumbnailChanged(any()) }
         }
 
     @Test

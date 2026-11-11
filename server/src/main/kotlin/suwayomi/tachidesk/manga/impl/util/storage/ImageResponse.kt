@@ -53,11 +53,14 @@ object ImageResponse {
      *
      * @param cacheSavePath where to save the cached image. Caller should decide to use perma cache or temp cache (OS temp dir)
      * @param fileName what the saved cache file should be named
+     * @param staleBefore a cached file last modified before this epoch millis is fetched again; it is only replaced when the new image differs
+     * @param onImageChanged called when a stale cached file was replaced by a different image
      */
     suspend fun getImageResponse(
         saveDir: String,
         fileName: String,
         staleBefore: Long = 0,
+        onImageChanged: () -> Unit = {},
         fetcher: suspend () -> Response,
     ): Pair<InputStream, String> {
         File(saveDir).mkdirs()
@@ -77,7 +80,7 @@ object ImageResponse {
         }
 
         return try {
-            refreshCachedImage(reusableCachedFile, filePath, fetcher)
+            refreshCachedImage(reusableCachedFile, filePath, fetcher, onImageChanged)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
@@ -118,6 +121,7 @@ object ImageResponse {
         cachedFile: String,
         filePath: String,
         fetcher: suspend () -> Response,
+        onImageChanged: () -> Unit,
     ): Pair<InputStream, String> {
         val response = fetcher()
 
@@ -143,6 +147,7 @@ object ImageResponse {
             if (actualSavePath != cachedFile) {
                 currentImage.delete()
             }
+            onImageChanged()
             return pathToInputStream(actualSavePath) to imageType
         } catch (e: IOException) {
             File("$filePath.tmp").delete()
