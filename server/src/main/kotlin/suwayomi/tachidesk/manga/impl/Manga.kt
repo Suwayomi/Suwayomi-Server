@@ -225,8 +225,11 @@ object Manga {
                 it[MangaTable.status] = sManga.status
                 if (!sManga.thumbnail_url.isNullOrEmpty()) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
-                    it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
-                    clearThumbnail(mangaId)
+                    // thumbnailUrlLastFetched is the cover version clients use to bust their cache: only bump it on a
+                    // new url. A cover that changes behind the same url is detected when it is refreshed after lastFetchedAt
+                    if (sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
+                        it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                    }
                 }
 
                 it[MangaTable.realUrl] =
@@ -439,7 +442,41 @@ object Manga {
         }
     }
 
-    suspend fun fetchMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+    private suspend fun fetchSourceThumbnailResponse(
+        source: Source,
+        mangaEntry: ResultRow,
+    ): Response =
+        when (source) {
+            is HttpSource -> {
+                fetchHttpSourceMangaThumbnail(source, mangaEntry)
+            }
+
+            is StubSource -> {
+                val thumbnailUrl =
+                    mangaEntry[MangaTable.thumbnail_url]
+                        ?: throw NullPointerException("No thumbnail found")
+                network.client
+                    .newCall(
+                        GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
+                    ).await()
+            }
+
+            else -> {
+                throw IllegalArgumentException("Unknown source")
+            }
+        }
+
+    suspend fun fetchMangaThumbnailResponse(mangaId: Int): Response {
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        val source = getSourceOrStub(mangaEntry[MangaTable.sourceReference])
+
+        return fetchSourceThumbnailResponse(source, mangaEntry)
+    }
+
+    suspend fun fetchMangaThumbnail(
+        mangaId: Int,
+        staleBefore: Long = 0,
+    ): Pair<InputStream, String> {
         val cacheSaveDir = applicationDirs.tempThumbnailCacheRoot
         val fileName = mangaId.toString()
 
@@ -447,12 +484,6 @@ object Manga {
         val sourceId = mangaEntry[MangaTable.sourceReference]
 
         return when (val source = getSourceOrStub(sourceId)) {
-            is HttpSource -> {
-                getImageResponse(cacheSaveDir, fileName) {
-                    fetchHttpSourceMangaThumbnail(source, mangaEntry)
-                }
-            }
-
             is LocalSource -> {
                 val imageFile =
                     mangaEntry[MangaTable.thumbnail_url]?.let {
@@ -469,20 +500,10 @@ object Manga {
                 imageFile.inputStream() to contentType
             }
 
-            is StubSource -> {
-                getImageResponse(cacheSaveDir, fileName) {
-                    val thumbnailUrl =
-                        mangaEntry[MangaTable.thumbnail_url]
-                            ?: throw NullPointerException("No thumbnail found")
-                    network.client
-                        .newCall(
-                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
-                        ).await()
-                }
-            }
-
             else -> {
-                throw IllegalArgumentException("Unknown source")
+                getImageResponse(cacheSaveDir, fileName, staleBefore, { markThumbnailChanged(mangaId) }) {
+                    fetchSourceThumbnailResponse(source, mangaEntry)
+                }
             }
         }
     }
@@ -496,16 +517,19 @@ object Manga {
                         MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
                     }.any()
             }
-        val mangaSource =
+        val mangaEntry =
             transaction {
                 MangaTable
-                    .select(MangaTable.sourceReference)
+                    .select(MangaTable.sourceReference, MangaTable.lastFetchedAt)
                     .where { MangaTable.id eq mangaId }
                     .firstOrNull()
-                    ?.get(MangaTable.sourceReference)
             }
+        val mangaSource = mangaEntry?.get(MangaTable.sourceReference)
+        // covers cached before the last details refresh are checked again, the source may have changed them behind the same url
+        val staleBefore = (mangaEntry?.get(MangaTable.lastFetchedAt) ?: 0L) * 1000
 
         if (mangaInLibrary && mangaSource != LocalSource.ID) {
+            ThumbnailDownloadHelper.refreshIfStale(mangaId, staleBefore)
             return try {
                 ThumbnailDownloadHelper.getImage(mangaId)
             } catch (_: MissingThumbnailException) {
@@ -514,7 +538,16 @@ object Manga {
             }
         }
 
-        return fetchMangaThumbnail(mangaId)
+        return fetchMangaThumbnail(mangaId, staleBefore)
+    }
+
+    /** Bump the cover version after the source served a different image, so clients stop using their cached copy */
+    fun markThumbnailChanged(mangaId: Int) {
+        transaction {
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                it[thumbnailUrlLastFetched] = Instant.now().epochSecond
+            }
+        }
     }
 
     fun clearThumbnail(mangaId: Int) {
