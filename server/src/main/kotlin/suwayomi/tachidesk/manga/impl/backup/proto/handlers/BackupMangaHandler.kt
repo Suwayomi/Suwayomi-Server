@@ -264,6 +264,11 @@ object BackupMangaHandler {
         // a newer local copy wins the next upload; categories and tracking are part of the manga's version
         val keepLocalManga =
             syncMode == SyncRestoreMode.ADOPT && dbManga != null && manga.version < dbManga[MangaUserTable.version]
+        // cached covers only go when they may be wrong: a new manga can get the id of a deleted one, or its url changed.
+        // Clearing them on every restore made each sync download the covers of all synced manga again
+        val coverChanged =
+            dbManga == null ||
+                (!keepLocalManga && manga.thumbnailUrl != null && manga.thumbnailUrl != dbManga[MangaTable.thumbnail_url])
 
         val mangaId =
             transaction {
@@ -281,6 +286,7 @@ object BackupMangaHandler {
                                 it[genre] = manga.genre.joinToString()
                                 it[status] = manga.status
                                 it[thumbnail_url] = manga.thumbnailUrl
+                                it[MangaTable.thumbnailUrlLastFetched] = Clock.System.now().epochSeconds
                                 it[updateStrategy] = manga.updateStrategy.name
 
                                 it[sourceReference] = manga.source
@@ -302,6 +308,9 @@ object BackupMangaHandler {
                             it[genre] = manga.genre.ifEmpty { null }?.joinToString() ?: dbManga[genre]
                             it[status] = manga.status
                             it[thumbnail_url] = manga.thumbnailUrl ?: dbManga[thumbnail_url]
+                            if (coverChanged) {
+                                it[MangaTable.thumbnailUrlLastFetched] = Clock.System.now().epochSeconds
+                            }
                             it[updateStrategy] = manga.updateStrategy.name
 
                             it[initialized] = dbManga[initialized] || manga.description != null
@@ -345,8 +354,9 @@ object BackupMangaHandler {
                     }
                 }
 
-                // delete thumbnail in case cached data still exists
-                clearThumbnail(mangaId)
+                if (coverChanged) {
+                    clearThumbnail(mangaId)
+                }
 
                 if (flags.includeClientData && manga.meta.isNotEmpty()) {
                     modifyMangasMetas(userId, mapOf(mangaId to manga.meta))
