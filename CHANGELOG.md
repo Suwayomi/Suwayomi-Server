@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - (**API**) Answer 424 instead of 500 when a source fails
 - (**Auth**) Stop logging routine expired-token rejections as errors
+- (**Backup/Sync**) Keep cached covers on restore and sync unless the manga is new or its thumbnail url changed
 - (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
 - (**Backup/API**) Fix restore mutations timing out when progress notifications arrive before subscription
 - (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
