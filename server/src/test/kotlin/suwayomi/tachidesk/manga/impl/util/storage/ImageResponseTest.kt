@@ -237,4 +237,29 @@ class ImageResponseTest {
             assertFalse(File(tempDir, "1.tmp").exists())
             assertEquals(listOf("1.jpg"), filesInDir())
         }
+
+    @Test
+    fun saveImageWritesTheImageWhenNoFileExists() {
+        val (savedPath, mime) =
+            ImageResponse.saveImage("$saveDir/$fileName", newImage.inputStream(), "image/jpeg")
+
+        assertEquals("$saveDir/$fileName.jpg", savedPath)
+        assertEquals("image/jpeg", mime)
+        assertTrue(File(savedPath).readBytes().contentEquals(newImage))
+        assertEquals(listOf("1.jpg"), filesInDir())
+    }
+
+    @Test
+    fun saveImageReplacesAnExistingFileWithTheSameExtension() {
+        cachedFile()
+
+        val (savedPath, mime) =
+            ImageResponse.saveImage("$saveDir/$fileName", newImage.inputStream(), "image/jpeg")
+
+        assertEquals("$saveDir/$fileName.jpg", savedPath)
+        assertEquals("image/jpeg", mime)
+        assertTrue(File(savedPath).readBytes().contentEquals(newImage))
+        assertFalse(File(tempDir, "1.tmp").exists())
+        assertEquals(listOf("1.jpg"), filesInDir())
+    }
 }

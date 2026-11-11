@@ -14,6 +14,8 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import kotlin.coroutines.cancellation.CancellationException
 
 object ImageResponse {
@@ -174,7 +176,7 @@ object ImageResponse {
 
         val actualSavePath = "$filePath.$extension"
 
-        tmpSaveFile.renameTo(File(actualSavePath))
+        Files.move(tmpSaveFile.toPath(), File(actualSavePath).toPath(), StandardCopyOption.REPLACE_EXISTING)
         return Pair(actualSavePath, imageType?.mime ?: mimeType ?: "image/jpeg")
     }
 
