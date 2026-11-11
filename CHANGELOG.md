@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Tracker**) Add MangaBaka tracker
 
 ### Changed
+- (**API**) Send an ETag with manga thumbnails so clients revalidating an expired cover get a 304 instead of the whole image
 - (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
