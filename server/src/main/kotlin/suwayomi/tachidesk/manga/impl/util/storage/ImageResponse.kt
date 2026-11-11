@@ -18,11 +18,20 @@ import java.io.InputStream
 object ImageResponse {
     private fun pathToInputStream(path: String): InputStream = FileInputStream(path).buffered()
 
+    // extensions saveImage gives most images; a leftover ".tmp" comes last so a saved image wins over it
+    private val knownExtensions = ImageUtil.ImageType.entries.map { it.extension } + listOf("jpeg", "tmp")
+
     /** find file with name when file extension is not known */
     fun findFileNameStartingWith(
         directoryPath: String,
         fileName: String,
     ): String? {
+        // checking the usual extensions avoids listing the whole directory, which grows with the library (all covers
+        // share one directory) and was done for every image served
+        knownExtensions.firstOrNull { File(directoryPath, "$fileName.$it").isFile }?.let {
+            return "$directoryPath/$fileName.$it"
+        }
+
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
             if (file.name.startsWith(target)) {
