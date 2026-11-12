@@ -1564,7 +1564,14 @@ class KcefWebViewProvider(
 
     fun removeDocumentStartJavaScript(scriptId: Int) {
         documentScripts.remove(scriptId)?.let {
-            it.injectedScriptIdentifier?.let { backgroundScope.launch { removeDocumentStartJavaScript(it) } }
+            it.injectedScriptIdentifier?.let {
+                runBlocking {
+                    backgroundScope
+                        .launch(Dispatchers.IO) {
+                            removeDocumentStartJavaScript(it)
+                        }.join()
+                }
+            }
         }
     }
 
