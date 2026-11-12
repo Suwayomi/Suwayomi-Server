@@ -113,6 +113,7 @@ import java.io.IOException
 import java.net.URI
 import java.net.URL
 import java.nio.ByteBuffer
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import javax.swing.JPanel
 import kotlin.io.encoding.Base64
@@ -138,11 +139,11 @@ class KcefWebViewProvider(
     private val worldMapping: MutableMap<Pair<String, String>, Int> = mutableMapOf()
     private val originMatchedHeaders: MutableMap<HeaderValuePair, LinkedHashSet<String>> = mutableMapOf()
     private var initialRequestData: InitialRequestData? = null
-    private var initialUrl: String? = null
     private var documentScriptIdCounter = 1
 
     private var kcefClient: CefClient? = null
     private var browser: CefBrowser? = null
+    private val initLatch = CountDownLatch(1)
 
     private val handler = Handler(view.webViewLooper)
 
@@ -243,29 +244,8 @@ class KcefWebViewProvider(
                         Log.e(TAG, "Failed to enable page notifications", it)
                     }
                     injectDocumentStartScripts()
-
-                    val ua =
-                        settings.userAgentString ?: run {
-                            browser.loadURL(initialUrl)
-                            initialUrl = null
-                            return@launch
-                        }
-                    val args =
-                        buildJsonObject {
-                            put("userAgent", ua)
-                            settings.getUserAgentMetadata()?.let {
-                                Log.d(TAG, "Using user-agent $ua with metadata $it")
-                                put("userAgentMetadata", Json.encodeToJsonElement(it))
-                            }
-                        }
-                    runCatching {
-                        val res = browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args.toString()).await()
-                        Log.v(TAG, "Successfully set user agent: $res")
-                    }.exceptionOrNull()?.let {
-                        Log.e(TAG, "Failed to set user agent", it)
-                    }
-                    browser.loadURL(initialUrl)
-                    initialUrl = null
+                    setUserAgent()
+                    initLatch.countDown()
                 }
         }
 
@@ -358,7 +338,7 @@ class KcefWebViewProvider(
             source: String,
             line: Int,
         ): Boolean {
-            Log.d(TAG, "$source:$line[$level]: $message")
+            Log.v(TAG, "$source:$line[$level]: $message")
             return true
         }
 
@@ -831,6 +811,18 @@ class KcefWebViewProvider(
                 }
             }
         initHandler?.init(this)
+
+        browser =
+            kcefClient!!
+                .createBrowser(
+                    PRELOAD_PAGE,
+                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                    false,
+                ).apply {
+                    // NOTE: Without this, we don't seem to be receiving any events
+                    createImmediately()
+                }
+        initLatch.await()
     }
 
     fun getSource(getter: (String) -> Unit) {
@@ -946,24 +938,17 @@ class KcefWebViewProvider(
     }
 
     private fun load(url: String) {
-        val b = browser
-        if (b == null) {
-            initialUrl = url
-            browser =
-                kcefClient!!
-                    .createBrowser(
-                        PRELOAD_PAGE,
-                        CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                        false,
-                    ).apply {
-                        // NOTE: Without this, we don't seem to be receiving any events
-                        createImmediately()
-                    }
-        } else {
-            // we load the preload page here briefly to ensure isInitialLoad can properly detect this Load* call
-            b.loadURL(PRELOAD_PAGE)
-            b.stopLoad()
-            b.loadURL(url)
+        runBlocking {
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    setUserAgent()
+                }.join()
+        }
+        // we load the preload page here briefly to ensure isInitialLoad can properly detect this Load* call
+        browser!!.also {
+            it.loadURL(PRELOAD_PAGE)
+            it.stopLoad()
+            it.loadURL(url)
         }
     }
 
@@ -1818,6 +1803,24 @@ class KcefWebViewProvider(
                         }
                     }
                 }.awaitAll()
+        }
+    }
+
+    private suspend fun setUserAgent() {
+        val ua = settings.userAgentString ?: return
+        val args =
+            buildJsonObject {
+                put("userAgent", ua)
+                settings.getUserAgentMetadata()?.let {
+                    Log.d(TAG, "Using user-agent $ua with metadata $it")
+                    put("userAgentMetadata", Json.encodeToJsonElement(it))
+                }
+            }
+        runCatching {
+            val res = browser!!.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args.toString()).await()
+            Log.v(TAG, "Successfully set user agent: $res")
+        }.exceptionOrNull()?.let {
+            Log.e(TAG, "Failed to set user agent", it)
         }
     }
 }
