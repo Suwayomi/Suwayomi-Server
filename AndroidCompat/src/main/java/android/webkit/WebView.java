@@ -215,8 +215,8 @@ public class WebView extends AbsoluteLayout
         DisplayMetrics metrics = new DisplayMetrics();
         metrics.widthPixels = mProvider.getContentWidth();
         metrics.heightPixels = mProvider.getContentHeight();
-        metrics.density = 1;
-        metrics.densityDpi = DisplayMetrics.DENSITY_400;
+        metrics.density = 0.6f;
+        metrics.densityDpi = 96;
         return new Resources(null, metrics, Resources.getSystem().getConfiguration());
     }
 
