@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Message
 import android.print.PrintDocumentAdapter
+import android.text.TextUtils
 import android.util.Log
 import android.util.SparseArray
 import android.view.DragEvent
@@ -51,9 +52,24 @@ import android.webkit.WebViewProvider.ScrollDelegate
 import android.webkit.WebViewProvider.ViewDelegate
 import android.webkit.WebViewRenderProcess
 import android.webkit.WebViewRenderProcessClient
+import com.android.webview.chromium.Profile
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.cef.CefClient
 import org.cef.CefSettings
 import org.cef.browser.CefBrowser
@@ -83,18 +99,29 @@ import org.cef.network.CefPostData
 import org.cef.network.CefPostDataElement
 import org.cef.network.CefRequest
 import org.cef.network.CefResponse
+import org.chromium.android_webview.JavaScriptExecutionCallback
+import org.chromium.android_webview.JsReplyProxy
+import org.chromium.android_webview.ScriptHandler
+import org.chromium.android_webview.WebMessageListener
+import org.chromium.content_public.browser.MessagePayload
+import org.chromium.content_public.browser.MessagePayloadType
 import org.koin.mp.KoinPlatformTools
 import java.awt.Rectangle
 import java.io.BufferedWriter
 import java.io.File
 import java.io.IOException
+import java.net.URI
+import java.net.URL
 import java.nio.ByteBuffer
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import javax.swing.JPanel
+import kotlin.io.encoding.Base64
 import kotlin.math.min
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.declaredMemberFunctions
 import kotlin.reflect.jvm.javaMethod
+import kotlin.runCatching
 
 class KcefWebViewProvider(
     private val view: WebView,
@@ -103,12 +130,20 @@ class KcefWebViewProvider(
     private var viewClient = WebViewClient()
     private var chromeClient = WebChromeClient()
     private val renderHandler = RenderHandler()
-    private val mappings: MutableList<FunctionMapping> = mutableListOf()
+    private val profile = Profile("default", this)
     private val urlHttpMapping: MutableMap<String, String> = mutableMapOf()
+    private val mappings: MutableList<FunctionMapping> = mutableListOf()
+    private val webMessageMappings: MutableMap<Pair<String, String>, WebMessageMapping> = mutableMapOf()
+    private val documentScripts: MutableMap<Int, InjectedScript> = mutableMapOf()
+    private val frameIdentifierMapping: MutableMap<String, String> = mutableMapOf()
+    private val worldMapping: MutableMap<Pair<String, String>, Int> = mutableMapOf()
+    private val originMatchedHeaders: MutableMap<HeaderValuePair, LinkedHashSet<String>> = mutableMapOf()
     private var initialRequestData: InitialRequestData? = null
+    private var documentScriptIdCounter = 1
 
     private var kcefClient: CefClient? = null
     private var browser: CefBrowser? = null
+    private val initLatch = CountDownLatch(1)
 
     private val handler = Handler(view.webViewLooper)
 
@@ -117,40 +152,105 @@ class KcefWebViewProvider(
         const val QUERY_FN = "__\$_suwayomiQuery"
         const val QUERY_CANCEL_FN = "__\$_suwayomiQueryCancel"
 
-        private val initHandler: InitBrowserHandler by KoinPlatformTools.defaultContext().get().inject()
+        const val WEBMESSAGE_FN = "__\$_suwayomiWebmessage"
+        const val WEBMESSAGE_CANCEL_FN = "__\$_suwayomiWebmessageCancel"
+
+        const val PAGE_WORLD_NAME = ""
+
+        private const val PRELOAD_PAGE = "about:blank#suwayomipreloadingpage"
+
+        private fun findHandler(): Lazy<InitBrowserHandler?> =
+            runCatching { KoinPlatformTools.defaultContext().get() }.getOrNull()?.let { it.inject<InitBrowserHandler>() } ?: lazy { null }
+
+        // match rules: https://developer.android.com/reference/androidx/webkit/WebViewCompat#addWebMessageListener(android.webkit.WebView,java.lang.String,java.util.Set%3Cjava.lang.String%3E,androidx.webkit.WebViewCompat.WebMessageListener)
+        private fun URL.matchesSchemeOnly(pattern: String) = "${this.protocol}://" == pattern
+
+        private fun URL.matchesFullHost(pattern: String) =
+            if (this.port == -1 ||
+                this.port == this.defaultPort
+            ) {
+                "${this.protocol}://${this.host}" == pattern ||
+                    "${this.protocol}://${this.host}:${this.defaultPort}" == pattern
+            } else {
+                "${this.protocol}://${this.host}:${this.port}" ==
+                    pattern
+            }
+
+        private fun URL.matchesFullPattern(pattern: String) =
+            pattern.startsWith("${this.protocol}://*.") &&
+                pattern.removePrefix("${this.protocol}://*").let { s ->
+                    if (this.port == -1 ||
+                        this.port == this.defaultPort
+                    ) {
+                        this.host.endsWith(s) || "${this.host}:${this.defaultPort}".endsWith(s)
+                    } else {
+                        "${this.host}:${this.port}".endsWith(s)
+                    }
+                }
+
+        private fun matchesUrl(
+            origins: Array<String>,
+            url: String,
+        ): Boolean = (origins.size == 1 && origins.first() == "*") || matchesUrl1(origins.asIterable(), url)
+
+        private fun matchesUrl(
+            origins: Collection<String>,
+            url: String,
+        ): Boolean = (origins.size == 1 && origins.first() == "*") || matchesUrl1(origins.asIterable(), url)
+
+        private fun matchesUrl1(
+            origins: Iterable<String>,
+            url: String,
+        ): Boolean =
+            URI(url.removePrefix("blob:")).toURL().let {
+                arrayOf("http", "https", "ws", "wss").contains(it.protocol) &&
+                    origins.any { p -> it.matchesSchemeOnly(p) || it.matchesFullHost(p) || it.matchesFullPattern(p) }
+            }
+
+        private fun jsMatchCondition(origins: Array<String>): String =
+            if (origins.size == 1 && origins[0] == "*") {
+                "true"
+            } else {
+                """
+            ${Json.encodeToString(
+                    origins,
+                )}.map(m => m.replace(/(?<origin>(?:https|wss):\/\/.*):443|(?<origin2>(?:http|ws):\/\/.*):80/, "$<origin>$<origin2>"))
+                    .some(m => m === location.origin || m === location.protocol + "//" ||
+                        (/(https?|wss?):\/\/\*\./.test(m) && m.startsWith(location.protocol + '//') && location.origin.endsWith(m.substring(location.protocol.length + 3))))
+            """
+            }
+
+        private val initHandler by findHandler()
+        private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }
 
     interface InitBrowserHandler {
         fun init(provider: KcefWebViewProvider): Unit
     }
 
+    enum class ScriptType {
+        DOCUMENT_START,
+        DOCUMENT_END,
+    }
+
     private inner class LifeSpanHandler : CefLifeSpanHandlerAdapter() {
         override fun onAfterCreated(browser: CefBrowser) {
-            val ua = settings.userAgentString
-            val args =
-                settings.getUserAgentMetadata()?.let {
-                    Log.d(TAG, "Using user-agent $ua with metadata $it")
-                    """
-                {
-                    "userAgent": ${Json.encodeToString(ua)},
-                    "userAgentMetadata": ${Json.encodeToString(it)}
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    runCatching {
+                        val res = browser.devToolsClient.executeDevToolsMethod("Page.enable").await()
+                        Log.v(TAG, "Successfully enabled page notifications: $res")
+                    }.exceptionOrNull()?.let {
+                        Log.e(TAG, "Failed to enable page notifications", it)
+                    }
+                    injectDocumentStartScripts()
+                    setUserAgent()
+                    initLatch.countDown()
                 }
-                """
-                } ?: run {
-                    Log.d(TAG, "Using user-agent $ua without metadata")
-                    """
-                {
-                    "userAgent": ${Json.encodeToString(ua)}
-                }
-                """
-                }
-            browser.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args).whenComplete { res, ex ->
-                if (ex != null) {
-                    Log.e(TAG, "Failed to set user agent", ex)
-                } else {
-                    Log.v(TAG, "Successfully set user agent: $res")
-                }
-            }
+        }
+
+        override fun onBeforeClose(browser: CefBrowser) {
+            Log.d(TAG, "Close browser")
         }
     }
 
@@ -163,6 +263,8 @@ class KcefWebViewProvider(
                 Log.v(TAG, "Initial request: applying headers and post data")
                 if (!additionalHttpHeaders.isNullOrEmpty()) {
                     additionalHttpHeaders.forEach {
+                        // TODO: Decide if this should really overwrite
+                        // "Note that if this map contains any of the headers that are set by default by this WebView, such as those controlling caching, accept types or the User-Agent, their values may be overridden by this WebView's defaults."
                         setHeaderByName(it.key, it.value, true)
                     }
                 }
@@ -185,6 +287,7 @@ class KcefWebViewProvider(
         val request: CefRequest?,
         val frame: CefFrame?,
         val redirect: Boolean,
+        val includeCookies: Boolean,
     ) : WebResourceRequest {
         override fun getUrl(): Uri = Uri.parse(request?.url)
 
@@ -199,7 +302,7 @@ class KcefWebViewProvider(
         override fun getRequestHeaders(): Map<String, String> {
             val headers = mutableMapOf<String, String>()
             request?.getHeaderMap(headers)
-            return headers
+            return if (includeCookies) headers else headers.filterKeys { !it.equals("Cookie", true) }
         }
     }
 
@@ -263,7 +366,14 @@ class KcefWebViewProvider(
             httpStatusCode: Int,
         ) {
             val url = frame.url ?: ""
-            Log.v(TAG, "Load end $url")
+            val isMain = frame.isMain // preserve, since it may not be valid in handler anymore
+            Log.d(TAG, "Load end $url (is main frame? $isMain)")
+            if (url == PRELOAD_PAGE) return
+
+            documentScripts.values.filter { it.type == ScriptType.DOCUMENT_END && it.matchesUrl(frame.url) }.forEach {
+                evaluateJavaScript(it.script, it.world)
+            }
+
             handler.post {
                 if (httpStatusCode == 404) {
                     viewClient.onReceivedError(
@@ -285,7 +395,9 @@ class KcefWebViewProvider(
                     // TODO: create request and response
                     // viewClient.onReceivedHttpError(_view, ...);
                 }
-                viewClient.onPageFinished(view, url)
+                if (isMain) {
+                    viewClient.onPageFinished(view, url)
+                }
                 chromeClient.onProgressChanged(view, 100)
             }
         }
@@ -309,6 +421,8 @@ class KcefWebViewProvider(
             frame: CefFrame,
             transitionType: CefRequest.TransitionType,
         ) {
+            val url = frame.url ?: ""
+            if (url == PRELOAD_PAGE) return
             Log.v(TAG, "Load start, pushing mappings")
             mappings.forEach {
                 val js =
@@ -333,7 +447,10 @@ class KcefWebViewProvider(
                 browser.executeJavaScript(js, "SUWAYOMI ${it.toNice()}", 0)
             }
 
-            handler.post { viewClient.onPageStarted(view, frame.url, null) }
+            // "This method is called once for each main frame load so a page with iframes or framesets will call onPageStarted one time for the main frame"
+            if (frame.isMain) {
+                handler.post { viewClient.onPageStarted(view, url, null) }
+            }
         }
     }
 
@@ -380,6 +497,91 @@ class KcefWebViewProvider(
         }
     }
 
+    private inner class KcefWebMessageReplyProxy(
+        val jsObject: String,
+        val world: String,
+    ) : JsReplyProxy.NativeJsReplyProxy {
+        override fun postMessage(payload: MessagePayload) {
+            val stringData =
+                if (payload.type ==
+                    MessagePayloadType.ARRAY_BUFFER
+                ) {
+                    Base64.Default.encode(payload.getAsArrayBuffer())
+                } else {
+                    payload.getAsString()
+                }
+            evaluateJavaScript(
+                """window.$jsObject.__receiveMessage({
+                    type: ${payload.type},
+                    data: ${Json.encodeToString(stringData)}
+                })""",
+                world,
+            ) {}
+        }
+
+        override fun executeJavaScript(
+            script: String,
+            callback: JavaScriptExecutionCallback,
+        ) {
+            evaluateJavaScript(script, world, callback)
+        }
+
+        override fun release() {
+        }
+    }
+
+    private inner class WebMessageRouterHandler : CefMessageRouterHandlerAdapter() {
+        override fun onQuery(
+            browser: CefBrowser,
+            frame: CefFrame,
+            queryId: Long,
+            request: String,
+            persistent: Boolean,
+            callback: CefQueryCallback,
+        ): Boolean {
+            val invoke =
+                try {
+                    Json.decodeFromString<WebMessageCall>(request)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Invalid request received $e")
+                    return false
+                }
+            webMessageMappings[Pair(invoke.world, invoke.jsObject)]?.let {
+                handler.post {
+                    try {
+                        Log.v(
+                            TAG,
+                            "Received request to invoke ${invoke.jsObject} on world ${invoke.world} with ${if (invoke.type == 1) "buffer" else "string"} arg",
+                        )
+                        val message =
+                            if (invoke.type ==
+                                1
+                            ) {
+                                MessagePayload(Base64.Default.decode(invoke.data))
+                            } else {
+                                MessagePayload(invoke.data)
+                            }
+                        val replyProxy = JsReplyProxy.create(KcefWebMessageReplyProxy(invoke.jsObject, invoke.world))
+                        it.listener.onPostMessage(
+                            message,
+                            Uri.parse(browser.url ?: ""),
+                            Uri.parse(frame.url ?: ""),
+                            frame.isMain,
+                            replyProxy,
+                            arrayOf(),
+                        )
+                        callback.success("")
+                    } catch (e: Exception) {
+                        Log.w(TAG, "JS-invoke ${invoke.jsObject} on world ${invoke.world} failed:", e)
+                        callback.failure(0, e.message)
+                    }
+                }
+                return true
+            }
+            return false
+        }
+    }
+
     private abstract class ArrayResponseResourceHandler : CefResourceHandlerAdapter() {
         protected var resolvedData: ByteArray? = null
         protected var readOffset = 0
@@ -416,6 +618,7 @@ class KcefWebViewProvider(
 
     private class WebResponseResourceHandler(
         val webResponse: WebResourceResponse,
+        val includeCookies: Boolean,
     ) : ArrayResponseResourceHandler() {
         override fun processRequest(
             request: CefRequest,
@@ -423,7 +626,7 @@ class KcefWebViewProvider(
         ): Boolean {
             Log.v(TAG, "Handling request from client's response for ${request.url}")
             try {
-                resolvedData = webResponse.data.readAllBytes()
+                resolvedData = webResponse.data?.readAllBytes() ?: byteArrayOf()
                 Log.v(TAG, "Resolved client response for ${resolvedData?.size} bytes")
             } catch (e: IOException) {
                 Log.w(TAG, "Failed to read client data", e)
@@ -438,7 +641,9 @@ class KcefWebViewProvider(
             redirectUrl: StringRef,
         ) {
             super.getResponseHeaders(response, responseLength, redirectUrl)
-            webResponse.responseHeaders?.forEach { response.setHeaderByName(it.key, it.value, true) }
+            webResponse.responseHeaders
+                ?.filterKeys { includeCookies || !it.equals("set-cookie", true) }
+                ?.forEach { response.setHeaderByName(it.key, it.value, true) }
             response.status = webResponse.statusCode
             response.mimeType = webResponse.mimeType
         }
@@ -464,16 +669,25 @@ class KcefWebViewProvider(
             frame: CefFrame?,
             request: CefRequest,
         ): Boolean {
+            val isInitialLoad = frame?.url ?: "" == PRELOAD_PAGE && request.method == "GET"
+            Log.v(TAG, "Resource request ${request.method} ${request.url} is initial? $isInitialLoad")
+
             initialRequestData?.apply(request)
             initialRequestData = null
+
+            originMatchedHeaders.filter { matchesUrl(it.value, request.url) }.map { it.key }.groupBy { it.name.lowercase() }.forEach {
+                // "If multiple headers with the same name but different values match a request, then all the values will be sent in a comma-separated list of values following the guidance for repeated header fields. This does not take into account whether such merging is safe."
+                request.setHeaderByName(it.value.first().name, it.value.joinToString(", ") { it.value }, true)
+            }
 
             // TODO: we should be calling this on the handler, since CEF calls us on its IO thread
             // thus if a client tried to use WebView#loadUrl as the docs suggest, this fails
             val cancel =
-                viewClient.shouldOverrideUrlLoading(
-                    view,
-                    CefWebResourceRequest(request, frame, false),
-                )
+                !isInitialLoad &&
+                    viewClient.shouldOverrideUrlLoading(
+                        view,
+                        CefWebResourceRequest(request, frame, false, settings.getIncludeCookiesOnIntercept()),
+                    )
             Log.v(TAG, "Resource ${request.url}, result is cancel? $cancel")
 
             handler.post { viewClient.onLoadResource(view, frame?.url) }
@@ -486,7 +700,7 @@ class KcefWebViewProvider(
             frame: CefFrame,
             request: CefRequest,
         ): CefResourceHandler? {
-            val isInitialLoad = frame.url == "" && request.method == "GET"
+            val isInitialLoad = frame.url == PRELOAD_PAGE && request.method == "GET"
             Log.v(TAG, "Request ${request.method} ${request.url} is initial? $isInitialLoad")
             // NOTE: we should be calling this on the handler, since CEF calls us on its IO thread
             // but docs say "This method is called on a thread other than the UI thread" so should be fine
@@ -496,7 +710,7 @@ class KcefWebViewProvider(
                 } else {
                     viewClient.shouldInterceptRequest(
                         view,
-                        CefWebResourceRequest(request, frame, false),
+                        CefWebResourceRequest(request, frame, false, settings.getIncludeCookiesOnIntercept()),
                     )
                 }
             if (response == null) {
@@ -505,8 +719,7 @@ class KcefWebViewProvider(
                     return HtmlResponseResourceHandler(it)
                 }
             }
-            response ?: return null
-            return WebResponseResourceHandler(response)
+            return response?.let { WebResponseResourceHandler(it, settings.getIncludeCookiesOnIntercept()) }
         }
     }
 
@@ -591,9 +804,29 @@ class KcefWebViewProvider(
                     config.jsQueryFunction = QUERY_FN
                     config.jsCancelFunction = QUERY_CANCEL_FN
                     addMessageRouter(CefMessageRouter.create(config, MessageRouterHandler()))
+                    val messageConfig = CefMessageRouter.CefMessageRouterConfig()
+                    messageConfig.jsQueryFunction = WEBMESSAGE_FN
+                    messageConfig.jsCancelFunction = WEBMESSAGE_CANCEL_FN
+                    addMessageRouter(CefMessageRouter.create(messageConfig, WebMessageRouterHandler()))
                 }
             }
-        initHandler.init(this)
+        initHandler?.init(this)
+
+        browser =
+            kcefClient!!
+                .createBrowser(
+                    PRELOAD_PAGE,
+                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
+                    false,
+                ).apply {
+                    // NOTE: Without this, we don't seem to be receiving any events
+                    createImmediately()
+                }
+        initLatch.await()
+    }
+
+    fun getSource(getter: (String) -> Unit) {
+        browser!!.getSource(getter)
     }
 
     // Deprecated - should never be called
@@ -659,43 +892,25 @@ class KcefWebViewProvider(
         loadUrl: String,
         additionalHttpHeaders: Map<String, String>,
     ) {
-        browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         initialRequestData = InitialRequestData(additionalHttpHeaders = additionalHttpHeaders)
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    loadUrl,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        load(loadUrl)
         Log.d(TAG, "Page loaded at URL $loadUrl")
     }
 
     override fun loadUrl(url: String) {
-        loadUrl(url, mapOf())
+        chromeClient.onProgressChanged(view, 0)
+        load(url)
+        Log.d(TAG, "Page loaded at URL $url")
     }
 
     override fun postUrl(
         url: String,
         postData: ByteArray,
     ) {
-        browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         initialRequestData = InitialRequestData(myPostData = postData)
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    url,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        load(url)
         Log.d(TAG, "Page posted at URL $url")
     }
 
@@ -714,22 +929,27 @@ class KcefWebViewProvider(
         encoding: String?,
         historyUrl: String?,
     ) {
-        browser?.dispose()
         chromeClient.onProgressChanged(view, 0)
         val url = baseUrl ?: "about:blank"
         urlHttpMapping[url.trimEnd('/')] = data
 
-        browser =
-            kcefClient!!
-                .createBrowser(
-                    url,
-                    CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
-                    false,
-                ).apply {
-                    // NOTE: Without this, we don't seem to be receiving any events
-                    createImmediately()
-                }
+        load(url)
         Log.d(TAG, "Page loaded from data at base URL $baseUrl")
+    }
+
+    private fun load(url: String) {
+        runBlocking {
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    setUserAgent()
+                }.join()
+        }
+        // we load the preload page here briefly to ensure isInitialLoad can properly detect this Load* call
+        browser!!.also {
+            it.loadURL(PRELOAD_PAGE)
+            it.stopLoad()
+            it.loadURL(url)
+        }
     }
 
     override fun evaluateJavaScript(
@@ -737,6 +957,39 @@ class KcefWebViewProvider(
         resultCallback: ValueCallback<String>?,
     ) {
         browser!!.evaluateJavaScript(script.removePrefix("javascript:")) {
+            Log.v(TAG, "JS returned: $it")
+            handler.post { resultCallback?.onReceiveValue(it) }
+        }
+    }
+
+    fun evaluateJavaScript(
+        script: String,
+        worldName: String,
+        resultCallback: JavaScriptExecutionCallback,
+    ) {
+        val worldId = getJavaScriptWorld(worldName)
+        browser!!.evaluateJavaScript(
+            script,
+            worldId,
+            object : JavaScriptExecutionCallback {
+                override fun onError(errorCode: Int) {
+                    handler.post { resultCallback.onError(errorCode) }
+                }
+
+                override fun onSuccess(result: String) {
+                    handler.post { resultCallback.onSuccess(result) }
+                }
+            },
+        )
+    }
+
+    fun evaluateJavaScript(
+        script: String,
+        worldName: String,
+        resultCallback: ValueCallback<String>? = null,
+    ) {
+        val worldId = getJavaScriptWorld(worldName)
+        browser!!.evaluateJavaScript(script, worldId) {
             Log.v(TAG, "JS returned: $it")
             handler.post { resultCallback?.onReceiveValue(it) }
         }
@@ -751,7 +1004,7 @@ class KcefWebViewProvider(
     ): Unit = throw RuntimeException("Stub!")
 
     override fun stopLoading() {
-        browser!!.stopLoad()
+        browser?.stopLoad()
     }
 
     override fun reload() {
@@ -783,7 +1036,13 @@ class KcefWebViewProvider(
     override fun insertVisualStateCallback(
         requestId: Long,
         callback: VisualStateCallback,
-    ): Unit = throw RuntimeException("Stub!")
+    ) {
+        // TODO: Implement this properly
+        // for now, we cannot implement this, since CEF does not expose RenderHost::InsertVisualStateCallback
+        // https://source.chromium.org/chromium/chromium/src/+/main:android_webview/browser/aw_contents.cc;l=1463-1470;drc=596efb9363f44340caa548d3fcfbfb8242abfec2
+        // At the moment, it is only used as a fast-path for turnstile resolution, with a timeout,
+        // so we can just not call the callback and be fine
+    }
 
     override fun clearView(): Unit = throw RuntimeException("Stub!")
 
@@ -897,6 +1156,14 @@ class KcefWebViewProvider(
         val interfaceName: String,
         val functionName: String,
         val args: Array<String>,
+    )
+
+    @Serializable
+    private data class WebMessageCall(
+        val jsObject: String,
+        val world: String,
+        val type: Int,
+        val data: String,
     )
 
     private data class FunctionMapping(
@@ -1205,5 +1472,355 @@ class KcefWebViewProvider(
         override fun computeVerticalScrollExtent(): Int = throw RuntimeException("Stub!")
 
         override fun computeScroll(): Unit = throw RuntimeException("Stub!")
+    }
+
+    // -------------------------------------------------------------------------
+    // Chromium / Glue methods
+    // -------------------------------------------------------------------------
+
+    private data class InjectedScript(
+        val script: String,
+        val type: ScriptType,
+        val origins: Array<String>,
+        val world: String,
+    ) {
+        var injectedScriptIdentifier: String? = null
+
+        fun matchesUrl(url: String): Boolean = matchesUrl(origins, url)
+    }
+
+    private data class WebMessageMapping(
+        val listener: WebMessageListener,
+        val origins: Array<String>,
+    ) {
+        var injectedScriptIdentifier: String? = null
+    }
+
+    private data class HeaderValuePair(
+        val name: String,
+        val value: String,
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is HeaderValuePair) return false
+            return name.equals(other.name, ignoreCase = true) && value.equals(other.value)
+        }
+
+        override fun hashCode(): Int = 31 * name.lowercase().hashCode() + value.hashCode()
+    }
+
+    fun getPrimaryContainerView(): WebView = view
+
+    fun addJavaScriptOnEvent(
+        script: String,
+        type: ScriptType,
+        allowedOrigin: Array<String>,
+        worldName: String,
+    ): ScriptHandler {
+        if (allowedOrigin.any { TextUtils.isEmpty(it) }) throw Exception("allowedOriginRules can't be null or empty")
+
+        val scriptId = documentScriptIdCounter++
+        documentScripts[scriptId] =
+            InjectedScript(
+                script,
+                type,
+                if (allowedOrigin.size == 0 ||
+                    allowedOrigin.contains("*")
+                ) {
+                    arrayOf("*")
+                } else {
+                    allowedOrigin
+                },
+                worldName,
+            )
+        runBlocking {
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    injectDocumentStartScripts()
+                }.join()
+        }
+        return ScriptHandler(this, scriptId)
+    }
+
+    fun addDocumentStartJavaScript(
+        script: String,
+        allowedOrigin: Array<String>,
+    ) = addJavaScriptOnEvent(script, ScriptType.DOCUMENT_START, allowedOrigin, PAGE_WORLD_NAME)
+
+    fun removeDocumentStartJavaScript(scriptId: Int) {
+        documentScripts.remove(scriptId)?.let {
+            it.injectedScriptIdentifier?.let {
+                runBlocking {
+                    backgroundScope
+                        .launch(Dispatchers.IO) {
+                            removeDocumentStartJavaScript(it)
+                        }.join()
+                }
+            }
+        }
+    }
+
+    private suspend fun removeDocumentStartJavaScript(id: String) {
+        val args =
+            buildJsonObject {
+                put("identifier", id)
+            }
+        runCatching {
+            val res = browser?.devToolsClient?.executeDevToolsMethod("Page.removeScriptToEvaluateOnNewDocument", args.toString())?.await()
+            Log.v(TAG, "Successfully removed script: $res")
+        }.exceptionOrNull()?.let {
+            Log.e(TAG, "Failed to remove script", it)
+        }
+    }
+
+    @OptIn(kotlin.ExperimentalStdlibApi::class)
+    private fun getFrameId(): String =
+        frameIdentifierMapping.getOrPutIfMissing(browser!!.mainFrame.identifier) {
+            runBlocking {
+                val res = browser!!.devToolsClient.executeDevToolsMethod("Page.getFrameTree").await()
+                Json
+                    .parseToJsonElement(res)
+                    .jsonObject
+                    .get("frameTree")!!
+                    .jsonObject
+                    .get("frame")!!
+                    .jsonObject
+                    .get("id")!!
+                    .jsonPrimitive
+                    .content
+            }
+        }
+
+    @OptIn(kotlin.ExperimentalStdlibApi::class)
+    fun getJavaScriptWorld(name: String): Int {
+        if (TextUtils.isEmpty(name)) return 0
+        val frameId = getFrameId()
+        return worldMapping.getOrPutIfMissing(Pair(frameId, name)) {
+            runBlocking {
+                val args =
+                    buildJsonObject {
+                        put("frameId", frameId)
+                        put("worldName", name)
+                    }
+                val res = browser!!.devToolsClient.executeDevToolsMethod("Page.createIsolatedWorld", args.toString()).await()
+                Json
+                    .parseToJsonElement(res)
+                    .jsonObject
+                    .get("executionContextId")!!
+                    .jsonPrimitive
+                    .int
+            }
+        }
+    }
+
+    fun addWebMessageListener(
+        jsObjectName: String,
+        allowedOriginRules: Array<String>,
+        listener: WebMessageListener,
+        worldName: String,
+    ) {
+        if (allowedOriginRules.any { TextUtils.isEmpty(it) }) throw Exception("allowedOriginRules can't be null or empty")
+        if (webMessageMappings.containsKey(Pair(worldName, jsObjectName))) throw Exception("duplicate jsObjectName")
+        webMessageMappings[Pair(worldName, jsObjectName)] =
+            WebMessageMapping(
+                listener,
+                if (allowedOriginRules.size == 0 ||
+                    allowedOriginRules.contains("*")
+                ) {
+                    arrayOf("*")
+                } else {
+                    allowedOriginRules
+                },
+            )
+
+        // NOTE: "The injected object from addWebMessageListener API will be injected first and the script can rely on the injected object to send messages to the app."
+        // So we unregister all documentStart scripts, then re-register them after the web message has been registered
+        runBlocking {
+            backgroundScope
+                .launch(Dispatchers.IO) {
+                    coroutineScope {
+                        documentScripts.values
+                            .filter { it.type == ScriptType.DOCUMENT_START && it.injectedScriptIdentifier != null }
+                            .map {
+                                async {
+                                    val id = it.injectedScriptIdentifier!!
+                                    it.injectedScriptIdentifier = null
+                                    removeDocumentStartJavaScript(id)
+                                }
+                            }.awaitAll()
+                    }
+                    injectDocumentStartScripts()
+                }.join()
+        }
+    }
+
+    fun getProfile() = profile
+
+    fun setOriginMatchedHeader(
+        name: String,
+        value: String,
+        originRules: Set<String>,
+    ) {
+        originMatchedHeaders[HeaderValuePair(name, value)] = LinkedHashSet(originRules)
+    }
+
+    fun addOriginMatchedHeader(
+        name: String,
+        value: String,
+        originRules: Set<String>,
+    ) {
+        val origins = originMatchedHeaders.getOrPut(HeaderValuePair(name, value)) { linkedSetOf() }
+        origins.addAll(originRules)
+    }
+
+    fun hasOriginMatchedHeader(name: String): Boolean = originMatchedHeaders.keys.any { it.name.equals(name, ignoreCase = true) }
+
+    fun clearOriginMatchedHeader(
+        name: String,
+        value: String,
+    ) {
+        originMatchedHeaders.remove(HeaderValuePair(name, value))
+    }
+
+    fun clearAllOriginMatchedHeaders() {
+        originMatchedHeaders.clear()
+    }
+
+    private suspend fun injectDocumentStartScripts() {
+        Log.v(TAG, "Injecting document start scripts")
+        val devTools = browser?.devToolsClient ?: return
+
+        coroutineScope {
+            webMessageMappings.entries
+                .filter { it.value.injectedScriptIdentifier == null }
+                .map {
+                    async {
+                        val (world, obj) = it.key
+                        val script = """
+                            if (${jsMatchCondition(it.value.origins)}) {
+                                window.$obj = (() => {
+                                    const listeners = [];
+                                    return {
+                                        postMessage(message, ports) {
+                                            if (ports) throw "Ports are not supported";
+                                            window.${WEBMESSAGE_FN}({
+                                                request: JSON.stringify({
+                                                    jsObject: ${Json.encodeToString(obj)},
+                                                    world: ${Json.encodeToString(world)},
+                                                    ...(message instanceof window.ArrayBuffer ? {
+                                                        type: 1,
+                                                        data: (new window.Uint8Array(message)).toBase64(),
+                                                    } : {
+                                                        type: 0,
+                                                        data: message?.toString() ?? "",
+                                                    }),
+                                                }),
+                                                persistent: false,
+                                                onFailure: console.error,
+                                            })
+                                        },
+
+                                        onmessage: null,
+                                        addEventListener(type, listener) {
+                                            if (type != "message") throw "Invalid message type";
+                                            listeners.push(listener);
+                                        },
+                                        removeEventListener(type, listener) {
+                                            if (type != "message") throw "Invalid message type";
+                                            const index = listeners.indexOf(listener);
+                                            if (index > -1) {
+                                              listeners.splice(index, 1);
+                                            }
+                                        },
+
+                                        __receiveMessage(encoded) {
+                                            var data = encoded.type === 1 ? window.Uint8Array.fromBase64(encoded.data).buffer : encoded.data;
+                                            var evt = new window.MessageEvent("message", { data });
+                                            for (let v of listeners) {
+                                                try { v(evt); }
+                                                catch (e) { console.error(e); }
+                                            }
+                                            if (this.onmessage) {
+                                                try { this.onmessage(evt); }
+                                                catch (e) { console.error(e); }
+                                            }
+                                        }
+                                    };
+                                })();
+                            }
+                            """
+                        val args =
+                            buildJsonObject {
+                                put("source", script)
+                                if (world != PAGE_WORLD_NAME) {
+                                    put("worldName", world)
+                                }
+                            }
+                        runCatching {
+                            val res = devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).await()
+                            it.value.injectedScriptIdentifier =
+                                Json
+                                    .parseToJsonElement(res)
+                                    .jsonObject
+                                    .get("identifier")
+                                    ?.jsonPrimitive
+                                    ?.content
+                            Log.v(TAG, "Successfully added script: $res -> ${it.value.injectedScriptIdentifier}")
+                        }.exceptionOrNull()?.let {
+                            Log.e(TAG, "Failed to add web message listener script", it)
+                        }
+                    }
+                }.awaitAll()
+
+            documentScripts.values
+                .filter { it.type == ScriptType.DOCUMENT_START && it.injectedScriptIdentifier == null }
+                .map {
+                    async {
+                        val script = """
+                            if (${jsMatchCondition(it.origins)}) {
+                                ${it.script}
+                            }
+                            """
+                        val args =
+                            buildJsonObject {
+                                put("source", script)
+                                if (it.world != PAGE_WORLD_NAME) {
+                                    put("worldName", it.world)
+                                }
+                            }
+                        runCatching {
+                            val res = devTools.executeDevToolsMethod("Page.addScriptToEvaluateOnNewDocument", args.toString()).await()
+                            it.injectedScriptIdentifier =
+                                Json
+                                    .parseToJsonElement(res)
+                                    .jsonObject
+                                    .get("identifier")
+                                    ?.jsonPrimitive
+                                    ?.content
+                            Log.v(TAG, "Successfully added script: $res -> ${it.injectedScriptIdentifier}")
+                        }.exceptionOrNull()?.let {
+                            Log.e(TAG, "Failed to add script", it)
+                        }
+                    }
+                }.awaitAll()
+        }
+    }
+
+    private suspend fun setUserAgent() {
+        val ua = settings.userAgentString ?: return
+        val args =
+            buildJsonObject {
+                put("userAgent", ua)
+                settings.getUserAgentMetadata()?.let {
+                    Log.d(TAG, "Using user-agent $ua with metadata $it")
+                    put("userAgentMetadata", Json.encodeToJsonElement(it))
+                }
+            }
+        runCatching {
+            val res = browser!!.devToolsClient.executeDevToolsMethod("Emulation.setUserAgentOverride", args.toString()).await()
+            Log.v(TAG, "Successfully set user agent: $res")
+        }.exceptionOrNull()?.let {
+            Log.e(TAG, "Failed to set user agent", it)
+        }
     }
 }

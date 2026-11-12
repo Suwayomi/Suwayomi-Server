@@ -23,6 +23,7 @@ import android.util.Printer;
 import android.util.Slog;
 import android.util.proto.ProtoOutputStream;
 
+import java.util.function.Consumer;
 import java.util.Objects;
 
 /**
@@ -79,6 +80,7 @@ public final class Looper {
     static final ThreadLocal<Looper> sThreadLocal = new ThreadLocal<Looper>();
     private static Looper sMainLooper;  // guarded by Looper.class
     private static Observer sObserver;
+    private Consumer<Throwable> mThrowableObserver;
 
     final MessageQueue mQueue;
     final Thread mThread;
@@ -180,6 +182,12 @@ public final class Looper {
         sObserver = observer;
     }
 
+    public @Nullable Consumer<Throwable> setThrowableObserver(@Nullable Consumer<Throwable> observer) {
+        Consumer<Throwable> old = mThrowableObserver;
+        mThrowableObserver = observer;
+        return old;
+    }
+
     /**
      * Poll and deliver single message, return true if the outer loop should continue.
      */
@@ -201,6 +209,7 @@ public final class Looper {
         }
         // Make sure the observer won't change while processing a transaction.
         final Observer observer = sObserver;
+        final Consumer<Throwable> throwableObserver = me.mThrowableObserver;
 
         final long traceTag = me.mTraceTag;
         long slowDispatchThresholdMs = me.mSlowDispatchThresholdMs;
@@ -230,9 +239,12 @@ public final class Looper {
             if (observer != null) {
                 observer.messageDispatched(token, msg);
             }
-        } catch (Exception exception) {
+        } catch (Throwable exception) {
             if (observer != null) {
-                observer.dispatchingThrewException(token, msg, exception);
+                observer.dispatchingThrewException(token, msg, exception instanceof Exception ? (Exception)exception : null);
+            }
+            if (throwableObserver != null) {
+                throwableObserver.accept(exception);
             }
             Log.e(TAG, "Loop handler threw", exception);
             // throw exception;

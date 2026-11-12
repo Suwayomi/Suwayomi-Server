@@ -95,6 +95,7 @@ public class WebView extends AbsoluteLayout
     // set in the WebView constructor.
     private static volatile boolean sEnforceThreadChecking = false;
     private static CallableArgument<WebView, WebViewProvider> mProviderFactory;
+    private CallableArgument<WebView, WebViewProvider> mLocalProviderFactory;
 
     public static void setProviderFactory(CallableArgument<WebView, WebViewProvider> factory) {
         mProviderFactory = factory;
@@ -188,11 +189,18 @@ public class WebView extends AbsoluteLayout
         this(context, attrs, defStyleAttr, 0, javaScriptInterfaces, privateBrowsing);
     }
 
-    @SuppressWarnings("deprecation")  // for super() call into deprecated base class constructor.
     protected WebView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr,
             int defStyleRes, @Nullable Map<String, Object> javaScriptInterfaces,
             boolean privateBrowsing) {
+        this(context, attrs, defStyleAttr, defStyleRes, javaScriptInterfaces, privateBrowsing, null);
+    }
+
+    @SuppressWarnings("deprecation")  // for super() call into deprecated base class constructor.
+    WebView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr,
+            int defStyleRes, @Nullable Map<String, Object> javaScriptInterfaces,
+            boolean privateBrowsing, CallableArgument<WebView, WebViewProvider> localProviderFactory) {
         super(context, attrs, defStyleAttr, defStyleRes);
+        mLocalProviderFactory = localProviderFactory;
 
         if (context == null) {
             throw new IllegalArgumentException("Invalid context argument");
@@ -940,11 +948,11 @@ public class WebView extends AbsoluteLayout
     private void ensureProviderCreated() {
         checkThread();
         if (mProvider == null) {
-            if (mProviderFactory == null)
+            if (mProviderFactory == null && mLocalProviderFactory == null)
                 throw new IllegalStateException("No factory registered");
             // As this can get called during the base class constructor chain, pass the minimum
             // number of dependencies here; the rest are deferred to init().
-            mProvider = mProviderFactory.call(this);
+            mProvider = (mLocalProviderFactory != null ? mLocalProviderFactory : mProviderFactory).call(this);
         }
     }
 
