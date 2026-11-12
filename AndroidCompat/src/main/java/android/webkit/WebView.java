@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -42,6 +43,7 @@ import android.os.RemoteException;
 import android.os.StrictMode;
 import android.print.PrintDocumentAdapter;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
@@ -206,6 +208,16 @@ public class WebView extends AbsoluteLayout
 
         ensureProviderCreated();
         mProvider.init(javaScriptInterfaces, privateBrowsing);
+    }
+
+    @Override
+    public Resources getResources() {
+        DisplayMetrics metrics = new DisplayMetrics();
+        metrics.widthPixels = mProvider.getContentWidth();
+        metrics.heightPixels = mProvider.getContentHeight();
+        metrics.density = 0.6f;
+        metrics.densityDpi = 96;
+        return new Resources(null, metrics, Resources.getSystem().getConfiguration());
     }
 
     @Deprecated
