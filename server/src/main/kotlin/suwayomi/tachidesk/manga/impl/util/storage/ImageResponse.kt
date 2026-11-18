@@ -25,8 +25,7 @@ object ImageResponse {
         directoryPath: String,
         fileName: String,
     ): String? {
-        // checking the usual extensions avoids listing the whole directory, which grows with the library (all covers
-        // share one directory) and was done for every image served
+        // avoids listing the whole directory when possible
         knownExtensions.firstOrNull { File(directoryPath, "$fileName.$it").isFile }?.let {
             return "$directoryPath/$fileName.$it"
         }
