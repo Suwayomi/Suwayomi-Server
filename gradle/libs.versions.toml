@@ -124,7 +124,7 @@ commonscompress = "org.apache.commons:commons-compress:1.28.0"
 junrar = "com.github.junrar:junrar:8.1.2"
 
 # AES/CBC/PKCS7Padding Cypher provider
-bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.86"
+bouncycastle = "org.bouncycastle:bcprov-jdk18on:1.87"
 
 # AndroidX annotations
 android-annotations = "androidx.annotation:annotation:1.11.0"
