@@ -18,7 +18,6 @@ import java.io.InputStream
 object ImageResponse {
     private fun pathToInputStream(path: String): InputStream = FileInputStream(path).buffered()
 
-    // extensions saveImage gives most images; a leftover ".tmp" comes last so a saved image wins over it
     private val knownExtensions = ImageUtil.ImageType.entries.map { it.extension } + listOf("jpeg", "tmp")
 
     /** find file with name when file extension is not known */
