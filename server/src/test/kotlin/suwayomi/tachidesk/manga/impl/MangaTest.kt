@@ -9,13 +9,20 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.SManga
+import io.mockk.Runs
+import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.mockkObject
+import io.mockk.unmockkObject
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.manga.model.table.MangaMetaTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
@@ -74,6 +81,12 @@ class MangaTest : ApplicationTest() {
         coverFiles.forEach { assertEquals("cover", it.readText()) }
     }
 
+    @BeforeEach
+    internal fun mockCoverChecks() {
+        mockkObject(ThumbnailDownloadHelper)
+        every { ThumbnailDownloadHelper.refreshInBackground(any(), any()) } just Runs
+    }
+
     @Test
     fun updateMangaDatabaseKeepsCoversAndTheirVersionWhenThumbnailUrlIsUnchanged() {
         val (mangaId, coverFiles) = createMangaWithCachedCovers()
@@ -88,7 +101,17 @@ class MangaTest : ApplicationTest() {
     }
 
     @Test
-    fun updateMangaDatabaseKeepsCoversAndStoresTheNewUrlWhenThumbnailUrlChanged() {
+    fun updateMangaDatabaseChecksTheDownloadedCoverAgainstTheSourceRightAway() {
+        val (mangaId, _) = createMangaWithCachedCovers()
+
+        updateMangaDatabaseWith(mangaId, originalThumbnailUrl)
+
+        val lastFetchedAt = getStoredManga(mangaId)[MangaTable.lastFetchedAt]
+        verify(exactly = 1) { ThumbnailDownloadHelper.refreshInBackground(mangaId, lastFetchedAt * 1000) }
+    }
+
+    @Test
+    fun updateMangaDatabaseLeavesTheVersionToTheCoverCheckWhenThumbnailUrlChanged() {
         val (mangaId, coverFiles) = createMangaWithCachedCovers()
         val newThumbnailUrl = "https://example.com/cover-new.jpg"
 
@@ -97,7 +120,23 @@ class MangaTest : ApplicationTest() {
         assertCoversKept(coverFiles)
         val storedManga = getStoredManga(mangaId)
         assertEquals(newThumbnailUrl, storedManga[MangaTable.thumbnail_url])
+        // the same image behind a new url keeps its version; a different one is bumped by the check
+        assertEquals(100L, storedManga[MangaTable.thumbnailUrlLastFetched])
+        verify(exactly = 1) { ThumbnailDownloadHelper.refreshInBackground(mangaId, any()) }
+    }
+
+    @Test
+    fun updateMangaDatabaseBumpsTheVersionOnANewUrlWithoutADownloadedCover() {
+        val (mangaId, coverFiles) = createMangaWithCachedCovers()
+        coverFiles.forEach { it.delete() }
+        val newThumbnailUrl = "https://example.com/cover-new.jpg"
+
+        updateMangaDatabaseWith(mangaId, newThumbnailUrl)
+
+        val storedManga = getStoredManga(mangaId)
+        assertEquals(newThumbnailUrl, storedManga[MangaTable.thumbnail_url])
         assertTrue(storedManga[MangaTable.thumbnailUrlLastFetched] > 100L)
+        verify(exactly = 0) { ThumbnailDownloadHelper.refreshInBackground(any(), any()) }
     }
 
     @Test
@@ -161,6 +200,7 @@ class MangaTest : ApplicationTest() {
 
     @AfterEach
     internal fun tearDown() {
+        unmockkObject(ThumbnailDownloadHelper)
         File(applicationDirs.tempThumbnailCacheRoot).deleteRecursively()
         File(applicationDirs.thumbnailDownloadsRoot).deleteRecursively()
         clearTables(
