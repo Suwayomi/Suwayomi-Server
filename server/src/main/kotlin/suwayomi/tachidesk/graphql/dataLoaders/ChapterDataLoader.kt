@@ -184,26 +184,21 @@ class HasDuplicateChaptersForMangaDataLoader : KotlinDataLoader<Int, Boolean> {
             future {
                 transaction {
                     addLogger(Slf4jSqlDebugLogger)
-                    val mangaIdsWithDuplicates = mangaIdsWithDuplicateChapters(ids)
+                    // One group per manga instead of one per (manga, chapter number): no index covers that pair,
+                    // and on H2 grouping a library's chapters by it cost about 3x as much
+                    val chapterCount = ChapterTable.id.count()
+                    val distinctNumberCount = ChapterTable.chapter_number.countDistinct()
+                    val mangaIdsWithDuplicates =
+                        ChapterTable
+                            .select(ChapterTable.manga)
+                            .where { (ChapterTable.manga inIds ids) and (ChapterTable.chapter_number greaterEq 0f) }
+                            .groupBy(ChapterTable.manga)
+                            .having { chapterCount greater distinctNumberCount }
+                            .mapTo(mutableSetOf()) { it[ChapterTable.manga].value }
                     ids.map { it in mangaIdsWithDuplicates }
                 }
             }
         }
-}
-
-// One group per manga instead of one per (manga, chapter number): no index covers that pair,
-// and on H2 grouping a library's chapters by it cost about 3x as much
-internal fun mangaIdsWithDuplicateChapters(mangaIds: List<Int>): Set<Int> {
-    if (mangaIds.isEmpty()) return emptySet()
-
-    val chapterCount = ChapterTable.id.count()
-    val distinctNumberCount = ChapterTable.chapter_number.countDistinct()
-    return ChapterTable
-        .select(ChapterTable.manga)
-        .where { (ChapterTable.manga inIds mangaIds) and (ChapterTable.chapter_number greaterEq 0f) }
-        .groupBy(ChapterTable.manga)
-        .having { chapterCount greater distinctNumberCount }
-        .mapTo(mutableSetOf()) { it[ChapterTable.manga].value }
 }
 
 class LastReadChapterForMangaDataLoader : KotlinDataLoader<Int, ChapterType> {

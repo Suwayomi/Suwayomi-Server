@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTimeout
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -666,9 +667,9 @@ class ChapterDataLoaderTest : ApplicationTest() {
         insertChapter(unnumbered, "Extra 2", 2, chapterNumber = -1f)
         val empty = createLibraryManga("Empty")
 
-        val result = transaction { mangaIdsWithDuplicateChapters(listOf(duplicated, unique, unnumbered, empty)) }
+        val result = loadHasDuplicateChapters(listOf(duplicated, unique, unnumbered, empty))
 
-        assertEquals(setOf(duplicated), result)
+        assertEquals(listOf(true, false, false, false), result)
     }
 
     @Test
@@ -679,8 +680,14 @@ class ChapterDataLoaderTest : ApplicationTest() {
         insertChapter(other, "Chapter 1", 1, chapterNumber = 1f)
         insertChapter(other, "Chapter 1 again", 2, chapterNumber = 1f)
 
-        assertEquals(emptySet<Int>(), transaction { mangaIdsWithDuplicateChapters(listOf(requested)) })
-        assertEquals(emptySet<Int>(), transaction { mangaIdsWithDuplicateChapters(emptyList()) })
+        assertEquals(listOf(false), loadHasDuplicateChapters(listOf(requested)))
+    }
+
+    private fun loadHasDuplicateChapters(mangaIds: List<Int>): List<Boolean> {
+        val dataLoader = HasDuplicateChaptersForMangaDataLoader().getDataLoader(emptyMap<Any, Any>().toGraphQLContext())
+        val values = dataLoader.loadMany(mangaIds)
+        dataLoader.dispatch()
+        return values.join()
     }
 
     @Test
