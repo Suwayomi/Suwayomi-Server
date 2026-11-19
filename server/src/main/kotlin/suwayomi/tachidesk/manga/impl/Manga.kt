@@ -196,8 +196,12 @@ object Manga {
         source: Source,
         sManga: SManga,
     ): SManga {
+        val mangaId = mangaEntry[MangaTable.id].value
+        val fetchedAt = Instant.now().epochSecond
+        // a downloaded cover is compared with the source's after the refresh, which bumps the version only if the image differs
+        val checkDownloadedCover = ThumbnailDownloadHelper.hasImage(mangaId)
+
         suspendTransaction {
-            val mangaId = mangaEntry[MangaTable.id].value
             val currentTitle = mangaEntry[MangaTable.title]
             val remoteTitle =
                 try {
@@ -225,10 +229,11 @@ object Manga {
                 it[MangaTable.status] = sManga.status
                 if (!sManga.thumbnail_url.isNullOrEmpty()) {
                     it[MangaTable.thumbnail_url] = sManga.thumbnail_url
-                    // thumbnailUrlLastFetched is the cover version clients use to bust their cache: only bump it on a
-                    // new url. A cover that changes behind the same url is detected when it is refreshed after lastFetchedAt
-                    if (sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url]) {
-                        it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                    // thumbnailUrlLastFetched is the cover version clients use to bust their cache, so it only changes
+                    // with the image. With a downloaded cover, the check below bumps it, whether the url changed or not.
+                    // Without one there is nothing to compare: a new url is taken as a new image
+                    if (sManga.thumbnail_url != mangaEntry[MangaTable.thumbnail_url] && !checkDownloadedCover) {
+                        it[MangaTable.thumbnailUrlLastFetched] = fetchedAt
                     }
                 }
 
@@ -250,11 +255,15 @@ object Manga {
                         )
                     }.getOrNull()
 
-                it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
+                it[MangaTable.lastFetchedAt] = fetchedAt
 
                 it[MangaTable.updateStrategy] = sManga.update_strategy.name
                 it[MangaTable.memo] = sManga.memo
             }
+        }
+
+        if (checkDownloadedCover) {
+            ThumbnailDownloadHelper.refreshInBackground(mangaId, staleBefore = fetchedAt * 1000)
         }
 
         return sManga
