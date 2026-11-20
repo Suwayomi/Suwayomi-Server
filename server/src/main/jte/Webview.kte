@@ -578,21 +578,22 @@
                     if (data === null) return;
                     pendingFrame = null;
                     decoding = true;
-                    // started inside a promise so that even a synchronous error ends up in catch/finally below
-                    Promise.resolve().then(() => createImageBitmap(new Blob([data], { type: "image/jpeg" }))).then(bitmap => {
-                        try {
-                            if (frame.width !== bitmap.width || frame.height !== bitmap.height) {
-                                frame.width = bitmap.width;
-                                frame.height = bitmap.height;
-                            }
-                            ctx.drawImage(bitmap, 0, 0);
-                        } finally {
-                            bitmap.close();
-                        }
-                    }).catch(err => console.error('Failed to decode frame', err)).finally(() => {
+                    const img = new Image();
+                    const url = URL.createObjectURL(new Blob([data], { type: "image/jpeg" }));
+                    const done = () => {
+                        URL.revokeObjectURL(url);
                         decoding = false;
                         decodeNextFrame();
-                    });
+                    };
+                    img.src = url;
+                    // decode() decodes the frame in the background before it is drawn, so drawImage does not block the
+                    // page. It is supported everywhere ResizeObserver is, which this page already needs
+                    img.decode().then(() => {
+                        // the canvas has the size the page told the server to render at (see the ResizeObserver below).
+                        // A frame of another size was rendered before the server got the new size, draw it as-is,
+                        // the next frame will match
+                        ctx.drawImage(img, 0, 0);
+                    }).catch(e => console.error('Failed to decode frame', e)).finally(done);
                 };
                 const drawFrame = (data) => {
                     pendingFrame = data;
@@ -660,7 +661,15 @@
                 /// Page events
 
                 const observer = new ResizeObserver(() => {
-                    socket.send(JSON.stringify({ type: 'resize', width: frame.clientWidth, height: frame.clientHeight }));
+                    const width = frame.clientWidth;
+                    const height = frame.clientHeight;
+                    // the page decides the size: the canvas takes it here and the server is told to render at it.
+                    // Setting a canvas' size clears it, so only touch it when the size changed
+                    if (frame.width !== width || frame.height !== height) {
+                        frame.width = width;
+                        frame.height = height;
+                    }
+                    socket.send(JSON.stringify({ type: 'resize', width, height }));
                 });
                 observer.observe(frame);
 
