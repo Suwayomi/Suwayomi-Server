@@ -1,0 +1,14 @@
+#!/usr/bin/dh-exec
+
+Suwayomi-Server.jar         usr/share/java/suwayomi-server/bin/
+Suwayomi-Launcher.jar       usr/share/java/suwayomi-server/
+suwayomi-server.png         usr/share/pixmaps/
+suwayomi-server.desktop     usr/share/applications/
+suwayomi-launcher.desktop   usr/share/applications/
+suwayomi-server.service     usr/lib/systemd/system/
+suwayomi-server.sysusers => usr/lib/sysusers.d/suwayomi-server.conf
+suwayomi-server.tmpfiles => usr/lib/tmpfiles.d/suwayomi-server.conf
+suwayomi-server.conf     => etc/suwayomi/server.conf
+suwayomi-server.sh       => usr/bin/suwayomi-server
+suwayomi-launcher.sh     => usr/bin/suwayomi-launcher
+catch_abort.so              usr/share/java/suwayomi-server/bin/

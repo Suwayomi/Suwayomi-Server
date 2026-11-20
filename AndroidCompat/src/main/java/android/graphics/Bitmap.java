@@ -1,0 +1,425 @@
+package android.graphics;
+
+import android.annotation.ColorInt;
+import android.annotation.NonNull;
+import android.annotation.Nullable;
+import android.util.Log;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Iterator;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
+
+
+public final class Bitmap {
+    private final int width;
+    private final int height;
+    private final BufferedImage image;
+
+    public Bitmap(BufferedImage image) {
+        this.image = image;
+        this.width = image.getWidth();
+        this.height = image.getHeight();
+    }
+
+    public BufferedImage getImage() {
+        return image;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public enum CompressFormat {
+        JPEG          (0),
+        PNG           (1),
+        WEBP          (2),
+        WEBP_LOSSY    (3),
+        WEBP_LOSSLESS (4);
+
+        CompressFormat(int nativeInt) {
+            this.nativeInt = nativeInt;
+        }
+
+        final int nativeInt;
+    }
+
+    public enum Config {
+        ALPHA_8(1),
+        RGB_565(3),
+        ARGB_4444(4),
+        ARGB_8888(5),
+        RGBA_F16(6),
+        HARDWARE(7),
+        RGBA_1010102(8),
+
+        _TYPE_3BYTE_BGR(BufferedImage.TYPE_3BYTE_BGR),
+        _TYPE_4BYTE_ABGR(BufferedImage.TYPE_4BYTE_ABGR),
+        _TYPE_4BYTE_ABGR_PRE(BufferedImage.TYPE_4BYTE_ABGR_PRE),
+        _TYPE_BYTE_BINARY(BufferedImage.TYPE_BYTE_BINARY),
+        _TYPE_BYTE_GRAY(BufferedImage.TYPE_BYTE_GRAY),
+        _TYPE_BYTE_INDEXED(BufferedImage.TYPE_BYTE_INDEXED),
+        _TYPE_CUSTOM(BufferedImage.TYPE_CUSTOM),
+        _TYPE_INT_ARGB(BufferedImage.TYPE_INT_ARGB),
+        _TYPE_INT_ARGB_PRE(BufferedImage.TYPE_INT_ARGB_PRE),
+        _TYPE_INT_BGR(BufferedImage.TYPE_INT_BGR),
+        _TYPE_INT_RGB(BufferedImage.TYPE_INT_RGB),
+        _TYPE_USHORT_555_RGB(BufferedImage.TYPE_USHORT_555_RGB),
+        _TYPE_USHORT_565_RGB(BufferedImage.TYPE_USHORT_565_RGB),
+        _TYPE_USHORT_GRAY(BufferedImage.TYPE_USHORT_GRAY),
+        ;
+
+        final int nativeInt;
+
+        private static final Config[] sConfigs = {
+                null, ALPHA_8, null, RGB_565, ARGB_4444, ARGB_8888, RGBA_F16, HARDWARE, RGBA_1010102
+        };
+
+        Config(int ni) {
+            this.nativeInt = ni;
+        }
+
+        static Config nativeToConfig(int ni) {
+            return sConfigs[ni];
+        }
+    }
+
+    private static int configToBufferedImageType(Config config) {
+        switch (config) {
+            case ALPHA_8:
+                return BufferedImage.TYPE_BYTE_GRAY;
+            case RGB_565:
+                return BufferedImage.TYPE_USHORT_565_RGB;
+            case ARGB_8888:
+                return BufferedImage.TYPE_INT_ARGB;
+            case _TYPE_3BYTE_BGR:
+            case _TYPE_4BYTE_ABGR:
+            case _TYPE_4BYTE_ABGR_PRE:
+            case _TYPE_BYTE_BINARY:
+            case _TYPE_BYTE_GRAY:
+            case _TYPE_BYTE_INDEXED:
+            case _TYPE_CUSTOM:
+            case _TYPE_INT_ARGB:
+            case _TYPE_INT_ARGB_PRE:
+            case _TYPE_INT_BGR:
+            case _TYPE_INT_RGB:
+            case _TYPE_USHORT_555_RGB:
+            case _TYPE_USHORT_565_RGB:
+            case _TYPE_USHORT_GRAY:
+                return config.nativeInt;
+            default:
+                throw new UnsupportedOperationException("Bitmap.Config(" + config + ") not supported");
+        }
+    }
+
+    private static Config bufferedImageTypeToConfig(int type) {
+        switch (type) {
+            case BufferedImage.TYPE_BYTE_GRAY:
+                return Config.ALPHA_8;
+            case BufferedImage.TYPE_USHORT_565_RGB:
+                return Config.RGB_565;
+            case BufferedImage.TYPE_INT_ARGB:
+                return Config.ARGB_8888;
+            case BufferedImage.TYPE_3BYTE_BGR:
+                return Config._TYPE_3BYTE_BGR;
+            case BufferedImage.TYPE_4BYTE_ABGR:
+                return Config._TYPE_4BYTE_ABGR;
+            case BufferedImage.TYPE_4BYTE_ABGR_PRE:
+                return Config._TYPE_4BYTE_ABGR_PRE;
+            case BufferedImage.TYPE_BYTE_BINARY:
+                return Config._TYPE_BYTE_BINARY;
+            case BufferedImage.TYPE_BYTE_INDEXED:
+                return Config._TYPE_BYTE_INDEXED;
+            case BufferedImage.TYPE_CUSTOM:
+                return Config._TYPE_CUSTOM;
+            case BufferedImage.TYPE_INT_ARGB_PRE:
+                return Config._TYPE_INT_ARGB_PRE;
+            case BufferedImage.TYPE_INT_BGR:
+                return Config._TYPE_INT_BGR;
+            case BufferedImage.TYPE_INT_RGB:
+                return Config._TYPE_INT_RGB;
+            case BufferedImage.TYPE_USHORT_555_RGB:
+                return Config._TYPE_USHORT_555_RGB;
+            case BufferedImage.TYPE_USHORT_GRAY:
+                return Config._TYPE_USHORT_GRAY;
+            default:
+                Log.w("Bitmap", "Encountered unsupported image type " + type);
+                return null;
+        }
+    }
+
+    /**
+     * Common code for checking that x and y are >= 0
+     *
+     * @param x x coordinate to ensure is >= 0
+     * @param y y coordinate to ensure is >= 0
+     */
+    private static void checkXYSign(int x, int y) {
+        if (x < 0) {
+            throw new IllegalArgumentException("x must be >= 0");
+        }
+        if (y < 0) {
+            throw new IllegalArgumentException("y must be >= 0");
+        }
+    }
+
+    /**
+     * Common code for checking that width and height are > 0
+     *
+     * @param width  width to ensure is > 0
+     * @param height height to ensure is > 0
+     */
+    private static void checkWidthHeight(int width, int height) {
+        if (width <= 0) {
+            throw new IllegalArgumentException("width must be > 0");
+        }
+        if (height <= 0) {
+            throw new IllegalArgumentException("height must be > 0");
+        }
+    }
+
+    public static Bitmap createBitmap(int width, int height, Config config) {
+        BufferedImage image = new BufferedImage(width, height, configToBufferedImageType(config));
+        return new Bitmap(image);
+    }
+
+    public static Bitmap createBitmap(@NonNull Bitmap source, int x, int y, int width, int height) {
+        checkXYSign(x, y);
+        checkWidthHeight(width, height);
+        if (x + width > source.getWidth()) {
+            throw new IllegalArgumentException("x + width must be <= bitmap.width()");
+        }
+        if (y + height > source.getHeight()) {
+            throw new IllegalArgumentException("y + height must be <= bitmap.height()");
+        }
+
+        // Android will make a copy when creating a sub image,
+        // so we do the same here
+        BufferedImage subImage = source.image.getSubimage(x, y, width, height);
+        BufferedImage newImage = new BufferedImage(subImage.getWidth(), subImage.getHeight(), subImage.getType());
+        newImage.setData(subImage.getData());
+
+        return new Bitmap(newImage);
+    }
+
+    public static Bitmap createBitmap(int[] colors, int width, int height, Config config) {
+        checkWidthHeight(width, height);
+
+        BufferedImage image = new BufferedImage(width, height, configToBufferedImageType(config));
+        image.setRGB(0, 0, width, height, colors, 0, width);
+
+        return new Bitmap(image);
+    }
+
+    public boolean compress(CompressFormat format, int quality, OutputStream stream) {
+        if (stream == null) {
+            throw new NullPointerException();
+        }
+
+        if (quality < 0 || quality > 100) {
+            throw new IllegalArgumentException("quality must be 0..100");
+        }
+        float qualityFloat = ((float) quality) / 100;
+
+        String formatString;
+        if (format == Bitmap.CompressFormat.PNG) {
+            formatString = "png";
+        } else if (format == Bitmap.CompressFormat.JPEG) {
+            formatString = "jpg";
+        } else if (format == Bitmap.CompressFormat.WEBP || format == Bitmap.CompressFormat.WEBP_LOSSY) {
+            formatString = "webp";
+        } else {
+            throw new IllegalArgumentException("unsupported compression format! " + format);
+        }
+
+        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName(formatString);
+        if (!writers.hasNext()) {
+            throw new IllegalStateException("no image writers found for this format!");
+        }
+        ImageWriter writer = writers.next();
+
+        ImageOutputStream ios;
+        try {
+            ios = ImageIO.createImageOutputStream(stream);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+        writer.setOutput(ios);
+
+        BufferedImage img = image;
+
+        ImageWriteParam param = writer.getDefaultWriteParam();
+        if ("jpg".equals(formatString)) {
+            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(qualityFloat);
+
+            img = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+            img.getGraphics().drawImage(image, 0, 0, null);
+        }
+
+        try {
+            writer.write(null, new IIOImage(img, null, null), param);
+            ios.close();
+            writer.dispose();
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        return true;
+    }
+
+    public Bitmap copy(Config config, boolean isMutable) {
+        Bitmap ret = createBitmap(width, height, config);
+        ret.image.getGraphics().drawImage(image, 0, 0, null);
+        return ret;
+    }
+
+    /**
+     * Shared code to check for illegal arguments passed to getPixels()
+     * or setPixels()
+     *
+     * @param x      left edge of the area of pixels to access
+     * @param y      top edge of the area of pixels to access
+     * @param width  width of the area of pixels to access
+     * @param height height of the area of pixels to access
+     * @param offset offset into pixels[] array
+     * @param stride number of elements in pixels[] between each logical row
+     * @param pixels array to hold the area of pixels being accessed
+     */
+    private void checkPixelsAccess(int x, int y, int width, int height,
+                                   int offset, int stride, int[] pixels) {
+        checkXYSign(x, y);
+        if (width < 0) {
+            throw new IllegalArgumentException("width must be >= 0");
+        }
+        if (height < 0) {
+            throw new IllegalArgumentException("height must be >= 0");
+        }
+        if (x + width > getWidth()) {
+            throw new IllegalArgumentException(
+                    "x + width must be <= bitmap.width()");
+        }
+        if (y + height > getHeight()) {
+            throw new IllegalArgumentException(
+                    "y + height must be <= bitmap.height()");
+        }
+        if (Math.abs(stride) < width) {
+            throw new IllegalArgumentException("abs(stride) must be >= width");
+        }
+        int lastScanline = offset + (height - 1) * stride;
+        int length = pixels.length;
+        if (offset < 0 || (offset + width > length)
+                || lastScanline < 0
+                || (lastScanline + width > length)) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+    }
+
+    /**
+     * Shared code to check for illegal arguments passed to getPixel()
+     * or setPixel()
+     *
+     * @param x x coordinate of the pixel
+     * @param y y coordinate of the pixel
+     */
+    private void checkPixelAccess(int x, int y) {
+        checkXYSign(x, y);
+        if (x >= getWidth()) {
+            throw new IllegalArgumentException("x must be < bitmap.width()");
+        }
+        if (y >= getHeight()) {
+            throw new IllegalArgumentException("y must be < bitmap.height()");
+        }
+    }
+
+    public void getPixels(@ColorInt int[] pixels, int offset, int stride,
+                          int x, int y, int width, int height) {
+        checkPixelsAccess(x, y, width, height, offset, stride, pixels);
+
+        image.getRGB(x, y, width, height, pixels, offset, stride);
+    }
+
+    @ColorInt
+    public int getPixel(int x, int y) {
+        checkPixelAccess(x, y);
+        return image.getRGB(x, y);
+    }
+
+    /**
+     * <p>Write the specified {@link Color} into the bitmap (assuming it is
+     * mutable) at the x,y coordinate. The color must be a
+     * non-premultiplied ARGB value in the {@link ColorSpace.Named#SRGB sRGB}
+     * color space.</p>
+     *
+     * @param x     The x coordinate of the pixel to replace (0...width-1)
+     * @param y     The y coordinate of the pixel to replace (0...height-1)
+     * @param color The ARGB color to write into the bitmap
+     *
+     * @throws IllegalStateException if the bitmap is not mutable
+     * @throws IllegalArgumentException if x, y are outside of the bitmap's
+     *         bounds.
+     */
+    public void setPixel(int x, int y, @ColorInt int color) {
+        checkPixelAccess(x, y);
+        image.setRGB(x, y, color);
+    }
+
+    /**
+     * <p>Replace pixels in the bitmap with the colors in the array. Each element
+     * in the array is a packed int representing a non-premultiplied ARGB
+     * {@link Color} in the {@link ColorSpace.Named#SRGB sRGB} color space.</p>
+     *
+     * @param pixels   The colors to write to the bitmap
+     * @param offset   The index of the first color to read from pixels[]
+     * @param stride   The number of colors in pixels[] to skip between rows.
+     *                 Normally this value will be the same as the width of
+     *                 the bitmap, but it can be larger (or negative).
+     * @param x        The x coordinate of the first pixel to write to in
+     *                 the bitmap.
+     * @param y        The y coordinate of the first pixel to write to in
+     *                 the bitmap.
+     * @param width    The number of colors to copy from pixels[] per row
+     * @param height   The number of rows to write to the bitmap
+     *
+     * @throws IllegalStateException if the bitmap is not mutable
+     * @throws IllegalArgumentException if x, y, width, height are outside of
+     *         the bitmap's bounds.
+     * @throws ArrayIndexOutOfBoundsException if the pixels array is too small
+     *         to receive the specified number of pixels.
+     */
+    public void setPixels(@NonNull @ColorInt int[] pixels, int offset, int stride,
+            int x, int y, int width, int height) {
+        if (width == 0 || height == 0) {
+            return; // nothing to do
+        }
+        checkPixelsAccess(x, y, width, height, offset, stride, pixels);
+        image.setRGB(x, y, width, height, pixels, offset, stride);
+    }
+
+    public void eraseColor(int c) {
+        java.awt.Color color = Color.valueOf(c).toJavaColor();
+        Graphics2D graphics = image.createGraphics();
+        graphics.setColor(color);
+        graphics.fillRect(0, 0, width, height);
+        graphics.dispose();
+    }
+
+    public void recycle() {
+        // do nothing
+    }
+
+    @Nullable
+    public final Config getConfig() {
+        int type = image.getType();
+        return bufferedImageTypeToConfig(type);
+    }
+}

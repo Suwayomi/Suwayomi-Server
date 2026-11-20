@@ -1,0 +1,210 @@
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+package suwayomi.tachidesk.graphql.types
+
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLDescription
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.graphql.server.getAttribute
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Edge
+import suwayomi.tachidesk.graphql.server.primitives.Node
+import suwayomi.tachidesk.graphql.server.primitives.NodeList
+import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.manga.impl.download.model.DownloadQueueItem
+import suwayomi.tachidesk.manga.impl.download.model.DownloadStatus
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdate
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType
+import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdates
+import suwayomi.tachidesk.manga.impl.download.model.Status
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.server.JavalinSetup
+import suwayomi.tachidesk.server.user.requireUser
+import java.util.concurrent.CompletableFuture
+import suwayomi.tachidesk.manga.impl.download.model.DownloadState as OtherDownloadState
+
+data class ChapterDownloadReorder(
+    val chapterId: Int,
+    val to: Int,
+)
+
+data class DownloadStatus(
+    val state: DownloaderState,
+    val queue: List<DownloadType>,
+) {
+    constructor(downloadStatus: DownloadStatus) : this(
+        when (downloadStatus.status) {
+            Status.Stopped -> DownloaderState.STOPPED
+            Status.Started -> DownloaderState.STARTED
+        },
+        downloadStatus.queue.mapIndexed { index, item -> DownloadType(item, index) },
+    )
+}
+
+data class DownloadUpdates(
+    val state: DownloaderState,
+    val updates: List<suwayomi.tachidesk.graphql.types.DownloadUpdate>,
+    @GraphQLDescription("The current download queue at the time of sending initial message. Is null for all following messages")
+    val initial: List<DownloadType>?,
+    @GraphQLDeprecated("Removed - has no effect anymore, is always false")
+    @GraphQLDescription(
+        "Indicates whether updates have been omitted based on the \"maxUpdates\" subscription variable. " +
+            "In case updates have been omitted, the \"downloadStatus\" query should be re-fetched.",
+    )
+    val omittedUpdates: Boolean = false,
+) {
+    constructor(downloadUpdates: DownloadUpdates) : this(
+        when (downloadUpdates.status) {
+            Status.Stopped -> DownloaderState.STOPPED
+            Status.Started -> DownloaderState.STARTED
+        },
+        downloadUpdates.updates.map { DownloadUpdate(it) },
+        downloadUpdates.initial?.mapIndexed { index, item -> DownloadType(item, index) },
+    )
+}
+
+class DownloadType(
+    @get:GraphQLIgnore
+    val chapterId: Int,
+    @get:GraphQLIgnore
+    val mangaId: Int,
+    val state: DownloadState,
+    val progress: Float,
+    val tries: Int,
+    val position: Int,
+    @GraphQLDescription("Error message from the last failed download attempt. Only set when state is ERROR.")
+    val errorMessage: String? = null,
+) : Node {
+    constructor(downloadChapter: DownloadQueueItem, position: Int) : this(
+        downloadChapter.chapterId,
+        downloadChapter.mangaId,
+        when (downloadChapter.state) {
+            OtherDownloadState.Queued -> DownloadState.QUEUED
+            OtherDownloadState.Downloading -> DownloadState.DOWNLOADING
+            OtherDownloadState.Finished -> DownloadState.FINISHED
+            OtherDownloadState.Error -> DownloadState.ERROR
+        },
+        downloadChapter.progress,
+        downloadChapter.tries,
+        position,
+        downloadChapter.errorMessage,
+    )
+
+    fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {
+        val clearCache = state == DownloadState.FINISHED
+        if (clearCache) {
+            MangaType.clearCacheFor(mangaId, dataFetchingEnvironment)
+        }
+
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, MangaType>("MangaDataLoader", mangaId)
+    }
+
+    fun chapter(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<ChapterType> {
+        val clearCache = state == DownloadState.FINISHED
+        if (clearCache) {
+            ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
+        }
+
+        return dataFetchingEnvironment.getValueFromDataLoader<Int, ChapterType>("ChapterDataLoader", chapterId).thenApply {
+            // We only want to clear the cache for the first DOWNLOADING update once. Doing that above would be more complex
+            // and most likely ineffective due to not having a guarantee to ever get an update for a chapter that can be considered as "download completed".
+            // Doing it here, while creating a potetial duplicated db read, is easier and ensures that we only clear the cache when needed.
+            val isStale = state == DownloadState.DOWNLOADING && it.pageCount == -1
+
+            if (!isStale) {
+                return@thenApply it
+            }
+
+            ChapterType.clearCacheFor(chapterId, mangaId, dataFetchingEnvironment)
+
+            val userId = dataFetchingEnvironment.graphQlContext.getAttribute(JavalinSetup.Attribute.TachideskUser).requireUser()
+
+            return@thenApply transaction {
+                val resultRow =
+                    ChapterTable
+                        .getWithUserData(userId)
+                        .selectAll()
+                        .where { ChapterTable.id eq chapterId }
+                        .firstOrNull()
+                        ?: return@transaction it
+
+                ChapterType(resultRow)
+            }
+        }
+    }
+}
+
+class DownloadUpdate(
+    val type: DownloadUpdateType,
+    val download: DownloadType,
+) : Node {
+    constructor(downloadUpdate: DownloadUpdate) : this(
+        downloadUpdate.type,
+        DownloadType(downloadUpdate.downloadQueueItem, downloadUpdate.position),
+    )
+}
+
+enum class DownloadState {
+    QUEUED,
+    DOWNLOADING,
+    FINISHED,
+    ERROR,
+}
+
+enum class DownloaderState {
+    STARTED,
+    STOPPED,
+}
+
+data class DownloadNodeList(
+    override val nodes: List<DownloadType>,
+    override val edges: List<DownloadEdge>,
+    override val pageInfo: PageInfo,
+    override val totalCount: Int,
+) : NodeList() {
+    data class DownloadEdge(
+        override val cursor: Cursor,
+        override val node: DownloadType,
+    ) : Edge()
+
+    companion object {
+        fun List<DownloadType>.toNodeList(): DownloadNodeList =
+            DownloadNodeList(
+                nodes = this,
+                edges = getEdges(),
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = false,
+                        hasPreviousPage = false,
+                        startCursor = Cursor(0.toString()),
+                        endCursor = Cursor(lastIndex.toString()),
+                    ),
+                totalCount = size,
+            )
+
+        private fun List<DownloadType>.getEdges(): List<DownloadEdge> {
+            if (isEmpty()) return emptyList()
+            return listOf(
+                DownloadEdge(
+                    cursor = Cursor("0"),
+                    node = first(),
+                ),
+                DownloadEdge(
+                    cursor = Cursor(lastIndex.toString()),
+                    node = last(),
+                ),
+            )
+        }
+    }
+}

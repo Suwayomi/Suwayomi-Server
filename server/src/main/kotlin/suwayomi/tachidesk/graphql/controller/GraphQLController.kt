@@ -1,0 +1,80 @@
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+package suwayomi.tachidesk.graphql.controller
+
+import io.javalin.http.ContentType
+import io.javalin.http.Context
+import io.javalin.http.HttpStatus
+import io.javalin.websocket.WsConfig
+import suwayomi.tachidesk.graphql.server.TachideskGraphQLServer
+import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
+import suwayomi.tachidesk.graphql.types.AuthMode
+import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.serverConfig
+import kotlin.io.path.inputStream
+
+object GraphQLController {
+    private val server = TachideskGraphQLServer.create()
+
+    /** execute graphql query */
+    fun execute(ctx: Context) {
+        val contentType = ctx.contentType()
+        val isFormContentType =
+            contentType?.contains("application/x-www-form-urlencoded", true) == true ||
+                contentType?.contains("multipart/form-data", true) == true
+        if (ctx.contentType()?.contains("application/json", true) != true && !isFormContentType) {
+            ctx.status(400)
+            ctx.result("Invalid mime type")
+            return
+        }
+        if (isFormContentType && serverConfig.authMode.value == AuthMode.BASIC_AUTH &&
+            (
+                ctx.sessionAttribute<String>("csrf-token") == null ||
+                    ctx.sessionAttribute<String>("csrf-token") != ctx.cookie("suwayomi-basic-csrf")
+            )
+        ) {
+            // Basic Auth is handled by the browser, also for POST in <form>
+            // Thus, it conveniently ignores our CORS, so we add a CSRF cookie
+            ctx.status(401)
+            ctx.result("CSRF mismatch")
+            return
+        }
+        ctx.future {
+            future {
+                server.execute(ctx)
+            }.thenApply {
+                if (it != null) {
+                    ctx.json(it)
+                } else {
+                    ctx.status(HttpStatus.BAD_REQUEST)
+                }
+            }
+        }
+    }
+
+    fun playground(ctx: Context) {
+        ctx.contentType(ContentType.TEXT_HTML)
+        ctx.result(javaClass.getResourceAsStream("/graphql-playground.html")!!)
+    }
+
+    fun retrieveFile(ctx: Context) {
+        val stored = TemporaryFileStorage.retrieveFile(ctx.pathParam("file"))
+        ctx.contentType("application/octet-stream")
+        ctx.header("Content-Disposition", """attachment; filename="${stored.filename}"""")
+        ctx.result(stored.path.inputStream())
+    }
+
+    fun webSocket(ws: WsConfig) {
+        ws.onMessage { ctx ->
+            server.handleSubscriptionMessage(ctx)
+        }
+        ws.onClose { ctx ->
+            server.handleSubscriptionDisconnect(ctx)
+        }
+    }
+}

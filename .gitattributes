@@ -1,0 +1,31 @@
+* text=auto
+* text eol=lf
+
+# Windows forced line-endings
+/.idea/* text eol=crlf
+*.bat    text eol=crlf
+*.ps1    text eol=crlf
+
+# Gradle wrapper
+*.jar binary
+
+# Binary files types
+*.webp binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.gz binary
+*.zip binary
+*.7z binary
+*.ttf binary
+*.eot binary
+*.woff binary
+*.pyc binary
+*.swp binary
+*.pdf binary
+*.exe binary
+*.avif binary
+*.heif binary
+*.jxl binary

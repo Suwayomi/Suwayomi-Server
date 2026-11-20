@@ -1,0 +1,62 @@
+package suwayomi.tachidesk.manga.model.dataclass
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+import com.fasterxml.jackson.annotation.JsonIgnore
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.serialization.json.JsonObject
+import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
+import suwayomi.tachidesk.manga.impl.util.lang.trimAll
+import suwayomi.tachidesk.manga.model.table.MangaStatus
+import java.time.Instant
+
+data class MangaDataClass(
+    val id: Int,
+    val sourceId: String,
+    val url: String,
+    val title: String,
+    val thumbnailUrl: String? = null,
+    val thumbnailUrlLastFetched: Long = 0,
+    val initialized: Boolean = false,
+    val artist: String? = null,
+    val author: String? = null,
+    val description: String? = null,
+    val genre: List<String> = emptyList(),
+    val status: String = MangaStatus.UNKNOWN.name,
+    @Deprecated("Grab data elsewhere")
+    val inLibrary: Boolean = false,
+    @Deprecated("Grab data elsewhere")
+    val inLibraryAt: Long = 0,
+    val source: SourceDataClass? = null,
+    val realUrl: String? = null,
+    val lastFetchedAt: Long? = 0,
+    val chaptersLastFetchedAt: Long? = 0,
+    val updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
+    val freshData: Boolean = false,
+    val unreadCount: Long? = null,
+    val downloadCount: Long? = null,
+    val chapterCount: Long? = null,
+    val lastReadAt: Long? = null,
+    val lastChapterRead: ChapterDataClass? = null,
+    val age: Long? = if (lastFetchedAt == null) 0 else Instant.now().epochSecond.minus(lastFetchedAt),
+    val chaptersAge: Long? = if (chaptersLastFetchedAt == null) null else Instant.now().epochSecond.minus(chaptersLastFetchedAt),
+    val trackers: List<MangaTrackerDataClass>? = null,
+    val lastModifiedAt: Long = 0,
+    val version: Long = 0,
+    @JsonIgnore
+    val memo: JsonObject = JsonObject.EMPTY,
+) {
+    override fun toString(): String = "\"$title\" (id= $id) (sourceId= $sourceId)"
+}
+
+data class PagedMangaListDataClass(
+    val mangaList: List<MangaDataClass>,
+    val hasNextPage: Boolean,
+)
+
+internal fun String?.toGenreList() = this?.split(",")?.trimAll().orEmpty()

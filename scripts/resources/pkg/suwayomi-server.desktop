@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Suwayomi-Server
+Comment=Manga Reader
+Exec=/usr/bin/java -jar /usr/share/java/suwayomi-server/bin/Suwayomi-Server.jar "\\$@"
+Icon=suwayomi-server
+Terminal=false
+Categories=Network;

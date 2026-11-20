@@ -1,0 +1,108 @@
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+package suwayomi.tachidesk.graphql.server
+
+import com.expediagroup.graphql.dataloader.KotlinDataLoaderRegistryFactory
+import suwayomi.tachidesk.graphql.dataLoaders.CategoriesForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.CategoryCountForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.CategoryDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.CategoryMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChapterCountForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChapterDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChapterFlagCountForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChapterMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ChaptersForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackRecordDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.DisplayScoreForTrackSearchDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionCountForExtensionStore
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionStoreDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.ExtensionsForExtensionStore
+import suwayomi.tachidesk.graphql.dataLoaders.FirstUnreadChapterForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.GlobalMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.HasDuplicateChaptersForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.HighestNumberedChapterForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.LastReadChapterForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.LatestFetchedChapterForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.LatestReadChapterForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.LatestUploadedChapterForMangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaCountForCategoryDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaCountForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaForCategoryDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaForSourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.MangaMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.PermissionsForUserDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.RolesForUserDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.SourceDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.SourceMetaDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.SourcesForExtensionDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordCountForMangaIdDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordCountForTrackerIdDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordsForMangaIdDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackRecordsForTrackerIdDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackerDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackerScoresDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackerStatusesDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.TrackerTokenExpiredDataLoader
+import suwayomi.tachidesk.graphql.dataLoaders.UserDataLoader
+
+class TachideskDataLoaderRegistryFactory {
+    companion object {
+        fun create(): KotlinDataLoaderRegistryFactory =
+            KotlinDataLoaderRegistryFactory(
+                MangaDataLoader(),
+                ChapterDataLoader(),
+                ChaptersForMangaDataLoader(),
+                ChapterCountForMangaDataLoader(),
+                ChapterFlagCountForMangaDataLoader(),
+                HasDuplicateChaptersForMangaDataLoader(),
+                LastReadChapterForMangaDataLoader(),
+                LatestReadChapterForMangaDataLoader(),
+                LatestFetchedChapterForMangaDataLoader(),
+                LatestUploadedChapterForMangaDataLoader(),
+                FirstUnreadChapterForMangaDataLoader(),
+                HighestNumberedChapterForMangaDataLoader(),
+                GlobalMetaDataLoader(),
+                ChapterMetaDataLoader(),
+                MangaMetaDataLoader(),
+                MangaForCategoryDataLoader(),
+                MangaCountForCategoryDataLoader(),
+                MangaForSourceDataLoader(),
+                MangaCountForSourceDataLoader(),
+                CategoryDataLoader(),
+                CategoryMetaDataLoader(),
+                CategoriesForMangaDataLoader(),
+                CategoryCountForMangaDataLoader(),
+                SourceDataLoader(),
+                SourcesForExtensionDataLoader(),
+                SourceMetaDataLoader(),
+                ExtensionDataLoader(),
+                ExtensionForSourceDataLoader(),
+                ExtensionsForExtensionStore(),
+                ExtensionCountForExtensionStore(),
+                ExtensionStoreDataLoader(),
+                TrackerDataLoader(),
+                TrackerStatusesDataLoader(),
+                TrackerScoresDataLoader(),
+                TrackerTokenExpiredDataLoader(),
+                TrackRecordsForMangaIdDataLoader(),
+                TrackRecordCountForMangaIdDataLoader(),
+                DisplayScoreForTrackRecordDataLoader(),
+                DisplayScoreForTrackSearchDataLoader(),
+                TrackRecordsForTrackerIdDataLoader(),
+                TrackRecordCountForTrackerIdDataLoader(),
+                TrackRecordDataLoader(),
+                UserDataLoader(),
+                PermissionsForUserDataLoader(),
+                RolesForUserDataLoader(),
+            )
+    }
+}

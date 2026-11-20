@@ -1,0 +1,132 @@
+name: CI Pull Request
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check_wrapper:
+    name: Validate Gradle Wrapper
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v7
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v5
+
+  build:
+    name: Build and test (${{ matrix.database }})
+    needs: check_wrapper
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [H2, POSTGRESQL]
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: master
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v6
+        with:
+          java-version: 25
+          distribution: 'zulu'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Copy CI gradle.properties
+        run: |
+          cd master
+          mkdir -p ~/.gradle
+          cp .github/runner-files/ci-gradle.properties ~/.gradle/gradle.properties
+
+      - name: Build And Run Jar
+        working-directory: master
+        run: |
+          ./gradlew ktlintCheck :server:shadowJar --stacktrace
+          gcc -fPIC -I$JAVA_HOME/include -I$JAVA_HOME/include/linux -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so
+          export LD_PRELOAD="$(pwd)/scripts/resources/catch_abort.so"
+          JAR=$(ls ./server/build/*.jar| head -1)
+
+          DB_FLAGS=()
+          if [ "${{ matrix.database }}" = "POSTGRESQL" ]; then
+            DB_FLAGS=(
+              -Dsuwayomi.tachidesk.config.server.databaseType=POSTGRESQL
+              -Dsuwayomi.tachidesk.config.server.databaseUrl=postgresql://localhost:5432/postgres
+              -Dsuwayomi.tachidesk.config.server.databaseUsername=postgres
+              -Dsuwayomi.tachidesk.config.server.databasePassword=postgres
+            )
+          fi
+
+          set +e
+          timeout 30s java \
+              -Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false \
+              -Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false \
+              "${DB_FLAGS[@]}" \
+              -jar "$JAR"
+
+          ecode="$?"
+          # if exit code is not 124 or 125, then error
+          if ! [ "$ecode" -eq 124 -o "$ecode" -eq 125 ]; then 
+            printf "exit code '%s' - exiting.\n" "$ecode"
+            exit "$ecode"
+          fi
+          exit 0
+
+      - name: "Run tests"
+        working-directory: master
+        run: |
+          if [ "${{ matrix.database }}" = "POSTGRESQL" ]; then
+            ./gradlew test --stacktrace \
+              -PtestDatabaseType=POSTGRESQL \
+              -PtestDatabaseUrl=postgresql://localhost:5432/postgres \
+              -PtestDatabaseUsername=postgres \
+              -PtestDatabasePassword=postgres
+          else
+            ./gradlew test --stacktrace
+          fi
+
+  check_docs:
+    name: Validate that all options are documented
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@v7
+
+      - name: Validate all options are documented
+        run: |
+          f="`cat ./server/server-config/src/main/kotlin/suwayomi/tachidesk/server/ServerConfig.kt |
+            awk -F' ' 'BEGIN{prev=""}{if ($3 ~ "Mutable" && !(prev ~ "@Deprecated")) print "server." substr($2, 1, length($2)-1); prev=$0}' |
+            while read -r setting; do
+              if ! grep "$setting" ./docs/Configuring-Suwayomi‐Server.md >/dev/null; then
+                echo "Setting $setting not documented" >&2
+                echo ":"
+              fi
+            done`"
+          if [ -n "$f" ]; then
+            exit 1
+          fi

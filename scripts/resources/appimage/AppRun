@@ -1,0 +1,4 @@
+#!/bin/sh
+
+cd "$APPDIR"
+exec $APPDIR/jre/bin/java -jar $APPDIR/bin/Suwayomi-Server.jar

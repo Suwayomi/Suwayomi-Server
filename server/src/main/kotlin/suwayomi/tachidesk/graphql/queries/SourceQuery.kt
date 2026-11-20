@@ -1,0 +1,252 @@
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+package suwayomi.tachidesk.graphql.queries
+
+import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
+import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import com.expediagroup.graphql.server.extensions.getValueFromDataLoader
+import graphql.schema.DataFetchingEnvironment
+import org.jetbrains.exposed.v1.core.Column
+import org.jetbrains.exposed.v1.core.Op
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.greaterEq
+import org.jetbrains.exposed.v1.core.less
+import org.jetbrains.exposed.v1.jdbc.andWhere
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
+import suwayomi.tachidesk.graphql.queries.filter.ContentWarningFilter
+import suwayomi.tachidesk.graphql.queries.filter.Filter
+import suwayomi.tachidesk.graphql.queries.filter.HasGetOp
+import suwayomi.tachidesk.graphql.queries.filter.LongFilter
+import suwayomi.tachidesk.graphql.queries.filter.OpAnd
+import suwayomi.tachidesk.graphql.queries.filter.StringFilter
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEnum
+import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
+import suwayomi.tachidesk.graphql.queries.filter.applyOps
+import suwayomi.tachidesk.graphql.server.primitives.Cursor
+import suwayomi.tachidesk.graphql.server.primitives.Order
+import suwayomi.tachidesk.graphql.server.primitives.OrderBy
+import suwayomi.tachidesk.graphql.server.primitives.PageInfo
+import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
+import suwayomi.tachidesk.graphql.server.primitives.QueryResults
+import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
+import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
+import suwayomi.tachidesk.graphql.types.SourceNodeList
+import suwayomi.tachidesk.graphql.types.SourceType
+import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
+import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.user.UserPermission
+import java.util.concurrent.CompletableFuture
+
+class SourceQuery {
+    @RequireAuth
+    fun source(
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        id: Long,
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
+    ): CompletableFuture<SourceType> =
+        dataFetchingEnvironment.getValueFromDataLoader<Long, SourceType>("SourceDataLoader", id).thenApply { source ->
+            // if (source != null && source.contentWarning >= ContentWarning.MIXED && !permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
+            //     throw ForbiddenException()
+            // }
+            source
+        }
+
+    enum class SourceOrderBy(
+        override val column: Column<*>,
+    ) : OrderBy<SourceType> {
+        ID(SourceTable.id),
+        NAME(SourceTable.name),
+        LANG(SourceTable.lang),
+        ;
+
+        override fun greater(cursor: Cursor): Op<Boolean> =
+            when (this) {
+                ID -> SourceTable.id greater cursor.value.toLong()
+                NAME -> greaterNotUnique(SourceTable.name, SourceTable.id, cursor, String::toString)
+                LANG -> greaterNotUnique(SourceTable.lang, SourceTable.id, cursor, String::toString)
+            }
+
+        override fun less(cursor: Cursor): Op<Boolean> =
+            when (this) {
+                ID -> SourceTable.id less cursor.value.toLong()
+                NAME -> lessNotUnique(SourceTable.name, SourceTable.id, cursor, String::toString)
+                LANG -> lessNotUnique(SourceTable.lang, SourceTable.id, cursor, String::toString)
+            }
+
+        override fun asCursor(type: SourceType): Cursor {
+            val value =
+                when (this) {
+                    ID -> type.id.toString()
+                    NAME -> type.id.toString() + "-" + type.name
+                    LANG -> type.id.toString() + "-" + type.lang
+                }
+            return Cursor(value)
+        }
+    }
+
+    data class SourceOrder(
+        override val by: SourceOrderBy,
+        override val byType: SortOrder? = null,
+    ) : Order<SourceOrderBy>
+
+    data class SourceCondition(
+        val id: Long? = null,
+        val name: String? = null,
+        val lang: String? = null,
+        @GraphQLDeprecated("replace with contentWarning == ContentRating.MIXED", ReplaceWith("contentWarning"))
+        val isNsfw: Boolean? = null,
+        val contentWarning: ContentWarning? = null,
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
+            val opAnd = OpAnd()
+            opAnd.eq(id, SourceTable.id)
+            opAnd.eq(name, SourceTable.name)
+            opAnd.eq(lang, SourceTable.lang)
+            opAnd.andWhere(isNsfw) {
+                if (it) {
+                    SourceTable.contentWarning greaterEq ContentWarning.MIXED.ordinal
+                } else {
+                    SourceTable.contentWarning less ContentWarning.MIXED.ordinal
+                }
+            }
+            opAnd.andWhere(contentWarning) { SourceTable.contentWarning eq it.ordinal }
+
+            return opAnd.op
+        }
+    }
+
+    data class SourceFilter(
+        val id: LongFilter? = null,
+        val name: StringFilter? = null,
+        val lang: StringFilter? = null,
+        @GraphQLDeprecated("replace with contentWarning", ReplaceWith("contentWarning"))
+        val isNsfw: BooleanFilter? = null,
+        val contentWarning: ContentWarningFilter? = null,
+        override val and: List<SourceFilter>? = null,
+        override val or: List<SourceFilter>? = null,
+        override val not: SourceFilter? = null,
+    ) : Filter<SourceFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
+            listOfNotNull(
+                andFilterWithCompareEntity(SourceTable.id, id),
+                andFilterWithCompareString(SourceTable.name, name),
+                andFilterWithCompareString(SourceTable.lang, lang),
+                andFilterWithCompareEnum(SourceTable.contentWarning, contentWarning),
+            )
+    }
+
+    @RequireAuth
+    fun sources(
+        @GraphQLIgnore
+        permissions: List<UserPermission>,
+        dataFetchingEnvironment: DataFetchingEnvironment,
+        condition: SourceCondition? = null,
+        filter: SourceFilter? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
+        orderBy: SourceOrderBy? = null,
+        @GraphQLDeprecated(
+            "Replaced with order",
+            replaceWith = ReplaceWith("order"),
+        )
+        orderByType: SortOrder? = null,
+        order: List<SourceOrder>? = null,
+        before: Cursor? = null,
+        after: Cursor? = null,
+        first: Int? = null,
+        last: Int? = null,
+        offset: Int? = null,
+    ): CompletableFuture<SourceNodeList> =
+        future {
+            val (queryResults, resultsAsType) =
+                suspendTransaction {
+                    val res = SourceTable.selectAll()
+
+                    res.applyOps(null, condition, filter)
+
+                    // hide NSFW sources from users without the NSFW permission
+                    // if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {
+                    //     res.andWhere { SourceTable.contentWarning less ContentWarning.MIXED.ordinal }
+                    // }
+
+                    val baseSort = listOf(SourceOrder(SourceOrderBy.ID, SortOrder.ASC))
+                    val deprecatedSort = listOfNotNull(orderBy?.let { SourceOrder(orderBy, orderByType) })
+                    val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+
+                    val (total, firstResult, lastResult) =
+                        res.applySortAndGetPaginationInfo(
+                            actualSort,
+                            before,
+                            last,
+                            SourceTable.id,
+                            PaginationNeeds.of(dataFetchingEnvironment),
+                        )
+
+                    res.applyBeforeAfter(
+                        before = before,
+                        after = after,
+                        orderBy = order?.firstOrNull()?.by ?: SourceOrderBy.ID,
+                        orderByType = order?.firstOrNull()?.byType,
+                    )
+
+                    if (first != null) {
+                        res.limit(first).offset(offset?.toLong() ?: 0)
+                    } else if (last != null) {
+                        res.limit(last)
+                    }
+
+                    QueryResults(total, firstResult, lastResult, res.toList()).let {
+                        it to it.results.mapNotNull { SourceType(it) }
+                    }
+                }
+
+            val getAsCursor: (SourceType) -> Cursor = (order?.firstOrNull()?.by ?: SourceOrderBy.ID)::asCursor
+
+            SourceNodeList(
+                resultsAsType,
+                if (resultsAsType.isEmpty()) {
+                    emptyList()
+                } else {
+                    listOfNotNull(
+                        resultsAsType.firstOrNull()?.let {
+                            SourceNodeList.SourceEdge(
+                                getAsCursor(it),
+                                it,
+                            )
+                        },
+                        resultsAsType.lastOrNull()?.let {
+                            SourceNodeList.SourceEdge(
+                                getAsCursor(it),
+                                it,
+                            )
+                        },
+                    )
+                },
+                pageInfo =
+                    PageInfo(
+                        hasNextPage = queryResults.lastKey != resultsAsType.lastOrNull()?.id,
+                        hasPreviousPage = queryResults.firstKey != resultsAsType.firstOrNull()?.id,
+                        startCursor = resultsAsType.firstOrNull()?.let { getAsCursor(it) },
+                        endCursor = resultsAsType.lastOrNull()?.let { getAsCursor(it) },
+                    ),
+                totalCount = queryResults.total.toInt(),
+            )
+        }
+}

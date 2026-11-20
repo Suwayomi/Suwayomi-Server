@@ -1,0 +1,586 @@
+package suwayomi.tachidesk.manga.impl
+
+/*
+ * Copyright (C) Contributors to the Suwayomi project
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
+
+import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.HttpException
+import eu.kanade.tachiyomi.network.NetworkHelper
+import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.source.Source
+import eu.kanade.tachiyomi.source.local.LocalSource
+import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.model.SManga
+import eu.kanade.tachiyomi.source.model.SMangaUpdate
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import eu.kanade.tachiyomi.source.online.HttpSource
+import io.github.oshai.kotlinlogging.KLogger
+import io.github.oshai.kotlinlogging.KotlinLogging
+import io.github.reactivecircus.cache4k.Cache
+import io.javalin.http.HttpStatus
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import okhttp3.CacheControl
+import okhttp3.Response
+import org.jetbrains.exposed.v1.core.ResultRow
+import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
+import org.jetbrains.exposed.v1.core.dao.id.EntityID
+import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.inList
+import org.jetbrains.exposed.v1.core.isNull
+import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
+import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.select
+import org.jetbrains.exposed.v1.jdbc.selectAll
+import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
+import org.jetbrains.exposed.v1.jdbc.transactions.suspendTransaction
+import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
+import suwayomi.tachidesk.manga.impl.download.fileProvider.impl.MissingThumbnailException
+import suwayomi.tachidesk.manga.impl.util.network.await
+import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
+import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.clearCachedImage
+import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
+import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
+import suwayomi.tachidesk.manga.impl.util.updateMangaDownloadDir
+import suwayomi.tachidesk.manga.model.dataclass.ChapterDataClass
+import suwayomi.tachidesk.manga.model.dataclass.IncludeOrExclude
+import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
+import suwayomi.tachidesk.manga.model.table.ChapterTable
+import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.manga.model.table.MangaMetaTable
+import suwayomi.tachidesk.manga.model.table.MangaTable
+import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.getWithUserData
+import suwayomi.tachidesk.manga.model.table.toDataClass
+import suwayomi.tachidesk.server.ApplicationDirs
+import uy.kohesive.injekt.injectLazy
+import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.time.Instant
+import kotlin.time.Duration.Companion.minutes
+
+private val logger = KotlinLogging.logger { }
+
+object Manga {
+    val mangaInfoMutex: Cache<Int, Mutex> =
+        Cache
+            .Builder<Int, Mutex>()
+            .expireAfterAccess(10.minutes)
+            .build()
+
+    suspend fun getManga(
+        mangaId: Int,
+        onlineFetch: Boolean = false,
+    ): MangaDataClass {
+        var mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+
+        return if (!onlineFetch && mangaEntry[MangaTable.initialized]) {
+            MangaTable.toDataClass(mangaEntry)
+        } else { // initialize manga
+            updateMangaAndChapters(mangaId, updateChapters = false)
+
+            mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+
+            MangaTable.toDataClass(mangaEntry).copy(freshData = true)
+        }
+    }
+
+    suspend fun fetchMangaAndChapters(
+        mangaEntry: ResultRow,
+        source: Source,
+        fetchDetails: Boolean,
+        fetchChapters: Boolean,
+    ): SMangaUpdate {
+        val sManga =
+            SManga.create().apply {
+                url = mangaEntry[MangaTable.url]
+                title = mangaEntry[MangaTable.title]
+                thumbnail_url = mangaEntry[MangaTable.thumbnail_url]
+                artist = mangaEntry[MangaTable.artist]
+                author = mangaEntry[MangaTable.author]
+                description = mangaEntry[MangaTable.description]
+                genre = mangaEntry[MangaTable.genre]
+                status = mangaEntry[MangaTable.status]
+                update_strategy = UpdateStrategy.valueOf(mangaEntry[MangaTable.updateStrategy])
+                memo = mangaEntry[MangaTable.memo]
+                initialized = mangaEntry[MangaTable.initialized]
+            }
+        val sChapters =
+            transaction {
+                ChapterTable
+                    .selectAll()
+                    .where { ChapterTable.manga eq mangaEntry[MangaTable.id] }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                    .map {
+                        SChapter.create().apply {
+                            url = it[ChapterTable.url]
+                            name = it[ChapterTable.name]
+                            chapter_number = it[ChapterTable.chapter_number]
+                            scanlator = it[ChapterTable.scanlator]
+                            date_upload = it[ChapterTable.date_upload]
+                            memo = it[ChapterTable.memo]
+                        }
+                    }
+            }
+
+        return source.getMangaUpdate(
+            sManga,
+            sChapters,
+            fetchDetails = fetchDetails,
+            fetchChapters = fetchChapters,
+        )
+    }
+
+    suspend fun fetchManga(mangaId: Int): SManga? {
+        return mangaInfoMutex.get(mangaId) { Mutex() }.withLock {
+            val mangaEntry =
+                transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+            val source = getSourceOrNull(mangaEntry[MangaTable.sourceReference]) ?: return null
+            val sManga =
+                fetchMangaAndChapters(
+                    mangaEntry,
+                    source,
+                    fetchDetails = true,
+                    fetchChapters = false,
+                ).manga
+
+            updateMangaDatabase(mangaEntry, source, sManga)
+        }
+    }
+
+    suspend fun updateMangaAndChapters(
+        mangaId: Int,
+        updateManga: Boolean = true,
+        updateChapters: Boolean = true,
+    ) {
+        mangaInfoMutex.get(mangaId) { Mutex() }.withLock {
+            var mangaEntry =
+                transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+            val source =
+                getSourceOrNull(mangaEntry[MangaTable.sourceReference])
+                    ?: throw NullPointerException("Missing source ${mangaEntry[MangaTable.sourceReference]}")
+            val mangaUpdate =
+                fetchMangaAndChapters(
+                    mangaEntry,
+                    source,
+                    fetchDetails = updateManga,
+                    fetchChapters = updateChapters,
+                )
+
+            if (updateManga) {
+                updateMangaDatabase(mangaEntry, source, mangaUpdate.manga)
+                mangaEntry =
+                    transaction {
+                        MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
+                    }
+            }
+            if (updateChapters) {
+                Chapter.updateChapterListDatabase(mangaEntry, mangaUpdate.chapters, source)
+            }
+        }
+    }
+
+    suspend fun updateMangaDatabase(
+        mangaEntry: ResultRow,
+        source: Source,
+        sManga: SManga,
+    ): SManga {
+        suspendTransaction {
+            val mangaId = mangaEntry[MangaTable.id].value
+            val currentTitle = mangaEntry[MangaTable.title]
+            val remoteTitle =
+                try {
+                    sManga.title
+                } catch (_: UninitializedPropertyAccessException) {
+                    ""
+                }
+
+            val hasChangedTitle = remoteTitle.isNotEmpty() && remoteTitle != currentTitle
+            val canUpdateTitle =
+                hasChangedTitle &&
+                    updateMangaDownloadDir(mangaId, currentTitle, source.toString(), remoteTitle)
+
+            MangaTable.update({ MangaTable.id eq mangaEntry[MangaTable.id] }) {
+                if (canUpdateTitle) {
+                    it[MangaTable.title] = remoteTitle
+                }
+                it[MangaTable.initialized] = true
+
+                it[MangaTable.artist] = sManga.artist ?: mangaEntry[MangaTable.artist]
+                it[MangaTable.author] = sManga.author ?: mangaEntry[MangaTable.author]
+                it[MangaTable.description] = sManga.description
+                    ?: mangaEntry[MangaTable.description]
+                it[MangaTable.genre] = sManga.genre ?: mangaEntry[MangaTable.genre]
+                it[MangaTable.status] = sManga.status
+                if (!sManga.thumbnail_url.isNullOrEmpty()) {
+                    it[MangaTable.thumbnail_url] = sManga.thumbnail_url
+                    it[MangaTable.thumbnailUrlLastFetched] = Instant.now().epochSecond
+                    clearThumbnail(mangaId)
+                }
+
+                it[MangaTable.realUrl] =
+                    runCatching {
+                        (source as? HttpSource)?.getMangaUrl(
+                            SManga.create().apply {
+                                url = mangaEntry[MangaTable.url]
+                                title = remoteTitle.ifEmpty { currentTitle }
+                                thumbnail_url = mangaEntry[MangaTable.thumbnail_url]
+                                artist = sManga.artist ?: mangaEntry[MangaTable.artist]
+                                author = sManga.author ?: mangaEntry[MangaTable.author]
+                                description = sManga.description ?: mangaEntry[MangaTable.description]
+                                genre = sManga.genre ?: mangaEntry[MangaTable.genre]
+                                status = sManga.status
+                                update_strategy = sManga.update_strategy
+                                memo = sManga.memo
+                            },
+                        )
+                    }.getOrNull()
+
+                it[MangaTable.lastFetchedAt] = Instant.now().epochSecond
+
+                it[MangaTable.updateStrategy] = sManga.update_strategy.name
+                it[MangaTable.memo] = sManga.memo
+            }
+        }
+
+        return sManga
+    }
+
+    suspend fun getMangaFull(
+        userId: Int,
+        mangaId: Int,
+        onlineFetch: Boolean = false,
+    ): MangaDataClass {
+        val mangaDaaClass = getManga(mangaId, onlineFetch)
+
+        return transaction {
+            val unreadCount =
+                ChapterTable
+                    .getWithUserData(userId)
+                    .selectAll()
+                    .where { (ChapterTable.manga eq mangaId) and (ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())) }
+                    .count()
+
+            val downloadCount =
+                ChapterTable
+                    .getWithUserData(userId)
+                    .selectAll()
+                    .where { (ChapterTable.manga eq mangaId) and (ChapterUserTable.isDownloaded eq true) }
+                    .count()
+
+            val chapterCount =
+                ChapterTable
+                    .selectAll()
+                    .where { (ChapterTable.manga eq mangaId) }
+                    .count()
+
+            val lastChapterRead =
+                ChapterTable
+                    .getWithUserData(userId)
+                    .selectAll()
+                    .where { (ChapterTable.manga eq mangaId) }
+                    .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                    .firstOrNull { it.getOrNull(ChapterUserTable.isRead) == true }
+
+            mangaDaaClass.copy(
+                unreadCount = unreadCount,
+                downloadCount = downloadCount,
+                chapterCount = chapterCount,
+                lastChapterRead = lastChapterRead?.let { ChapterTable.toDataClass(it) },
+            )
+        }
+    }
+
+    fun getMangaMetaMap(
+        userId: Int,
+        mangaId: Int,
+    ): Map<String, String> =
+        transaction {
+            MangaMetaTable
+                .selectAll()
+                .where { MangaMetaTable.user eq userId and (MangaMetaTable.ref eq mangaId) }
+                .associate { it[MangaMetaTable.key] to it[MangaMetaTable.value] }
+        }
+
+    fun modifyMangaMeta(
+        userId: Int,
+        mangaId: Int,
+        key: String,
+        value: String,
+    ) {
+        modifyMangasMetas(userId, mapOf(mangaId to mapOf(key to value)))
+    }
+
+    fun modifyMangasMetas(
+        userId: Int,
+        metaByMangaId: Map<Int, Map<String, String>>,
+    ) {
+        transaction {
+            val mangaIds = metaByMangaId.keys
+            val metaKeys = metaByMangaId.flatMap { it.value.keys }
+
+            val dbMetaByMangaId =
+                MangaMetaTable
+                    .selectAll()
+                    .where {
+                        (MangaMetaTable.ref inList mangaIds) and (MangaMetaTable.key inList metaKeys) and
+                            (MangaMetaTable.user eq userId)
+                    }.groupBy { it[MangaMetaTable.ref].value }
+
+            val existingMetaByMetaId =
+                mangaIds.flatMap { mangaId ->
+                    val metaByKey = dbMetaByMangaId[mangaId].orEmpty().associateBy { it[MangaMetaTable.key] }
+                    val existingMetas = metaByMangaId[mangaId].orEmpty().filter { (key) -> key in metaByKey.keys }
+
+                    existingMetas.map { entry ->
+                        val metaId = metaByKey[entry.key]!![MangaMetaTable.id].value
+
+                        metaId to entry
+                    }
+                }
+
+            val newMetaByMangaId =
+                mangaIds.flatMap { mangaId ->
+                    val metaByKey = dbMetaByMangaId[mangaId].orEmpty().associateBy { it[MangaMetaTable.key] }
+
+                    metaByMangaId[mangaId]
+                        .orEmpty()
+                        .filter { entry -> entry.key !in metaByKey.keys }
+                        .map { entry -> mangaId to entry }
+                }
+
+            if (existingMetaByMetaId.isNotEmpty()) {
+                BatchUpdateStatement(MangaMetaTable)
+                    .apply {
+                        existingMetaByMetaId.forEach { (metaId, entry) ->
+                            addBatch(EntityID(metaId, MangaMetaTable))
+                            this[MangaMetaTable.value] = entry.value
+                        }
+                    }.toExecutable()
+                    .execute(this@transaction)
+            }
+
+            if (newMetaByMangaId.isNotEmpty()) {
+                MangaMetaTable.batchInsert(newMetaByMangaId) { (mangaId, entry) ->
+                    this[MangaMetaTable.ref] = EntityID(mangaId, MangaTable)
+                    this[MangaMetaTable.key] = entry.key
+                    this[MangaMetaTable.value] = entry.value
+                    this[MangaMetaTable.user] = userId
+                }
+            }
+        }
+    }
+
+    private suspend fun fetchThumbnailUrl(mangaId: Int): String? {
+        getManga(mangaId, true)
+        return transaction {
+            MangaTable.selectAll().where { MangaTable.id eq mangaId }.first()
+        }[MangaTable.thumbnail_url]
+    }
+
+    private val applicationDirs: ApplicationDirs by injectLazy()
+    private val network: NetworkHelper by injectLazy()
+
+    private suspend fun fetchHttpSourceMangaThumbnail(
+        source: HttpSource,
+        mangaEntry: ResultRow,
+        refreshUrl: Boolean = false,
+    ): Response {
+        val mangaId = mangaEntry[MangaTable.id].value
+
+        val requiresInitialization = mangaEntry[MangaTable.thumbnail_url] == null && !mangaEntry[MangaTable.initialized]
+        val refreshThumbnailUrl = refreshUrl || requiresInitialization
+
+        val thumbnailUrl =
+            if (refreshThumbnailUrl) {
+                fetchThumbnailUrl(mangaId)
+            } else {
+                mangaEntry[MangaTable.thumbnail_url]
+            } ?: throw NullPointerException("No thumbnail found")
+
+        return try {
+            source.client
+                .newCall(
+                    GET(thumbnailUrl, source.headers, cache = CacheControl.FORCE_NETWORK),
+                ).awaitSuccess()
+        } catch (e: HttpException) {
+            val tryToRefreshUrl =
+                !refreshUrl &&
+                    listOf(
+                        HttpStatus.GONE.code,
+                        HttpStatus.MOVED_PERMANENTLY.code,
+                        HttpStatus.NOT_FOUND.code,
+                        523, // (Cloudflare) Origin Is Unreachable
+                        522, // (Cloudflare) Connection timed out
+                    ).contains(e.code)
+            if (!tryToRefreshUrl) {
+                throw e
+            }
+
+            fetchHttpSourceMangaThumbnail(source, mangaEntry, refreshUrl = true)
+        } catch (e: IOException) {
+            // The source may have moved its images to another CDN
+            if (refreshUrl || !e.isHostUnreachable()) {
+                throw e
+            }
+
+            fetchHttpSourceMangaThumbnail(source, mangaEntry, refreshUrl = true)
+        }
+    }
+
+    suspend fun fetchMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+        val cacheSaveDir = applicationDirs.tempThumbnailCacheRoot
+        val fileName = mangaId.toString()
+
+        val mangaEntry = transaction { MangaTable.selectAll().where { MangaTable.id eq mangaId }.first() }
+        val sourceId = mangaEntry[MangaTable.sourceReference]
+
+        return when (val source = getSourceOrStub(sourceId)) {
+            is HttpSource -> {
+                getImageResponse(cacheSaveDir, fileName) {
+                    fetchHttpSourceMangaThumbnail(source, mangaEntry)
+                }
+            }
+
+            is LocalSource -> {
+                val imageFile =
+                    mangaEntry[MangaTable.thumbnail_url]?.let {
+                        val file = File(it)
+                        if (file.exists()) {
+                            file
+                        } else {
+                            null
+                        }
+                    } ?: throw IOException("Thumbnail does not exist")
+                val contentType =
+                    ImageUtil.findImageType { imageFile.inputStream() }?.mime
+                        ?: "image/jpeg"
+                imageFile.inputStream() to contentType
+            }
+
+            is StubSource -> {
+                getImageResponse(cacheSaveDir, fileName) {
+                    val thumbnailUrl =
+                        mangaEntry[MangaTable.thumbnail_url]
+                            ?: throw NullPointerException("No thumbnail found")
+                    network.client
+                        .newCall(
+                            GET(thumbnailUrl, cache = CacheControl.FORCE_NETWORK),
+                        ).await()
+                }
+            }
+
+            else -> {
+                throw IllegalArgumentException("Unknown source")
+            }
+        }
+    }
+
+    suspend fun getMangaThumbnail(mangaId: Int): Pair<InputStream, String> {
+        val mangaInLibrary =
+            transaction {
+                MangaUserTable
+                    .selectAll()
+                    .where {
+                        MangaUserTable.manga eq mangaId and (MangaUserTable.inLibrary eq true)
+                    }.any()
+            }
+        val mangaSource =
+            transaction {
+                MangaTable
+                    .select(MangaTable.sourceReference)
+                    .where { MangaTable.id eq mangaId }
+                    .firstOrNull()
+                    ?.get(MangaTable.sourceReference)
+            }
+
+        if (mangaInLibrary && mangaSource != LocalSource.ID) {
+            return try {
+                ThumbnailDownloadHelper.getImage(mangaId)
+            } catch (_: MissingThumbnailException) {
+                ThumbnailDownloadHelper.download(mangaId)
+                ThumbnailDownloadHelper.getImage(mangaId)
+            }
+        }
+
+        return fetchMangaThumbnail(mangaId)
+    }
+
+    fun clearThumbnail(mangaId: Int) {
+        val fileName = mangaId.toString()
+
+        clearCachedImage(applicationDirs.tempThumbnailCacheRoot, fileName)
+        clearCachedImage(applicationDirs.thumbnailDownloadsRoot, fileName)
+    }
+
+    fun getLatestChapter(mangaId: Int): ChapterDataClass? =
+        transaction {
+            ChapterTable
+                .selectAll()
+                .where { ChapterTable.manga eq mangaId }
+                .maxByOrNull { it[ChapterTable.sourceOrder] }
+        }?.let { ChapterTable.toDataClass(it) }
+
+    fun getUnreadChapters(
+        userId: Int,
+        mangaId: Int,
+    ): List<ChapterDataClass> =
+        transaction {
+            ChapterTable
+                .getWithUserData(userId)
+                .selectAll()
+                .where { (ChapterTable.manga eq mangaId) and (ChapterUserTable.isRead eq false or (ChapterUserTable.isRead.isNull())) }
+                .orderBy(ChapterTable.sourceOrder to SortOrder.DESC)
+                .map { ChapterTable.toDataClass(it) }
+        }
+
+    fun isInIncludedDownloadCategory(
+        userId: Int,
+        logContext: KLogger = logger,
+        mangaId: Int,
+    ): Boolean {
+        val log = KotlinLogging.logger("${logContext.name}::isInExcludedDownloadCategory($mangaId)")
+
+        // Verify the manga is configured to be downloaded based on it's categories.
+        var mangaCategories = CategoryManga.getMangaCategories(userId, mangaId).toSet()
+        // if the manga has no categories, then it's implicitly in the default category
+        if (mangaCategories.isEmpty()) {
+            val defaultCategory = Category.getDefaultCategory(userId) ?: return false
+            mangaCategories = setOf(defaultCategory)
+        }
+
+        val downloadCategoriesMap = Category.getCategoryList(userId).groupBy { it.includeInDownload }
+        val unsetCategories = downloadCategoriesMap[IncludeOrExclude.UNSET].orEmpty()
+        // We only download if it's in the include list, and not in the exclude list.
+        // Use the unset categories as the included categories if the included categories is
+        // empty
+        val includedCategories = downloadCategoriesMap[IncludeOrExclude.INCLUDE].orEmpty().ifEmpty { unsetCategories }
+        val excludedCategories = downloadCategoriesMap[IncludeOrExclude.EXCLUDE].orEmpty()
+        // Only download manga that aren't in any excluded categories
+        val mangaExcludeCategories = mangaCategories.intersect(excludedCategories.toSet())
+        if (mangaExcludeCategories.isNotEmpty()) {
+            log.debug { "download excluded by categories: '${mangaExcludeCategories.joinToString("', '") { it.name }}'" }
+            return false
+        }
+        val mangaDownloadCategories = mangaCategories.intersect(includedCategories.toSet())
+        if (mangaDownloadCategories.isNotEmpty()) {
+            log.debug { "download inluded by categories: '${mangaDownloadCategories.joinToString("', '") { it.name }}'" }
+        } else {
+            log.debug { "skipping download due to download categories configuration" }
+            return false
+        }
+
+        return true
+    }
+}

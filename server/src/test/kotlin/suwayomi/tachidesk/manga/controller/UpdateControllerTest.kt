@@ -1,0 +1,90 @@
+package suwayomi.tachidesk.manga.controller
+
+import suwayomi.tachidesk.test.ApplicationTest
+
+// import io.javalin.http.Context
+// import io.javalin.http.HttpStatus
+// import io.mockk.every
+// import io.mockk.mockk
+// import io.mockk.verify
+// import kotlinx.coroutines.runBlocking
+// import org.jetbrains.exposed.v1.jdbc.insertAndGetId
+// import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+// import org.junit.jupiter.api.AfterEach
+// import org.junit.jupiter.api.Assertions.assertEquals
+// import org.junit.jupiter.api.Test
+// import suwayomi.tachidesk.manga.impl.Category
+// import suwayomi.tachidesk.manga.impl.CategoryManga
+// import suwayomi.tachidesk.manga.impl.update.IUpdater
+// import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
+// import suwayomi.tachidesk.manga.model.table.CategoryTable
+// import suwayomi.tachidesk.manga.model.table.MangaTable
+// import suwayomi.tachidesk.test.ApplicationTest
+// import suwayomi.tachidesk.test.clearTables
+// import uy.kohesive.injekt.Injekt
+// import uy.kohesive.injekt.api.get
+//
+internal class UpdateControllerTest : ApplicationTest() {
+//     private val ctx = mockk<Context>(relaxed = true)
+//
+//     @Test
+//     fun `POST non existent Category Id should give error`() {
+//         every { ctx.formParam("category") } returns "1"
+//         UpdateController.categoryUpdate(ctx)
+//         verify { ctx.status(HttpStatus.BAD_REQUEST) }
+//         val updater by DI.global.instance<IUpdater>()
+//         assertEquals(0, updater.status.value.numberOfJobs)
+//     }
+//
+//     @Test
+//     fun `POST existent Category Id should give success`() {
+//         Category.createCategory("foo")
+//         createLibraryManga("bar")
+//         CategoryManga.addMangaToCategory(1, 1)
+//         every { ctx.formParam("category") } returns "1"
+//         UpdateController.categoryUpdate(ctx)
+//         verify { ctx.status(HttpStatus.OK) }
+//         val updater by DI.global.instance<IUpdater>()
+//         assertEquals(1, updater.status.value.numberOfJobs)
+//     }
+//
+//     @Test
+//     fun `POST null or empty category should update library`() {
+//         val fooCatId = Category.createCategory("foo")
+//         val fooMangaId = createLibraryManga("foo")
+//         CategoryManga.addMangaToCategory(fooMangaId, fooCatId)
+//         val barCatId = Category.createCategory("bar")
+//         val barMangaId = createLibraryManga("bar")
+//         CategoryManga.addMangaToCategory(barMangaId, barCatId)
+//         createLibraryManga("mangaInDefault")
+//         every { ctx.formParam("category") } returns null
+//         UpdateController.categoryUpdate(ctx)
+//         verify { ctx.status(HttpStatus.OK) }
+//         val updater by DI.global.instance<IUpdater>()
+//         assertEquals(3, updater.status.value.numberOfJobs)
+//     }
+//
+//     private fun createLibraryManga(_title: String): Int =
+//         transaction {
+//             MangaTable
+//                 .insertAndGetId {
+//                     it[title] = _title
+//                     it[url] = _title
+//                     it[sourceReference] = 1
+//                     it[inLibrary] = true
+//                 }.value
+//         }
+//
+//     @AfterEach
+//     internal fun tearDown() {
+//         clearTables(
+//             CategoryMangaTable,
+//             MangaTable,
+//         )
+//         transaction {
+//             CategoryTable.deleteWhere { CategoryTable.isDefaultCategory eq false }
+//         }
+//         val updater = Injekt.get<IUpdater>()
+//         runBlocking { updater.reset() }
+//     }
+}

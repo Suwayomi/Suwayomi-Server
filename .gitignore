@@ -1,0 +1,23 @@
+# Ignore project-specific local files and dirs
+.gradle
+.idea
+gradle.properties
+.fleet
+# But we need these
+!.idea/runConfigurations
+.kotlin
+
+# Ignore Gradle build output directory
+build
+server/out
+AndroidCompat/out
+
+# WebUI is either to be downloaded on-demand or is a dynamic build asset
+server/src/main/resources/WebUI.zip
+
+# bundling stage downlaoded assets
+scripts/OpenJDK*
+scripts/zulu*
+scripts/electron-*
+scripts/rcedit-*
+scripts/resources/*.so
