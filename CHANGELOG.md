@@ -43,6 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension/Android**) Preserve image types when creating or copying bitmaps with their reported configurations
 - (**Image**) Recognize the AVIF image-sequence brand when identifying page images
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
+- (**Local source**) Fix EPUB archive paths being resolved as Windows filesystem paths
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
 - (**Syncyomi**) Report chapters a source dropped to SyncYomi
 - (**Syncyomi**) Send library removals and history-only changes to SyncYomi
