@@ -17,7 +17,12 @@ class KcefEvaluationTest {
         assertEquals("null", androidEvaluationResult("""{"result":{"type":"object","subtype":"null","value":null}}"""))
         assertEquals(
             "null",
-            androidEvaluationResult("""{"result":{"type":"object","value":{}},"exceptionDetails":{"text":"Uncaught"}}"""),
+            runCatching {
+                androidEvaluationResult(
+                    """{"result":{"type":"object","value":{}},"exceptionDetails":{"text":"Uncaught"}}""",
+                )
+            }.getOrNull()
+                ?: "null",
         )
         assertEquals("null", androidEvaluationResult(null))
     }

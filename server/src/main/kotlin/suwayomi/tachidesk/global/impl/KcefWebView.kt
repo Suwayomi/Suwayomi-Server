@@ -46,10 +46,12 @@ import javax.swing.JPanel
 class KcefWebView {
     private val logger = KotlinLogging.logger {}
     private val renderHandler = RenderHandler()
-    private var kcefClient: CefClient? = null
-    private var browser: CefBrowser? = null
+    private val kcefClient: CefClient
+    private val browser: CefBrowser
     private var width = 1000
     private var height = 1000
+    private var initialized = false
+    private var initialUrl: String? = null
 
     companion object {
         private val networkHelper: NetworkHelper by injectLazy()
@@ -137,6 +139,12 @@ class KcefWebView {
                 } else {
                     logger.debug { "Successfully set user agent: $res" }
                 }
+                initialized = true
+                initialUrl?.let {
+                    logger.info { "Late-load URL $it" }
+                    browser.loadURL(it)
+                }
+                initialUrl = null
             }
         }
     }
@@ -164,7 +172,7 @@ class KcefWebView {
             url: String,
         ) {
             if (!frame.isMain) return
-            this@KcefWebView.browser!!.evaluateJavaScriptDecoded("document.title") {
+            this@KcefWebView.browser.evaluateJavaScriptDecoded("document.title") {
                 WebView.notifyAllClients(
                     Json.encodeToString<Event>(
                         AddressEvent(url, it ?: ""),
@@ -249,7 +257,6 @@ class KcefWebView {
     }
 
     init {
-        destroy()
         kcefClient =
             runBlocking {
                 CefHelper.createClient().apply {
@@ -276,22 +283,12 @@ class KcefWebView {
                 }
             }
         }
-    }
 
-    fun destroy() {
-        flush()
-        browser?.dispose()
-        browser = null
-        kcefClient?.dispose()
-        kcefClient = null
-    }
-
-    fun loadUrl(url: String) {
-        browser?.dispose()
+        logger.debug { "Creating browser" }
         browser =
-            kcefClient!!
+            kcefClient
                 .createBrowser(
-                    url,
+                    "about:blank",
                     CefRendering.CefRenderingWithHandler(renderHandler, JPanel()),
                     false,
                     // NOTE: with a context, we don't seem to be getting any cookies
@@ -301,17 +298,30 @@ class KcefWebView {
                 }
     }
 
+    fun destroy() {
+        flush()
+        browser.dispose()
+        kcefClient.dispose()
+    }
+
+    fun loadUrl(url: String) {
+        if (initialized) {
+            browser.loadURL(url)
+        } else {
+            initialUrl = url
+        }
+    }
+
     fun resize(
         width: Int,
         height: Int,
     ) {
         this.width = width
         this.height = height
-        browser?.wasResized(width, height)
+        browser.wasResized(width, height)
     }
 
     private fun flush() {
-        if (browser == null) return
         logger.trace { "Start cookie flush" }
         CefCookieManager.getGlobalManager().visitAllCookies { it, _, _, _ ->
             try {
@@ -585,16 +595,16 @@ class KcefWebView {
                     -d,
                     1,
                 )
-            browser!!.sendMouseWheelEvent(ev)
+            browser.sendMouseWheelEvent(ev)
             return
         }
         if (type == "keydown") {
-            browser!!.sendKeyEvent(keyEvent(msg, component, KeyEvent.KEY_PRESSED, modifier)!!)
-            keyEvent(msg, component, KeyEvent.KEY_TYPED, modifier)?.let { browser!!.sendKeyEvent(it) }
+            browser.sendKeyEvent(keyEvent(msg, component, KeyEvent.KEY_PRESSED, modifier)!!)
+            keyEvent(msg, component, KeyEvent.KEY_TYPED, modifier)?.let { browser.sendKeyEvent(it) }
             return
         }
         if (type == "keyup") {
-            browser!!.sendKeyEvent(keyEvent(msg, component, KeyEvent.KEY_RELEASED, modifier)!!)
+            browser.sendKeyEvent(keyEvent(msg, component, KeyEvent.KEY_RELEASED, modifier)!!)
             return
         }
         if (type == "mousedown" || type == "mouseup" || type == "click") {
@@ -633,7 +643,7 @@ class KcefWebView {
                     true,
                     button,
                 )
-            browser!!.sendMouseEvent(ev)
+            browser.sendMouseEvent(ev)
             val evType =
                 when (type) {
                     "mousedown" -> CefTouchEvent.EventType.PRESSED
@@ -653,7 +663,7 @@ class KcefWebView {
                     modifier,
                     CefTouchEvent.PointerType.MOUSE,
                 )
-            browser!!.sendTouchEvent(ev2)
+            browser.sendTouchEvent(ev2)
             return
         }
         if (type == "mousemove") {
@@ -671,7 +681,7 @@ class KcefWebView {
                     true,
                     0,
                 )
-            browser!!.sendMouseEvent(ev)
+            browser.sendMouseEvent(ev)
             return
         }
     }
@@ -679,9 +689,9 @@ class KcefWebView {
     fun paste(msg: String) {
         val component = browser?.uiComponent ?: return
         for (c in msg) {
-            browser!!.sendKeyEvent(keyEvent(c, component, KeyEvent.KEY_PRESSED, 0)!!)
-            keyEvent(c, component, KeyEvent.KEY_TYPED, 0)?.let { browser!!.sendKeyEvent(it) }
-            browser!!.sendKeyEvent(keyEvent(c, component, KeyEvent.KEY_RELEASED, 0)!!)
+            browser.sendKeyEvent(keyEvent(c, component, KeyEvent.KEY_PRESSED, 0)!!)
+            keyEvent(c, component, KeyEvent.KEY_TYPED, 0)?.let { browser.sendKeyEvent(it) }
+            browser.sendKeyEvent(keyEvent(c, component, KeyEvent.KEY_RELEASED, 0)!!)
         }
     }
 
@@ -709,16 +719,16 @@ class KcefWebView {
         )
     }
 
-    fun canGoBack(): Boolean = browser!!.canGoBack()
+    fun canGoBack(): Boolean = browser.canGoBack()
 
     fun goBack() {
-        browser!!.goBack()
+        browser.goBack()
     }
 
-    fun canGoForward(): Boolean = browser!!.canGoForward()
+    fun canGoForward(): Boolean = browser.canGoForward()
 
     fun goForward() {
-        browser!!.goForward()
+        browser.goForward()
     }
 
     private fun handleLoad(
@@ -726,7 +736,7 @@ class KcefWebView {
         status: Int = 0,
         error: String? = null,
     ) {
-        browser!!.evaluateJavaScriptDecoded("document.title") {
+        browser.evaluateJavaScriptDecoded("document.title") {
             logger.trace { "Load finished with title $it" }
             WebView.notifyAllClients(
                 Json.encodeToString<Event>(
