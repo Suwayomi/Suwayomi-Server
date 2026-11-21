@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Tracker**) Add MangaBaka tracker
 
 ### Changed
+- (**Manga/API**) Find cached covers and pages by their usual extensions instead of listing their whole directory for each image
 - (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection
 - (**GraphQL**) Find manga with duplicate chapter numbers with one group per manga instead of one per chapter number
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory

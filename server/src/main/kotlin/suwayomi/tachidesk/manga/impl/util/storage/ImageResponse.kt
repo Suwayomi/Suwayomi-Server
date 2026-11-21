@@ -21,11 +21,18 @@ import kotlin.coroutines.cancellation.CancellationException
 object ImageResponse {
     private fun pathToInputStream(path: String): InputStream = FileInputStream(path).buffered()
 
+    private val knownExtensions = ImageUtil.ImageType.entries.map { it.extension } + listOf("jpeg", "tmp")
+
     /** find file with name when file extension is not known */
     fun findFileNameStartingWith(
         directoryPath: String,
         fileName: String,
     ): String? {
+        // avoids listing the whole directory when possible
+        knownExtensions.firstOrNull { File(directoryPath, "$fileName.$it").isFile }?.let {
+            return "$directoryPath/$fileName.$it"
+        }
+
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
             if (file.name.startsWith(target)) {
