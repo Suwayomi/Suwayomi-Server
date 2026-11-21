@@ -264,8 +264,6 @@ object BackupMangaHandler {
         // a newer local copy wins the next upload; categories and tracking are part of the manga's version
         val keepLocalManga =
             syncMode == SyncRestoreMode.ADOPT && dbManga != null && manga.version < dbManga[MangaUserTable.version]
-        // cached covers only go when they may be wrong: a new manga can get the id of a deleted one, or its url changed.
-        // Clearing them on every restore made each sync download the covers of all synced manga again
         val coverChanged =
             dbManga == null ||
                 (!keepLocalManga && manga.thumbnailUrl != null && manga.thumbnailUrl != dbManga[MangaTable.thumbnail_url])
