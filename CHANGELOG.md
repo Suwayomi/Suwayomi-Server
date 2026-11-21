@@ -17,12 +17,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Tracker**) Add MangaBaka tracker
 
 ### Changed
+- (**Manga/API**) Find cached covers and pages by their usual extensions instead of listing their whole directory for each image
 - (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection
+- (**GraphQL**) Find manga with duplicate chapter numbers with one group per manga instead of one per chapter number
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
 - (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
 - (**Updates**) Index chapters by fetch time for the updates list
 - (**WebView**) Start CEF the first time a webview needs it instead of at startup
+- (**WebView**) Stream frames as JPEG binary messages at up to 20 fps, sending only the latest frame and waiting for the client to receive the previous ones, instead of a PNG in JSON for every repaint
 
 ### Fixed
 - (**API**) Answer 424 instead of 500 when a source fails
@@ -44,6 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension/Android**) Preserve image types when creating or copying bitmaps with their reported configurations
 - (**Image**) Recognize the AVIF image-sequence brand when identifying page images
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
+- (**Local source**) Fix EPUB archive paths being resolved as Windows filesystem paths
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
 - (**Syncyomi**) Report chapters a source dropped to SyncYomi
 - (**Syncyomi**) Send library removals and history-only changes to SyncYomi
@@ -52,6 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**TrayIcon**) Use DorkBox OS 1.11 to restore tray menus on localized Windows
 - (**WebUI/API**) Fix server info queries failing when WebUI serving is disabled and no local WebUI version is installed
 - (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
+- (**WebView**) Fix the WebView page keeping every received frame in memory
 - (**WebView**) Fix WebView pages sometimes staying open and running after being closed
 - (**WebView**) Pass `evaluateJavascript` results to extensions serialized as JSON, like Android
 - (**WebView**) Report dead renderers through `onRenderProcessGone` instead of leaving extensions waiting
@@ -95,6 +100,8 @@ Syncyomi has released its next version of syncing your library, optimizing the s
 - (**Extension**) Fix extension update failure potentially causing a NullPointerException on the next update attempt
 - (**Extension**) Fix losing installed extension in case the update fails
 - (**Extension/Android**) Implement fromHtml with flags for author's note support
+- (**Extension/Android**) Implement `Resources` for improved WebView support
+- (**Extension/Android**) Implement private Chromium methods for improved WebView support
 - (**Extension/Settings**) Fix `extensionRepos` setting not being migrated to `extensionStores`
 - (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
 - (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data

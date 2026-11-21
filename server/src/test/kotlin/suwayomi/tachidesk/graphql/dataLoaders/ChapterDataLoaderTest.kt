@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTimeout
 import org.junit.jupiter.api.Test
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import suwayomi.tachidesk.graphql.types.ChapterType
 import suwayomi.tachidesk.manga.impl.util.lang.EMPTY
 import suwayomi.tachidesk.manga.model.table.ChapterTable
@@ -650,6 +651,43 @@ class ChapterDataLoaderTest : ApplicationTest() {
 
         assertEquals(1, result.size)
         assertEquals("Chapter 1", result[mangaId]?.name)
+    }
+
+    @Test
+    fun `duplicates - finds the manga with two chapters of the same number`() {
+        val duplicated = createLibraryManga("Duplicated")
+        insertChapter(duplicated, "Chapter 1", 1, chapterNumber = 1f)
+        insertChapter(duplicated, "Chapter 2", 2, chapterNumber = 2f)
+        insertChapter(duplicated, "Chapter 2 (other scanlator)", 3, chapterNumber = 2f)
+        val unique = createLibraryManga("Unique")
+        insertChapter(unique, "Chapter 1", 1, chapterNumber = 1f)
+        insertChapter(unique, "Chapter 1.5", 2, chapterNumber = 1.5f)
+        val unnumbered = createLibraryManga("Unnumbered")
+        insertChapter(unnumbered, "Extra", 1, chapterNumber = -1f)
+        insertChapter(unnumbered, "Extra 2", 2, chapterNumber = -1f)
+        val empty = createLibraryManga("Empty")
+
+        val result = loadHasDuplicateChapters(listOf(duplicated, unique, unnumbered, empty))
+
+        assertEquals(listOf(true, false, false, false), result)
+    }
+
+    @Test
+    fun `duplicates - only looks at the requested manga`() {
+        val requested = createLibraryManga("Requested")
+        insertChapter(requested, "Chapter 1", 1, chapterNumber = 1f)
+        val other = createLibraryManga("Other")
+        insertChapter(other, "Chapter 1", 1, chapterNumber = 1f)
+        insertChapter(other, "Chapter 1 again", 2, chapterNumber = 1f)
+
+        assertEquals(listOf(false), loadHasDuplicateChapters(listOf(requested)))
+    }
+
+    private fun loadHasDuplicateChapters(mangaIds: List<Int>): List<Boolean> {
+        val dataLoader = HasDuplicateChaptersForMangaDataLoader().getDataLoader(emptyMap<Any, Any>().toGraphQLContext())
+        val values = dataLoader.loadMany(mangaIds)
+        dataLoader.dispatch()
+        return values.join()
     }
 
     @Test

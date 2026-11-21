@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
@@ -42,6 +43,7 @@ import android.os.RemoteException;
 import android.os.StrictMode;
 import android.print.PrintDocumentAdapter;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.util.LongSparseArray;
 import android.util.SparseArray;
@@ -95,6 +97,7 @@ public class WebView extends AbsoluteLayout
     // set in the WebView constructor.
     private static volatile boolean sEnforceThreadChecking = false;
     private static CallableArgument<WebView, WebViewProvider> mProviderFactory;
+    private CallableArgument<WebView, WebViewProvider> mLocalProviderFactory;
 
     public static void setProviderFactory(CallableArgument<WebView, WebViewProvider> factory) {
         mProviderFactory = factory;
@@ -188,11 +191,18 @@ public class WebView extends AbsoluteLayout
         this(context, attrs, defStyleAttr, 0, javaScriptInterfaces, privateBrowsing);
     }
 
-    @SuppressWarnings("deprecation")  // for super() call into deprecated base class constructor.
     protected WebView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr,
             int defStyleRes, @Nullable Map<String, Object> javaScriptInterfaces,
             boolean privateBrowsing) {
+        this(context, attrs, defStyleAttr, defStyleRes, javaScriptInterfaces, privateBrowsing, null);
+    }
+
+    @SuppressWarnings("deprecation")  // for super() call into deprecated base class constructor.
+    WebView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr,
+            int defStyleRes, @Nullable Map<String, Object> javaScriptInterfaces,
+            boolean privateBrowsing, CallableArgument<WebView, WebViewProvider> localProviderFactory) {
         super(context, attrs, defStyleAttr, defStyleRes);
+        mLocalProviderFactory = localProviderFactory;
 
         if (context == null) {
             throw new IllegalArgumentException("Invalid context argument");
@@ -206,6 +216,16 @@ public class WebView extends AbsoluteLayout
 
         ensureProviderCreated();
         mProvider.init(javaScriptInterfaces, privateBrowsing);
+    }
+
+    @Override
+    public Resources getResources() {
+        DisplayMetrics metrics = new DisplayMetrics();
+        metrics.widthPixels = mProvider.getContentWidth();
+        metrics.heightPixels = mProvider.getContentHeight();
+        metrics.density = 0.6f;
+        metrics.densityDpi = 96;
+        return new Resources(null, metrics, Resources.getSystem().getConfiguration());
     }
 
     @Deprecated
@@ -940,11 +960,11 @@ public class WebView extends AbsoluteLayout
     private void ensureProviderCreated() {
         checkThread();
         if (mProvider == null) {
-            if (mProviderFactory == null)
+            if (mProviderFactory == null && mLocalProviderFactory == null)
                 throw new IllegalStateException("No factory registered");
             // As this can get called during the base class constructor chain, pass the minimum
             // number of dependencies here; the rest are deferred to init().
-            mProvider = mProviderFactory.call(this);
+            mProvider = (mLocalProviderFactory != null ? mLocalProviderFactory : mProviderFactory).call(this);
         }
     }
 

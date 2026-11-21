@@ -570,7 +570,44 @@
 
                 /// Server events
 
+                // decode one frame at a time; frames that arrive meanwhile replace each other, only the newest is drawn
+                let decoding = false;
+                let pendingFrame = null;
+                const decodeNextFrame = () => {
+                    const data = pendingFrame;
+                    if (data === null) return;
+                    pendingFrame = null;
+                    decoding = true;
+                    const img = new Image();
+                    const url = URL.createObjectURL(new Blob([data], { type: "image/jpeg" }));
+                    const done = () => {
+                        URL.revokeObjectURL(url);
+                        decoding = false;
+                        decodeNextFrame();
+                    };
+                    img.src = url;
+                    // decode() decodes the frame in the background before it is drawn, so drawImage does not block the
+                    // page. It is supported everywhere ResizeObserver is, which this page already needs
+                    img.decode().then(() => {
+                        // the canvas has the size the page told the server to render at (see the ResizeObserver below).
+                        // A frame of another size was rendered before the server got the new size, draw it as-is,
+                        // the next frame will match
+                        ctx.drawImage(img, 0, 0);
+                    }).catch(e => console.error('Failed to decode frame', e)).finally(done);
+                };
+                const drawFrame = (data) => {
+                    pendingFrame = data;
+                    if (!decoding) decodeNextFrame();
+                };
+
                 socket.addEventListener('message', e => {
+                    // frames are sent as binary messages, everything else is JSON
+                    if (typeof e.data !== 'string') {
+                        // confirm receipt right away, the server waits for this before sending more frames
+                        socket.send(JSON.stringify({ type: 'frameReceived' }));
+                        drawFrame(e.data);
+                        return;
+                    }
                     const obj = JSON.parse(e.data);
                     switch (obj.type) {
                         case "addressChange":
@@ -592,17 +629,6 @@
                             }
                             urlInput.value = obj.url;
                             setTitle(obj.title);
-                        } break;
-                        case "render": {
-                            const img = new Image();
-                            const imgData = new Blob([new Uint8Array(obj.image)], { type: "image/png" });
-                            const url = URL.createObjectURL(imgData);
-                            img.addEventListener('load', e => {
-                                frame.width = img.width;
-                                frame.height = img.height;
-                                ctx.drawImage(img, 0, 0);
-                            });
-                            img.src = url;
                         } break;
                         case "consoleMessage": {
                             const lg = obj.severity == 4 ? console.error : obj.severity == 3 ? console.warn : console.log;
@@ -635,7 +661,15 @@
                 /// Page events
 
                 const observer = new ResizeObserver(() => {
-                    socket.send(JSON.stringify({ type: 'resize', width: frame.clientWidth, height: frame.clientHeight }));
+                    const width = frame.clientWidth;
+                    const height = frame.clientHeight;
+                    // the page decides the size: the canvas takes it here and the server is told to render at it.
+                    // Setting a canvas' size clears it, so only touch it when the size changed
+                    if (frame.width !== width || frame.height !== height) {
+                        frame.width = width;
+                        frame.height = height;
+                    }
+                    socket.send(JSON.stringify({ type: 'resize', width, height }));
                 });
                 observer.observe(frame);
 
