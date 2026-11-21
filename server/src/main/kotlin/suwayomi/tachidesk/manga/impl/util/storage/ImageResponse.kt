@@ -14,6 +14,9 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import kotlin.coroutines.cancellation.CancellationException
 
 object ImageResponse {
     private fun pathToInputStream(path: String): InputStream = FileInputStream(path).buffered()
@@ -54,6 +57,7 @@ object ImageResponse {
     suspend fun getImageResponse(
         saveDir: String,
         fileName: String,
+        staleBefore: Long = 0,
         fetcher: suspend () -> Response,
     ): Pair<InputStream, String> {
         File(saveDir).mkdirs()
@@ -62,10 +66,31 @@ object ImageResponse {
         val filePath = "$saveDir/$fileName"
 
         // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
-        if (cachedFile != null && !cachedFile.endsWith(".tmp")) {
-            return getCachedImageResponse(cachedFile, filePath)
+        val reusableCachedFile = cachedFile?.takeUnless { it.endsWith(".tmp") }
+
+        if (reusableCachedFile == null) {
+            return fetchAndSaveImage(saveDir, fileName, fetcher)
         }
 
+        if (File(reusableCachedFile).lastModified() >= staleBefore) {
+            return getCachedImageResponse(reusableCachedFile, filePath)
+        }
+
+        return try {
+            refreshCachedImage(reusableCachedFile, filePath, fetcher)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            getCachedImageResponse(reusableCachedFile, filePath)
+        }
+    }
+
+    private suspend fun fetchAndSaveImage(
+        saveDir: String,
+        fileName: String,
+        fetcher: suspend () -> Response,
+    ): Pair<InputStream, String> {
+        val filePath = "$saveDir/$fileName"
         val response = fetcher()
 
         try {
@@ -83,6 +108,44 @@ object ImageResponse {
         } catch (e: IOException) {
             // make sure no partial download remains
             clearCachedImage(saveDir, fileName)
+            throw e
+        } finally {
+            response.closeQuietly()
+        }
+    }
+
+    private suspend fun refreshCachedImage(
+        cachedFile: String,
+        filePath: String,
+        fetcher: suspend () -> Response,
+    ): Pair<InputStream, String> {
+        val response = fetcher()
+
+        try {
+            if (response.code != 200) {
+                throw Exception("request error! ${response.code}")
+            }
+
+            val newImage = response.body.bytes()
+            val currentImage = File(cachedFile)
+
+            if (currentImage.readBytes().contentEquals(newImage)) {
+                currentImage.setLastModified(System.currentTimeMillis())
+                return getCachedImageResponse(cachedFile, filePath)
+            }
+
+            val (actualSavePath, imageType) =
+                saveImage(
+                    filePath,
+                    newImage.inputStream(),
+                    response.header("Content-Type"),
+                )
+            if (actualSavePath != cachedFile) {
+                currentImage.delete()
+            }
+            return pathToInputStream(actualSavePath) to imageType
+        } catch (e: IOException) {
+            File("$filePath.tmp").delete()
             throw e
         } finally {
             response.closeQuietly()
@@ -113,7 +176,7 @@ object ImageResponse {
 
         val actualSavePath = "$filePath.$extension"
 
-        tmpSaveFile.renameTo(File(actualSavePath))
+        Files.move(tmpSaveFile.toPath(), File(actualSavePath).toPath(), StandardCopyOption.REPLACE_EXISTING)
         return Pair(actualSavePath, imageType?.mime ?: mimeType ?: "image/jpeg")
     }
 

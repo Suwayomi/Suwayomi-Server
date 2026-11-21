@@ -135,8 +135,8 @@ class ChapterQuery {
         val fetchedAt: Long? = null,
         val isDownloaded: Boolean? = null,
         val pageCount: Int? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, ChapterTable.id)
             opAnd.eq(url, ChapterTable.url)
@@ -180,8 +180,8 @@ class ChapterQuery {
         override val and: List<ChapterFilter>? = null,
         override val or: List<ChapterFilter>? = null,
         override val not: ChapterFilter? = null,
-    ) : Filter<ChapterFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<ChapterFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareEntity(ChapterTable.id, id),
                 andFilterWithCompareString(ChapterTable.url, url),
@@ -240,7 +240,7 @@ class ChapterQuery {
                     res.andWhere { libraryOp }
                 }
 
-                res.applyOps(condition, filter)
+                res.applyOps(null, condition, filter)
 
                 val baseSort = listOf(ChapterOrder(ChapterOrderBy.ID, SortOrder.ASC))
                 val deprecatedSort = listOfNotNull(orderBy?.let { ChapterOrder(orderBy, orderByType) })

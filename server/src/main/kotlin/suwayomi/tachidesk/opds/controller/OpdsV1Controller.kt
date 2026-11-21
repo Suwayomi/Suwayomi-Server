@@ -9,6 +9,7 @@ import suwayomi.tachidesk.opds.dto.OpdsMangaFilter
 import suwayomi.tachidesk.opds.dto.OpdsSearchCriteria
 import suwayomi.tachidesk.opds.dto.PrimaryFilterType
 import suwayomi.tachidesk.opds.impl.OpdsFeedBuilder
+import suwayomi.tachidesk.opds.util.OpdsStringUtil.escapeXml
 import suwayomi.tachidesk.server.JavalinSetup.Attribute
 import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.JavalinSetup.getAttribute
@@ -126,8 +127,9 @@ object OpdsV1Controller {
                     """
                     <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/"
                         xmlns:atom="http://www.w3.org/2005/Atom">
-                        <ShortName>${MR.strings.opds_search_shortname.localized(locale)}</ShortName>
-                        <Description>${MR.strings.opds_search_description.localized(locale)}</Description>
+                        <ShortName>Suwayomi</ShortName>
+                        <LongName>${MR.strings.opds_search_shortname.localized(locale).escapeXml()}</LongName>
+                        <Description>${MR.strings.opds_search_description.localized(locale).escapeXml()}</Description>
                         <InputEncoding>UTF-8</InputEncoding>
                         <OutputEncoding>UTF-8</OutputEncoding>
                         <Url type="${OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION}"

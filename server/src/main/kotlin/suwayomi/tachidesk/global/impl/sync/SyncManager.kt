@@ -296,29 +296,7 @@ object SyncManager {
                 }
             }
 
-            transaction {
-                MangaUserTable.update(
-                    {
-                        MangaUserTable.isSyncing eq true and (MangaUserTable.user eq userId)
-                    },
-                ) {
-                    it[MangaUserTable.isSyncing] = false
-                }
-                ChapterUserTable.update(
-                    {
-                        ChapterUserTable.isSyncing eq true and (ChapterUserTable.user eq userId)
-                    },
-                ) {
-                    it[ChapterUserTable.isSyncing] = false
-                }
-                CategoryTable.update(
-                    {
-                        CategoryTable.isSyncing eq true and (CategoryTable.user eq userId)
-                    },
-                ) {
-                    it[CategoryTable.isSyncing] = false
-                }
-            }
+            clearSyncingFlags(userId)
 
             val backupFlags =
                 BackupFlags(
@@ -340,8 +318,11 @@ object SyncManager {
                 logger.info { "Full converging sync for user $userId: adopting server versions" }
             }
             val since = if (full) null else lastPushedAt(userId)
+            val removedSince = lastPushedAt(userId).takeIf { it > 0 }
             val backupMangas =
-                BackupMangaHandler.backup(userId, backupFlags, since).let { if (since == null) it else changedSince(it, since) }
+                BackupMangaHandler
+                    .backup(userId, backupFlags, since, removedSince)
+                    .let { if (since == null) it else changedSince(it, since) }
             val backupCategories =
                 BackupCategoryHandler.backup(userId, backupFlags).filter { it.name != Category.DEFAULT_CATEGORY_NAME }
             toWireCategoryOrders(backupCategories, backupMangas)
@@ -406,6 +387,7 @@ object SyncManager {
             val (filteredFavorites, nonFavorites) =
                 filterFavoritesAndNonFavorites(userId, remoteBackup, restoreAll = converge)
             updateNonFavorites(userId, nonFavorites)
+            clearSyncingFlags(userId)
 
             val newSyncData =
                 backup.copy(
@@ -530,6 +512,32 @@ object SyncManager {
         }
     }
 
+    private fun clearSyncingFlags(userId: Int) {
+        transaction {
+            MangaUserTable.update(
+                {
+                    MangaUserTable.isSyncing eq true and (MangaUserTable.user eq userId)
+                },
+            ) {
+                it[MangaUserTable.isSyncing] = false
+            }
+            ChapterUserTable.update(
+                {
+                    ChapterUserTable.isSyncing eq true and (ChapterUserTable.user eq userId)
+                },
+            ) {
+                it[ChapterUserTable.isSyncing] = false
+            }
+            CategoryTable.update(
+                {
+                    CategoryTable.isSyncing eq true and (CategoryTable.user eq userId)
+                },
+            ) {
+                it[CategoryTable.isSyncing] = false
+            }
+        }
+    }
+
     private fun lastPushedAt(userId: Int): Long = syncPreferences.getLong("${PREF_LAST_PUSHED_AT}_$userId", 0L)
 
     private fun markSyncSchema(
@@ -576,16 +584,23 @@ object SyncManager {
             return true
         }
 
-        val localChapterVersions =
+        val localChapters =
             transaction {
                 ChapterTable
                     .getWithUserData(userId)
                     .selectAll()
                     .where { ChapterTable.manga eq localManga.id }
-                    .associate { it[ChapterTable.url] to (it.getOrNull(ChapterUserTable.version) ?: 0) }
+                    .toList()
             }
+        val localChapterVersions =
+            localChapters.associate { it[ChapterTable.url] to (it.getOrNull(ChapterUserTable.version) ?: 0) }
 
         if (areChaptersDifferent(localChapterVersions, remoteManga.chapters)) {
+            return true
+        }
+
+        val localLastReadAt = localChapters.associate { it[ChapterTable.url] to (it.getOrNull(ChapterUserTable.lastReadAt) ?: 0) }
+        if (hasNewerHistory(localLastReadAt, remoteManga)) {
             return true
         }
 

@@ -83,6 +83,8 @@ class DownloadType(
     val progress: Float,
     val tries: Int,
     val position: Int,
+    @GraphQLDescription("Error message from the last failed download attempt. Only set when state is ERROR.")
+    val errorMessage: String? = null,
 ) : Node {
     constructor(downloadChapter: DownloadQueueItem, position: Int) : this(
         downloadChapter.chapterId,
@@ -96,6 +98,7 @@ class DownloadType(
         downloadChapter.progress,
         downloadChapter.tries,
         position,
+        downloadChapter.errorMessage,
     )
 
     fun manga(dataFetchingEnvironment: DataFetchingEnvironment): CompletableFuture<MangaType> {

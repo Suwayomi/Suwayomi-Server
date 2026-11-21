@@ -14,17 +14,17 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
-import org.jetbrains.exposed.v1.core.inList
-import org.jetbrains.exposed.v1.core.inSubQuery
-import org.jetbrains.exposed.v1.core.leftJoin
+import org.jetbrains.exposed.v1.core.intLiteral
 import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
+import suwayomi.tachidesk.graphql.queries.CategoryQuery.CategoryFilter
 import suwayomi.tachidesk.graphql.queries.filter.BooleanFilter
 import suwayomi.tachidesk.graphql.queries.filter.ComparableScalarFilter
 import suwayomi.tachidesk.graphql.queries.filter.Filter
@@ -33,6 +33,7 @@ import suwayomi.tachidesk.graphql.queries.filter.IntFilter
 import suwayomi.tachidesk.graphql.queries.filter.LongFilter
 import suwayomi.tachidesk.graphql.queries.filter.OpAnd
 import suwayomi.tachidesk.graphql.queries.filter.StringFilter
+import suwayomi.tachidesk.graphql.queries.filter.andExistsWhere
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompare
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareEntity
 import suwayomi.tachidesk.graphql.queries.filter.andFilterWithCompareString
@@ -51,6 +52,7 @@ import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.MangaNodeList
 import suwayomi.tachidesk.graphql.types.MangaType
 import suwayomi.tachidesk.manga.model.table.CategoryMangaTable
+import suwayomi.tachidesk.manga.model.table.CategoryTable
 import suwayomi.tachidesk.manga.model.table.MangaStatus
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -124,8 +126,8 @@ class MangaQuery {
         val lastFetchedAt: Long? = null,
         val chaptersLastFetchedAt: Long? = null,
         val categoryIds: List<Int>? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Int> {
+        override fun getOp(value: Int): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, MangaTable.id)
             opAnd.eq(sourceId, MangaTable.sourceReference)
@@ -143,7 +145,24 @@ class MangaQuery {
             opAnd.eq(realUrl, MangaTable.realUrl)
             opAnd.eq(lastFetchedAt, MangaTable.lastFetchedAt)
             opAnd.eq(chaptersLastFetchedAt, MangaTable.chaptersLastFetchedAt)
-            opAnd.andWhere(categoryIds) { CategoryMangaTable.category inList it }
+            opAnd.andWhere(
+                andExistsWhere(
+                    userId = value,
+                    query =
+                        CategoryMangaTable
+                            .innerJoin(CategoryTable)
+                            .select(intLiteral(1)),
+                    correlation =
+                        (CategoryMangaTable.manga eq MangaTable.id) and
+                            (CategoryMangaTable.user eq value),
+                    filter =
+                        categoryIds?.let {
+                            CategoryFilter(
+                                id = IntFilter(`in` = categoryIds),
+                            )
+                        },
+                ),
+            )
 
             return opAnd.op
         }
@@ -206,8 +225,8 @@ class MangaQuery {
         override val and: List<MangaFilter>? = null,
         override val or: List<MangaFilter>? = null,
         override val not: MangaFilter? = null,
-    ) : Filter<MangaFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<MangaFilter, Int> {
+        override fun getOpList(value: Int): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareEntity(MangaTable.id, id),
                 andFilterWithCompare(MangaTable.sourceReference, sourceId),
@@ -225,14 +244,34 @@ class MangaQuery {
                 andFilterWithCompareString(MangaTable.realUrl, realUrl),
                 andFilterWithCompare(MangaTable.lastFetchedAt, lastFetchedAt),
                 andFilterWithCompare(MangaTable.chaptersLastFetchedAt, chaptersLastFetchedAt),
-                andFilterWithCompareEntity(CategoryMangaTable.category, categoryId),
+                andExistsWhere(
+                    userId = value,
+                    query =
+                        CategoryMangaTable
+                            .innerJoin(CategoryTable)
+                            .select(intLiteral(1)),
+                    correlation =
+                        (CategoryMangaTable.manga eq MangaTable.id) and
+                            (CategoryMangaTable.user eq value),
+                    filter =
+                        if (this.isFilteringForDefaultCategory()) {
+                            CategoryFilter()
+                        } else {
+                            categoryId?.let {
+                                CategoryFilter(
+                                    id = categoryId,
+                                )
+                            }
+                        },
+                    not = this.isFilteringForDefaultCategory(),
+                ),
             )
 
-        fun isFilteringForCategories(): Boolean =
-            this.categoryId != null ||
-                this.or?.any { it.isFilteringForCategories() } != null ||
-                this.and?.any { it.isFilteringForCategories() } != null ||
-                this.not?.isFilteringForCategories() != null
+        fun isFilteringForDefaultCategory(inverted: Boolean = false): Boolean =
+            this.categoryId?.isNull == !inverted ||
+                this.or?.any { it.isFilteringForDefaultCategory(inverted) } == true ||
+                this.and?.any { it.isFilteringForDefaultCategory(inverted) } == true ||
+                this.not?.isFilteringForDefaultCategory(!inverted) == true
     }
 
     @RequireAuth
@@ -261,24 +300,7 @@ class MangaQuery {
     ): MangaNodeList {
         val queryResults =
             transaction {
-                val mangaIdsQuery =
-                    MangaTable
-                        .getWithUserData(userId)
-                        .leftJoin(
-                            CategoryMangaTable,
-                            onColumn = { MangaTable.id },
-                            otherColumn = { CategoryMangaTable.manga },
-                            additionalConstraint = { CategoryMangaTable.user eq userId },
-                        ).select(MangaTable.id)
-                        .withDistinct()
-                        .applyOps(condition, filter)
-
-                val res =
-                    if (condition?.categoryIds != null || filter?.isFilteringForCategories() == true) {
-                        MangaTable.getWithUserData(userId).selectAll().where { MangaTable.id inSubQuery mangaIdsQuery }
-                    } else {
-                        MangaTable.getWithUserData(userId).selectAll().applyOps(condition, filter)
-                    }
+                val res = MangaTable.getWithUserData(userId).selectAll().applyOps(userId, condition, filter)
 
                 val baseSort = listOf(MangaOrder(MangaOrderBy.ID, SortOrder.ASC))
                 val deprecatedSort = listOfNotNull(orderBy?.let { MangaOrder(orderBy, orderByType) })

@@ -523,7 +523,8 @@ public class Color {
         if (hsv.length < 3) {
             throw new RuntimeException("3 components required for hsv");
         }
-        nativeRGBToHSV(red, green, blue, hsv);
+        java.awt.Color.RGBtoHSB(red, green, blue, hsv);
+        hsv[0] *= 360.0f;
     }
 
     public static void colorToHSV(@ColorInt int color, @Size(3) float hsv[]) {
@@ -540,11 +541,14 @@ public class Color {
         if (hsv.length < 3) {
             throw new RuntimeException("3 components required for hsv");
         }
-        return nativeHSVToColor(alpha, hsv);
+        float hue = hsv[0] < 0.0f || hsv[0] >= 360.0f ? 0.0f : hsv[0];
+        float saturation = saturate(hsv[1]);
+        if (saturation <= 1.0f / 4096.0f) {
+            saturation = 0.0f;
+        }
+        int rgb = java.awt.Color.HSBtoRGB(hue / 360.0f, saturation, saturate(hsv[2]));
+        return (alpha << 24) | (rgb & 0x00ffffff);
     }
-
-    private static native void nativeRGBToHSV(int red, int greed, int blue, float hsv[]);
-    private static native int nativeHSVToColor(int alpha, float hsv[]);
 
     private static final HashMap<String, Integer> sColorNameMap;
     static {

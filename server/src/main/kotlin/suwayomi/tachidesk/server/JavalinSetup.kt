@@ -34,11 +34,14 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import org.eclipse.jetty.ee10.servlet.SessionHandler
+import org.eclipse.jetty.http.HttpCookie
 import org.eclipse.jetty.server.ServerConnector
 import suwayomi.tachidesk.global.GlobalAPI
 import suwayomi.tachidesk.graphql.GraphQL
 import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
+import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.MangaAPI
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
@@ -56,6 +59,7 @@ import java.net.NetworkInterface
 import java.net.URI
 import java.net.URLEncoder
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.thread
 import kotlin.time.Duration.Companion.days
@@ -110,6 +114,14 @@ object JavalinSetup {
                         )
                         connectorAdded = true
                     }
+                }
+
+                config.jetty.modifyServletContextHandler {
+                    it.sessionHandler =
+                        SessionHandler().apply {
+                            setHttpOnly(true)
+                            sameSite = HttpCookie.SameSite.STRICT
+                        }
                 }
 
                 config.bundledPlugins.enableCors { cors ->
@@ -188,6 +200,8 @@ object JavalinSetup {
         val loginPath = ServerSubpath.maybeAddAsPrefix("/login.html")
 
         get(loginPath) { ctx ->
+            val randomToken = UUID.randomUUID().toString()
+            ctx.sessionAttribute("form-csrf-token", randomToken)
             val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
             ctx.header("content-type", "text/html")
             val httpCacheSeconds = 1.days.inWholeSeconds
@@ -197,39 +211,50 @@ object JavalinSetup {
                 mapOf(
                     "locale" to locale,
                     "error" to "",
+                    "csrf_token" to randomToken,
                 ),
             )
         }
 
         post(loginPath) { ctx ->
+            val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
+            val sessionToken = ctx.sessionAttribute<String>("form-csrf-token")
             val username = ctx.formParam("user")
             val password = ctx.formParam("pass")
             val isValid =
                 username == serverConfig.authUsername.value &&
                     password == serverConfig.authPassword.value
 
-            if (isValid) {
-                val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
-                val uri = URI(redirect)
-                if (uri.host != null || uri.scheme != null) {
-                    throw IllegalArgumentException("Given redirect is not relative, refusing")
+            val error =
+                if (sessionToken == null || ctx.formParam("csrf-token") != sessionToken) {
+                    MR.strings.login_csrf_expired.localized(locale)
+                } else if (!isValid) {
+                    MR.strings.login_failed.localized(locale)
+                } else {
+                    ctx.req().changeSessionId()
+                    val redirect = ctx.queryParam("redirect") ?: ServerSubpath.maybeAddAsPrefix("/")
+                    val uri = URI(redirect)
+                    if (uri.host != null || uri.scheme != null) {
+                        throw IllegalArgumentException("Given redirect is not relative, refusing")
+                    }
+                    // NOTE: We currently have no session handler attached.
+                    // Thus, all sessions are stored in memory and not persisted.
+                    // Furthermore, default session timeout appears to be 30m
+                    ctx.header("Location", redirect)
+                    ctx.sessionAttribute("logged-in", username)
+                    throw RedirectResponse(HttpStatus.SEE_OTHER)
                 }
-                // NOTE: We currently have no session handler attached.
-                // Thus, all sessions are stored in memory and not persisted.
-                // Furthermore, default session timeout appears to be 30m
-                ctx.header("Location", redirect)
-                ctx.sessionAttribute("logged-in", username)
-                throw RedirectResponse(HttpStatus.SEE_OTHER)
-            }
 
-            val locale: Locale = LocalizationHelper.ctxToLocale(ctx)
-            ctx.header("content-type", "text/html")
             ctx.req().session.invalidate()
+            val randomToken = UUID.randomUUID().toString()
+            ctx.sessionAttribute("form-csrf-token", randomToken)
+            ctx.header("content-type", "text/html")
             ctx.render(
                 "Login.jte",
                 mapOf(
                     "locale" to locale,
-                    "error" to "Invalid username or password",
+                    "error" to error,
+                    "csrf_token" to randomToken,
                 ),
             )
         }
@@ -276,6 +301,15 @@ object JavalinSetup {
             if (authMode == AuthMode.BASIC_AUTH && !credentialsValid()) {
                 ctx.header("WWW-Authenticate", "Basic")
                 throw UnauthorizedResponse()
+            }
+
+            if (authMode == AuthMode.BASIC_AUTH && ctx.sessionAttribute<String>("csrf-token") == null) {
+                val randomToken = UUID.randomUUID().toString()
+                ctx.sessionAttribute("csrf-token", randomToken)
+                ctx.res().addHeader(
+                    "Set-Cookie",
+                    "suwayomi-basic-csrf=$randomToken; Path=${ServerSubpath.maybeAddAsPrefix("/")}; HttpOnly; SameSite=Strict",
+                )
             }
 
             ctx.setAttribute(Attribute.TachideskUser, runBlocking { getUserFromContext(ctx) })

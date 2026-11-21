@@ -81,8 +81,8 @@ class ExtensionStoreQuery {
         val id: Int? = null,
         val indexUrl: String? = null,
         val name: String? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, ExtensionStoreTable.id)
             opAnd.eq(indexUrl, ExtensionStoreTable.indexUrl)
@@ -98,8 +98,8 @@ class ExtensionStoreQuery {
         override val and: List<ExtensionStoreFilter>? = null,
         override val or: List<ExtensionStoreFilter>? = null,
         override val not: ExtensionStoreFilter? = null,
-    ) : Filter<ExtensionStoreFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<ExtensionStoreFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareString(ExtensionStoreTable.indexUrl, indexUrl),
                 andFilterWithCompareString(ExtensionStoreTable.name, name),
@@ -122,7 +122,7 @@ class ExtensionStoreQuery {
             transaction {
                 val res = ExtensionStoreTable.selectAll()
 
-                res.applyOps(condition, filter)
+                res.applyOps(null, condition, filter)
 
                 if (order != null || (last != null || before != null)) {
                     val baseSort = listOf(ExtensionStoreOrder(ExtensionStoreOrderBy.INDEX_URL, SortOrder.ASC))

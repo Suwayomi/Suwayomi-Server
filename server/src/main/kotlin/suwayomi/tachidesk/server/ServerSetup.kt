@@ -43,6 +43,7 @@ import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
 import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
@@ -147,12 +148,13 @@ fun setupLogLevelUpdating(
     configFlow: MutableStateFlow<Boolean>,
     loggerNames: List<String>,
     defaultLevel: Level = Level.INFO,
+    debugLevel: Level = Level.DEBUG,
 ) {
     serverConfig.subscribeTo(
         configFlow,
         { debugLogsEnabled ->
             loggerNames.forEach { loggerName ->
-                setLogLevelFor(loggerName, if (debugLogsEnabled) Level.DEBUG else defaultLevel)
+                setLogLevelFor(loggerName, if (debugLogsEnabled) debugLevel else defaultLevel)
             }
         },
         ignoreInitialValue = false,
@@ -208,6 +210,9 @@ fun applicationSetup() {
     )
 
     setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf(BASE_LOGGER_NAME))
+    setupLogLevelUpdating(serverConfig.debugLogsEnabled, listOf("Exposed"), defaultLevel = Level.OFF, debugLevel = Level.WARN)
+    setLogLevelFor("org.eclipse.jetty", Level.OFF)
+    setLogLevelFor("com.zaxxer.hikari", Level.WARN)
 
     logger.info { "Running Suwayomi-Server ${BuildConfig.VERSION}" }
 
@@ -409,9 +414,6 @@ fun applicationSetup() {
         ignoreInitialValue = false,
     )
 
-    setLogLevelFor("org.eclipse.jetty", Level.OFF)
-    setLogLevelFor("com.zaxxer.hikari", Level.WARN)
-
     // socks proxy settings
     serverConfig.subscribeTo(
         combine<Any, ProxySettings>(
@@ -538,4 +540,8 @@ fun applicationSetup() {
         },
         ignoreInitialValue = false,
     )
+
+    if (serverConfig.authMode.value == AuthMode.BASIC_AUTH) {
+        logger.warn { "`server.authMode = BASIC_AUTH` is deprecated, please switch to a different authMode!" }
+    }
 }

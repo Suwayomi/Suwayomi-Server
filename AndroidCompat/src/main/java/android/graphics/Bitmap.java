@@ -115,7 +115,7 @@ public final class Bitmap {
             case _TYPE_USHORT_555_RGB:
             case _TYPE_USHORT_565_RGB:
             case _TYPE_USHORT_GRAY:
-                return config.ordinal();
+                return config.nativeInt;
             default:
                 throw new UnsupportedOperationException("Bitmap.Config(" + config + ") not supported");
         }
@@ -209,6 +209,15 @@ public final class Bitmap {
         newImage.setData(subImage.getData());
 
         return new Bitmap(newImage);
+    }
+
+    public static Bitmap createBitmap(int[] colors, int width, int height, Config config) {
+        checkWidthHeight(width, height);
+
+        BufferedImage image = new BufferedImage(width, height, configToBufferedImageType(config));
+        image.setRGB(0, 0, width, height, colors, 0, width);
+
+        return new Bitmap(image);
     }
 
     public boolean compress(CompressFormat format, int quality, OutputStream stream) {

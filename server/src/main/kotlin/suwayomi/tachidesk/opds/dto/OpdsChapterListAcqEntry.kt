@@ -13,5 +13,6 @@ data class OpdsChapterListAcqEntry(
     val sourceOrder: Int,
     val pageCount: Int, // Can be -1 if not known
     val downloaded: Boolean,
+    val url: String?,
     val cbzFileSize: Long? = null,
 )

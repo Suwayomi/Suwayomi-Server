@@ -420,7 +420,8 @@ class Updater : IUpdater {
                         }
                     }.filter {
                         if (it.initialized && userConfig.excludeNotStarted.value(userId)) {
-                            it.lastReadAt != null
+                            // Marking chapters read does not necessarily set a reading timestamp.
+                            (it.lastReadAt ?: 0L) > 0L || (it.chapterCount ?: 0L) > (it.unreadCount ?: 0L)
                         } else {
                             true
                         }

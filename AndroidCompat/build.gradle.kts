@@ -48,4 +48,16 @@ dependencies {
     // OpenJDK lacks native JPEG encoder and native WEBP decoder
     implementation(libs.bundles.twelvemonkeys)
     implementation(libs.imageio.webp)
+
+    testImplementation(libs.mockk)
+}
+
+tasks {
+    test {
+        useJUnitPlatform()
+        testLogging {
+            showStandardStreams = true
+            events("passed", "skipped", "failed")
+        }
+    }
 }

@@ -10,11 +10,13 @@ package suwayomi.tachidesk.manga.impl.backup.proto.handlers
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.Case
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
+import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
@@ -67,6 +69,7 @@ object BackupMangaHandler {
         userId: Int,
         flags: BackupFlags,
         since: Long? = null,
+        removedSince: Long? = null,
     ): List<BackupManga> =
         dbTransaction {
             if (!flags.includeManga) {
@@ -79,14 +82,20 @@ object BackupMangaHandler {
                         ChapterTable
                             .getWithUserData(userId)
                             .select(ChapterTable.manga)
-                            .where { ChapterUserTable.lastModifiedAt greaterEq it }
+                            .where { (ChapterUserTable.lastModifiedAt greaterEq it) or (ChapterTable.fetchedAt greaterEq it) }
                     (MangaUserTable.lastModifiedAt greaterEq it) or (MangaTable.id inSubQuery chapterChanged)
                 } ?: Op.TRUE
+            val removed =
+                removedSince?.let {
+                    (MangaUserTable.inLibrary eq false) and
+                        (MangaUserTable.inLibraryAt greater 0L) and
+                        (MangaUserTable.lastModifiedAt greaterEq it)
+                } ?: Op.FALSE
             val manga =
                 MangaTable
                     .getWithUserData(userId)
                     .selectAll()
-                    .where { (MangaUserTable.inLibrary eq true) and changed }
+                    .where { ((MangaUserTable.inLibrary eq true) and changed) or removed }
                     .toList()
 
             manga.map { mangaRow ->
@@ -106,6 +115,7 @@ object BackupMangaHandler {
                         viewer_flags = mangaRow[MangaUserTable.viewerFlags],
                         chapterFlags = mangaRow[MangaUserTable.chapterFlags],
                         updateStrategy = UpdateStrategy.valueOf(mangaRow[MangaTable.updateStrategy]),
+                        favorite = mangaRow[MangaUserTable.inLibrary],
                         lastModifiedAt = mangaRow[MangaUserTable.lastModifiedAt],
                         version = mangaRow[MangaUserTable.version],
                         initialized = mangaRow[MangaTable.initialized],
@@ -146,7 +156,7 @@ object BackupMangaHandler {
                                     dateUpload = it[ChapterTable.date_upload],
                                     chapterNumber = it[ChapterTable.chapter_number],
                                     sourceOrder = chapters.size - it[ChapterTable.sourceOrder],
-                                    lastModifiedAt = it.getOrNull(ChapterUserTable.lastModifiedAt) ?: 0,
+                                    lastModifiedAt = max(it.getOrNull(ChapterUserTable.lastModifiedAt) ?: 0, it[ChapterTable.fetchedAt]),
                                     version = it.getOrNull(ChapterUserTable.version) ?: 0,
                                     memo = Json.encodeToString(it[ChapterTable.memo]).encodeToByteArray(),
                                 ).apply {
@@ -531,6 +541,49 @@ object BackupMangaHandler {
                     }
 
             modifyChaptersMetas(userId, metaEntryByChapterId)
+        }
+
+        if (syncMode == SyncRestoreMode.NONE && flags.includeHistory) {
+            restoreMangaHistory(userId, mangaId, history)
+        }
+    }
+
+    private fun restoreMangaHistory(
+        userId: Int,
+        mangaId: Int,
+        history: List<BackupHistory>,
+    ) {
+        val historyByUrl =
+            history
+                .groupBy({ it.url }, { it.lastRead })
+                .mapValues { (_, timestamps) -> timestamps.max().milliseconds.inWholeSeconds }
+                .filterValues { it > 0 }
+        if (historyByUrl.isEmpty()) return
+
+        val chapterHistory =
+            ChapterTable
+                .select(ChapterTable.id, ChapterTable.url)
+                .where { ChapterTable.manga eq mangaId }
+                .mapNotNull { chapter ->
+                    historyByUrl[chapter[ChapterTable.url]]?.let { chapter[ChapterTable.id].value to it }
+                }
+        if (chapterHistory.isEmpty()) return
+
+        ChapterUserTable.batchUpsert(
+            chapterHistory,
+            ChapterUserTable.user,
+            ChapterUserTable.chapter,
+            onUpdate = { update ->
+                val incoming = insertValue(ChapterUserTable.lastReadAt)
+                update[ChapterUserTable.lastReadAt] =
+                    Case()
+                        .When(ChapterUserTable.lastReadAt greater incoming, ChapterUserTable.lastReadAt)
+                        .Else(incoming)
+            },
+        ) { (chapterId, lastReadAt) ->
+            this[ChapterUserTable.user] = userId
+            this[ChapterUserTable.chapter] = chapterId
+            this[ChapterUserTable.lastReadAt] = lastReadAt
         }
     }
 

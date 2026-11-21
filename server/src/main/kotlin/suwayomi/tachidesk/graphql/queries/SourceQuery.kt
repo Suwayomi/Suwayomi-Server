@@ -111,8 +111,8 @@ class SourceQuery {
         @GraphQLDeprecated("replace with contentWarning == ContentRating.MIXED", ReplaceWith("contentWarning"))
         val isNsfw: Boolean? = null,
         val contentWarning: ContentWarning? = null,
-    ) : HasGetOp {
-        override fun getOp(): Op<Boolean>? {
+    ) : HasGetOp<Any?> {
+        override fun getOp(value: Any?): Op<Boolean>? {
             val opAnd = OpAnd()
             opAnd.eq(id, SourceTable.id)
             opAnd.eq(name, SourceTable.name)
@@ -140,8 +140,8 @@ class SourceQuery {
         override val and: List<SourceFilter>? = null,
         override val or: List<SourceFilter>? = null,
         override val not: SourceFilter? = null,
-    ) : Filter<SourceFilter> {
-        override fun getOpList(): List<Op<Boolean>> =
+    ) : Filter<SourceFilter, Any?> {
+        override fun getOpList(value: Any?): List<Op<Boolean>> =
             listOfNotNull(
                 andFilterWithCompareEntity(SourceTable.id, id),
                 andFilterWithCompareString(SourceTable.name, name),
@@ -179,7 +179,7 @@ class SourceQuery {
                 suspendTransaction {
                     val res = SourceTable.selectAll()
 
-                    res.applyOps(condition, filter)
+                    res.applyOps(null, condition, filter)
 
                     // hide NSFW sources from users without the NSFW permission
                     // if (!permissions.hasPermission(UserPermission.ACCESS_NSFW)) {

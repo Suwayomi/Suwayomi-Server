@@ -413,7 +413,7 @@ public class Typeface {
 
     static {
         DEFAULT = withFallback(new Font(null, 0, 12), "NotoSans/NotoSans-VariableFont_wdth,wght.ttf",  "NotoSans/NotoSansSymbols2-Regular.ttf", "NotoSans/NotoEmoji-VariableFont_wght.ttf");
-        DEFAULT_BOLD = DEFAULT.deriveFont(Font.BOLD);
+        DEFAULT_BOLD = DEFAULT.deriveFont(Font.BOLD, DEFAULT.getFont().getSize2D());
         SANS_SERIF = DEFAULT;
         SERIF = withFallback(new Font(Font.SERIF, 0, 12), "NotoSans/NotoSerif-VariableFont_wdth,wght.ttf",  "NotoSans/NotoSansSymbols2-Regular.ttf", "NotoSans/NotoEmoji-VariableFont_wght.ttf");
         MONOSPACE = withFallback(new Font(Font.MONOSPACED, 0, 12), "NotoSans/NotoSansMono-VariableFont_wdth,wght.ttf",  "NotoSans/NotoSansSymbols2-Regular.ttf", "NotoSans/NotoEmoji-VariableFont_wght.ttf");

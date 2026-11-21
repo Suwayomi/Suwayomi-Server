@@ -127,17 +127,6 @@ object NavigationRepository {
         return libraryItems + otherRootItems
     }
 
-    fun getLibraryNavigationItems(locale: Locale): List<OpdsRootNavEntry> =
-        librarySectionDetails.map { (id, details) ->
-            val (linkType, titleRes, descriptionRes) = details
-            OpdsRootNavEntry(
-                id = id,
-                title = titleRes.localized(locale),
-                description = descriptionRes.localized(locale),
-                linkType = linkType,
-            )
-        }
-
     fun getExploreSources(
         userId: Int,
         pageNum: Int,
@@ -505,9 +494,12 @@ object NavigationRepository {
                     OpdsLanguageNavEntry(
                         id = langCode,
                         title =
-                            Locale.forLanguageTag(langCode).getDisplayName(locale).replaceFirstChar { char ->
-                                if (char.isLowerCase()) char.titlecase(locale) else char.toString()
-                            },
+                            Locale
+                                .forLanguageTag(langCode)
+                                .getDisplayName(locale)
+                                .replaceFirstChar { char ->
+                                    if (char.isLowerCase()) char.titlecase(locale) else char.toString()
+                                }.ifEmpty { langCode },
                         mangaCount = it[mangaCount],
                     )
                 }

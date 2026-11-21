@@ -23,13 +23,6 @@ object OpdsDateUtil {
     fun formatCurrentInstantForOpds(): String = opdsDateFormatter.format(Instant.now())
 
     /**
-     * Formats a specific instant for OPDS.
-     * @param instant The instant to format
-     * @return String with the formatted date
-     */
-    fun formatInstantForOpds(instant: Instant): String = opdsDateFormatter.format(instant)
-
-    /**
      * Formats a timestamp in milliseconds for OPDS.
      * @param epochMillis Time in milliseconds since Unix epoch
      * @return String with the formatted date
