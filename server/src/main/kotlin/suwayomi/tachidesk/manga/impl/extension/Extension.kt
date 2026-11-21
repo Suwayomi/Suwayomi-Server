@@ -27,6 +27,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.select
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -54,6 +55,7 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.saveImage
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.manga.model.table.StubSourceTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.database.dbSuspendTransaction
 import suwayomi.tachidesk.server.database.dbTransaction
@@ -589,6 +591,12 @@ object Extension {
                         }
                     }.toExecutable()
                     .execute(this@dbTransaction)
+            }
+
+            StubSourceTable.batchUpsert(httpSources, StubSourceTable.id) {
+                this[StubSourceTable.id] = it.id
+                this[StubSourceTable.name] = it.name
+                this[StubSourceTable.lang] = it.lang
             }
         }
     }

@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
 - (**Backup/API**) Fix restore mutations timing out when progress notifications arrive before subscription
+- (**Downloads**) Fix downloaded chapters not opening after their extension is uninstalled
 - (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
 - (**Downloads/API**) Avoid repeating an existing CBZ suffix in exported chapter archive filenames
 - (**Downloads/API**) Expose download error messages
