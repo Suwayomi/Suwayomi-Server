@@ -206,12 +206,12 @@ class SupportLibWebSettingsAdapter implements WebSettingsBoundaryInterface {
 
     @Override
     public void setIncludeCookiesOnIntercept(boolean includeCookiesOnIntercept) {
-        throw new RuntimeException("Not supported");
+        mAwSettings.setIncludeCookiesOnIntercept(includeCookiesOnIntercept);
     }
 
     @Override
     public boolean getIncludeCookiesOnIntercept() {
-        throw new RuntimeException("Not supported");
+        return mAwSettings.getIncludeCookiesOnIntercept();
     }
 
     @Override

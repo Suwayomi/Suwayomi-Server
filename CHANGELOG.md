@@ -94,6 +94,7 @@ Syncyomi has released its next version of syncing your library, optimizing the s
 - (**Extension**) Fix extension update failure potentially causing a NullPointerException on the next update attempt
 - (**Extension**) Fix losing installed extension in case the update fails
 - (**Extension/Android**) Implement fromHtml with flags for author's note support
+- (**Extension/Android**) Implement private Chromium methods for improved WebView support
 - (**Extension/Settings**) Fix `extensionRepos` setting not being migrated to `extensionStores`
 - (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
 - (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data
