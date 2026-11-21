@@ -92,6 +92,7 @@ class ExtensionStoreMutation {
                 extensionStore =
                     store?.let {
                         ExtensionStoreType(
+                            id = it.id,
                             name = it.name,
                             badgeLabel = it.badgeLabel,
                             signingKey = it.signingKey,

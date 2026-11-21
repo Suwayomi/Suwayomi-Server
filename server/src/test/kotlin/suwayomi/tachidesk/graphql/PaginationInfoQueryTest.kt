@@ -7,6 +7,7 @@ package suwayomi.tachidesk.graphql
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -25,6 +26,8 @@ import suwayomi.tachidesk.test.createChapters
 import suwayomi.tachidesk.test.createLibraryManga
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * List queries only compute the total and the first/last rows when the caller selects
@@ -178,6 +181,73 @@ class PaginationInfoQueryTest : GraphQLTest() {
         response.assertNoErrors()
         assertEquals(expectedTotal, response.dataPath("extensionStores", "totalCount"))
         assertEquals(true, response.dataPath("extensionStores", "pageInfo", "hasNextPage"))
+    }
+
+    /**
+     * The default `extensionStores` order (INDEX_URL) must emit composite `id-value` cursors;
+     * a bare value cursor throws when `after:` parses it back.
+     */
+    @Test
+    fun extensionStoresDefaultOrderPaginatesByCursor() {
+        transaction {
+            (1..3).forEach { index ->
+                ExtensionStoreTable.insert {
+                    it[indexUrl] = "$TEST_STORE_PREFIX$index/index.min.json"
+                    it[name] = "Store $index"
+                    it[badgeLabel] = "S$index"
+                    it[signingKey] = "key$index"
+                    it[contactWebsite] = "https://store$index.example"
+                }
+            }
+        }
+        // may include stores seeded outside this test; the default order is INDEX_URL ASC
+        val expectedUrls =
+            transaction {
+                ExtensionStoreTable
+                    .selectAll()
+                    .orderBy(ExtensionStoreTable.indexUrl to SortOrder.ASC)
+                    .map { it[ExtensionStoreTable.indexUrl] }
+            }
+
+        val visited = mutableListOf<String>()
+        var after: String? = null
+        var pages = 0
+        while (true) {
+            val afterArg = after?.let { """, after: "$it"""" } ?: ""
+            val response =
+                graphql(
+                    """
+                    query {
+                        extensionStores(first: 2$afterArg) {
+                            pageInfo {
+                                hasNextPage
+                                endCursor
+                            }
+                            nodes {
+                                indexUrl
+                            }
+                        }
+                    }
+                    """.trimIndent(),
+                )
+
+            response.assertNoErrors()
+            visited +=
+                (response.dataPath("extensionStores", "nodes") as List<*>)
+                    .map { (it as Map<*, *>)["indexUrl"] as String }
+            if (response.dataPath("extensionStores", "pageInfo", "hasNextPage") != true) break
+            val endCursor =
+                response.dataPath("extensionStores", "pageInfo", "endCursor") as String?
+                    ?: fail("hasNextPage=true but endCursor is null — the cursor cannot advance")
+            assertTrue(
+                endCursor.substringBefore('-').toIntOrNull() != null,
+                "cursor must be '<id>-<value>' but was '$endCursor'",
+            )
+            after = endCursor
+            if (++pages > 50) fail("cursor pagination did not terminate after 50 pages")
+        }
+
+        assertEquals(expectedUrls, visited, "default-order cursor pagination must visit every store exactly once")
     }
 
     @AfterEach

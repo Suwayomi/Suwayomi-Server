@@ -41,6 +41,7 @@ import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
 import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
 import suwayomi.tachidesk.graphql.types.ExtensionNodeList
@@ -227,6 +228,10 @@ class ExtensionQuery {
         last: Int? = null,
         offset: Int? = null,
     ): ExtensionNodeList {
+        val requestedSort = order.orEmpty() + listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = ExtensionTable.selectAll()
@@ -240,20 +245,18 @@ class ExtensionQuery {
                 //     res.andWhere { ExtensionTable.contentWarning less ContentWarning.MIXED.ordinal }
                 // }
 
-                val baseSort = listOf(ExtensionOrder(ExtensionOrderBy.PKG_NAME, SortOrder.ASC))
-                val deprecatedSort = listOfNotNull(orderBy?.let { ExtensionOrder(orderBy, orderByType) })
-                val actualSort = (order.orEmpty() + deprecatedSort + baseSort)
+                val actualSort = requestedSort + ExtensionOrder(ExtensionOrderBy.PKG_NAME, cursorOrderType)
 
                 val (total, firstResult, lastResult) =
-                    res.applySortAndGetPaginationInfo(actualSort, before, last, PaginationNeeds.of(dataFetchingEnvironment)) {
+                    res.applySortAndGetPaginationInfo(actualSort, last, PaginationNeeds.of(dataFetchingEnvironment)) {
                         it?.get(ExtensionTable.pkgName)
                     }
 
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -262,10 +265,11 @@ class ExtensionQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (ExtensionType) -> Cursor = (order?.firstOrNull()?.by ?: ExtensionOrderBy.PKG_NAME)::asCursor
+        val getAsCursor: (ExtensionType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { ExtensionType(it) }
 
