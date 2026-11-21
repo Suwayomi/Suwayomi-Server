@@ -39,6 +39,8 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                 Features.DOCUMENT_START_SCRIPT,
                 Features.WEB_MESSAGE_LISTENER,
                 Features.WEB_MESSAGE_ARRAY_BUFFER,
+                Features.MULTI_PROFILE,
+                Features.CUSTOM_REQUEST_HEADERS,
             };
 
     public SupportLibWebViewChromiumFactory() {

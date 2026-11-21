@@ -58,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
 - (**WebView**) Fix the WebView page keeping every received frame in memory
 - (**WebView**) Fix WebView pages sometimes staying open and running after being closed
+- (**WebView**) Report multi-profile and origin-matched request header support to extensions
 - (**WebView**) Pass `evaluateJavascript` results to extensions serialized as JSON, like Android
 - (**WebView**) Report dead renderers through `onRenderProcessGone` instead of leaving extensions waiting
 - (**WebView**) Fix `evaluateJavascript` not returning the result of multi-line scripts
