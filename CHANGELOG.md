@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
 - (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 - (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
+- (**Downloads**) Add option to split tall images
 - (**Extension/Android**) Implement android.net.Network*
 - (**System**) Embed AppImage update information for delta updates
 - (**System**) Support ppc64 and s390x architectures
@@ -29,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Auth**) Stop logging routine expired-token rejections as errors
 - (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
 - (**Backup/API**) Fix restore mutations timing out when progress notifications arrive before subscription
+- (**Downloads**) Convert the pages a live read already cached when downloading a chapter
+- (**Downloads**) Fix live reads and downloads of a chapter racing on the page cache
 - (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
 - (**Downloads/API**) Avoid repeating an existing CBZ suffix in exported chapter archive filenames
 - (**Downloads/API**) Expose download error messages
