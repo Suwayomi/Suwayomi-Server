@@ -143,7 +143,7 @@ move_release_to_output_dir() {
 }
 
 download_launcher() {
-  LAUNCHER_URL=$(curl -sf "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/latest" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
+  LAUNCHER_URL=$(curl -sf "https://api.github.com/repos/Suwayomi/Suwayomi-Launcher/releases/tags/232" | grep "browser_download_url" | grep ".jar" | head -n 1 | cut -d '"' -f 4)
   if [ -z "$LAUNCHER_URL" ]; then
     error $LINENO "Failed to determine launcher URL from GitHub API" 1
   fi
