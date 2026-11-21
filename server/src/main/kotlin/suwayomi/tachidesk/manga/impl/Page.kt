@@ -24,6 +24,7 @@ import suwayomi.tachidesk.manga.impl.util.getChapterCachePath
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrNull
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageUtil
+import suwayomi.tachidesk.manga.impl.util.storage.PageCacheCoordinator
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.PageTable
@@ -195,61 +196,63 @@ object Page {
                 index = index,
                 progressFlow = progressFlow,
             )
-        val conversions = serverConfig.downloadConversions.value
-        if (conversions.isEmpty() || !downloadCacheFolder.exists()) {
-            inputStream.close()
-            return
-        }
-        val defaultConversion = conversions["default"]
-        val conversion =
-            conversions[mime]
-                ?: defaultConversion
-        if (conversion == null) {
-            inputStream.close()
-            return
-        }
 
-        try {
-            val converted =
+        // Lock again, the fetch above released it: a live read must not see a half-converted page
+        val cacheSaveDir = getChapterCachePath(mangaId, chapterId)
+        PageCacheCoordinator.withPageLock(cacheSaveDir, fileName) {
+            val conversions = serverConfig.downloadConversions.value
+            val defaultConversion = conversions["default"]
+            val conversion = conversions[mime] ?: defaultConversion
+
+            if (conversions.isEmpty() || !downloadCacheFolder.exists() || conversion == null) {
+                inputStream.close()
+            } else {
                 try {
-                    convertImageResponse(
-                        image = inputStream,
-                        mime = mime,
-                        conversion = conversion,
-                    )
+                    val converted =
+                        try {
+                            convertImageResponse(
+                                image = inputStream,
+                                mime = mime,
+                                conversion = conversion,
+                            )
+                        } catch (e: Exception) {
+                            throw e
+                        } finally {
+                            inputStream.close()
+                        }
+
+                    if (converted != null) {
+                        val (convertedStream, convertedMime) = converted
+                        val convertedExtension =
+                            MimeUtils.guessExtensionFromMimeType(convertedMime)
+                                ?: convertedMime.substringAfter('/')
+                        val convertedPage =
+                            File(
+                                downloadCacheFolder,
+                                "$fileName.$convertedExtension",
+                            )
+
+                        convertedPage.outputStream().use { outputStream ->
+                            convertedStream.use { it.copyTo(outputStream) }
+                        }
+
+                        val extension =
+                            MimeUtils.guessExtensionFromMimeType(mime)
+                                ?: mime.substringAfter('/')
+                        if (extension != convertedExtension) {
+                            File(
+                                downloadCacheFolder,
+                                "$fileName.$extension",
+                            ).delete()
+                        }
+                    }
                 } catch (e: Exception) {
-                    throw e
-                } finally {
-                    inputStream.close()
-                }
-
-            if (converted != null) {
-                val (convertedStream, convertedMime) = converted
-                val convertedExtension =
-                    MimeUtils.guessExtensionFromMimeType(convertedMime)
-                        ?: convertedMime.substringAfter('/')
-                val convertedPage =
-                    File(
-                        downloadCacheFolder,
-                        "$fileName.$convertedExtension",
-                    )
-
-                convertedPage.outputStream().use { outputStream ->
-                    convertedStream.use { it.copyTo(outputStream) }
-                }
-
-                val extension =
-                    MimeUtils.guessExtensionFromMimeType(mime)
-                        ?: mime.substringAfter('/')
-                if (extension != convertedExtension) {
-                    File(
-                        downloadCacheFolder,
-                        "$fileName.$extension",
-                    ).delete()
+                    logger.warn(e) { "Error while post-processing image" }
                 }
             }
-        } catch (e: Exception) {
-            logger.warn(e) { "Error while post-processing image" }
+
+            // Even if the conversion failed, so the page isn't processed again
+            PageCacheCoordinator.markProcessed(cacheSaveDir, fileName)
         }
     }
 
