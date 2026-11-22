@@ -152,6 +152,7 @@ abstract class ChaptersFilesProvider<Type : FileType>(
             }
 
             var attempt = 0
+            var wait = 1.seconds
             while (true) {
                 try {
                     Page
@@ -178,9 +179,9 @@ abstract class ChaptersFilesProvider<Type : FileType>(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    if (attempt == MAX_PAGE_RETRIES) throw e
+                    if (attempt >= MAX_PAGE_RETRIES) throw e
                     attempt++
-                    val wait = (1L shl attempt).seconds
+                    wait *= 2
                     logger.warn(e) { "Page $pageNum of chapter $chapterId failed, retrying in $wait ($attempt/$MAX_PAGE_RETRIES)" }
                     delay(wait)
                 } finally {
