@@ -13,10 +13,8 @@ import suwayomi.tachidesk.manga.impl.util.storage.FileDeletionHelper
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
-import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.zip.Deflater
@@ -105,7 +103,7 @@ class FolderProvider(
         ): Pair<InputStream, Long> {
             val archiveFile = File.createTempFile("chapter-$chapterId-", ".cbz")
             try {
-                writeArchive(chapterDir, BufferedOutputStream(FileOutputStream(archiveFile)))
+                writeArchive(chapterDir, archiveFile.outputStream().buffered())
             } catch (e: Exception) {
                 archiveFile.delete()
                 throw e
@@ -138,7 +136,7 @@ class FolderProvider(
                     ?.filter { it.isFile }
                     ?.sortedBy { it.name }
                     ?.forEach { imageFile ->
-                        FileInputStream(imageFile).use { fileInputStream ->
+                        imageFile.inputStream().use { fileInputStream ->
                             val zipEntry = ZipArchiveEntry(imageFile.name)
                             zipEntry.time = 0L
                             zipOutputStream.putArchiveEntry(zipEntry)
