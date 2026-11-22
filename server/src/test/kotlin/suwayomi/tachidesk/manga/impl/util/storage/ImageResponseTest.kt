@@ -262,4 +262,63 @@ class ImageResponseTest {
         assertFalse(File(tempDir, "1.tmp").exists())
         assertEquals(listOf("1.jpg"), filesInDir())
     }
+
+    @Test
+    fun reportsAChangeWhenAStaleCachedImageIsReplacedByADifferentOne() =
+        runBlocking {
+            cachedFile(lastModified = 1_000L)
+            var changes = 0
+
+            ImageResponse
+                .getImageResponse(saveDir, fileName, staleBefore = 5_000L, onImageChanged = { changes++ }) {
+                    response()
+                }.first
+                .close()
+
+            assertEquals(1, changes)
+        }
+
+    @Test
+    fun doesNotReportAChangeWhenTheRefreshedImageIsIdentical() =
+        runBlocking {
+            cachedFile(lastModified = 1_000L)
+            var changes = 0
+
+            ImageResponse
+                .getImageResponse(saveDir, fileName, staleBefore = 5_000L, onImageChanged = { changes++ }) {
+                    response(body = oldImage)
+                }.first
+                .close()
+
+            assertEquals(0, changes)
+        }
+
+    @Test
+    fun doesNotReportAChangeWhenTheRefreshFails() =
+        runBlocking {
+            cachedFile(lastModified = 1_000L)
+            var changes = 0
+
+            ImageResponse
+                .getImageResponse(saveDir, fileName, staleBefore = 5_000L, onImageChanged = { changes++ }) {
+                    response(code = 500)
+                }.first
+                .close()
+
+            assertEquals(0, changes)
+        }
+
+    @Test
+    fun doesNotReportAChangeOnTheFirstDownload() =
+        runBlocking {
+            var changes = 0
+
+            ImageResponse
+                .getImageResponse(saveDir, fileName, staleBefore = 5_000L, onImageChanged = { changes++ }) {
+                    response()
+                }.first
+                .close()
+
+            assertEquals(0, changes)
+        }
 }

@@ -25,6 +25,8 @@ class ThumbnailFileProvider(
         return ImageResponse.findFileNameStartingWith(thumbnailDir, fileName)
     }
 
+    fun hasImage(): Boolean = getFilePath() != null
+
     fun getImageImpl(): Pair<InputStream, String> {
         val filePathWithoutExt = getThumbnailDownloadPath(mangaId)
         val filePath = getFilePath()
@@ -60,7 +62,12 @@ class ThumbnailFileProvider(
         }
 
         ImageResponse
-            .getImageResponse(applicationDirs.thumbnailDownloadsRoot, mangaId.toString(), staleBefore) {
+            .getImageResponse(
+                applicationDirs.thumbnailDownloadsRoot,
+                mangaId.toString(),
+                staleBefore,
+                { Manga.markThumbnailChanged(mangaId) },
+            ) {
                 Manga.fetchMangaThumbnailResponse(mangaId)
             }.first
             .close()
