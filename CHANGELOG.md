@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Backup/Sync**) Keep cached covers on restore and sync unless the manga is new or its thumbnail url changed
 - (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
 - (**Backup/API**) Fix restore mutations timing out when progress notifications arrive before subscription
+- (**Downloads**) Retry a failed page up to 3 times, waiting 2, 4 and 8 seconds, before failing the chapter download
 - (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
 - (**Downloads/API**) Avoid repeating an existing CBZ suffix in exported chapter archive filenames
 - (**Downloads/API**) Expose download error messages
