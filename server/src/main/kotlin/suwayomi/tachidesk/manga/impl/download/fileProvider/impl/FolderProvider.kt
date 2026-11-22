@@ -122,7 +122,6 @@ class FolderProvider(
             return inputStream to archiveFile.length()
         }
 
-        // a stream rather than a file so the entries keep their data descriptors, as when the archive was built in memory
         private fun writeArchive(
             chapterDir: File,
             outputStream: OutputStream,
