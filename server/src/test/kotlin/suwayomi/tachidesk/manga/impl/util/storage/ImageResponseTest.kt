@@ -95,7 +95,7 @@ class ImageResponseTest {
                 }
 
             assertEquals(0, fetchCount)
-            assertEquals("image/jpg", mime)
+            assertEquals("image/jpeg", mime)
             assertTrue(stream.use { it.readBytes() }.contentEquals(oldImage))
         }
 
@@ -175,7 +175,7 @@ class ImageResponseTest {
                     throw IOException("source unavailable")
                 }
 
-            assertEquals("image/jpg", mime)
+            assertEquals("image/jpeg", mime)
             assertTrue(stream.use { it.readBytes() }.contentEquals(oldImage))
             assertEquals(listOf("1.jpg"), filesInDir())
             assertEquals(1_000L, cached.lastModified())

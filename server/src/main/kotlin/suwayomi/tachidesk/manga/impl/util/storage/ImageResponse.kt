@@ -27,20 +27,31 @@ object ImageResponse {
     fun findFileNameStartingWith(
         directoryPath: String,
         fileName: String,
+    ): String? = findFileNameStartingWith(directoryPath, fileName) { true }
+
+    private inline fun findFileNameStartingWith(
+        directoryPath: String,
+        fileName: String,
+        predicate: (String) -> Boolean,
     ): String? {
         // avoids listing the whole directory when possible
-        knownExtensions.firstOrNull { File(directoryPath, "$fileName.$it").isFile }?.let {
+        knownExtensions.firstOrNull { predicate("$fileName.$it") && File(directoryPath, "$fileName.$it").isFile }?.let {
             return "$directoryPath/$fileName.$it"
         }
 
         val target = "$fileName."
         File(directoryPath).listFiles().orEmpty().forEach { file ->
-            if (file.name.startsWith(target)) {
+            if (file.name.startsWith(target) && predicate(file.name)) {
                 return "$directoryPath/${file.name}"
             }
         }
         return null
     }
+
+    fun hasSplitParts(
+        directoryPath: String,
+        fileName: String,
+    ): Boolean = findFileNameStartingWith(directoryPath, fileName) { SplitPageLayout.isSplitPartOf(it, fileName) } != null
 
     fun getCachedImageResponse(
         cachedFile: String,
@@ -49,7 +60,7 @@ object ImageResponse {
         val fileType = cachedFile.substringAfter("$filePath.")
         return Pair(
             pathToInputStream(cachedFile),
-            "image/$fileType",
+            MimeUtils.guessMimeTypeFromExtension(fileType) ?: "image/$fileType",
         )
     }
 
@@ -66,42 +77,54 @@ object ImageResponse {
         fileName: String,
         staleBefore: Long = 0,
         fetcher: suspend () -> Response,
-    ): Pair<InputStream, String> {
-        File(saveDir).mkdirs()
+    ): Pair<InputStream, String> =
+        PageCacheCoordinator.withPageLock(saveDir, fileName) {
+            File(saveDir).mkdirs()
 
-        val cachedFile = findFileNameStartingWith(saveDir, fileName)
-        val filePath = "$saveDir/$fileName"
+            // a part of a page a download split isn't the page, so it's never served as one
+            val cachedFile = findFileNameStartingWith(saveDir, fileName) { !SplitPageLayout.isSplitPartOf(it, fileName) }
+            val filePath = "$saveDir/$fileName"
 
-        // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
-        val reusableCachedFile = cachedFile?.takeUnless { it.endsWith(".tmp") }
+            // in case the cached file is a ".tmp" file something went wrong with the previous download, and it has to be downloaded again
+            val reusableCachedFile = cachedFile?.takeUnless { it.endsWith(".tmp") }
 
-        if (reusableCachedFile == null) {
-            return fetchAndSaveImage(saveDir, fileName, fetcher)
+            if (reusableCachedFile == null) {
+                // Serve without caching: the download's split parts already hold this page
+                val isSplitByDownload = cachedFile == null && hasSplitParts(saveDir, fileName)
+                return@withPageLock fetchAndSaveImage(saveDir, fileName, isSplitByDownload, fetcher)
+            }
+
+            if (File(reusableCachedFile).lastModified() >= staleBefore) {
+                return@withPageLock getCachedImageResponse(reusableCachedFile, filePath)
+            }
+
+            try {
+                refreshCachedImage(reusableCachedFile, filePath, fetcher)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                getCachedImageResponse(reusableCachedFile, filePath)
+            }
         }
-
-        if (File(reusableCachedFile).lastModified() >= staleBefore) {
-            return getCachedImageResponse(reusableCachedFile, filePath)
-        }
-
-        return try {
-            refreshCachedImage(reusableCachedFile, filePath, fetcher)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            getCachedImageResponse(reusableCachedFile, filePath)
-        }
-    }
 
     private suspend fun fetchAndSaveImage(
         saveDir: String,
         fileName: String,
+        isSplitByDownload: Boolean,
         fetcher: suspend () -> Response,
     ): Pair<InputStream, String> {
         val filePath = "$saveDir/$fileName"
         val response = fetcher()
 
         try {
-            if (response.code == 200) {
+            if (response.code == 200 && isSplitByDownload) {
+                val bytes = response.body.bytes()
+                val imageType =
+                    ImageUtil.findImageType { bytes.inputStream() }?.mime
+                        ?: response.header("Content-Type")?.takeIf { it.startsWith("image/") }
+                        ?: "image/jpeg"
+                return bytes.inputStream() to imageType
+            } else if (response.code == 200) {
                 val (actualSavePath, imageType) =
                     saveImage(
                         filePath,
@@ -113,8 +136,10 @@ object ImageResponse {
                 throw Exception("request error! ${response.code}")
             }
         } catch (e: IOException) {
-            // make sure no partial download remains
-            clearCachedImage(saveDir, fileName)
+            // make sure no partial download remains, without touching the download's parts
+            if (!isSplitByDownload) {
+                clearCachedImage(saveDir, fileName)
+            }
             throw e
         } finally {
             response.closeQuietly()
