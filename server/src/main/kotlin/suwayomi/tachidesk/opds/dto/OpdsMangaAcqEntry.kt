@@ -5,7 +5,6 @@ data class OpdsMangaAcqEntry(
     val title: String,
     val thumbnailUrl: String?,
     val lastFetchedAt: Long,
-    val inLibrary: Boolean,
     val author: String?,
     val genres: List<String>,
     val description: String?,

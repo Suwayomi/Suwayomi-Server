@@ -6,6 +6,7 @@ import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
 import io.javalin.http.UploadedFile
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.withTimeout
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.server.TemporaryFileStorage
@@ -52,9 +53,15 @@ class BackupMutation {
                 )
 
             withTimeout(10.seconds) {
-                ProtoBackupImport.notifyFlow.first {
-                    ProtoBackupImport.getRestoreState(restoreId) != null
-                }
+                ProtoBackupImport.notifyFlow
+                    .onSubscription {
+                        val state = ProtoBackupImport.getRestoreState(restoreId)
+                        if (state != null && state != ProtoBackupImport.BackupRestoreState.Idle) {
+                            emit(Unit)
+                        }
+                    }.first {
+                        ProtoBackupImport.getRestoreState(restoreId) != null
+                    }
             }
 
             RestoreBackupPayload(clientMutationId, restoreId, ProtoBackupImport.getRestoreState(restoreId)?.toStatus())
@@ -119,11 +126,11 @@ class BackupMutation {
 
         val backup = ProtoBackupExport.createBackup(userId, effectiveFlags)
 
-        TemporaryFileStorage.saveFile(filename, backup)
+        val token = TemporaryFileStorage.saveFile(filename, backup)
 
         return CreateBackupPayload(
             clientMutationId = input?.clientMutationId,
-            url = "/api/graphql/files/backup/$filename",
+            url = "/api/graphql/files/backup/$token",
         )
     }
 }

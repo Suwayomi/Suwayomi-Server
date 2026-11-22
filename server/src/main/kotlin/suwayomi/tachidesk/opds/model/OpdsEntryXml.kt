@@ -26,6 +26,9 @@ data class OpdsEntryXml(
     @XmlSerialName("author", OpdsConstants.NS_ATOM, "")
     val authors: List<OpdsAuthorXml>? = null,
     @XmlElement(true)
+    @XmlSerialName("contributor", OpdsConstants.NS_ATOM, "")
+    val contributors: List<OpdsAuthorXml>? = null,
+    @XmlElement(true)
     @XmlSerialName("category", OpdsConstants.NS_ATOM, "")
     val categories: List<OpdsCategoryXml>? = null,
     // Dublin Core elements

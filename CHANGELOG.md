@@ -8,28 +8,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - (**API**) Add User Accounts
-- (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
-- (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
+- (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
+- (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
+- (**Extension/Android**) Implement android.net.Network*
+- (**System**) Embed AppImage update information for delta updates
+- (**System**) Support ppc64 and s390x architectures
+- (**Tracker**) Add MangaBaka tracker
 
 ### Changed
+- (**Manga/API**) Find cached covers and pages by their usual extensions instead of listing their whole directory for each image
 - (**GraphQL**) Count the nodes of list fields in SQL when `totalCount` is their only selection
-- (**Updates**) Index chapters by fetch time for the updates list
-- (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
+- (**GraphQL**) Find manga with duplicate chapter numbers with one group per manga instead of one per chapter number
 - (**GraphQL**) Find the chapters of the chapter-per-manga data loaders in SQL instead of in memory
+- (**GraphQL**) Skip the count and first/last lookups of paginated lists when `totalCount` and `pageInfo.hasNextPage`/`hasPreviousPage` aren't selected
 - (**GraphQL**) Write data loader ids into the SQL instead of binding them
+- (**Updates**) Index chapters by fetch time for the updates list
+- (**WebView**) Start CEF the first time a webview needs it instead of at startup
+- (**WebView**) Stream frames as JPEG binary messages at up to 20 fps, sending only the latest frame and waiting for the client to receive the previous ones, instead of a PNG in JSON for every repaint
 
 ### Fixed
-- (**Tracker**) Fix the possibility of attempting to insert multiple track searches
-- (**Auth**) Stop logging routine expired-token rejections as errors
-- (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
 - (**API**) Answer 424 instead of 500 when a source fails
-- (**Local Source**) Fix detection of Synology metadata folders as local chapters
-- (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
-- (**Extension**) Fix extension update/installation failure due to a missing older extension file
+- (**Auth**) Stop logging routine expired-token rejections as errors
+- (**Backup/Sync**) Keep cached covers on restore and sync unless the manga is new or its thumbnail url changed
+- (**Backup**) Restore reading history for existing chapters omitted from a file backup's chapter records
+- (**Backup/API**) Fix restore mutations timing out when progress notifications arrive before subscription
 - (**Downloads**) Retry a failed page up to 3 times, waiting 2, 4 and 8 seconds, before failing the chapter download
+- (**Downloads**) Skip chapters that no longer exist when enqueuing downloads instead of failing the whole request
+- (**Downloads/API**) Avoid repeating an existing CBZ suffix in exported chapter archive filenames
+- (**Downloads/API**) Expose download error messages
+- (**Downloads/API**) Fix single-chapter enqueue requests timing out when the chapter is already queued
+- (**Downloads/API**) Return status when starting an empty download queue
+- (**Downloads/CBZ**) Handle missing archive files as not-downloaded
+- (**Extension**) Fix extension update/installation failure due to a missing older extension file
+- (**Extension/Android**) Fix Paint typeface replacements losing italic style and fractional text sizes
+- (**Extension/Android**) Implement Bitmap#createBitmap(int[],int,int,android.graphics.Bitmap.Config)
+- (**Extension/Android**) Implement HSV color conversions without Android native functions
+- (**Extension/Android**) Preserve bold style and the default font size for `Typeface.DEFAULT_BOLD`
+- (**Extension/Android**) Preserve image types when creating or copying bitmaps with their reported configurations
+- (**Image**) Recognize the AVIF image-sequence brand when identifying page images
+- (**Local Source**) Fix detection of Synology metadata folders as local chapters
+- (**Local source**) Fix EPUB archive paths being resolved as Windows filesystem paths
+- (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass
+- (**Syncyomi**) Report chapters a source dropped to SyncYomi
+- (**Syncyomi**) Send library removals and history-only changes to SyncYomi
+- (**Thumbnails**) Refresh the thumbnail URL when its host is unreachable
+- (**Tracker**) Fix the possibility of attempting to insert multiple track searches
+- (**TrayIcon**) Use DorkBox OS 1.11 to restore tray menus on localized Windows
+- (**WebUI/API**) Fix server info queries failing when WebUI serving is disabled and no local WebUI version is installed
+- (**WebView**) Fix the server not shutting down on a termination signal once the WebView started
+- (**WebView**) Fix the WebView page keeping every received frame in memory
+- (**WebView**) Fix WebView pages sometimes staying open and running after being closed
+- (**WebView**) Report multi-profile and origin-matched request header support to extensions
+- (**WebView**) Pass `evaluateJavascript` results to extensions serialized as JSON, like Android
+- (**WebView**) Report dead renderers through `onRenderProcessGone` instead of leaving extensions waiting
+- (**WebView**) Fix `evaluateJavascript` not returning the result of multi-line scripts
 
 ### Deprecated
+- (**Authentication**) `BASIC_AUTH` is now deprecated
 - (**Downloads/Updates/API**) Remove `maxUpdates` `download` and `update` subscription input as it is not needed anymore due to subscriptions now supporting data loader batching
 
 ## [v2.4.2366] + [WebUI: v20260929.01] - 2026-09-29
@@ -66,6 +102,8 @@ Syncyomi has released its next version of syncing your library, optimizing the s
 - (**Extension**) Fix extension update failure potentially causing a NullPointerException on the next update attempt
 - (**Extension**) Fix losing installed extension in case the update fails
 - (**Extension/Android**) Implement fromHtml with flags for author's note support
+- (**Extension/Android**) Implement `Resources` for improved WebView support
+- (**Extension/Android**) Implement private Chromium methods for improved WebView support
 - (**Extension/Settings**) Fix `extensionRepos` setting not being migrated to `extensionStores`
 - (**HTML**) Fix HTML being sent with gibberish when using non-latin characters
 - (**Manga/Extension**) Fix resolving manga URLs for extensions that use memo data
@@ -82,6 +120,10 @@ Syncyomi has released its next version of syncing your library, optimizing the s
 - (**WebView**) Fix `kcef` causing the server startup to fail
 - (**WebView**) Fix authentication with subpath option
 - (**WebView**) Fix that UI-WebView did not share user agent (background WebView unchanged)
+- (**Security**) Form submissions now require a CSRF cookie to prevent forgery
+
+### Removed
+- (**API**) The deprecated REST API has been removed
 
 ## [v2.3.2243] - 2026-07-13
 

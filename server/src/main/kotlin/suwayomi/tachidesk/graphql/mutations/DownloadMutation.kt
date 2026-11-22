@@ -168,8 +168,10 @@ class DownloadMutation {
                         withTimeout(30.seconds) {
                             DownloadStatus(
                                 DownloadManager.updates
-                                    .first { it.updates.any { it.downloadQueueItem.chapterId == chapter } }
-                                    .let { DownloadManager.getStatus() },
+                                    .first { update ->
+                                        update.initial?.any { it.chapterId == chapter } == true ||
+                                            update.updates.any { it.downloadQueueItem.chapterId == chapter }
+                                    }.let { DownloadManager.getStatus() },
                             )
                         }
                     } else {
@@ -279,16 +281,21 @@ class DownloadMutation {
     fun startDownloader(input: StartDownloaderInput): CompletableFuture<StartDownloaderPayload?> =
         future {
             DownloadManager.start()
+            val status = DownloadManager.getStatus()
 
             StartDownloaderPayload(
                 input.clientMutationId,
                 downloadStatus =
-                    withTimeout(30.seconds) {
-                        DownloadStatus(
-                            DownloadManager.updates
-                                .first { it.status == Status.Started }
-                                .let { DownloadManager.getStatus() },
-                        )
+                    if (status.queue.isEmpty()) {
+                        DownloadStatus(status)
+                    } else {
+                        withTimeout(30.seconds) {
+                            DownloadStatus(
+                                DownloadManager.updates
+                                    .first { it.status == Status.Started }
+                                    .let { DownloadManager.getStatus() },
+                            )
+                        }
                     },
             )
         }

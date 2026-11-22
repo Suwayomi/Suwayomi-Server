@@ -15,7 +15,7 @@ import suwayomi.tachidesk.server.user.UserType
 import suwayomi.tachidesk.test.GraphQLTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
-import java.nio.file.Files
+import kotlin.io.path.readBytes
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -72,7 +72,7 @@ class BackupMutationTest : GraphQLTest() {
 
         // decode the backup file that the mutation produced
         val backupPath = TemporaryFileStorage.retrieveFile(filename)
-        val backup = decodeBackup(Files.readAllBytes(backupPath))
+        val backup = decodeBackup(backupPath.path.readBytes())
 
         val titles = backup.backupManga.map { it.title }.toSet()
         assertTrue(user2MangaTitle in titles, "the caller's own manga should be in the backup")
@@ -101,7 +101,7 @@ class BackupMutationTest : GraphQLTest() {
         response.assertNoErrors()
         val filename = (response.dataPath("createBackup", "url") as String).substringAfterLast('/')
         val backupPath = TemporaryFileStorage.retrieveFile(filename)
-        val backup = decodeBackup(Files.readAllBytes(backupPath))
+        val backup = decodeBackup(backupPath.path.readBytes())
 
         assertNull(
             backup.serverSettings,
@@ -131,7 +131,7 @@ class BackupMutationTest : GraphQLTest() {
         response.assertNoErrors()
         val filename = (response.dataPath("createBackup", "url") as String).substringAfterLast('/')
         val backupPath = TemporaryFileStorage.retrieveFile(filename)
-        val backup = decodeBackup(Files.readAllBytes(backupPath))
+        val backup = decodeBackup(backupPath.path.readBytes())
 
         assertNotNull(
             backup.serverSettings,

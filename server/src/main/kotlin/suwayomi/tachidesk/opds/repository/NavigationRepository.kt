@@ -127,17 +127,6 @@ object NavigationRepository {
         return libraryItems + otherRootItems
     }
 
-    fun getLibraryNavigationItems(locale: Locale): List<OpdsRootNavEntry> =
-        librarySectionDetails.map { (id, details) ->
-            val (linkType, titleRes, descriptionRes) = details
-            OpdsRootNavEntry(
-                id = id,
-                title = titleRes.localized(locale),
-                description = descriptionRes.localized(locale),
-                linkType = linkType,
-            )
-        }
-
     fun getExploreSources(
         userId: Int,
         pageNum: Int,

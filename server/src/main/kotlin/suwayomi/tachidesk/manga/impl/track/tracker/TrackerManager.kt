@@ -3,6 +3,7 @@ package suwayomi.tachidesk.manga.impl.track.tracker
 import suwayomi.tachidesk.manga.impl.track.tracker.anilist.Anilist
 import suwayomi.tachidesk.manga.impl.track.tracker.bangumi.Bangumi
 import suwayomi.tachidesk.manga.impl.track.tracker.kitsu.Kitsu
+import suwayomi.tachidesk.manga.impl.track.tracker.mangabaka.MangaBaka
 import suwayomi.tachidesk.manga.impl.track.tracker.mangaupdates.MangaUpdates
 import suwayomi.tachidesk.manga.impl.track.tracker.myanimelist.MyAnimeList
 import suwayomi.tachidesk.manga.impl.track.tracker.shikimori.Shikimori
@@ -17,6 +18,7 @@ object TrackerManager {
     const val MANGA_UPDATES = 7
     const val KAVITA = 8
     const val SUWAYOMI = 9
+    const val MANGABAKA = 11
 
     val myAnimeList = MyAnimeList(MYANIMELIST)
     val aniList = Anilist(ANILIST)
@@ -28,10 +30,11 @@ object TrackerManager {
 
 //    val komga = Komga(KOMGA)
     val mangaUpdates = MangaUpdates(MANGA_UPDATES)
+    val mangaBaka = MangaBaka(MANGABAKA)
 //    val kavita = Kavita(context, KAVITA)
 //    val suwayomi = Suwayomi(SUWAYOMI)
 
-    val services: List<Tracker> = listOf(myAnimeList, aniList, kitsu, mangaUpdates, shikimori, bangumi)
+    val services: List<Tracker> = listOf(myAnimeList, aniList, kitsu, mangaUpdates, shikimori, bangumi, mangaBaka)
 
     fun getTracker(id: Int) = services.find { it.id == id }
 

@@ -50,6 +50,49 @@ public class ConnectivityManager {
 
     private static final String TAG = "ConnectivityManager";
 
+    /* Compat model: one always-online default network (host JVM). Satisfiable
+     * request/register calls fire onAvailable + onCapabilitiesChanged once at
+     * registration; NetworkInfo/LinkProperties APIs remain stubs. */
+
+    /** Simulated default network. netId 100 matches the low end of real netId range. */
+    private static final Network DEFAULT_NETWORK = new Network(100);
+
+    private static volatile NetworkCapabilities sDefaultCapabilities;
+
+    /** Returns a fresh copy each call so callers can't mutate the shared template. */
+    private static NetworkCapabilities defaultCapabilities() {
+        NetworkCapabilities caps = sDefaultCapabilities;
+        if (caps == null) {
+            caps = NetworkCapabilities.createDefault();
+            sDefaultCapabilities = caps;
+        }
+        return new NetworkCapabilities(caps);
+    }
+
+    private static void notifyNetworkAvailable(NetworkCallback callback, Handler handler) {
+        if (callback == null) {
+            return;
+        }
+        Runnable dispatch = () -> {
+            callback.onAvailable(DEFAULT_NETWORK);
+            callback.onCapabilitiesChanged(DEFAULT_NETWORK, defaultCapabilities());
+        };
+        if (handler != null) {
+            handler.post(dispatch);
+        } else {
+            dispatch.run();
+        }
+    }
+
+    private static void notifyNetworkUnavailable(NetworkCallback callback, Handler handler) {
+        Runnable dispatch = callback::onUnavailable;
+        if (handler != null) {
+            handler.post(dispatch);
+        } else {
+            dispatch.run();
+        }
+    }
+
     /**
      * A change in network connectivity has occurred. A default connection has either
      * been established or lost. The NetworkInfo for the affected network is
@@ -797,7 +840,7 @@ public class ConnectivityManager {
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public Network getActiveNetwork() {
-        throw new RuntimeException("Stub!");
+        return DEFAULT_NETWORK;
     }
 
     /**
@@ -1045,7 +1088,7 @@ public class ConnectivityManager {
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public NetworkCapabilities getNetworkCapabilities(Network network) {
-        throw new RuntimeException("Stub!");
+        return DEFAULT_NETWORK.equals(network) ? defaultCapabilities() : null;
     }
 
     /**
@@ -1148,11 +1191,61 @@ public class ConnectivityManager {
      * TODO - This should be removed when the legacy APIs are removed.
      */
     private int inferLegacyTypeForNetworkCapabilities(NetworkCapabilities netCap) {
-        throw new RuntimeException("Stub!");
+        return legacyTypeForNetworkCapabilities(netCap);
     }
 
     private int legacyTypeForNetworkCapabilities(NetworkCapabilities netCap) {
-        throw new RuntimeException("Stub!");
+        if (netCap == null) {
+            return TYPE_NONE;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_CBS)) {
+            return TYPE_MOBILE_CBS;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_IMS)) {
+            return TYPE_MOBILE_IMS;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOTA)) {
+            return TYPE_MOBILE_FOTA;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_IA)) {
+            return TYPE_MOBILE_IA;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_RCS)) {
+            return TYPE_NONE;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_EIMS)) {
+            return TYPE_MOBILE_EMERGENCY;
+        }
+        // prefer DUN over MMS for mixed requests
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_DUN)) {
+            return TYPE_MOBILE_DUN;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_MMS)) {
+            return TYPE_MOBILE_MMS;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_SUPL)) {
+            return TYPE_MOBILE_SUPL;
+        }
+        if (netCap.hasCapability(NetworkCapabilities.NET_CAPABILITY_WIFI_P2P)) {
+            return TYPE_WIFI_P2P;
+        }
+        if (!netCap.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+            if (netCap.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                return TYPE_WIFI;
+            }
+            if (netCap.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                return TYPE_MOBILE;
+            }
+            if (netCap.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                return TYPE_ETHERNET;
+            }
+            if (netCap.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH)) {
+                return TYPE_BLUETOOTH;
+            }
+        } else {
+            return TYPE_VPN;
+        }
+        return TYPE_NONE;
     }
 
     private static class LegacyRequest {
@@ -2068,7 +2161,6 @@ public class ConnectivityManager {
          * @hide
          */
         public void onPreCheck(Network network) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2082,7 +2174,6 @@ public class ConnectivityManager {
          * @hide
          */
         public void onAvailable(Network network, NetworkCapabilities networkCapabilities, LinkProperties linkProperties) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2095,7 +2186,6 @@ public class ConnectivityManager {
          * @param network The {@link Network} of the satisfying network.
          */
         public void onAvailable(Network network) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2113,7 +2203,6 @@ public class ConnectivityManager {
          *                     hard loss at any time.
          */
         public void onLosing(Network network, int maxMsToLive) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2123,7 +2212,6 @@ public class ConnectivityManager {
          * @param network The {@link Network} lost.
          */
         public void onLost(Network network) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2135,7 +2223,6 @@ public class ConnectivityManager {
          * {@link #unregisterNetworkCallback(NetworkCallback)} had been called.
          */
         public void onUnavailable() {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2147,7 +2234,6 @@ public class ConnectivityManager {
          *                            network.
          */
         public void onCapabilitiesChanged(Network network, NetworkCapabilities networkCapabilities) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2158,7 +2244,6 @@ public class ConnectivityManager {
          * @param linkProperties The new {@link LinkProperties} for this network.
          */
         public void onLinkPropertiesChanged(Network network, LinkProperties linkProperties) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2171,7 +2256,6 @@ public class ConnectivityManager {
          * @hide
          */
         public void onNetworkSuspended(Network network) {
-            throw new RuntimeException("Stub!");
         }
 
         /**
@@ -2181,7 +2265,6 @@ public class ConnectivityManager {
          * @hide
          */
         public void onNetworkResumed(Network network) {
-            throw new RuntimeException("Stub!");
         }
 
         private NetworkRequest networkRequest;
@@ -2245,28 +2328,37 @@ public class ConnectivityManager {
         private static final boolean DBG = false;
 
         CallbackHandler(Looper looper) {
-            throw new RuntimeException("Stub!");
+            super(looper);
         }
 
         CallbackHandler(Handler handler) {
-            throw new RuntimeException("Stub!");
+            super(handler.getLooper());
         }
 
         @Override
         public void handleMessage(Message message) {
-            throw new RuntimeException("Stub!");
+            // No message-driven dispatch in the compat implementation: callbacks are
+            // invoked directly by notifyNetworkAvailable().
         }
 
         private <T> T getObject(Message msg, Class<T> c) {
-            throw new RuntimeException("Stub!");
+            return c.cast(msg.obj);
         }
     }
 
     private CallbackHandler getDefaultHandler() {
-        throw new RuntimeException("Stub!");
+        if (sCallbackHandler == null) {
+            Looper looper = Looper.getMainLooper();
+            if (looper == null) {
+                return null;
+            }
+            sCallbackHandler = new CallbackHandler(looper);
+        }
+        return sCallbackHandler;
     }
 
-    private static final HashMap<NetworkRequest, NetworkCallback> sCallbacks = null;
+    private static final HashMap<NetworkRequest, NetworkCallback> sCallbacks =
+            new HashMap<>();
 
     private static CallbackHandler sCallbackHandler;
 
@@ -2275,7 +2367,25 @@ public class ConnectivityManager {
     private static final int REQUEST = 2;
 
     private NetworkRequest sendRequestForNetwork(NetworkCapabilities need, NetworkCallback callback, int timeoutMs, int action, int legacyType, CallbackHandler handler) {
-        throw new RuntimeException("Stub!");
+        checkCallbackNotNull(callback);
+        NetworkRequest request = new NetworkRequest(
+                need == null ? defaultCapabilities() : need, legacyType,
+                action == LISTEN ? NetworkRequest.Type.LISTEN : NetworkRequest.Type.REQUEST);
+        // Unsatisfiable requests are rejected in this single-network model: REQUEST reports
+        // onUnavailable(), LISTEN is registered silently and never fires.
+        // timeoutMs is not honored: nothing can change.
+        boolean satisfiable = request.canBeSatisfiedBy(defaultCapabilities());
+        if (satisfiable || action == LISTEN) {
+            synchronized (sCallbacks) {
+                sCallbacks.put(request, callback);
+            }
+        }
+        if (satisfiable) {
+            notifyNetworkAvailable(callback, handler);
+        } else if (action == REQUEST) {
+            notifyNetworkUnavailable(callback, handler);
+        }
+        return request;
     }
 
     /**
@@ -2290,7 +2400,10 @@ public class ConnectivityManager {
      * @hide
      */
     public void requestNetwork(NetworkRequest request, NetworkCallback networkCallback, int timeoutMs, int legacyType, Handler handler) {
-        throw new RuntimeException("Stub!");
+        checkCallbackNotNull(networkCallback);
+        CallbackHandler cbHandler = handler != null ? new CallbackHandler(handler) : getDefaultHandler();
+        sendRequestForNetwork(request.networkCapabilities, networkCallback, timeoutMs, REQUEST,
+                legacyType, cbHandler);
     }
 
     /**
@@ -2325,7 +2438,8 @@ public class ConnectivityManager {
      *         {@code NetworkCapabilities}.
      */
     public void requestNetwork(NetworkRequest request, NetworkCallback networkCallback) {
-        throw new RuntimeException("Stub!");
+        int legacyType = inferLegacyTypeForNetworkCapabilities(request.networkCapabilities);
+        requestNetwork(request, networkCallback, 0, legacyType, null);
     }
 
     /**
@@ -2360,7 +2474,8 @@ public class ConnectivityManager {
      *         {@code NetworkCapabilities}.
      */
     public void requestNetwork(NetworkRequest request, NetworkCallback networkCallback, Handler handler) {
-        throw new RuntimeException("Stub!");
+        int legacyType = inferLegacyTypeForNetworkCapabilities(request.networkCapabilities);
+        requestNetwork(request, networkCallback, 0, legacyType, handler);
     }
 
     /**
@@ -2392,7 +2507,9 @@ public class ConnectivityManager {
      *                  be a positive value (i.e. >0).
      */
     public void requestNetwork(NetworkRequest request, NetworkCallback networkCallback, int timeoutMs) {
-        throw new RuntimeException("Stub!");
+        checkTimeout(timeoutMs);
+        int legacyType = inferLegacyTypeForNetworkCapabilities(request.networkCapabilities);
+        requestNetwork(request, networkCallback, timeoutMs, legacyType, null);
     }
 
     /**
@@ -2423,7 +2540,9 @@ public class ConnectivityManager {
      *                  before {@link NetworkCallback#onUnavailable} is called.
      */
     public void requestNetwork(NetworkRequest request, NetworkCallback networkCallback, Handler handler, int timeoutMs) {
-        throw new RuntimeException("Stub!");
+        checkTimeout(timeoutMs);
+        int legacyType = inferLegacyTypeForNetworkCapabilities(request.networkCapabilities);
+        requestNetwork(request, networkCallback, timeoutMs, legacyType, handler);
     }
 
     /**
@@ -2491,7 +2610,9 @@ public class ConnectivityManager {
      *         {@link NetworkCapabilities#NET_CAPABILITY_CAPTIVE_PORTAL}.
      */
     public void requestNetwork(NetworkRequest request, PendingIntent operation) {
-        throw new RuntimeException("Stub!");
+        checkPendingIntentNotNull(operation);
+        android.util.Log.w(TAG, "requestNetwork(PendingIntent): PendingIntent delivery is not "
+                + "supported; request registered as a no-op");
     }
 
     /**
@@ -2507,19 +2628,26 @@ public class ConnectivityManager {
      *                  corresponding NetworkRequest you'd like to remove. Cannot be null.
      */
     public void releaseNetworkRequest(PendingIntent operation) {
-        throw new RuntimeException("Stub!");
+        checkPendingIntentNotNull(operation);
+        // no-op: see requestNetwork(NetworkRequest, PendingIntent)
     }
 
     private static void checkPendingIntentNotNull(PendingIntent intent) {
-        throw new RuntimeException("Stub!");
+        if (intent == null) {
+            throw new IllegalArgumentException("PendingIntent cannot be null.");
+        }
     }
 
     private static void checkCallbackNotNull(NetworkCallback callback) {
-        throw new RuntimeException("Stub!");
+        if (callback == null) {
+            throw new IllegalArgumentException("NetworkCallback cannot be null.");
+        }
     }
 
     private static void checkTimeout(int timeoutMs) {
-        throw new RuntimeException("Stub!");
+        if (timeoutMs <= 0) {
+            throw new IllegalArgumentException("Bad timeout specified.");
+        }
     }
 
     /**
@@ -2534,7 +2662,7 @@ public class ConnectivityManager {
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public void registerNetworkCallback(NetworkRequest request, NetworkCallback networkCallback) {
-        throw new RuntimeException("Stub!");
+        registerNetworkCallback(request, networkCallback, null);
     }
 
     /**
@@ -2549,7 +2677,8 @@ public class ConnectivityManager {
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public void registerNetworkCallback(NetworkRequest request, NetworkCallback networkCallback, Handler handler) {
-        throw new RuntimeException("Stub!");
+        sendRequestForNetwork(request.networkCapabilities, networkCallback, 0, LISTEN,
+                TYPE_NONE, handler != null ? new CallbackHandler(handler) : getDefaultHandler());
     }
 
     /**
@@ -2583,7 +2712,9 @@ public class ConnectivityManager {
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public void registerNetworkCallback(NetworkRequest request, PendingIntent operation) {
-        throw new RuntimeException("Stub!");
+        checkPendingIntentNotNull(operation);
+        android.util.Log.w(TAG, "registerNetworkCallback(PendingIntent): PendingIntent delivery "
+                + "is not supported; callback registered as a no-op");
     }
 
     /**
@@ -2597,7 +2728,7 @@ public class ConnectivityManager {
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public void registerDefaultNetworkCallback(NetworkCallback networkCallback) {
-        throw new RuntimeException("Stub!");
+        registerDefaultNetworkCallback(networkCallback, null);
     }
 
     /**
@@ -2611,7 +2742,9 @@ public class ConnectivityManager {
      */
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public void registerDefaultNetworkCallback(NetworkCallback networkCallback, Handler handler) {
-        throw new RuntimeException("Stub!");
+        // A null need listens on the default network itself: always satisfiable here.
+        sendRequestForNetwork(null, networkCallback, 0, LISTEN, TYPE_NONE,
+                handler != null ? new CallbackHandler(handler) : getDefaultHandler());
     }
 
     /**
@@ -2627,7 +2760,7 @@ public class ConnectivityManager {
      * @return {@code true} on success, {@code false} if the {@link Network} is no longer valid.
      */
     public boolean requestBandwidthUpdate(Network network) {
-        throw new RuntimeException("Stub!");
+        return DEFAULT_NETWORK.equals(network);
     }
 
     /**
@@ -2644,7 +2777,10 @@ public class ConnectivityManager {
      * @param networkCallback The {@link NetworkCallback} used when making the request.
      */
     public void unregisterNetworkCallback(NetworkCallback networkCallback) {
-        throw new RuntimeException("Stub!");
+        checkCallbackNotNull(networkCallback);
+        synchronized (sCallbacks) {
+            sCallbacks.values().removeIf(cb -> cb == networkCallback);
+        }
     }
 
     /**
@@ -2657,7 +2793,7 @@ public class ConnectivityManager {
      *                  Cannot be null.
      */
     public void unregisterNetworkCallback(PendingIntent operation) {
-        throw new RuntimeException("Stub!");
+        releaseNetworkRequest(operation);
     }
 
     /**

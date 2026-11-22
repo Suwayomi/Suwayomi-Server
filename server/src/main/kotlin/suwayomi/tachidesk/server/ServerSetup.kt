@@ -43,6 +43,7 @@ import suwayomi.tachidesk.global.impl.KcefWebView.Companion.toCefCookie
 import suwayomi.tachidesk.global.impl.sync.SyncManager
 import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.graphql.types.DatabaseType
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
@@ -539,4 +540,8 @@ fun applicationSetup() {
         },
         ignoreInitialValue = false,
     )
+
+    if (serverConfig.authMode.value == AuthMode.BASIC_AUTH) {
+        logger.warn { "`server.authMode = BASIC_AUTH` is deprecated, please switch to a different authMode!" }
+    }
 }

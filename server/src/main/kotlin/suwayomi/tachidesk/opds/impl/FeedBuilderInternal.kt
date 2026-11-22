@@ -2,6 +2,7 @@ package suwayomi.tachidesk.opds.impl
 
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.opds.constants.OpdsConstants
+import suwayomi.tachidesk.opds.dto.OpdsFacet
 import suwayomi.tachidesk.opds.model.OpdsAuthorXml
 import suwayomi.tachidesk.opds.model.OpdsEntryXml
 import suwayomi.tachidesk.opds.model.OpdsFeedXml
@@ -37,7 +38,10 @@ class FeedBuilderInternal(
     var searchTerms: String? = null
     var icon: String? = null
     val links = mutableListOf<OpdsLinkXml>()
+    val facets = mutableListOf<OpdsFacet>()
     val entries = mutableListOf<OpdsEntryXml>()
+
+    private val languageTag = locale.toLanguageTag()
 
     private fun buildUrlWithParams(page: Int? = pageNum): String {
         val queryParams =
@@ -46,7 +50,7 @@ class FeedBuilderInternal(
                 page?.let { "pageNumber=$it" },
                 currentSort?.let { "sort=$it" },
                 currentFilter?.let { "filter=$it" },
-                "lang=${locale.toLanguageTag()}",
+                "lang=$languageTag",
             ).joinToString("&")
 
         return "$baseUrl/$idPath" + if (queryParams.isNotEmpty()) "?$queryParams" else ""
@@ -57,7 +61,7 @@ class FeedBuilderInternal(
         val showOpenSearch = isSearchFeed && pageNum != null && totalResults > 0
         val urnSuffix =
             listOfNotNull(
-                locale.toLanguageTag(),
+                languageTag,
                 pageNum?.let { "page$it" },
                 explicitQueryParams?.replace("&", ":")?.replace("=", "_"),
                 currentSort?.let { "sort_$it" },
@@ -73,6 +77,18 @@ class FeedBuilderInternal(
             links =
                 buildList {
                     addAll(this@FeedBuilderInternal.links)
+                    facets.mapTo(this) {
+                        OpdsLinkXml(
+                            OpdsConstants.LINK_REL_FACET,
+                            it.href,
+                            OpdsConstants.TYPE_ATOM_XML_FEED_ACQUISITION,
+                            it.title,
+                            facetGroup = it.group,
+                            // Only the active facet carries the attribute
+                            activeFacet = it.isActive.takeIf { isActive -> isActive },
+                            thrCount = it.count?.toInt(),
+                        )
+                    }
                     add(
                         OpdsLinkXml(
                             OpdsConstants.LINK_REL_SELF,
@@ -84,7 +100,7 @@ class FeedBuilderInternal(
                     add(
                         OpdsLinkXml(
                             OpdsConstants.LINK_REL_START,
-                            "$baseUrl?lang=${locale.toLanguageTag()}",
+                            "$baseUrl?lang=$languageTag",
                             OpdsConstants.TYPE_ATOM_XML_FEED_NAVIGATION,
                             MR.strings.opds_linktitle_catalog_root.localized(locale),
                         ),
@@ -92,7 +108,7 @@ class FeedBuilderInternal(
                     add(
                         OpdsLinkXml(
                             OpdsConstants.LINK_REL_SEARCH,
-                            "$baseUrl/search?lang=${locale.toLanguageTag()}",
+                            "$baseUrl/search?lang=$languageTag",
                             OpdsConstants.TYPE_OPENSEARCH_DESCRIPTION,
                             MR.strings.opds_linktitle_search_catalog.localized(locale),
                         ),

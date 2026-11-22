@@ -252,7 +252,7 @@ server.opdsSkipChapterMetadataFeed = false
 - `server.opdsShowOnlyDownloadedChapters = false` controls if OPDS listings should only include downloaded chapters. **Deprecated:** now per-user.
 - `server.opdsChapterSortOrder = "DESC"` sets the default chapter sort order in OPDS listings, either `"ASC"` or `"DESC"`. **Deprecated:** now per-user.
 - `server.opdsCbzMimetype = "MODERN"` controls which mimetype to use for CBZ downloads. This affects the offered link in OPDS, as well as the content type of the CBZ download. Allowed is MODERN (current IANA standard), LEGACY (deprecated mimetype for .cbz) and COMPATIBLE (deprecated mimetype for all comic archives). Use LEGACY or COMPATIBLE if older clients don't offer the chapter download (note that the chapter needs to first be downloaded in Suwayomi, before it is available in OPDS). **Deprecated:** now per-user.
-- `server.opdsSkipChapterMetadataFeed = false` controls if the metadata feed should be skipped. When enabled, download and streaming links are provided directly in the chapter list. This improves compatibility with automated downloaders (like KOReader). KoSync strategies are applied, but `PROMPT` conflicts are ignored (treating local progress as priority). **Deprecated:** now per-user.
+- `server.opdsSkipChapterMetadataFeed = false` controls if the metadata feed should be skipped. When enabled, download and streaming links are provided directly in the chapter list, and the page counts the streaming links need are fetched from the sources in the background. This improves compatibility with automated downloaders (like KOReader). KoSync strategies are applied, but chapters with a `PROMPT` conflict only link to their metadata feed. **Deprecated:** now per-user.
 
 ### KOReader Sync
 ```
@@ -261,7 +261,7 @@ server.koreaderSyncPercentageTolerance = 1.0E-15 # range: [1.0E-15, 1.0]
 server.koreaderSyncStrategyForward = PROMPT # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 server.koreaderSyncStrategyBackward = DISABLED # PROMPT, KEEP_LOCAL, KEEP_REMOTE, DISABLED
 ```
-- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters. **Deprecated:** now per-user.
+- `server.koreaderSyncChecksumMethod` the method by which to identify chapters at the KOReader Sync Server. BINARY includes the entire contents of the chapter, and is thus more expensive, but may be convenient to catch updated chapters. FILENAME only matches when KOReader keeps the server file names of the downloads ("Use server filenames" in the catalog settings). **Deprecated:** now per-user.
 - `server.koreaderSyncPercentageTolerance` when syncing read progress for a chapter from other devices, how much difference (absolute) is allowed to be ignored. When above this tolerance, Suwayomi's read progress will be replaced by the remote device's according to the specified strategy. The strategy is chosed from `server.koreaderSyncStrategyForward` and `server.koreaderSyncStrategyBackward` based on the timestamps of the last read. **Deprecated:** now per-user.
 - `server.koreaderSyncStrategyForward` the strategy to apply when remote progress is newer than local. **Deprecated:** now per-user.
 - `server.koreaderSyncStrategyBackward` the strategy to apply when remote progress is older than local. **Deprecated:** now per-user.

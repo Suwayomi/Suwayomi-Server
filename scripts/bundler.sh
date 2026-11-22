@@ -42,7 +42,7 @@ main() {
     gcc -fPIC -shared scripts/resources/catch_abort.c -lpthread -o scripts/resources/catch_abort.so || error $LINENO "Failed to compile catch_abort" 1
   fi
 
-  JRE_ZULU="25.36.205_25.0.4"
+  JRE_ZULU="25.38.201_25.0.5"
   JRE_RELEASE="jre${JRE_ZULU#*_}" # e.g. jre25.0.1
   ZULU_RELEASE="zulu${JRE_ZULU%_*}" # e.g. zulu25.30.17
 
@@ -61,6 +61,7 @@ main() {
       RELEASE="$RELEASE_NAME.AppImage"
       make_appimage
       move_release_to_output_dir
+      mv "$RELEASE.zsync" "$OUTPUT_DIR/" || error $LINENO "Failed to move zsync file to output dir" 1
       ;;
     linux-assets)
       RELEASE="$RELEASE_NAME.tar.gz"
@@ -262,11 +263,11 @@ make_appimage() {
 
   if [ "${CI:-}" = true ]; then
     sudo apt update || error $LINENO "Failed to update apt" 1
-    sudo apt install libfuse2 || error $LINENO "Failed to install libfuse2" 1
+    sudo apt install -y libfuse2 zsync || error $LINENO "Failed to install libfuse2 and zsync" 1
   fi
   curl -fL $APPIMAGE_URL -o $APPIMAGE_TOOLNAME || error $LINENO "Failed to download appimagetool" 1
   chmod +x $APPIMAGE_TOOLNAME || error $LINENO "Failed to make appimagetool executable" 1
-  ARCH=x86_64 ./$APPIMAGE_TOOLNAME "$RELEASE_NAME" "$RELEASE" || error $LINENO "AppImage creation failed" 1
+  ARCH=x86_64 ./$APPIMAGE_TOOLNAME -u "gh-releases-zsync|Suwayomi|${APPIMAGE_UPDATE_REPO:-Suwayomi-Server}|latest|Suwayomi-Server-*-appimage.AppImage.zsync" "$RELEASE_NAME" "$RELEASE" || error $LINENO "AppImage creation failed" 1
 }
 
 make_windows_bundle() {

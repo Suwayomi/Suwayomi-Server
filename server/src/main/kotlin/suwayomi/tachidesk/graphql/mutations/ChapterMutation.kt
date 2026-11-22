@@ -4,8 +4,6 @@ package suwayomi.tachidesk.graphql.mutations
 
 import com.expediagroup.graphql.generator.annotations.GraphQLDeprecated
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -117,10 +115,8 @@ class ChapterMutation {
 
         // Sync with KoreaderSync when progress is updated
         if (patch.lastPageRead != null || patch.isRead == true) {
-            GlobalScope.launch {
-                ids.forEach { chapterId ->
-                    KoreaderSyncService.pushProgress(userId, chapterId)
-                }
+            ids.forEach { chapterId ->
+                KoreaderSyncService.schedulePushProgress(userId, chapterId)
             }
         }
     }
