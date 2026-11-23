@@ -1424,6 +1424,7 @@ class KcefWebViewProvider(
                         ev.getPointerId(i),
                         ev.getX(i) / density,
                         ev.getY(i) / density,
+                        // Android reports the full length of the contact area's axes, the browser wants radii
                         ev.getTouchMajor(i) / density / 2,
                         ev.getTouchMinor(i) / density / 2,
                         ev.getOrientation(i),
