@@ -83,6 +83,7 @@ public class CustomContext extends Context {
     {
         serviceMap.put(Context.CONNECTIVITY_SERVICE, ConnectivityManager.INSTANCE);
         serviceMap.put(Context.POWER_SERVICE, PowerManager.INSTANCE);
+        serviceMap.put(Context.DISPLAY_SERVICE, DisplayManager.INSTANCE);
     }
 
     @Override
@@ -556,9 +557,6 @@ public class CustomContext extends Context {
 
     @Override
     public Object getSystemService(String s) {
-        if (Context.DISPLAY_SERVICE.equals(s)) {
-            return DisplayManager.INSTANCE;
-        }
         return serviceMap.get(s);
     }
 
