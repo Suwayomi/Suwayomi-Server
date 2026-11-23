@@ -65,6 +65,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -159,6 +160,10 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     Paint mCachePaint;
 
     int mChildUnhandledKeyListeners = 0;
+
+    // Only the parent/child bookkeeping is implemented, nothing gets measured, laid out or drawn
+    private final List<View> mCompatChildren = new CopyOnWriteArrayList<>();
+    private OnHierarchyChangeListener mCompatOnHierarchyChangeListener;
 
     public ViewGroup(Context context) {
         this(context, null);
@@ -563,7 +568,8 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        throw new RuntimeException("Stub!");
+        // children have no position, so the event can only be meant for this view
+        return super.dispatchTouchEvent(ev);
     }
 
     public ArrayList<View> buildTouchDispatchChildList() {
@@ -916,24 +922,37 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     }
 
     public void addView(View child) {
-        throw new RuntimeException("Stub!");
+        addView(child, -1);
     }
 
     public void addView(View child, int index) {
-        throw new RuntimeException("Stub!");
+        addView(child, index, generateDefaultLayoutParams());
     }
 
     public void addView(View child, int width, int height) {
-        throw new RuntimeException("Stub!");
+        addView(child, -1, new LayoutParams(width, height));
     }
 
     @Override
     public void addView(View child, LayoutParams params) {
-        throw new RuntimeException("Stub!");
+        addView(child, -1, params);
     }
 
     public void addView(View child, int index, LayoutParams params) {
-        throw new RuntimeException("Stub!");
+        if (child.mParent != null) {
+            throw new IllegalStateException("The specified child already has a parent. "
+                    + "You must call removeView() on the child's parent first.");
+        }
+        if (index < 0 || index > mCompatChildren.size()) {
+            mCompatChildren.add(child);
+        } else {
+            mCompatChildren.add(index, child);
+        }
+        child.mParent = this;
+        onViewAdded(child);
+        if (mCompatOnHierarchyChangeListener != null) {
+            mCompatOnHierarchyChangeListener.onChildViewAdded(this, child);
+        }
     }
 
     @Override
@@ -952,7 +971,7 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     }
 
     public void setOnHierarchyChangeListener(OnHierarchyChangeListener listener) {
-        throw new RuntimeException("Stub!");
+        mCompatOnHierarchyChangeListener = listener;
     }
 
     void dispatchViewAdded(View child) {
@@ -1005,7 +1024,14 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
 
     @Override
     public void removeView(View view) {
-        throw new RuntimeException("Stub!");
+        if (!mCompatChildren.remove(view)) {
+            return;
+        }
+        view.mParent = null;
+        onViewRemoved(view);
+        if (mCompatOnHierarchyChangeListener != null) {
+            mCompatOnHierarchyChangeListener.onChildViewRemoved(this, view);
+        }
     }
 
     public void removeViewInLayout(View view) {
@@ -1033,7 +1059,9 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     }
 
     public void removeAllViews() {
-        throw new RuntimeException("Stub!");
+        for (View child : mCompatChildren) {
+            removeView(child);
+        }
     }
 
     public void removeAllViewsInLayout() {
@@ -1225,15 +1253,15 @@ public abstract class ViewGroup extends View implements ViewParent, ViewManager 
     }
 
     public int indexOfChild(View child) {
-        throw new RuntimeException("Stub!");
+        return mCompatChildren.indexOf(child);
     }
 
     public int getChildCount() {
-        throw new RuntimeException("Stub!");
+        return mCompatChildren.size();
     }
 
     public View getChildAt(int index) {
-        throw new RuntimeException("Stub!");
+        return index >= 0 && index < mCompatChildren.size() ? mCompatChildren.get(index) : null;
     }
 
     protected void measureChildren(int widthMeasureSpec, int heightMeasureSpec) {

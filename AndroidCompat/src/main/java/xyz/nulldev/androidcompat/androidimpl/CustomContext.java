@@ -26,6 +26,7 @@ import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
+import android.hardware.display.DisplayManager;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.*;
@@ -82,6 +83,7 @@ public class CustomContext extends Context {
     {
         serviceMap.put(Context.CONNECTIVITY_SERVICE, ConnectivityManager.INSTANCE);
         serviceMap.put(Context.POWER_SERVICE, PowerManager.INSTANCE);
+        serviceMap.put(Context.DISPLAY_SERVICE, DisplayManager.INSTANCE);
     }
 
     @Override

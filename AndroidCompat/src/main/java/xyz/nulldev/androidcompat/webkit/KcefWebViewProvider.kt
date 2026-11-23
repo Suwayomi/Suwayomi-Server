@@ -92,6 +92,7 @@ import org.cef.handler.CefResourceHandler
 import org.cef.handler.CefResourceHandlerAdapter
 import org.cef.handler.CefResourceRequestHandler
 import org.cef.handler.CefResourceRequestHandlerAdapter
+import org.cef.input.CefTouchEvent
 import org.cef.misc.BoolRef
 import org.cef.misc.IntRef
 import org.cef.misc.StringRef
@@ -1256,7 +1257,9 @@ class KcefWebViewProvider(
     // Provider internal methods
     // -------------------------------------------------------------------------
 
-    override fun getViewDelegate(): ViewDelegate = throw RuntimeException("Stub!")
+    private val viewDelegate = KcefViewDelegate()
+
+    override fun getViewDelegate(): ViewDelegate = viewDelegate
 
     override fun getScrollDelegate(): ScrollDelegate = throw RuntimeException("Stub!")
 
@@ -1266,7 +1269,7 @@ class KcefWebViewProvider(
     // View / ViewGroup delegation methods
     // -------------------------------------------------------------------------
 
-    class KcefViewDelegate : ViewDelegate {
+    inner class KcefViewDelegate : ViewDelegate {
         override fun shouldDelayChildPressedState(): Boolean = throw RuntimeException("Stub!")
 
         override fun onProvideVirtualStructure(structure: android.view.ViewStructure): Unit = throw RuntimeException("Stub!")
@@ -1401,7 +1404,39 @@ class KcefWebViewProvider(
 
         override fun dispatchKeyEvent(event: KeyEvent): Boolean = throw RuntimeException("Stub!")
 
-        override fun onTouchEvent(ev: MotionEvent): Boolean = throw RuntimeException("Stub!")
+        override fun onTouchEvent(ev: MotionEvent): Boolean {
+            val browser = browser ?: return false
+            val type =
+                when (ev.actionMasked) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> CefTouchEvent.EventType.PRESSED
+                    MotionEvent.ACTION_MOVE -> CefTouchEvent.EventType.MOVED
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> CefTouchEvent.EventType.RELEASED
+                    MotionEvent.ACTION_CANCEL -> CefTouchEvent.EventType.CANCELLED
+                    else -> return false
+                }
+            // a move reports every pointer, the other actions only concern one
+            val pointers = if (type == CefTouchEvent.EventType.MOVED) 0 until ev.pointerCount else ev.actionIndex..ev.actionIndex
+            // the view gets physical pixels, the browser expects them in its own (css) pixels
+            val density = view.resources.displayMetrics.density
+            for (i in pointers) {
+                browser.sendTouchEvent(
+                    CefTouchEvent(
+                        ev.getPointerId(i),
+                        ev.getX(i) / density,
+                        ev.getY(i) / density,
+                        // Android reports the full length of the contact area's axes, the browser wants radii
+                        ev.getTouchMajor(i) / density / 2,
+                        ev.getTouchMinor(i) / density / 2,
+                        ev.getOrientation(i),
+                        ev.getPressure(i),
+                        type,
+                        0,
+                        CefTouchEvent.PointerType.TOUCH,
+                    ),
+                )
+            }
+            return true
+        }
 
         override fun onHoverEvent(event: MotionEvent): Boolean = throw RuntimeException("Stub!")
 
