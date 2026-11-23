@@ -83,6 +83,7 @@ server.excludeEntryWithUnreadChapters = true
 server.autoDownloadNewChaptersLimit = 0
 server.autoDownloadIgnoreReUploads = false
 server.downloadConversions = {}
+server.downloadDelay = 0s
 ```
 - `server.downloadAsCbz = true` configures Suwayomi to automatically compress chapters into CBZ.
 - `server.downloadsPath = ""` the path where manga downloads will be stored, if the value is empty, the default directory `downloads` inside [the data directory](https://github.com/Suwayomi/Suwayomi-Server/wiki/The-Data-Directory) will be used. If you are on Windows the slashes `\` needs to be doubled(`\\`) or replaced with `/`
@@ -117,7 +118,7 @@ server.downloadConversions = {}
   
   This is an example curl command for what Suwayomi-Server will send to the conversion url: `curl -X POST "http://localhost:9999/convert" -F "image=@cat.png;type=image/png"`
 - `server.serveConversions = {}` configures optional image conversions before serving the image to the client. It follows the same format as `server.downloadConversions`. **Deprecated:** now per-user.
-
+- `server.downloadDelay = 0s` the time to wait between two chapter downloads of the same source, `0s` to disable it; helps to not get rate limited or blocked by sources. E.g. `30s`, `2m`
 
 ### Updater
 ```
