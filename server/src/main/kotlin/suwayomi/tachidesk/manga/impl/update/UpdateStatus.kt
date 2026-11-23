@@ -39,3 +39,8 @@ data class UpdateUpdates(
     val skippedMangasCount: Int,
     val initial: UpdateUpdates?,
 )
+
+data class UpdateError(
+    val mangaId: Int,
+    val error: String,
+)
