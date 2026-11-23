@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -40,6 +41,7 @@ import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.PROGRESS
 import suwayomi.tachidesk.manga.impl.download.model.DownloadUpdateType.STOPPED
 import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
+import suwayomi.tachidesk.server.serverConfig
 import java.util.concurrent.CopyOnWriteArrayList
 
 class Downloader(
@@ -139,12 +141,27 @@ class Downloader(
         logger.debug { "finished" }
     }
 
+    private fun getNextDownload(): DownloadQueueItem? =
+        availableSourceDownloads.firstOrNull {
+            (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
+        }
+
+    /**
+     * Waits the configured time before the source gets requested again, unless there is nothing left to download.
+     */
+    private suspend fun waitBeforeNextDownload() {
+        val downloadDelay = serverConfig.downloadDelay.value
+        if (!downloadDelay.isPositive() || getNextDownload() == null) {
+            return
+        }
+
+        logger.debug { "waiting $downloadDelay before the next download" }
+        delay(downloadDelay)
+    }
+
     private suspend fun run() {
         while (downloadQueue.isNotEmpty() && currentCoroutineContext().isActive) {
-            val download =
-                availableSourceDownloads.firstOrNull {
-                    (it.state == Queued || it.state == Finished || (it.state == Error && it.tries < MAX_RETRIES))
-                } ?: break
+            val download = getNextDownload() ?: break
 
             val logContext = "${logger.name} - downloadChapter($download))"
             val downloadLogger = KotlinLogging.logger(logContext)
@@ -165,6 +182,7 @@ class Downloader(
                 break
             }
 
+            var wasSourceRequested = false
             try {
                 download.state = Downloading
                 download.errorMessage = null
@@ -208,6 +226,7 @@ class Downloader(
                     }
                 }
                 finishDownload(downloadLogger, download)
+                wasSourceRequested = true
             } catch (e: CancellationException) {
                 downloadLogger.debug { "Downloader was stopped" }
                 availableSourceDownloads.filter { it.state == Downloading }.forEach { it.state = Queued }
@@ -224,6 +243,7 @@ class Downloader(
                 download.errorMessage = e.message ?: e::class.simpleName
                 download.state = Error
                 notify(false, ERROR, download)
+                wasSourceRequested = true
             } catch (e: Exception) {
                 downloadLogger.warn(e) { "failed due to" }
                 download.tries++
@@ -233,6 +253,11 @@ class Downloader(
                     download.state = Error
                     notify(false, ERROR, download)
                 }
+                wasSourceRequested = true
+            }
+
+            if (wasSourceRequested) {
+                waitBeforeNextDownload()
             }
         }
     }

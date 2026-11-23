@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Database**) Add indexes on ChapterTable and ChapterUserTable for faster queries
 - (**Database/Settings/API**) Add setting `databaseSchema` to be able to configure the database schema name
 - (**Database/Settings/API**) Add setting `hikariMaxPoolSize` to be able to configure the maximum number of connections to the database
+- (**Downloader/Settings/API**) Add setting `downloadDelay` to wait between two chapter downloads of the same source
 - (**Extension/Android**) Implement android.net.Network*
 - (**System**) Embed AppImage update information for delta updates
 - (**System**) Support ppc64 and s390x architectures

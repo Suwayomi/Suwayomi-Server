@@ -666,6 +666,15 @@ class ServerConfig(
         key = "downloadConversions"
     )
 
+    val downloadDelay: MutableStateFlow<Duration> by DurationSetting(
+        protoNumber = 101,
+        group = SettingGroup.DOWNLOADER,
+        privacySafe = true,
+        defaultValue = 0.seconds,
+        min = 0.seconds,
+        description = "0s == disabled ; Time to wait between two chapter downloads of the same source, to not get rate limited or blocked by sources",
+    )
+
     val jwtAudience: MutableStateFlow<String> by StringSetting(
         protoNumber = 58,
         group = SettingGroup.AUTH,
