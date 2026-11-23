@@ -26,6 +26,7 @@ import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
+import android.hardware.display.DisplayManager;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.*;
@@ -555,6 +556,9 @@ public class CustomContext extends Context {
 
     @Override
     public Object getSystemService(String s) {
+        if (Context.DISPLAY_SERVICE.equals(s)) {
+            return DisplayManager.INSTANCE;
+        }
         return serviceMap.get(s);
     }
 

@@ -2953,7 +2953,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     }
 
     public boolean dispatchTouchEvent(MotionEvent event) {
-        throw new RuntimeException("Stub!");
+        return onTouchEvent(event);
     }
 
     boolean isAccessibilityFocusedViewOrHost() {
@@ -3240,7 +3240,7 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
     }
 
     public final ViewParent getParent() {
-        throw new RuntimeException("Stub!");
+        return mParent;
     }
 
     public void setScrollX(int value) {
