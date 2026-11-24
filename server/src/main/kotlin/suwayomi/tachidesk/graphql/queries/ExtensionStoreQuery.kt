@@ -12,6 +12,8 @@ import graphql.schema.DataFetchingEnvironment
 import org.jetbrains.exposed.v1.core.Column
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.SortOrder
+import org.jetbrains.exposed.v1.core.greater
+import org.jetbrains.exposed.v1.core.less
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import suwayomi.tachidesk.graphql.directives.RequireAuth
@@ -28,9 +30,10 @@ import suwayomi.tachidesk.graphql.server.primitives.PageInfo
 import suwayomi.tachidesk.graphql.server.primitives.PaginationNeeds
 import suwayomi.tachidesk.graphql.server.primitives.QueryResults
 import suwayomi.tachidesk.graphql.server.primitives.applyBeforeAfter
+import suwayomi.tachidesk.graphql.server.primitives.applySortAndGetPaginationInfo
+import suwayomi.tachidesk.graphql.server.primitives.cursorOrderType
 import suwayomi.tachidesk.graphql.server.primitives.greaterNotUnique
 import suwayomi.tachidesk.graphql.server.primitives.lessNotUnique
-import suwayomi.tachidesk.graphql.server.primitives.maybeSwap
 import suwayomi.tachidesk.graphql.types.ExtensionStoreNodeList
 import suwayomi.tachidesk.graphql.types.ExtensionStoreType
 import suwayomi.tachidesk.manga.model.table.ExtensionStoreTable
@@ -46,18 +49,21 @@ class ExtensionStoreQuery {
     enum class ExtensionStoreOrderBy(
         override val column: Column<*>,
     ) : OrderBy<ExtensionStoreType> {
+        ID(ExtensionStoreTable.id),
         NAME(ExtensionStoreTable.name),
         INDEX_URL(ExtensionStoreTable.indexUrl),
         ;
 
         override fun greater(cursor: Cursor): Op<Boolean> =
             when (this) {
+                ID -> ExtensionStoreTable.id greater cursor.value.toInt()
                 NAME -> greaterNotUnique(ExtensionStoreTable.name, ExtensionStoreTable.id, cursor, String::toString)
                 INDEX_URL -> greaterNotUnique(ExtensionStoreTable.indexUrl, ExtensionStoreTable.id, cursor, String::toString)
             }
 
         override fun less(cursor: Cursor): Op<Boolean> =
             when (this) {
+                ID -> ExtensionStoreTable.id less cursor.value.toInt()
                 NAME -> lessNotUnique(ExtensionStoreTable.name, ExtensionStoreTable.id, cursor, String::toString)
                 INDEX_URL -> lessNotUnique(ExtensionStoreTable.indexUrl, ExtensionStoreTable.id, cursor, String::toString)
             }
@@ -65,8 +71,9 @@ class ExtensionStoreQuery {
         override fun asCursor(type: ExtensionStoreType): Cursor {
             val value =
                 when (this) {
-                    INDEX_URL -> type.indexUrl
-                    NAME -> type.indexUrl + "-" + type.name
+                    ID -> type.id.toString()
+                    INDEX_URL -> type.id.toString() + "-" + type.indexUrl
+                    NAME -> type.id.toString() + "-" + type.name
                 }
             return Cursor(value)
         }
@@ -118,33 +125,38 @@ class ExtensionStoreQuery {
         last: Int? = null,
         offset: Int? = null,
     ): ExtensionStoreNodeList {
+        val requestedSort = order.orEmpty()
+        val effectiveOrderBy = requestedSort.firstOrNull()?.by ?: ExtensionStoreOrderBy.INDEX_URL
+        val cursorOrderType = requestedSort.cursorOrderType()
+
         val queryResults =
             transaction {
                 val res = ExtensionStoreTable.selectAll()
 
                 res.applyOps(condition, filter)
 
-                if (order != null || (last != null || before != null)) {
-                    val baseSort = listOf(ExtensionStoreOrder(ExtensionStoreOrderBy.INDEX_URL, SortOrder.ASC))
-                    val actualSort = (order.orEmpty() + baseSort)
-                    actualSort.forEach { (orderBy, orderByType) ->
-                        val orderByColumn = orderBy.column
-                        val orderType = orderByType.maybeSwap(last ?: before)
-
-                        res.orderBy(orderByColumn to orderType)
+                // the cursor predicate is a same-direction (first key, id) tuple; non-first ID orders yield to it
+                val actualSort =
+                    if (effectiveOrderBy == ExtensionStoreOrderBy.ID) {
+                        requestedSort
+                    } else {
+                        requestedSort
+                            .filterNot { it.by == ExtensionStoreOrderBy.ID }
+                            .ifEmpty {
+                                listOf(ExtensionStoreOrder(ExtensionStoreOrderBy.INDEX_URL, cursorOrderType))
+                            } + ExtensionStoreOrder(ExtensionStoreOrderBy.ID, cursorOrderType)
                     }
-                }
 
-                val needs = PaginationNeeds.of(dataFetchingEnvironment)
-                val total = if (needs.total) res.count() else 0
-                val firstResult = if (needs.bounds) res.firstOrNull()?.get(ExtensionStoreTable.indexUrl) else null
-                val lastResult = if (needs.bounds) res.lastOrNull()?.get(ExtensionStoreTable.indexUrl) else null
+                val (total, firstResult, lastResult) =
+                    res.applySortAndGetPaginationInfo(actualSort, last, PaginationNeeds.of(dataFetchingEnvironment)) {
+                        it?.get(ExtensionStoreTable.indexUrl)
+                    }
 
                 res.applyBeforeAfter(
                     before = before,
                     after = after,
-                    orderBy = order?.firstOrNull()?.by ?: ExtensionStoreOrderBy.INDEX_URL,
-                    orderByType = order?.firstOrNull()?.byType,
+                    orderBy = effectiveOrderBy,
+                    orderByType = cursorOrderType,
                 )
 
                 if (first != null) {
@@ -153,10 +165,11 @@ class ExtensionStoreQuery {
                     res.limit(last)
                 }
 
-                QueryResults(total, firstResult, lastResult, res.toList())
+                val results = res.toList()
+                QueryResults(total, firstResult, lastResult, if (last != null) results.asReversed() else results)
             }
 
-        val getAsCursor: (ExtensionStoreType) -> Cursor = (order?.firstOrNull()?.by ?: ExtensionStoreOrderBy.INDEX_URL)::asCursor
+        val getAsCursor: (ExtensionStoreType) -> Cursor = effectiveOrderBy::asCursor
 
         val resultsAsType = queryResults.results.map { ExtensionStoreType(it) }
 
