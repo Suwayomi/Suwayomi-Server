@@ -24,7 +24,6 @@
     <string name="opds_feeds_genre_specific_title">Thể loại: %1$s</string>
     <string name="opds_feeds_status_specific_title">Trạng thái: %1$s</string>
     <string name="opds_feeds_language_specific_title">Ngôn ngữ: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Nguồn: %1$s</string>
     <string name="opds_error_manga_not_found">Truyện có ID %1$d không tìm thấy.</string>
     <string name="opds_error_chapter_not_found">Chương có chỉ mục %1$d không tìm thấy.</string>
     <string name="opds_facetgroup_sort_order">Thứ tự sắp xếp</string>
@@ -38,9 +37,6 @@
     <string name="opds_linktitle_search_catalog">Tìm kiếm danh mục</string>
     <string name="opds_linktitle_previous_page">Trang trước</string>
     <string name="opds_linktitle_next_page">Trang tiếp theo</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_scanlator">| Bởi %1$s</string>
     <string name="opds_chapter_details_progress">| Tiến triển: %1$d of %2$d</string>
     <string name="manga_status_licensed">Đã được mua bản quyền</string>
@@ -51,7 +47,6 @@
     <string name="opds_facet_sort_date_desc">Ngày giảm dần</string>
     <string name="opds_linktitle_view_chapter_details">Xem Chi Tiết Chương &amp; Nhận Trang</string>
     <string name="opds_facet_filter_all_chapters">Tất cả các chương</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
     <string name="opds_chapter_details_base">Loạt: %1$s | %2$s</string>
     <string name="opds_feeds_explore_title">Khám phá</string>
     <string name="opds_feeds_explore_entry_content">Khám phá loạt truyện từ nguồn của bạn</string>
@@ -118,10 +113,8 @@
     <string name="label_close">Đóng</string>
     <string name="webview_label_copy">Sao chép vào bảng tạm</string>
     <string name="webview_label_copy_description">Không thể sao chép bảng tạm tự động, vui lòng sử dụng thông tin bên dưới để sao chép giá trị theo cách thủ công.</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="webview_label_login_required">Cấu hình của bạn yêu cầu bạn phải đăng nhập. Vui lòng nhập tên người dùng và mật khẩu.</string>
     <string name="opds_linktitle_first_page">Trang đầu</string>
     <string name="opds_linktitle_last_page">Trang cuối</string>
-    <string name="opds_error_chapters_not_found">Không tìm thấy chương nào hoặc nguồn không thể truy cập tại trang %1$d.</string>
     <string name="opds_chapter_title_fallback">Chương %1$s</string>
 </resources>

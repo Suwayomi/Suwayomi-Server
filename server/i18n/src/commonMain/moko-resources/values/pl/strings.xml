@@ -7,9 +7,7 @@
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
     <string name="opds_feeds_library_updates_title">Historia Aktualizacji Biblioteki</string>
     <string name="opds_feeds_categories_entry_content">Przeglądaj serie uporządkowane według kategorii</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_linktitle_self_feed">Aktualny Kanał</string>
-    <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_linktitle_next_page">Następna Strona</string>
     <string name="opds_feeds_manga_chapters">%1$s Rozdziały</string>
     <string name="opds_search_shortname">Suwayomi Wyszukiwanie OPDS</string>
@@ -23,7 +21,6 @@
     <string name="opds_feeds_category_specific_title">Kategoria: %1$s</string>
     <string name="opds_feeds_status_specific_title">Status: %1$s</string>
     <string name="opds_feeds_language_specific_title">Język: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Źródło: %1$s</string>
     <string name="opds_error_manga_not_found">Nie znaleziono mangi o identyfikatorze %1$d</string>
     <string name="opds_error_chapter_not_found">Nie znaleziono rozdziału z indeksem %1$d</string>
     <string name="opds_facetgroup_sort_order">Kolejność Sortowania</string>
@@ -40,8 +37,6 @@
     <string name="opds_linktitle_catalog_root">Katalog Główny</string>
     <string name="opds_linktitle_search_catalog">Katalog Wyszukiwania</string>
     <string name="opds_linktitle_previous_page">Poprzednia Strona</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
     <string name="opds_chapter_details_scanlator">| Przez %1$s</string>
     <string name="opds_chapter_details_progress">| Postęp: %1$d z %2$d</string>
     <string name="manga_status_unknown">Nieznany</string>
@@ -76,6 +71,5 @@
     <string name="opds_facet_filter_all">Wszystkie</string>
     <string name="opds_facet_filter_downloaded">Pobrane</string>
     <string name="opds_facet_filter_ongoing">Trwające</string>
-    <string name="opds_error_chapters_not_found">Nie znaleziono rozdziałów lub źródło jest nieosiągalne na stronie %1$d.</string>
     <string name="opds_chapter_title_fallback">Rozdział %1$s</string>
 </resources>

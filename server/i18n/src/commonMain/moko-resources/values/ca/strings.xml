@@ -28,7 +28,6 @@
     <string name="opds_feeds_genre_specific_title">Gènere: %1$s</string>
     <string name="opds_feeds_library_source_specific_title">Biblioteca - Font: %1$s</string>
     <string name="opds_feeds_language_specific_title">Idioma: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Font: %1$s</string>
     <string name="opds_search_shortname">Cerca OPDS de Suwayomi</string>
     <string name="opds_feeds_source_specific_popular_title">Font: %1$s - Populars</string>
     <string name="opds_feeds_source_specific_latest_title">Font: %1$s - Novetats</string>
@@ -36,7 +35,6 @@
     <string name="opds_search_description">Cerqueu sèries al catàleg.</string>
     <string name="opds_error_chapter_not_found">No s\'ha trobat el capítol amb l\'índex %1$d.</string>
     <string name="opds_facetgroup_filter_read_status">Filtra per estat de lectura</string>
-    <string name="opds_error_chapters_not_found">No s\'ha trobat cap capítol o no es pot accedir a la font a la pàgina %1$d.</string>
     <string name="opds_facetgroup_sort_order">Ordre de classificació</string>
     <string name="opds_facetgroup_filter_content">Filtra el contingut</string>
     <string name="opds_facetgroup_filter_category">Filtra per categoria</string>
@@ -84,12 +82,7 @@
     <string name="opds_linktitle_download_cbz">Baixa el CBZ</string>
     <string name="opds_linktitle_chapter_cover">Portada del capítol</string>
     <string name="opds_linktitle_stream_pages_continue_remote">Continua llegint en línia (sincronitzat des de %1$s)</string>
-    <string name="opds_chapter_status_read">✅</string>
     <string name="opds_linktitle_view_chapter_details">Mostra els detalls del capítol i obtén les pàgines</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_synced">🌐</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_scanlator">| De %1$s</string>
     <string name="opds_chapter_details_base">Sèrie: %1$s | %2$s</string>
     <string name="opds_chapter_details_progress">| Progrés: %1$d de %2$d</string>
@@ -125,4 +118,6 @@
     <string name="login_label_login">Inicia la sessió</string>
     <string name="opds_chapter_title_fallback">Capítol %1$s</string>
     <string name="opds_chapter_title_oneshot">Oneshot</string>
+    <string name="login_failed">Nom d\'usuari o contrasenya no vàlids</string>
+    <string name="login_csrf_expired">El formulari ha caducat</string>
 </resources>

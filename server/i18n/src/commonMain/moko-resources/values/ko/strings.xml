@@ -27,7 +27,6 @@
     <string name="opds_feeds_genre_specific_title">장르: %1$s</string>
     <string name="opds_feeds_status_specific_title">상태: %1$s</string>
     <string name="opds_feeds_language_specific_title">언어: %1$s</string>
-    <string name="opds_feeds_source_specific_title">소스: %1$s</string>
     <string name="opds_feeds_library_source_specific_title">라이브러리 - 소스: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">소스: %1$s - 인기</string>
     <string name="opds_feeds_source_specific_latest_title">소스: %1$s - 최신</string>
@@ -35,7 +34,6 @@
     <string name="opds_search_description">카탈로그에서 작품 검색.</string>
     <string name="opds_error_manga_not_found">ID가 %1$d인 작품을 찾을 수 없습니다.</string>
     <string name="opds_error_chapter_not_found">인덱스가 %1$d인 챕터를 찾을 수 없습니다.</string>
-    <string name="opds_error_chapters_not_found">%1$d페이지에서 챕터를 찾을 수 없거나 소스에 연결할 수 없습니다.</string>
     <string name="opds_facetgroup_sort_order">정렬 순서</string>
     <string name="opds_facetgroup_filter_read_status">읽음 상태로 필터</string>
     <string name="opds_facetgroup_filter_content">콘텐츠 필터</string>
@@ -85,11 +83,6 @@
     <string name="opds_linktitle_download_cbz">CBZ 다운로드</string>
     <string name="opds_linktitle_chapter_cover">챕터 표지</string>
     <string name="opds_linktitle_view_chapter_details">챕터 상세 정보 보기 &amp; 페이지 가져오기</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">작품: %1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator">| 번역: %1$s</string>
     <string name="opds_chapter_details_progress">| 진행률: %2$d 중 %1$d</string>
