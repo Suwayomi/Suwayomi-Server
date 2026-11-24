@@ -27,14 +27,12 @@
     <string name="opds_feeds_genre_specific_title">الأنواع: %1$s</string>
     <string name="opds_feeds_status_specific_title">الحالة: %1$s</string>
     <string name="opds_feeds_language_specific_title">اللغات: %1$s</string>
-    <string name="opds_feeds_source_specific_title">المصدر: %1$s</string>
     <string name="opds_feeds_library_source_specific_title">المكتبة - المصدر: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">المصدر: %1$s - شائع</string>
     <string name="opds_feeds_source_specific_latest_title">المصدر: %1$s - الأحدث</string>
     <string name="opds_search_description">ابحث عن السلاسل في الفهرس.</string>
     <string name="opds_error_manga_not_found">لم يتم العثور على السلسلة التي ذات المعرف %1$d.</string>
     <string name="opds_error_chapter_not_found">لم يتم العثور على الفصل المفهرس بـ%1$d.</string>
-    <string name="opds_error_chapters_not_found">لم يتم العثور على فصول أو أن المصدر غير متاح في الصفحة %1$d.</string>
     <string name="opds_facetgroup_sort_order">ترتيب الفرز</string>
     <string name="opds_facetgroup_filter_read_status">تصفية النتائج حسب حالة القراءة</string>
     <string name="opds_facetgroup_filter_content">فرز المحتوى</string>
@@ -82,11 +80,6 @@
     <string name="opds_linktitle_download_cbz">قم بتنزيل CBZ</string>
     <string name="opds_linktitle_chapter_cover">غلاف الفصل</string>
     <string name="opds_linktitle_view_chapter_details">عرض تفاصيل الفصل والحصول على الصفحات</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">السلسلة: %1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator">| بواسطة %1$s</string>
     <string name="opds_chapter_details_progress">| التقدم: %1$d من %2$d</string>

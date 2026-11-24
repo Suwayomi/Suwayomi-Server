@@ -27,7 +27,6 @@
     <string name="opds_feeds_genre_specific_title">Genere: %1$s</string>
     <string name="opds_feeds_status_specific_title">Stato: %1$s</string>
     <string name="opds_feeds_language_specific_title">Lingua: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Fonte: %1$s</string>
     <string name="opds_feeds_library_source_specific_title">Libreria - Fonte: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">Fonte: %1$s - Popolare</string>
     <string name="opds_feeds_source_specific_latest_title">Fonte: %1$s - Ultimi</string>
@@ -84,11 +83,6 @@
     <string name="opds_linktitle_download_cbz">Scarica come CBZ</string>
     <string name="opds_linktitle_chapter_cover">Copertina Capitolo</string>
     <string name="opds_linktitle_view_chapter_details">Visualizza i dettagli del capitolo e ottieni le pagine</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">Serie: %1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator">| di %1$s</string>
     <string name="opds_chapter_details_progress">| Progresso: %1$d of %2$d</string>
@@ -122,6 +116,5 @@
     <string name="login_label_login">Accedi</string>
     <string name="login_placeholder_username">Digita il nome utente...</string>
     <string name="login_placeholder_password">Segreto...</string>
-    <string name="opds_error_chapters_not_found">Nessun capitolo trovato o la fonte non è raggiungibile alla pagina %1$d.</string>
     <string name="opds_chapter_title_fallback">Capitolo %1$s</string>
 </resources>

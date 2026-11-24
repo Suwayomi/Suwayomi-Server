@@ -20,7 +20,6 @@
     <string name="opds_feeds_genre_specific_title">Género: %1$s</string>
     <string name="opds_feeds_status_specific_title">Estado: %1$s</string>
     <string name="opds_feeds_language_specific_title">Idioma: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Fuente: %1$s</string>
     <string name="opds_facetgroup_sort_order">Ordenar por</string>
     <string name="opds_error_manga_not_found">Serie con ID %1$d no encontrada.</string>
     <string name="opds_error_chapter_not_found">Capítulo con índice %1$d no encontrado.</string>
@@ -39,10 +38,6 @@
     <string name="opds_linktitle_previous_page">Página anterior</string>
     <string name="opds_linktitle_next_page">Página siguiente</string>
     <string name="opds_linktitle_self_feed">Feed actual</string>
-    <string name="opds_chapter_status_downloaded">⬇️ </string>
-    <string name="opds_chapter_status_read">✅ </string>
-    <string name="opds_chapter_status_in_progress">⌛ </string>
-    <string name="opds_chapter_status_unread">⭕ </string>
     <string name="opds_chapter_details_base">Serie: %1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator"> | Publicado por: %1$s</string>
     <string name="opds_chapter_details_progress"> | Progreso: %1$d de %2$d</string>
@@ -118,11 +113,9 @@
     <string name="label_close">Cerrar</string>
     <string name="webview_label_copy">Copiar al portapapeles</string>
     <string name="webview_label_copy_description">La copia automática al portapapeles falló, por favor use la entrada de abajo para copiar el valor manualmente.</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="webview_label_login_required">Su configuración requiere que inicie sesión. Introduzca su nombre de usuario y contraseña.</string>
     <string name="opds_linktitle_first_page">Primera página</string>
     <string name="opds_linktitle_last_page">Última página</string>
-    <string name="opds_error_chapters_not_found">No se encontraron capítulos o la fuente no está disponible en la página %1$d.</string>
     <string name="opds_chapter_title_fallback">Capítulo %1$s</string>
     <string name="opds_chapter_title_oneshot">Oneshot</string>
 </resources>

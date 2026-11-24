@@ -8,7 +8,6 @@
     <string name="opds_feeds_languages_title">Idiomas</string>
     <string name="opds_feeds_category_specific_title">Categoria: %1$s</string>
     <string name="opds_feeds_language_specific_title">Idioma: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Fonte: %1$s</string>
     <string name="opds_feeds_sources_title">Todas as Fontes</string>
     <string name="opds_feeds_genre_specific_title">Gênero: %1$s</string>
     <string name="opds_feeds_categories_entry_content">Navegue por séries organizadas por categorias</string>
@@ -38,11 +37,7 @@
     <string name="opds_linktitle_search_catalog">Buscar no Catálogo</string>
     <string name="opds_linktitle_previous_page">Página Anterior</string>
     <string name="opds_linktitle_next_page">Próxima Página</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
     <string name="opds_linktitle_self_feed">Feed Atual</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_base">Série: %1$s | %2$s</string>
     <string name="opds_chapter_details_progress">| Progresso: %1$d de %2$d</string>
     <string name="manga_status_unknown">Desconhecido</string>
@@ -98,7 +93,6 @@
     <string name="opds_linktitle_stream_pages_continue_local">Continuar Lendo Online (Progresso Local)</string>
     <string name="opds_linktitle_stream_pages_start_remote">Ler Online (Sincronizado de %1$s)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">Continuar Lendo Online (Sincronizado de %1$s)</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_manga_summary_status">Status: %1$s</string>
     <string name="opds_manga_summary_source">Fonte: %1$s</string>
     <string name="opds_manga_summary_language">Idioma: %1$s</string>
@@ -122,7 +116,6 @@
     <string name="login_label_login">Entrar</string>
     <string name="login_placeholder_username">Digite o nome de usuário...</string>
     <string name="login_placeholder_password">Segredo...</string>
-    <string name="opds_error_chapters_not_found">Nenhum capítulo encontrado ou a fonte está inacessível na página %1$d.</string>
     <string name="opds_chapter_title_fallback">Capítulo %1$s</string>
     <string name="opds_chapter_title_oneshot">Oneshot</string>
 </resources>

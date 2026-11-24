@@ -4,7 +4,6 @@
     <string name="opds_feeds_categories_title">Kategorien</string>
     <string name="opds_facet_filter_read_only">Gelesen</string>
     <string name="opds_feeds_genre_specific_title">Genre: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Quelle: %1$s</string>
     <string name="opds_feeds_root">Suwayomi OPDS Katalog</string>
     <string name="opds_feeds_chapter_details">%1$s | %2$s | Details</string>
     <string name="opds_feeds_sources_title">Alle Quellen</string>
@@ -32,9 +31,6 @@
     <string name="opds_linktitle_previous_page">Vorherige Seite</string>
     <string name="opds_linktitle_next_page">Nächste Seite</string>
     <string name="opds_linktitle_self_feed">Aktueller Feed</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_scanlator">| Von %1$s</string>
     <string name="manga_status_unknown">Unbekannt</string>
     <string name="manga_status_ongoing">Laufend</string>
@@ -52,7 +48,6 @@
     <string name="opds_chapter_details_base">Serie: %1$s | %2$s</string>
     <string name="opds_linktitle_chapter_cover">Kapitel Cover</string>
     <string name="opds_linktitle_catalog_root">Katalog Root</string>
-    <string name="opds_chapter_status_read">✅</string>
     <string name="opds_feeds_explore_title">Entdecken</string>
     <string name="opds_feeds_explore_entry_content">Entdecke neue Serien aus deinen Quellen</string>
     <string name="opds_feeds_history_title">Verlauf</string>
@@ -115,14 +110,12 @@
     <string name="opds_linktitle_stream_pages_continue_local">Online weiter lesen (mit lokalem Fortschritt)</string>
     <string name="opds_linktitle_stream_pages_start_remote">Online lesen (Synchronisiert mit %1$s)</string>
     <string name="opds_linktitle_stream_pages_continue_remote">Online weiter lesen (Synchronisiert mit %1$s)</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="label_close">Schließen</string>
     <string name="webview_label_copy">In Zwischenablage kopieren</string>
     <string name="webview_label_copy_description">Das automatische Ablegen in die Zwischenablage ist fehlgeschlagen, bitte nutze das Feld unten, um manuell zu kopieren.</string>
     <string name="webview_label_login_required">Deine Konfiguration erfordert die Anmeldung. Bitte gib Benutzername und Passwort ein.</string>
     <string name="opds_linktitle_first_page">Erste Seite</string>
     <string name="opds_linktitle_last_page">Letzte Seite</string>
-    <string name="opds_error_chapters_not_found">Keine Kapitel gefunden oder die Quelle ist nicht erreichbar auf Seite %1$d.</string>
     <string name="opds_chapter_title_fallback">Kapitel %1$s</string>
     <string name="opds_chapter_title_oneshot">Oneshot</string>
 </resources>

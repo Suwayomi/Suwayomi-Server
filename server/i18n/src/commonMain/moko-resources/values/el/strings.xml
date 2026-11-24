@@ -27,7 +27,6 @@
     <string name="opds_feeds_genre_specific_title">Είδος: %1$s</string>
     <string name="opds_feeds_status_specific_title">Κατάσταση: %1$s</string>
     <string name="opds_feeds_language_specific_title">Γλώσσα: %1$s</string>
-    <string name="opds_feeds_source_specific_title">Πηγή: %1$s</string>
     <string name="opds_feeds_library_source_specific_title">Βιβλιοθήκη - Πηγή: %1$s</string>
     <string name="opds_feeds_source_specific_popular_title">Πηγή: %1$s - Δημοφιλές</string>
     <string name="opds_feeds_source_specific_latest_title">Πηγή: %1$s - Τελευταίο</string>
@@ -84,11 +83,6 @@
     <string name="opds_linktitle_download_cbz">Λήψη CBZ</string>
     <string name="opds_linktitle_chapter_cover">Εξώφυλλο κεφαλαίου</string>
     <string name="opds_linktitle_view_chapter_details">Λεπτομέρειες κεφαλαίου &amp; Σελίδες</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_chapter_details_base">Σειρά: %1$s | %2$s</string>
     <string name="opds_chapter_details_scanlator">| Από %1$s</string>
     <string name="opds_chapter_details_progress">| Πρόοδος: %1$d από %2$d</string>
@@ -122,6 +116,5 @@
     <string name="login_label_login">Σύνδεση</string>
     <string name="login_placeholder_username">Πληκτρολόγησε όνομα χρήστη...</string>
     <string name="login_placeholder_password">Μυστικό...</string>
-    <string name="opds_error_chapters_not_found">Δεν βρέθηκαν κεφάλαια ή η πηγή είναι μη διαθέσιμη στη σελίδα %1$d.</string>
     <string name="opds_chapter_title_fallback">Κεφάλαιο %1$s</string>
 </resources>

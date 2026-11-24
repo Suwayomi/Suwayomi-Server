@@ -25,7 +25,6 @@
     <string name="opds_feeds_genre_specific_title">⁧ז׳אנר: ‏%1$s‏⁩</string>
     <string name="opds_feeds_status_specific_title">⁧סטטוס: ‏%1$s‏⁩</string>
     <string name="opds_feeds_language_specific_title">⁧שפה: ‏%1$s‏⁩</string>
-    <string name="opds_feeds_source_specific_title">⁧מקור: ‏%1$s‏⁩</string>
     <string name="opds_feeds_library_source_specific_title">⁧ספרייה – מקור: ‏%1$s‏⁩</string>
     <string name="opds_feeds_source_specific_popular_title">⁧מקור: ‏%1$s‏ – פופולרי⁩</string>
     <string name="opds_feeds_source_specific_latest_title">⁧מקור: ‏%1$s‏ – עדכני⁩</string>
@@ -33,7 +32,6 @@
     <string name="opds_search_description">חיפוש סדרות בקטלוג.</string>
     <string name="opds_error_manga_not_found">⁧לא נמצאה סדרה עם המזהה ‏%1$d‏⁩.</string>
     <string name="opds_error_chapter_not_found">⁧לא נמצא פרק עם האינדקס ‏%1$d‏⁩.</string>
-    <string name="opds_error_chapters_not_found">⁧לא נמצאו פרקים או שהמקור אינו נגיש בעמוד ‏%1$d‏⁩.</string>
     <string name="opds_facetgroup_sort_order">סדר מיון</string>
     <string name="opds_facetgroup_filter_read_status">סינון לפי סטטוס קריאה</string>
     <string name="opds_facetgroup_filter_content">סינון תוכן</string>
@@ -115,11 +113,6 @@
     <string name="opds_chapter_title_oneshot">סיפור קצר (Oneshot)</string>
     <string name="opds_chapter_title_fallback">⁧פרק ‏%1$s‏⁩</string>
     <string name="label_version">גרסה <xliff:g id="version" example="v2.0.1833">%1$s</xliff:g></string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_synced">🌐</string>
     <string name="opds_linktitle_catalog_root">עמוד ראשי</string>
     <string name="opds_linktitle_self_feed">רשימה נוכחית</string>
     <string name="opds_linktitle_view_on_web">הצגה בדפדפן</string>

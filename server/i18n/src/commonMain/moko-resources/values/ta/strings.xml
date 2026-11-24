@@ -32,7 +32,6 @@
     <string name="opds_feeds_category_specific_title">வகை: %1$s</string>
     <string name="opds_feeds_language_specific_title">மொழி: %1$s</string>
     <string name="opds_feeds_status_specific_title">நிலை: %1$s</string>
-    <string name="opds_feeds_source_specific_title">ஆதாரம்: %1$s</string>
     <string name="opds_error_manga_not_found">அடையாளம் %1$d உடன் மங்கா காணப்படவில்லை</string>
     <string name="opds_error_chapter_not_found">குறியீட்டு %1$d உடன் அத்தியாயம் காணப்படவில்லை</string>
     <string name="opds_facetgroup_sort_order">வரிசைப்படுத்தும் முறை</string>
@@ -47,13 +46,8 @@
     <string name="opds_linktitle_download_cbz">CBZ ஐ பதிவிறக்கவும்</string>
     <string name="opds_linktitle_chapter_cover">அத்தியாயம் கவர்</string>
     <string name="opds_linktitle_self_feed">தற்போதைய ஊட்டம்</string>
-    <string name="opds_chapter_status_downloaded">⬇️</string>
-    <string name="opds_chapter_status_read">✅</string>
-    <string name="opds_chapter_status_in_progress">⌛</string>
-    <string name="opds_chapter_status_unread">⭕</string>
     <string name="opds_chapter_details_base">%1$s | %2$s</string>
     <string name="opds_feeds_genre_specific_title">இசைவகை: %1$s</string>
-    <string name="opds_error_chapters_not_found">பக்கம் %1$d இல் அத்தியாயங்கள் எதுவும் காணப்படவில்லை அல்லது மூலத்தை அணுக முடியவில்லை.</string>
     <string name="opds_chapter_title_oneshot">ஒன்-ஷாட்</string>
     <string name="opds_chapter_title_fallback">அத்தியாயம் %1$s</string>
 </resources>
