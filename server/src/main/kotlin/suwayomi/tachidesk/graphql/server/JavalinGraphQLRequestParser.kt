@@ -11,76 +11,69 @@ import com.expediagroup.graphql.server.execution.GraphQLRequestParser
 import com.expediagroup.graphql.server.types.GraphQLBatchRequest
 import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.expediagroup.graphql.server.types.GraphQLServerRequest
-import io.github.oshai.kotlinlogging.KotlinLogging
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.UploadedFile
 import io.javalin.json.fromJsonStream
 import io.javalin.json.fromJsonString
-import java.io.IOException
+import suwayomi.tachidesk.server.util.badRequest
 
 class JavalinGraphQLRequestParser : GraphQLRequestParser<Context> {
-    private val logger = KotlinLogging.logger {}
-
     @Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
     override suspend fun parseRequest(context: Context): GraphQLServerRequest? {
-        return try {
-            val jsonMapper = context.jsonMapper()
-            val contentType = context.contentType()
-            val formParam =
-                if (
-                    contentType?.contains("application/x-www-form-urlencoded", true) == true ||
-                    contentType?.contains("multipart/form-data", true) == true
-                ) {
-                    context.formParam("operations")
-                        ?: throw IllegalArgumentException("Cannot find 'operations' body")
-                } else {
-                    return context.bodyInputStream().use { jsonMapper.fromJsonStream<GraphQLServerRequest>(it) }
-                }
-
-            val request =
-                jsonMapper.fromJsonString<GraphQLServerRequest>(formParam)
-
-            val map =
-                context
-                    .formParam("map")
-                    ?.let {
-                        jsonMapper.fromJsonString<Map<String, List<String>>>(it)
-                    }.orEmpty()
-
-            val mapItems =
-                map
-                    .flatMap { (key, variables) ->
-                        val file = context.uploadedFile(key)
-                        variables.map { fullVariable ->
-                            val variable = fullVariable.removePrefix("variables.").substringBefore('.')
-                            val listIndex = fullVariable.substringAfterLast('.').toIntOrNull()
-                            MapItem(
-                                variable,
-                                listIndex,
-                                file,
-                            )
-                        }
-                    }.groupBy { it.variable }
-
-            when (request) {
-                is GraphQLRequest -> {
-                    request.copy(variables = request.variables?.modifyFiles(mapItems))
-                }
-
-                is GraphQLBatchRequest -> {
-                    request.copy(
-                        requests =
-                            request.requests.map {
-                                it.copy(
-                                    variables = it.variables?.modifyFiles(mapItems),
-                                )
-                            },
-                    )
-                }
+        val jsonMapper = context.jsonMapper()
+        val contentType = context.contentType()
+        val formParam =
+            if (
+                contentType?.contains("application/x-www-form-urlencoded", true) == true ||
+                contentType?.contains("multipart/form-data", true) == true
+            ) {
+                context.formParam("operations")
+                    ?: throw BadRequestResponse("Cannot find 'operations' body")
+            } else {
+                return context.bodyInputStream().use { badRequest { jsonMapper.fromJsonStream<GraphQLServerRequest>(it) } }
             }
-        } catch (e: IOException) {
-            logger.error(e) { "Error when parsing request" }
-            null
+
+        val request =
+            badRequest { jsonMapper.fromJsonString<GraphQLServerRequest>(formParam) }
+
+        val map =
+            context
+                .formParam("map")
+                ?.let {
+                    badRequest { jsonMapper.fromJsonString<Map<String, List<String>>>(it) }
+                }.orEmpty()
+
+        val mapItems =
+            map
+                .flatMap { (key, variables) ->
+                    val file = context.uploadedFile(key)
+                    variables.map { fullVariable ->
+                        val variable = fullVariable.removePrefix("variables.").substringBefore('.')
+                        val listIndex = fullVariable.substringAfterLast('.').toIntOrNull()
+                        MapItem(
+                            variable,
+                            listIndex,
+                            file,
+                        )
+                    }
+                }.groupBy { it.variable }
+
+        return when (request) {
+            is GraphQLRequest -> {
+                request.copy(variables = request.variables?.modifyFiles(mapItems))
+            }
+
+            is GraphQLBatchRequest -> {
+                request.copy(
+                    requests =
+                        request.requests.map {
+                            it.copy(
+                                variables = it.variables?.modifyFiles(mapItems),
+                            )
+                        },
+                )
+            }
         }
     }
 

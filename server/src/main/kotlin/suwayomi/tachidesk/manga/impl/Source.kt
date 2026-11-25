@@ -34,6 +34,7 @@ import suwayomi.tachidesk.manga.model.dataclass.SourceDataClass
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
 import suwayomi.tachidesk.manga.model.table.SourceTable
+import suwayomi.tachidesk.server.util.badRequest
 import uy.kohesive.injekt.injectLazy
 import xyz.nulldev.androidcompat.androidimpl.CustomContext
 
@@ -139,7 +140,7 @@ object Source {
             when (pref.defaultValueType) {
                 "String" -> value
                 "Boolean" -> value.toBoolean()
-                "Set<String>" -> jsonMapper.fromJsonString<List<String>>(value).toSet()
+                "Set<String>" -> badRequest { jsonMapper.fromJsonString<List<String>>(value).toSet() }
                 else -> throw RuntimeException("Unsupported type conversion")
             }
         },

@@ -34,6 +34,7 @@ import kotlinx.coroutines.future.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.SerializationException
 import org.eclipse.jetty.ee10.servlet.SessionHandler
 import org.eclipse.jetty.http.HttpCookie
 import org.eclipse.jetty.server.ServerConnector
@@ -43,7 +44,9 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.MangaAPI
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
+import suwayomi.tachidesk.manga.impl.util.network.isRequestTimeout
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
@@ -350,17 +353,29 @@ object JavalinSetup {
             logger.error(e) { "NoSuchElementException while handling the request" }
             ctx.status(404)
         }
+        exception(SourceException::class.java) { e, ctx ->
+            logger.warn(e) { "Source request failed while handling ${ctx.path()}" }
+            ctx.sourceFailed(null)
+        }
+
+        // SerializationException is an IllegalArgumentException: without its own handler
+        // the 400 mapping below would mislabel unparseable source/tracker responses
+        exception(SerializationException::class.java) { e, ctx ->
+            logger.error(e) { "SerializationException while handling the request" }
+            ctx.status(500)
+            ctx.result("Internal Server Error")
+        }
         exception(IOException::class.java) { e, ctx ->
-            if (e.isHostUnreachable()) {
-                // A source host being down isn't a server fault
-                logger.warn { "Source host unreachable while handling ${ctx.path()}: ${e.message}" }
+            if (e.isHostUnreachable() || e.isRequestTimeout()) {
+                // a down source host or a stalled call isn't a server fault
+                logger.warn { "Source request failed while handling ${ctx.path()}: ${e.message}" }
                 ctx.sourceFailed(e.message)
                 return@exception
             }
 
             logger.error(e) { "IOException while handling the request" }
             ctx.status(500)
-            ctx.result(e.message ?: "Internal Server Error")
+            ctx.result("Internal Server Error")
         }
 
         exception(HttpException::class.java) { e, ctx ->
@@ -372,7 +387,7 @@ object JavalinSetup {
         exception(IllegalArgumentException::class.java) { e, ctx ->
             logger.error(e) { "IllegalArgumentException while handling the request" }
             ctx.status(400)
-            ctx.result(e.message ?: "Bad Request")
+            ctx.result("Bad Request")
         }
 
         exception(UnauthorizedException::class.java) { e, ctx ->

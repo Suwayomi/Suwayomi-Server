@@ -9,6 +9,9 @@ package suwayomi.tachidesk.manga.impl
 
 import eu.kanade.tachiyomi.source.local.LocalSource
 import eu.kanade.tachiyomi.source.model.MangasPage
+import io.javalin.http.BadRequestResponse
+import io.javalin.http.NotFoundResponse
+import kotlinx.coroutines.CancellationException
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.eq
@@ -18,7 +21,10 @@ import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import suwayomi.tachidesk.manga.impl.util.source.GetSource
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
+import suwayomi.tachidesk.manga.impl.util.source.SourceLoadException
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
@@ -33,19 +39,30 @@ object MangaList {
         pageNum: Int = 1,
         popular: Boolean,
     ): PagedMangaListDataClass {
-        require(pageNum > 0) {
-            "pageNum = $pageNum is not in valid range"
+        if (pageNum <= 0) {
+            throw BadRequestResponse("pageNum = $pageNum is not in valid range")
         }
-        val source = getSourceOrStub(sourceId)
         val mangasPage =
             if (popular) {
-                source.getPopularManga(pageNum)
+                getSourceOrStub(sourceId).getPopularManga(pageNum)
             } else {
-                if (source.supportsLatest) {
-                    source.getLatestUpdates(pageNum)
-                } else {
-                    throw Exception("Source $source doesn't support latest")
+                val source =
+                    try {
+                        GetSource.getSource(sourceId)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: LinkageError) {
+                        throw SourceLoadException("Source $sourceId failed to load", e)
+                    } catch (e: Exception) {
+                        throw SourceLoadException("Source $sourceId failed to load", e)
+                    }
+                if (source == null || source is StubSource) {
+                    throw NotFoundResponse("Source not found")
                 }
+                if (!source.supportsLatest) {
+                    throw BadRequestResponse("Source does not support latest")
+                }
+                source.getLatestUpdates(pageNum)
             }
         return mangasPage.processEntries(sourceId)
     }
