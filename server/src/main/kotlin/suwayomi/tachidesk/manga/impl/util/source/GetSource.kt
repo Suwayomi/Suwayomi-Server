@@ -29,7 +29,8 @@ object GetSource {
     private val sourceCache = ConcurrentHashMap<Long, Source>()
     private val applicationDirs: ApplicationDirs by injectLazy()
 
-    private suspend fun getSource(sourceId: Long): Source? {
+    // null only when the source has no record — load failures keep their cause, unlike getSourceOrNull
+    suspend fun getSource(sourceId: Long): Source? {
         val cachedResult: Source? = sourceCache[sourceId]
         if (cachedResult != null) {
             return cachedResult
@@ -87,3 +88,9 @@ object GetSource {
         }
     }
 }
+
+/** Source record exists but loading it failed — distinct from "not installed". */
+internal class SourceLoadException(
+    message: String,
+    cause: Throwable,
+) : IllegalStateException(message, cause)

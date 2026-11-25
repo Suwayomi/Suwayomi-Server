@@ -16,6 +16,7 @@ import kotlinx.serialization.Serializable
 import suwayomi.tachidesk.manga.impl.MangaList.processEntries
 import suwayomi.tachidesk.manga.impl.util.source.GetSource.getSourceOrStub
 import suwayomi.tachidesk.manga.model.dataclass.PagedMangaListDataClass
+import suwayomi.tachidesk.server.util.badRequest
 import uy.kohesive.injekt.injectLazy
 
 object Search {
@@ -147,7 +148,7 @@ object Search {
                 }
 
                 is Filter.Group<*> -> {
-                    val groupChange = jsonMapper.fromJsonString<FilterChange>(change.state)
+                    val groupChange = badRequest { jsonMapper.fromJsonString<FilterChange>(change.state) }
 
                     when (val groupFilter = filter.state[groupChange.position]) {
                         is Filter.CheckBox -> groupFilter.state = groupChange.state.toBooleanStrict()
@@ -158,7 +159,7 @@ object Search {
                 }
 
                 is Filter.Sort -> {
-                    filter.state = jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java)
+                    filter.state = badRequest { jsonMapper.fromJsonString(change.state, Filter.Sort.Selection::class.java) }
                 }
             }
         }

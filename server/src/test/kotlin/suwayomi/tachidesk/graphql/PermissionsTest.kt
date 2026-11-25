@@ -190,7 +190,7 @@ class PermissionsTest : GraphQLTest() {
         assertHasError()
         assertEquals(
             true,
-            errors?.any { it.message.contains("Forbidden") },
+            errors?.any { it.message.contains("Forbidden") && it.extensions?.get("code") == "FORBIDDEN" },
             "Expected a Forbidden error but got: $errors",
         )
     }

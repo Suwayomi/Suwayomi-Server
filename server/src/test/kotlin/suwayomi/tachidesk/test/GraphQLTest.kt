@@ -10,12 +10,8 @@ package suwayomi.tachidesk.test
 import com.expediagroup.graphql.server.execution.GraphQLRequestHandler
 import com.expediagroup.graphql.server.types.GraphQLRequest
 import com.expediagroup.graphql.server.types.GraphQLResponse
-import graphql.ExceptionWhileDataFetching
 import graphql.GraphQL
 import graphql.execution.AsyncExecutionStrategy
-import graphql.execution.DataFetcherExceptionHandler
-import graphql.execution.DataFetcherExceptionHandlerResult
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
@@ -24,9 +20,9 @@ import suwayomi.tachidesk.global.impl.util.Bcrypt
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.graphql.server.GraphQLSchemaProvider
 import suwayomi.tachidesk.graphql.server.TachideskDataLoaderRegistryFactory
+import suwayomi.tachidesk.graphql.server.TachideskGraphQLServer
 import suwayomi.tachidesk.graphql.server.toGraphQLContext
 import suwayomi.tachidesk.server.JavalinSetup
-import suwayomi.tachidesk.server.JavalinSetup.future
 import suwayomi.tachidesk.server.user.UserType
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -41,34 +37,12 @@ import kotlin.test.assertTrue
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 abstract class GraphQLTest : ApplicationTest() {
     companion object {
-        private val logger = KotlinLogging.logger {}
-
         private val requestHandler: GraphQLRequestHandler by lazy {
-            val exceptionHandler =
-                DataFetcherExceptionHandler { handlerParameters ->
-                    future {
-                        val exception = handlerParameters.exception
-                        val sourceLocation = handlerParameters.sourceLocation
-                        val path = handlerParameters.path
-
-                        logger.error(exception) { "GraphQL execution failed due to" }
-
-                        val error =
-                            ExceptionWhileDataFetching(
-                                path,
-                                Throwable(exception.message + "\r\n\r\n" + exception.stackTraceToString(), exception),
-                                sourceLocation,
-                            )
-
-                        DataFetcherExceptionHandlerResult.newResult().error(error).build()
-                    }
-                }
-
             val graphQL =
                 GraphQL
                     .newGraphQL(runBlocking { GraphQLSchemaProvider.getSchema() })
-                    .queryExecutionStrategy(AsyncExecutionStrategy(exceptionHandler))
-                    .mutationExecutionStrategy(AsyncExecutionStrategy(exceptionHandler))
+                    .queryExecutionStrategy(AsyncExecutionStrategy(TachideskGraphQLServer.exceptionHandler))
+                    .mutationExecutionStrategy(AsyncExecutionStrategy(TachideskGraphQLServer.exceptionHandler))
                     .build()
 
             GraphQLRequestHandler(graphQL, TachideskDataLoaderRegistryFactory.create())

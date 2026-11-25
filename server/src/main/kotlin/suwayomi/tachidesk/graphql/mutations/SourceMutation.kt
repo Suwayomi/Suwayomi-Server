@@ -8,6 +8,9 @@ import androidx.preference.ListPreference
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.expediagroup.graphql.generator.annotations.GraphQLIgnore
+import io.javalin.http.BadRequestResponse
+import io.javalin.http.NotFoundResponse
+import kotlinx.coroutines.CancellationException
 import org.jetbrains.exposed.v1.core.LikePattern
 import org.jetbrains.exposed.v1.core.Op
 import org.jetbrains.exposed.v1.core.and
@@ -32,6 +35,8 @@ import suwayomi.tachidesk.graphql.types.updateFilterList
 import suwayomi.tachidesk.manga.impl.MangaList.insertOrUpdate
 import suwayomi.tachidesk.manga.impl.Source
 import suwayomi.tachidesk.manga.impl.util.source.GetSource
+import suwayomi.tachidesk.manga.impl.util.source.SourceLoadException
+import suwayomi.tachidesk.manga.impl.util.source.StubSource
 import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.SourceMetaTable
@@ -312,10 +317,10 @@ class SourceMutation {
             //     throw ForbiddenException()
             // }
 
-            val source = GetSource.getSourceOrNull(sourceId)!!
             val mangasPage =
                 when (type) {
                     FetchSourceMangaType.SEARCH -> {
+                        val source = GetSource.getSourceOrNull(sourceId)!!
                         source.getSearchManga(
                             page = page,
                             query = query.orEmpty(),
@@ -324,11 +329,26 @@ class SourceMutation {
                     }
 
                     FetchSourceMangaType.POPULAR -> {
-                        source.getPopularManga(page)
+                        GetSource.getSourceOrNull(sourceId)!!.getPopularManga(page)
                     }
 
                     FetchSourceMangaType.LATEST -> {
-                        if (!source.supportsLatest) throw Exception("Source does not support latest")
+                        val source =
+                            try {
+                                GetSource.getSource(sourceId)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: LinkageError) {
+                                throw SourceLoadException("Source $sourceId failed to load", e)
+                            } catch (e: Exception) {
+                                throw SourceLoadException("Source $sourceId failed to load", e)
+                            }
+                        if (source == null || source is StubSource) {
+                            throw NotFoundResponse("Source not found")
+                        }
+                        if (!source.supportsLatest) {
+                            throw BadRequestResponse("Source does not support latest")
+                        }
                         source.getLatestUpdates(page)
                     }
                 }

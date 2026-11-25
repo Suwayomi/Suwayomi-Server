@@ -7,13 +7,18 @@ package suwayomi.tachidesk.manga.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.HttpException
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.model.SChapter
+import eu.kanade.tachiyomi.source.online.HttpSource
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
+import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.inList
@@ -27,6 +32,7 @@ import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.TestInstance
 import suwayomi.tachidesk.global.model.table.UserAccountTable
+import suwayomi.tachidesk.manga.impl.chapter.SourceException
 import suwayomi.tachidesk.manga.impl.chapter.refreshChapterPageList
 import suwayomi.tachidesk.manga.impl.download.DownloadManager
 import suwayomi.tachidesk.manga.impl.util.getChapterCbzPath
@@ -37,12 +43,18 @@ import suwayomi.tachidesk.manga.model.table.ChapterTable
 import suwayomi.tachidesk.manga.model.table.ChapterUserTable
 import suwayomi.tachidesk.manga.model.table.MangaTable
 import suwayomi.tachidesk.manga.model.table.MangaUserTable
+import suwayomi.tachidesk.manga.model.table.PageTable
 import suwayomi.tachidesk.test.ApplicationTest
 import suwayomi.tachidesk.test.clearTables
 import suwayomi.tachidesk.test.createLibraryManga
+import tools.jackson.core.exc.StreamReadException
+import tools.jackson.databind.exc.MismatchedInputException
 import java.io.File
+import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -88,6 +100,95 @@ class ChapterTest : ApplicationTest() {
                 assertEquals(1, chapter[ChapterTable.pageCount])
             }
         }
+
+    @Test
+    fun remoteJsonContentErrorIsASanitizedSourceException() =
+        runTest {
+            val mangaId = createLibraryManga("PAGE_SRC_JSON")
+            val chapterId = createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = false).single()
+            val pageSource = mockk<HttpSource>()
+            coEvery { pageSource.getPageList(any()) } throws StreamReadException("leaked internal detail")
+            GetSource.registerSource(source.id to pageSource)
+
+            val e = assertFailsWith<SourceException> { refreshChapterPageList(mangaId, chapterId) }
+            assertEquals("Source request failed", e.message)
+            assertTrue(e.cause is StreamReadException)
+            assertPagesNotWritten(chapterId)
+        }
+
+    @Test
+    fun remoteContentShapeErrorIsASanitizedSourceException() =
+        runTest {
+            val mangaId = createLibraryManga("PAGE_SRC_SHAPE")
+            val chapterId = createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = false).single()
+            val pageSource = mockk<HttpSource>()
+            coEvery { pageSource.getPageList(any()) } throws
+                MismatchedInputException.from(null, Map::class.java, "leaked internal detail")
+            GetSource.registerSource(source.id to pageSource)
+
+            val e = assertFailsWith<SourceException> { refreshChapterPageList(mangaId, chapterId) }
+            assertEquals("Source request failed", e.message)
+            assertPagesNotWritten(chapterId)
+        }
+
+    @Test
+    fun localSourceDecodeErrorIsNotWrapped() =
+        runTest {
+            val mangaId = createLibraryManga("PAGE_LOCAL_JSON")
+            val chapterId = createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = false).single()
+            val pageSource = mockk<Source>()
+            coEvery { pageSource.getPageList(any()) } throws StreamReadException("local decode fail")
+            GetSource.registerSource(source.id to pageSource)
+
+            assertFailsWith<StreamReadException> { refreshChapterPageList(mangaId, chapterId) }
+            assertPagesNotWritten(chapterId)
+        }
+
+    @Test
+    fun nonDecodePageFailuresAreNotWrapped() =
+        runTest {
+            val mangaId = createLibraryManga("PAGE_MISC_FAIL")
+            val chapterId = createChaptersForDownloadTest(mangaId, listOf("1"), downloaded = false).single()
+            val pageSource = mockk<HttpSource>()
+            GetSource.registerSource(source.id to pageSource)
+
+            coEvery { pageSource.getPageList(any()) } throws HttpException(404)
+            assertFailsWith<HttpException> { refreshChapterPageList(mangaId, chapterId) }
+
+            coEvery { pageSource.getPageList(any()) } throws RuntimeException("extension bug")
+            assertFailsWith<RuntimeException> { refreshChapterPageList(mangaId, chapterId) }
+
+            coEvery { pageSource.getPageList(any()) } throws IOException("network dropped")
+            val io = assertFails { refreshChapterPageList(mangaId, chapterId) }
+            assertTrue(io is IOException && io !is SourceException)
+
+            coEvery { pageSource.getPageList(any()) } throws CancellationException("caller left")
+            assertFailsWith<CancellationException> { refreshChapterPageList(mangaId, chapterId) }
+
+            assertPagesNotWritten(chapterId)
+        }
+
+    @Test
+    fun aChapterRowReadFailureIsNotWrapped() =
+        runTest {
+            val mangaId = createLibraryManga("PAGE_ROW_FAIL")
+            val brokenEntry = mockk<ResultRow>()
+            every { brokenEntry[ChapterTable.url] } throws
+                MismatchedInputException.from(null, String::class.java, "row unreadable")
+
+            // an HttpSource would wrap this as SourceException if the try covered the row reads
+            GetSource.registerSource(source.id to mockk<HttpSource>())
+            assertFailsWith<MismatchedInputException> {
+                refreshChapterPageList(mangaId, chapterId = 0, existingChapterEntry = brokenEntry)
+            }
+        }
+
+    private fun assertPagesNotWritten(chapterId: Int) {
+        assertEquals(
+            0L,
+            transaction { PageTable.selectAll().where { PageTable.chapter eq chapterId }.count() },
+        )
+    }
 
     @Test
     fun chapterUrlChangeMigratesPerUserStateForAllUsers() =
