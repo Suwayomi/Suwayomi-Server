@@ -86,6 +86,7 @@ These clients are built-in options, and the server can keep them automatically u
 - [Tachidesk-Sorayomi](https://github.com/Suwayomi/Tachidesk-Sorayomi): Web app; Desktop app (windows, linux, mac); Android app; requires access to a running server
 - [Tachidesk-qtui](https://github.com/Suwayomi/Tachidesk-qtui): Android app; iOS app Desktop app (linux); requires access to a running server
 - [Suwayomi Client for KOReader](https://github.com/LK4D4/suwayomi.koplugin): KOReader plugin; works anywhere KOReader can run (Android, Kindle, Kobo, etc.); requires access to a running server
+- [Yomu](https://apps.apple.com/app/yomu/id6760745234): iOS app; iPadOS app; macOS app; browses the server's library and categories and syncs read progress; requires access to a running server
 
 # Downloading and Running the app
 ## Using Operating System Specific Bundles
