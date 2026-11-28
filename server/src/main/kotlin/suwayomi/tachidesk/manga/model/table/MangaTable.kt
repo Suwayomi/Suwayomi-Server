@@ -9,8 +9,12 @@ package suwayomi.tachidesk.manga.model.table
 
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import org.jetbrains.exposed.v1.core.CustomFunction
+import org.jetbrains.exposed.v1.core.LongColumnType
 import org.jetbrains.exposed.v1.core.ResultRow
 import org.jetbrains.exposed.v1.core.dao.id.IntIdTable
+import org.jetbrains.exposed.v1.core.longLiteral
+import org.jetbrains.exposed.v1.core.plus
 import suwayomi.tachidesk.manga.impl.MangaList.proxyThumbnailUrl
 import suwayomi.tachidesk.manga.model.dataclass.MangaDataClass
 import suwayomi.tachidesk.manga.model.dataclass.toGenreList
@@ -32,6 +36,9 @@ object MangaTable : IntIdTable() {
     val thumbnail_url = varchar("thumbnail_url", 2048).nullable()
     val thumbnailUrlLastFetched = long("thumbnail_url_last_fetched").default(0)
 
+    // strict cover-generation tag; published cover mtimes carry it, so it is not a fetch timestamp
+    val thumbnailUrlVersion = long("thumbnail_url_version").default(0)
+
     // the [source] field name is used by some ancestor of IntIdTable
     val sourceReference = long("source")
 
@@ -45,6 +52,14 @@ object MangaTable : IntIdTable() {
 
     val memo = jsonObject("memo")
 }
+
+internal fun nextThumbnailUrlVersion(): CustomFunction<Long> =
+    CustomFunction(
+        "GREATEST",
+        LongColumnType(),
+        MangaTable.thumbnailUrlVersion + 1,
+        longLiteral(System.currentTimeMillis()),
+    )
 
 fun MangaTable.toDataClass(mangaEntry: ResultRow) =
     MangaDataClass(

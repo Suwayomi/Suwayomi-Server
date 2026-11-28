@@ -46,6 +46,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - (**Extension/Android**) Preserve bold style and the default font size for `Typeface.DEFAULT_BOLD`
 - (**Extension/Android**) Preserve image types when creating or copying bitmaps with their reported configurations
 - (**Image**) Recognize the AVIF image-sequence brand when identifying page images
+- (**Sources**) Route image fetches (covers, reader pages, extension icons) through a dedicated dispatcher with a dead-host circuit breaker so an unreachable image host can no longer starve API calls
+- (**Thumbnails**) Serialize remote cover fetches per manga, stage cached and downloaded covers before publication, and remember a dead cover URL briefly so concurrent readers share one source hit
 - (**Local Source**) Fix detection of Synology metadata folders as local chapters
 - (**Local source**) Fix EPUB archive paths being resolved as Windows filesystem paths
 - (**Network/WebView**) Fix configured SOCKS proxy not being used by WebView and Cloudflare bypass

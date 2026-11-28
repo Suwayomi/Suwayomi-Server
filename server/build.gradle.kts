@@ -102,6 +102,7 @@ dependencies {
     implementation(kotlin("script-runtime"))
 
     testImplementation(libs.mockk)
+    testImplementation(libs.okhttp.mockwebserver3)
 
     implementation(libs.cron4j)
 

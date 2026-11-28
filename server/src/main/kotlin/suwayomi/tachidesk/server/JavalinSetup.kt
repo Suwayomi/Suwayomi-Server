@@ -8,6 +8,8 @@ package suwayomi.tachidesk.server
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 import eu.kanade.tachiyomi.network.HttpException
+import eu.kanade.tachiyomi.network.hasOpenCircuit
+import eu.kanade.tachiyomi.network.isHostUnreachable
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -43,7 +45,6 @@ import suwayomi.tachidesk.graphql.types.AuthMode
 import suwayomi.tachidesk.i18n.LocalizationHelper
 import suwayomi.tachidesk.i18n.MR
 import suwayomi.tachidesk.manga.MangaAPI
-import suwayomi.tachidesk.manga.impl.util.network.isHostUnreachable
 import suwayomi.tachidesk.opds.OpdsAPI
 import suwayomi.tachidesk.server.user.ForbiddenException
 import suwayomi.tachidesk.server.user.UnauthorizedException
@@ -351,6 +352,12 @@ object JavalinSetup {
             ctx.status(404)
         }
         exception(IOException::class.java) { e, ctx ->
+            if (e.hasOpenCircuit()) {
+                logger.warn { "Image host circuit open while handling ${ctx.path()}" }
+                ctx.sourceFailed("Image host temporarily unavailable")
+                return@exception
+            }
+
             if (e.isHostUnreachable()) {
                 // A source host being down isn't a server fault
                 logger.warn { "Source host unreachable while handling ${ctx.path()}: ${e.message}" }

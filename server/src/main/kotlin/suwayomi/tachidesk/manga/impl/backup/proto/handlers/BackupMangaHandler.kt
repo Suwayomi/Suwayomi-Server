@@ -21,6 +21,7 @@ import org.jetbrains.exposed.v1.core.greaterEq
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.inSubQuery
 import org.jetbrains.exposed.v1.core.or
+import org.jetbrains.exposed.v1.core.vendors.ForUpdateOption
 import org.jetbrains.exposed.v1.jdbc.batchInsert
 import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
@@ -33,7 +34,6 @@ import suwayomi.tachidesk.manga.impl.CategoryManga
 import suwayomi.tachidesk.manga.impl.Chapter
 import suwayomi.tachidesk.manga.impl.Chapter.modifyChaptersMetas
 import suwayomi.tachidesk.manga.impl.Manga
-import suwayomi.tachidesk.manga.impl.Manga.clearThumbnail
 import suwayomi.tachidesk.manga.impl.Manga.modifyMangasMetas
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.SyncRestoreMode
@@ -226,6 +226,7 @@ object BackupMangaHandler {
         errors: MutableList<Pair<Date, String>>,
         flags: BackupFlags,
         syncMode: SyncRestoreMode = SyncRestoreMode.NONE,
+        thumbnailCleanupTargets: MutableSet<Manga.ThumbnailCleanupTarget>? = null,
     ) {
         val chapters = backupManga.chapters
         val categories = backupManga.categories
@@ -235,7 +236,7 @@ object BackupMangaHandler {
         val dbCategoryIds = categories.mapNotNull { categoryMapping[it] }
 
         try {
-            restoreMangaData(userId, backupManga, chapters, dbCategoryIds, history, tracking, flags, syncMode)
+            restoreMangaData(userId, backupManga, chapters, dbCategoryIds, history, tracking, flags, syncMode, thumbnailCleanupTargets)
         } catch (e: Exception) {
             val sourceName = sourceMapping[backupManga.source] ?: backupManga.source.toString()
             errors.add(Date() to "${backupManga.title} [$sourceName]: ${e.message}")
@@ -251,6 +252,7 @@ object BackupMangaHandler {
         tracks: List<BackupTracking>,
         flags: BackupFlags,
         syncMode: SyncRestoreMode,
+        thumbnailCleanupTargets: MutableSet<Manga.ThumbnailCleanupTarget>?,
     ) {
         val dbManga =
             transaction {
@@ -264,14 +266,16 @@ object BackupMangaHandler {
         // a newer local copy wins the next upload; categories and tracking are part of the manga's version
         val keepLocalManga =
             syncMode == SyncRestoreMode.ADOPT && dbManga != null && manga.version < dbManga[MangaUserTable.version]
-        val coverChanged =
-            dbManga == null ||
-                (!keepLocalManga && manga.thumbnailUrl != null && manga.thumbnailUrl != dbManga[MangaTable.thumbnail_url])
 
+        var coverChanged = false
+        var legacyVersionZero = false
+        var committedCoverVersion: Long? = null
         val mangaId =
             transaction {
                 val mangaId =
                     if (dbManga == null) {
+                        coverChanged = true
+                        committedCoverVersion = System.currentTimeMillis()
                         // insert manga to database
                         MangaTable
                             .insertAndGetId {
@@ -285,6 +289,7 @@ object BackupMangaHandler {
                                 it[status] = manga.status
                                 it[thumbnail_url] = manga.thumbnailUrl
                                 it[MangaTable.thumbnailUrlLastFetched] = Clock.System.now().epochSeconds
+                                it[MangaTable.thumbnailUrlVersion] = committedCoverVersion!!
                                 it[updateStrategy] = manga.updateStrategy.name
 
                                 it[sourceReference] = manga.source
@@ -298,6 +303,21 @@ object BackupMangaHandler {
                     } else {
                         val dbMangaId = dbManga[MangaTable.id].value
 
+                        // the bump decision is judged against the locked row, not the pre-transaction snapshot
+                        val lockedThumbnail =
+                            MangaTable
+                                .select(MangaTable.thumbnail_url, MangaTable.thumbnailUrlVersion)
+                                .where { MangaTable.id eq dbMangaId }
+                                .forUpdate(ForUpdateOption.ForUpdate)
+                                .first()
+                        val lockedThumbnailUrl = lockedThumbnail[MangaTable.thumbnail_url]
+                        coverChanged = manga.thumbnailUrl != null && manga.thumbnailUrl != lockedThumbnailUrl
+                        if (coverChanged) {
+                            legacyVersionZero = lockedThumbnail[MangaTable.thumbnailUrlVersion] <= 0
+                            committedCoverVersion =
+                                maxOf(lockedThumbnail[MangaTable.thumbnailUrlVersion] + 1, System.currentTimeMillis())
+                        }
+
                         // Merge manga data
                         MangaTable.update({ MangaTable.id eq dbMangaId }) {
                             it[artist] = manga.artist ?: dbManga[artist]
@@ -305,9 +325,13 @@ object BackupMangaHandler {
                             it[description] = manga.description ?: dbManga[description]
                             it[genre] = manga.genre.ifEmpty { null }?.joinToString() ?: dbManga[genre]
                             it[status] = manga.status
-                            it[thumbnail_url] = manga.thumbnailUrl ?: dbManga[thumbnail_url]
+                            // a backup only reacts to url changes — re-attesting a same-url cover is the details refresh's job
+                            if (manga.thumbnailUrl != null) {
+                                it[thumbnail_url] = manga.thumbnailUrl
+                            }
                             if (coverChanged) {
                                 it[MangaTable.thumbnailUrlLastFetched] = Clock.System.now().epochSeconds
+                                it[MangaTable.thumbnailUrlVersion] = committedCoverVersion!!
                             }
                             it[updateStrategy] = manga.updateStrategy.name
 
@@ -352,10 +376,6 @@ object BackupMangaHandler {
                     }
                 }
 
-                if (coverChanged) {
-                    clearThumbnail(mangaId)
-                }
-
                 if (flags.includeClientData && manga.meta.isNotEmpty()) {
                     modifyMangasMetas(userId, mapOf(mangaId to manga.meta))
                 }
@@ -372,6 +392,16 @@ object BackupMangaHandler {
 
                 mangaId
             }
+
+        if (coverChanged) {
+            Manga.invalidateThumbnailState(mangaId)
+            val cleanupTarget = Manga.ThumbnailCleanupTarget(mangaId, legacyVersionZero)
+            if (thumbnailCleanupTargets != null) {
+                thumbnailCleanupTargets += cleanupTarget
+            } else {
+                Manga.deleteStaleThumbnailFiles(listOf(cleanupTarget))
+            }
+        }
 
         if (flags.includeTracking && !keepLocalManga) {
             restoreMangaTrackerData(userId, mangaId, tracks)

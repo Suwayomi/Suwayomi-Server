@@ -34,6 +34,7 @@ class MangaTest : ApplicationTest() {
     private val applicationDirs: ApplicationDirs by injectLazy()
 
     private val originalThumbnailUrl = "https://example.com/cover-original.jpg"
+    private val coverVersion = 1_000L
 
     private fun createMangaWithCachedCovers(): Pair<Int, List<File>> {
         val mangaId = createLibraryManga("COVER_TEST")
@@ -41,6 +42,7 @@ class MangaTest : ApplicationTest() {
             MangaTable.update({ MangaTable.id eq mangaId }) {
                 it[thumbnail_url] = originalThumbnailUrl
                 it[thumbnailUrlLastFetched] = 100L
+                it[thumbnailUrlVersion] = coverVersion
             }
         }
 
@@ -84,6 +86,8 @@ class MangaTest : ApplicationTest() {
         val storedManga = getStoredManga(mangaId)
         assertEquals(originalThumbnailUrl, storedManga[MangaTable.thumbnail_url])
         assertTrue(storedManga[MangaTable.thumbnailUrlLastFetched] > 100L)
+        // a details refresh re-attests the cover — the version bumps even for an unchanged url
+        assertTrue(storedManga[MangaTable.thumbnailUrlVersion] > coverVersion)
     }
 
     @Test
@@ -97,6 +101,22 @@ class MangaTest : ApplicationTest() {
         val storedManga = getStoredManga(mangaId)
         assertEquals(newThumbnailUrl, storedManga[MangaTable.thumbnail_url])
         assertTrue(storedManga[MangaTable.thumbnailUrlLastFetched] > 100L)
+        assertTrue(storedManga[MangaTable.thumbnailUrlVersion] > coverVersion)
+    }
+
+    @Test
+    fun updateMangaDatabaseKeepsTheCoverVersionMonotonicAheadOfTheClock() {
+        val (mangaId, _) = createMangaWithCachedCovers()
+        val futureVersion = System.currentTimeMillis() + 24 * 60 * 60 * 1_000L
+        transaction {
+            MangaTable.update({ MangaTable.id eq mangaId }) {
+                it[thumbnailUrlVersion] = futureVersion
+            }
+        }
+
+        updateMangaDatabaseWith(mangaId, originalThumbnailUrl)
+
+        assertTrue(getStoredManga(mangaId)[MangaTable.thumbnailUrlVersion] > futureVersion)
     }
 
     @Test
@@ -109,6 +129,7 @@ class MangaTest : ApplicationTest() {
         val storedManga = getStoredManga(mangaId)
         assertEquals(originalThumbnailUrl, storedManga[MangaTable.thumbnail_url])
         assertEquals(100L, storedManga[MangaTable.thumbnailUrlLastFetched])
+        assertEquals(coverVersion, storedManga[MangaTable.thumbnailUrlVersion])
     }
 
     @Test
@@ -121,6 +142,7 @@ class MangaTest : ApplicationTest() {
         val storedManga = getStoredManga(mangaId)
         assertEquals(originalThumbnailUrl, storedManga[MangaTable.thumbnail_url])
         assertEquals(100L, storedManga[MangaTable.thumbnailUrlLastFetched])
+        assertEquals(coverVersion, storedManga[MangaTable.thumbnailUrlVersion])
     }
 
     @Test

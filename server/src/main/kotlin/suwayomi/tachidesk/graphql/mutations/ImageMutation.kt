@@ -4,6 +4,7 @@ package suwayomi.tachidesk.graphql.mutations
 
 import suwayomi.tachidesk.graphql.directives.RequireAuth
 import suwayomi.tachidesk.graphql.directives.RequirePermissions
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
 import suwayomi.tachidesk.server.user.UserPermission
@@ -31,19 +32,14 @@ class ImageMutation {
     fun clearCachedImages(input: ClearCachedImagesInput): ClearCachedImagesPayload {
         val (clientMutationId, downloadedThumbnails, cachedThumbnails, cachedPages) = input
 
-        val downloadedThumbnailsResult =
-            if (downloadedThumbnails == true) {
-                ImageResponse.clearImages(applicationDirs.thumbnailDownloadsRoot)
-            } else {
-                null
-            }
-
-        val cachedThumbnailsResult =
-            if (cachedThumbnails == true) {
-                ImageResponse.clearImages(applicationDirs.tempThumbnailCacheRoot)
-            } else {
-                null
-            }
+        if (downloadedThumbnails == true || cachedThumbnails == true) {
+            Manga.invalidateAllThumbnailFailures()
+        }
+        val thumbnailCleanup =
+            Manga.clearThumbnailDirectories(
+                downloadedThumbnails = downloadedThumbnails == true,
+                cachedThumbnails = cachedThumbnails == true,
+            )
 
         val cachedPagesResult =
             if (cachedPages == true) {
@@ -54,8 +50,8 @@ class ImageMutation {
 
         return ClearCachedImagesPayload(
             clientMutationId,
-            downloadedThumbnails = downloadedThumbnailsResult,
-            cachedThumbnails = cachedThumbnailsResult,
+            downloadedThumbnails = thumbnailCleanup.downloadedThumbnails,
+            cachedThumbnails = thumbnailCleanup.cachedThumbnails,
             cachedPages = cachedPagesResult,
         )
     }

@@ -1,4 +1,4 @@
-package suwayomi.tachidesk.manga.impl.util.network
+package eu.kanade.tachiyomi.network
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
@@ -17,4 +17,10 @@ fun Throwable.isHostUnreachable(): Boolean =
         .take(MAX_CAUSE_DEPTH)
         .any { it is UnknownHostException || it is ConnectException || it is NoRouteToHostException }
 
-private const val MAX_CAUSE_DEPTH = 16
+// A breaker's fail-fast rejection rides the cause chain — Call.await adds another IOException layer
+fun Throwable.hasOpenCircuit(): Boolean =
+    generateSequence(this) { it.cause }
+        .take(MAX_CAUSE_DEPTH)
+        .any { it is HostCircuitOpenException }
+
+internal const val MAX_CAUSE_DEPTH = 16

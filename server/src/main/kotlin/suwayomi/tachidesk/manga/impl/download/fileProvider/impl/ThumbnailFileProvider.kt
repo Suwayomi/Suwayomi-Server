@@ -9,7 +9,6 @@ import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse
 import suwayomi.tachidesk.manga.impl.util.storage.ImageResponse.getCachedImageResponse
 import suwayomi.tachidesk.server.ApplicationDirs
 import uy.kohesive.injekt.injectLazy
-import java.io.File
 import java.io.InputStream
 
 class MissingThumbnailException : Exception("No thumbnail found")
@@ -38,51 +37,10 @@ class ThumbnailFileProvider(
 
     override suspend fun getImage(): RetrieveFile0Args = RetrieveFile0Args(::getImageImpl)
 
-    private suspend fun downloadImpl(): Boolean {
-        val isExistingFile = getFilePath() != null
-        if (isExistingFile) {
-            return true
-        }
-
-        val (inputStream, mime) = Manga.fetchMangaThumbnail(mangaId)
-        inputStream.use { image ->
-            makeSureDownloadDirExists()
-            val filePath = getThumbnailDownloadPath(mangaId)
-            ImageResponse.saveImage(filePath, image, mime)
-        }
-
-        return true
-    }
-
-    suspend fun refreshIfStale(staleBefore: Long) {
-        if (getFilePath() == null) {
-            return
-        }
-
-        ImageResponse
-            .getImageResponse(applicationDirs.thumbnailDownloadsRoot, mangaId.toString(), staleBefore) {
-                Manga.fetchMangaThumbnailResponse(mangaId)
-            }.first
-            .close()
-    }
+    // the per-manga fetch lock lives in Manga — existence is rechecked inside it
+    private suspend fun downloadImpl(): Boolean = Manga.downloadThumbnail(mangaId)
 
     override fun download(): FileDownload0Args = FileDownload0Args(::downloadImpl)
 
-    override suspend fun delete(): Boolean {
-        val filePath = getFilePath()
-        if (filePath.isNullOrEmpty()) {
-            return true
-        }
-
-        return File(filePath).delete()
-    }
-
-    private fun makeSureDownloadDirExists() {
-        val downloadDirPath = applicationDirs.thumbnailDownloadsRoot
-        val downloadDir = File(downloadDirPath)
-
-        if (!downloadDir.exists()) {
-            downloadDir.mkdir()
-        }
-    }
+    override suspend fun delete(): Boolean = Manga.clearDownloadedThumbnail(mangaId)
 }

@@ -26,6 +26,7 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
 import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.graphql.types.toStatus
+import suwayomi.tachidesk.manga.impl.Manga
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.ValidationResult
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupValidator.validate
@@ -306,6 +307,7 @@ object ProtoBackupImport : ProtoBackupBase() {
 
         // Restore individual manga
         if (flags.includeManga) {
+            val thumbnailCleanupTargets = linkedSetOf<Manga.ThumbnailCleanupTarget>()
             backup.backupManga.forEachIndexed { index, manga ->
                 updateRestoreState(
                     id,
@@ -324,8 +326,10 @@ object ProtoBackupImport : ProtoBackupBase() {
                     errors = errors,
                     flags = flags,
                     syncMode = syncMode,
+                    thumbnailCleanupTargets = thumbnailCleanupTargets,
                 )
             }
+            Manga.deleteStaleThumbnailFiles(thumbnailCleanupTargets)
         }
 
         logger.info {
