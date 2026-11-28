@@ -45,10 +45,10 @@ class ImageResponseLookupTest {
     }
 
     @Test
-    fun findsALeftoverTmpFileSoItIsDownloadedAgain() {
+    fun aLeftoverTmpFileNeverCountsAsACachedImage() {
         file("1.tmp")
 
-        assertEquals("$dir/1.tmp", ImageResponse.findFileNameStartingWith(dir, "1"))
+        assertNull(ImageResponse.findFileNameStartingWith(dir, "1"))
     }
 
     @Test

@@ -16,6 +16,7 @@ import org.jetbrains.exposed.v1.jdbc.insert
 import org.jetbrains.exposed.v1.jdbc.insertAndGetId
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.transactions.transaction
+import org.jetbrains.exposed.v1.jdbc.update
 import suwayomi.tachidesk.global.model.table.UserAccountTable
 import suwayomi.tachidesk.manga.impl.backup.BackupFlags
 import suwayomi.tachidesk.manga.impl.backup.proto.ProtoBackupExport
@@ -52,6 +53,7 @@ class BackupRestoreCoverTest : ApplicationTest() {
         )
     private val originalThumbnailUrl = "https://example.com/cover-original.jpg"
     private val oldVersion = 100L
+    private val oldThumbnailVersion = 200L
 
     @Test
     fun restoringAnUnchangedMangaKeepsItsCoversAndTheirVersion() =
@@ -65,6 +67,7 @@ class BackupRestoreCoverTest : ApplicationTest() {
                 covers.forEach { assertTrue(it.exists(), "${it.path} should be kept") }
                 assertEquals(originalThumbnailUrl, stored(fixture.mangaId)[MangaTable.thumbnail_url])
                 assertEquals(oldVersion, stored(fixture.mangaId)[MangaTable.thumbnailUrlLastFetched])
+                assertEquals(oldThumbnailVersion, stored(fixture.mangaId)[MangaTable.thumbnailUrlVersion])
             }
         }
 
@@ -81,6 +84,28 @@ class BackupRestoreCoverTest : ApplicationTest() {
                 covers.forEach { assertFalse(it.exists(), "${it.path} should be cleared") }
                 assertEquals(newThumbnailUrl, stored(fixture.mangaId)[MangaTable.thumbnail_url])
                 assertTrue(stored(fixture.mangaId)[MangaTable.thumbnailUrlLastFetched] > oldVersion)
+                assertTrue(stored(fixture.mangaId)[MangaTable.thumbnailUrlVersion] > oldThumbnailVersion)
+            }
+        }
+
+    @Test
+    fun restoringACoverChangeKeepsTheVersionMonotonicAheadOfTheClock() =
+        runTest {
+            withFixture { fixture ->
+                val futureVersion = System.currentTimeMillis() + 24 * 60 * 60 * 1_000L
+                transaction {
+                    MangaTable.update({ MangaTable.id eq fixture.mangaId }) {
+                        it[thumbnailUrlVersion] = futureVersion
+                    }
+                }
+                val backup =
+                    export(fixture).apply {
+                        backupManga.single().thumbnailUrl = "https://example.com/cover-new.jpg"
+                    }
+
+                restore(fixture, backup)
+
+                assertTrue(stored(fixture.mangaId)[MangaTable.thumbnailUrlVersion] > futureVersion)
             }
         }
 
@@ -96,6 +121,7 @@ class BackupRestoreCoverTest : ApplicationTest() {
                 covers.forEach { assertTrue(it.exists(), "${it.path} should be kept") }
                 assertEquals(originalThumbnailUrl, stored(fixture.mangaId)[MangaTable.thumbnail_url])
                 assertEquals(oldVersion, stored(fixture.mangaId)[MangaTable.thumbnailUrlLastFetched])
+                assertEquals(oldThumbnailVersion, stored(fixture.mangaId)[MangaTable.thumbnailUrlVersion])
             }
         }
 
@@ -118,6 +144,7 @@ class BackupRestoreCoverTest : ApplicationTest() {
                 try {
                     assertEquals(originalThumbnailUrl, restored[MangaTable.thumbnail_url])
                     assertTrue(restored[MangaTable.thumbnailUrlLastFetched] > 0)
+                    assertTrue(restored[MangaTable.thumbnailUrlVersion] > 0)
                 } finally {
                     transaction { MangaTable.deleteWhere { MangaTable.id eq restored[MangaTable.id] } }
                 }
@@ -149,6 +176,7 @@ class BackupRestoreCoverTest : ApplicationTest() {
                             it[sourceReference] = LocalSource.ID
                             it[thumbnail_url] = originalThumbnailUrl
                             it[thumbnailUrlLastFetched] = oldVersion
+                            it[thumbnailUrlVersion] = oldThumbnailVersion
                         }.value
                 MangaUserTable.insert {
                     it[manga] = mangaId

@@ -7,6 +7,7 @@ package suwayomi.tachidesk.server
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import eu.kanade.tachiyomi.network.HostCircuitOpenException
 import eu.kanade.tachiyomi.network.HttpException
 import io.javalin.Javalin
 import okhttp3.OkHttpClient
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import suwayomi.tachidesk.server.JavalinSetup.defineExceptionHandlers
 import java.io.IOException
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,6 +33,14 @@ class JavalinExceptionHandlersTest {
                     config.routes.get("/source-error") { throw HttpException(404) }
                     config.routes.get("/source-unreachable") {
                         throw IOException("cdn.example: Name or service not known", UnknownHostException("cdn.example"))
+                    }
+                    config.routes.get("/source-circuit-open") {
+                        // the cover fetch wraps the breaker's rejection one level deep, and the
+                        // carried failure is not host-unreachable — only the open circuit counts
+                        throw IOException(
+                            "cover fetch failed",
+                            HostCircuitOpenException("img.example:443", SocketTimeoutException("read timed out")),
+                        )
                     }
                 }
                 // loopback only: listening on every interface makes the OS firewall ask to let Java in
@@ -50,6 +60,11 @@ class JavalinExceptionHandlersTest {
     @Test
     fun anUnreachableSourceIsAFailedDependency() {
         assertEquals(424, get("/source-unreachable").first)
+    }
+
+    @Test
+    fun anOpenImageCircuitIsAFailedDependency() {
+        assertEquals(424 to "Image host temporarily unavailable", get("/source-circuit-open"))
     }
 
     private fun get(path: String): Pair<Int, String> =

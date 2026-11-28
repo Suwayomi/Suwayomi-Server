@@ -1,6 +1,5 @@
-package suwayomi.tachidesk.manga.impl.util.network
+package eu.kanade.tachiyomi.network
 
-import eu.kanade.tachiyomi.network.HttpException
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
@@ -28,5 +27,24 @@ class HostUnreachableTest {
         assertFalse(HttpException(404).isHostUnreachable())
         assertFalse(IOException("unexpected end of stream").isHostUnreachable())
         assertFalse(IOException("timeout", SocketTimeoutException()).isHostUnreachable())
+    }
+
+    @Test
+    fun anOpenCircuitRidesTheCauseChain() {
+        val wrapped = IOException("cover fetch failed", HostCircuitOpenException("img.example:443", ConnectException()))
+        assertTrue(wrapped.hasOpenCircuit())
+    }
+
+    @Test
+    fun aPlainTransportFailureHasNoOpenCircuit() {
+        assertFalse(IOException("failed", ConnectException("refused")).hasOpenCircuit())
+        assertFalse(HttpException(503).hasOpenCircuit())
+    }
+
+    @Test
+    fun theCauseChainWalkStopsAtTheDepthCap() {
+        var e: Throwable = HostCircuitOpenException("img.example:443", null)
+        repeat(MAX_CAUSE_DEPTH + 2) { e = IOException("wrap", e) }
+        assertFalse(e.hasOpenCircuit())
     }
 }
