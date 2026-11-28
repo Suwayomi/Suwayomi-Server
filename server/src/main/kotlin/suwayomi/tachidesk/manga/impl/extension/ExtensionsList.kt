@@ -16,6 +16,7 @@ import org.jetbrains.exposed.v1.core.dao.id.EntityID
 import org.jetbrains.exposed.v1.core.inList
 import org.jetbrains.exposed.v1.core.statements.BatchUpdateStatement
 import org.jetbrains.exposed.v1.jdbc.batchInsert
+import org.jetbrains.exposed.v1.jdbc.batchUpsert
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
 import org.jetbrains.exposed.v1.jdbc.statements.toExecutable
@@ -26,6 +27,7 @@ import suwayomi.tachidesk.manga.model.dataclass.ContentWarning
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import suwayomi.tachidesk.manga.model.dataclass.ExtensionInfo
 import suwayomi.tachidesk.manga.model.table.ExtensionTable
+import suwayomi.tachidesk.manga.model.table.StubSourceTable
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Duration.Companion.seconds
 
@@ -100,6 +102,14 @@ object ExtensionsList {
                         .mapValues { (_, extension) ->
                             extension.maxBy { it.versionCode }
                         }.values
+                val stubSources = uniqueExtensions.flatMap { it.sources }.filter { it.id != 0L }.distinctBy { it.id }
+                if (stubSources.isNotEmpty()) {
+                    StubSourceTable.batchUpsert(stubSources, StubSourceTable.id) {
+                        this[StubSourceTable.id] = it.id
+                        this[StubSourceTable.name] = it.name
+                        this[StubSourceTable.lang] = it.lang
+                    }
+                }
                 val installedExtensions =
                     ExtensionTable
                         .selectAll()
